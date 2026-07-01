@@ -71,7 +71,7 @@ _INFERNAL_PASSIVE_DESC: dict[str, str] = {
     "inverted edge": "Combat start: Swap weapon ATK and DEF",
     "gilded hunger": "Combat start: Gain ATK equal to 10% of weapon rarity",
     "cursed precision": "During combat: +20% Crit Chance; your critical damage is unlucky",
-    "diabolic pact": "Combat start: Take 90% max HP as True Damage and double ATK",
+    "diabolic pact": "Combat start: Take 50% max HP as True Damage and double ATK",
     "perdition": "On miss: Deal 75% of weapon ATK",
     "voracious": "On hit: Gain a stack of Voracity; Each stack gives +5% Crit Chance. On crit: Lose all stacks.",
     "last rites": "On crit: Deal an additional 5% of enemy current HP",

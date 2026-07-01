@@ -139,7 +139,7 @@ def _compute_combat_bonuses(p) -> dict:
         elif inf == "cursed precision":
             cb["crit"] += 20
         elif inf == "diabolic pact":
-            cb["hp"] -= int(p.max_hp * 0.90)
+            cb["hp"] -= int(p.max_hp * 0.50)
             cb["atk"] += p.get_total_attack()
 
     # Void passives (deterministic ones only)

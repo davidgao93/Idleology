@@ -311,7 +311,7 @@ def calc_crit_damage(
     from core.combat import jewel_engine as _je
     from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 
-    base_max = player.get_total_attack()
+    base_max = player.get_total_attack(monster)
     base_min = 1
     calc_dmg_notes: list[str] = [f"base_atk={base_max}"]
 
@@ -345,18 +345,34 @@ def calc_crit_damage(
         calc_dmg_notes.append(f"deft_min={base_min}")
         log.append(f"**Deftness ({glove_lvl})** steadies your critical strike!")
 
-    crit_mult = player.get_weapon_crit_multi()
+    # crit_mult starts from the additive base stat (weapon + essence + insight +
+    # emblem + partner + Hematurgy Chain Reaction/Executioner's Rite — all summed
+    # inside get_weapon_crit_multi()).
+    crit_mult = player.get_weapon_crit_multi(monster)
+
+    # Jewel of Paradise: Cataclysm — one-shot primed bonus, consumed here and
+    # summed additively with the rest of crit_mult (never compounds with it).
+    cat_bonus = _je.apply_cataclysm_crit_bonus(player)
+    if cat_bonus > 0:
+        crit_mult += cat_bonus
+        calc_dmg_notes.append(f"cataclysm_jewel+{cat_bonus:.2f}={crit_mult:.2f}")
+        log.append(f"💥 **Cataclysm** detonates! (+{cat_bonus * 100:.0f}% crit damage)")
+
+    # Debuffs: proportional dampeners applied LAST, to the fully-summed total —
+    # they reduce whatever crit power the player has stacked, buffs included.
     if monster.has_modifier("Nullifying"):
         null_val = monster.get_modifier_value("Nullifying")
-        crit_mult = player.get_weapon_crit_multi() * (1 - null_val)
+        crit_mult *= 1 - null_val
         log.append(
             f"The **Nullifying** aura dampens your critical hit! (×{crit_mult:.2f})"
         )
-        calc_dmg_notes.append(f"nullifying×{crit_mult:.2f}")
+        calc_dmg_notes.append(f"nullifying×{1 - null_val:.2f}={crit_mult:.2f}")
 
     if player.chapter_crit_dmg_reduction > 0:
         crit_mult *= 1 - player.chapter_crit_dmg_reduction
-        calc_dmg_notes.append(f"chapter_dull×{crit_mult:.2f}")
+        calc_dmg_notes.append(
+            f"chapter_dull×{1 - player.chapter_crit_dmg_reduction:.2f}={crit_mult:.2f}"
+        )
 
     # Roll within the crit range, then multiply by crit_mult.
     # Cursed Precision: roll the range twice, take the worse result.
@@ -376,30 +392,6 @@ def calc_crit_damage(
         calc_dmg_notes.append(
             f"range=[{safe_min}–{base_max}] rolled={rolled} ×{crit_mult:.2f}={base_dmg}"
         )
-
-    cat_bonus = _je.apply_cataclysm_crit_bonus(player)
-    if cat_bonus > 0:
-        base_dmg = int(base_dmg * (1 + cat_bonus))
-        calc_dmg_notes.append(f"cataclysm_jewel×{1 + cat_bonus:.3f}={base_dmg}")
-        log.append(f"💥 **Cataclysm** detonates! (×{1 + cat_bonus:.2f} crit damage)")
-
-    # --- Hematurgy: Chain Reaction and Executioner's Rite crit damage bonuses ---
-    if player.hematurgy_passives:
-        from core.hematurgy.engine import (
-            get_chain_reaction_crit_bonus,
-            get_executioners_rite_bonus,
-        )
-
-        cr_bonus = get_chain_reaction_crit_bonus(player)
-        if cr_bonus > 0:
-            base_dmg = int(base_dmg * (1 + cr_bonus))
-            calc_dmg_notes.append(f"chain_reaction×{1 + cr_bonus:.3f}={base_dmg}")
-        er_crit = get_executioners_rite_bonus(player, monster)
-        if er_crit > 0:
-            base_dmg = int(base_dmg * (1 + er_crit))
-            calc_dmg_notes.append(
-                f"executioners_rite_crit×{1 + er_crit:.3f}={base_dmg}"
-            )
 
     damage = int(base_dmg * attack_multiplier)
     calc_dmg_notes.append(f"×mult={attack_multiplier:.4f}={damage}")
@@ -478,7 +470,7 @@ def calc_hit_damage(
     """Phase 4b — normal hit damage. Returns pre-reduction damage."""
     from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 
-    base_max = player.get_total_attack()
+    base_max = player.get_total_attack(monster)
     base_min = 1
 
     glove_passive = player.get_glove_passive()
@@ -488,7 +480,7 @@ def calc_hit_damage(
     burn_note = ""
     idx, name = get_weapon_tier(player, "burning")
     if idx >= 0:
-        bonus = int(player.get_total_attack() * ((idx + 1) * 0.08))
+        bonus = int(player.get_total_attack(monster) * ((idx + 1) * 0.08))
         base_max += bonus
         burn_note = f" burn+{bonus}"
         log.append(
@@ -587,7 +579,7 @@ def calc_miss_damage(
     if idx >= 0:
         poison_pct = (idx + 1) * 0.08
         poison_dmg = int(
-            random.randint(1, int(player.get_total_attack() * poison_pct))
+            random.randint(1, int(player.get_total_attack(monster) * poison_pct))
             * attack_multiplier
         )
         if poison_dmg > 0:
@@ -596,7 +588,7 @@ def calc_miss_damage(
 
     void_passive = player.get_accessory_void_passive()
     if void_passive == "oblivion":
-        oblivion_dmg = int(player.get_total_attack() * 0.5)
+        oblivion_dmg = int(player.get_total_attack(monster) * 0.5)
         damage += oblivion_dmg
         miss_parts.append(f"**Oblivion** phases through for ⬛ **{oblivion_dmg}**")
 

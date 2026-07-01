@@ -157,7 +157,7 @@ class ApexMechanics:
         monster.apex_zone = zone_key
 
         if zone.modifier_key == "scorched":
-            player.cs.atk_multiplier *= 1.20
+            player.cs.atk_multiplier += 0.20
             monster.flashfire_charges = 4  # Start at 4 instead of 0
             monster.zone_dmg_boost = 0.20
             return (
@@ -173,7 +173,7 @@ class ApexMechanics:
             )
 
         elif zone.modifier_key == "siege_grounds":
-            player.cs.atk_multiplier *= 1.30
+            player.cs.atk_multiplier += 0.30
             monster.ward = int(monster.max_hp * 0.30)
             monster.zone_dr = 0.30
             return (

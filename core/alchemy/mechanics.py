@@ -373,7 +373,7 @@ class DistillationMechanics:
             "emoji": "🌑",
             "desc": "On potion use: Your next {duration:.0f} attacks deal {value:.0f}% increased damage and are guaranteed crits.",
             "value_min": 40.0,
-            "value_max": 200.0,
+            "value_max": 100.0,
             "duration_min": 2.0,
             "duration_max": 5.0,
             "category": "offensive",
@@ -1166,15 +1166,7 @@ class DistillationMechanics:
         dur_min = info.get("duration_min", 2.0)
         dur_max = info.get("duration_max", 5.0)
 
-        alchemy_level = session.get("alchemy_level", 1)
-        # Calibrated ceiling: half the steps giving tier-2 (good) gains.
-        # The theoretical all-tier-3 max is ~3.5× higher than what any real run achieves,
-        # so using it as the denominator crowds everything into the bottom of the range.
-        # This value puts a random-choice median run at roughly 90% of value_min and
-        # a strong run (p90) near value_max, matching the advertised range.
-        raw_max = (DistillationMechanics.STEPS / 2) * DistillationMechanics._delta_for(
-            2, "value", alchemy_level
-        )
+        raw_max = DistillationMechanics.get_raw_max(session)
 
         val_frac = max(0.0, session.get("value_mod", 0.0)) / raw_max
         dur_frac = max(0.0, session.get("duration_mod", 0.0)) / raw_max
@@ -1189,13 +1181,20 @@ class DistillationMechanics:
             float(dur_int),
         )
 
+    # Calibrated ceiling: was half the steps giving tier-2 (good) gains; bumped to
+    # 0.65 to raise the bar for reaching value_max (nerf — same run now lands closer
+    # to the bottom of the advertised range). The theoretical all-tier-3 max is still
+    # far higher than any real run achieves, so using it as the denominator would
+    # crowd everything into the bottom of the range instead.
+    RAW_MAX_STEPS_FACTOR = 0.65
+
     @staticmethod
     def get_raw_max(session: dict) -> float:
         """Return the calibrated raw accumulator ceiling used by project_values."""
         alchemy_level = session.get("alchemy_level", 1)
-        return (DistillationMechanics.STEPS / 2) * DistillationMechanics._delta_for(
-            2, "value", alchemy_level
-        )
+        return (
+            DistillationMechanics.STEPS * DistillationMechanics.RAW_MAX_STEPS_FACTOR
+        ) * DistillationMechanics._delta_for(2, "value", alchemy_level)
 
     @staticmethod
     def finalize(session: dict) -> tuple[str, float, float]:

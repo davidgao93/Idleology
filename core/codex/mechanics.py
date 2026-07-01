@@ -410,15 +410,20 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
     Must be called AFTER restore_clean_stats and BEFORE apply_per_wave_boons.
     HP reductions go into bonus_max_hp so max_hp stays immutable.
     Ward generation reduction also scales back the current starting ward.
+
+    atk_multiplier/def_multiplier are additive accumulators here (1.0 + net %),
+    matching Player.get_total_attack/defence's stat model — every ATK/DEF % source
+    across the whole game sums into one pool instead of compounding. Always use
+    += / -= on these fields, never *=.
     """
     _ward_immune = player.get_helmet_corrupted_essence() == "aphrodite"
 
     for mod_type, value in chapter.player_mods:
         if mod_type == "atk_pct":
-            player.atk_multiplier *= 1 - value
+            player.atk_multiplier -= value
 
         elif mod_type == "def_pct":
-            player.def_multiplier *= 1 - value
+            player.def_multiplier -= value
 
         elif mod_type == "max_hp_pct":
             player.bonus_max_hp -= int(player.max_hp * value)
@@ -466,13 +471,16 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
     """
     Re-applies accumulated per-wave stat boons after restore + signature.
     Must be called AFTER apply_signature_modifier so boons layer on top.
+
+    atk_multiplier/def_multiplier are additive accumulators (see
+    apply_signature_modifier) — two +20% ATK boons sum to +40%, not 1.2×1.2=+44%.
     """
     for boon in active_boons:
         t, v = boon.type, boon.value
         if t == "atk_boost":
-            player.atk_multiplier *= 1 + v / 100
+            player.atk_multiplier += v / 100
         elif t == "def_boost":
-            player.def_multiplier *= 1 + v / 100
+            player.def_multiplier += v / 100
         elif t == "crit_boost":
             player.bonus_crit += int(v)
         elif t == "ward_boost":
@@ -481,9 +489,9 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
             # Downside only — the page rate bonus itself is applied at chapter clear time
             dt, dv = boon.downside_type, boon.downside_value
             if dt == "atk_penalty":
-                player.atk_multiplier *= 1 - dv / 100
+                player.atk_multiplier -= dv / 100
             elif dt == "def_penalty":
-                player.def_multiplier *= 1 - dv / 100
+                player.def_multiplier -= dv / 100
             elif dt == "crit_penalty":
                 player.bonus_crit -= int(dv)
         elif t == "fdr_boost":

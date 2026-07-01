@@ -52,7 +52,7 @@ def _unleash_surge(
     force = M.get_force_pct(data)
 
     total_mult = 1.0 + (fury + spec + force) / 100
-    atk = player.get_total_attack()
+    atk = player.get_total_attack(monster)
     dmg = max(1, int(atk * pct / 100 * total_mult))
     dmg = min(dmg, max(1, monster.hp))
     monster.hp = max(0, monster.hp - dmg)
@@ -85,7 +85,7 @@ def _unleash_acrimony(
     force = M.get_force_pct(data)
     total_mult = 1.0 + (fury + spec + force) / 100
 
-    atk = player.get_total_attack()
+    atk = player.get_total_attack(monster)
     imm_dmg = max(1, int(atk * pct / 100 * total_mult))
     imm_dmg = min(imm_dmg, max(1, monster.hp))
     monster.hp = max(0, monster.hp - imm_dmg)

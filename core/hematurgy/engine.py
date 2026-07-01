@@ -3,9 +3,13 @@ core/hematurgy/engine.py — Combat hooks for all Hematurgy passives.
 
 Architecture notes
 ------------------
-Passives that affect player ATK are expressed as multiplier contributions fed into
-build_attack_multiplier() each turn — NOT as bonus_atk accumulations — so they stay
-idempotent and correct across multi-turn fights.
+Passives that affect player ATK/crit damage are expressed as additive
+contributions read directly by Player.get_total_attack() and
+Player.get_weapon_crit_multi() each time those stats are computed — NOT as a
+separate multiplicative layer — so they stack the same way every other ATK%/
+crit-damage% source in the game does (sum, never compound). They are computed
+fresh every call (idempotent) rather than baked into bonus_atk, since most of
+them depend on live combat state (stacks, HP lost, monster HP%).
 
 Entry points
 ------------
@@ -21,12 +25,12 @@ on_monster_turn_end(player, monster, hp_damage, is_dodged, is_blocked, log)
 on_kill(player, log)
 on_potion_used(player, log)
 apply_reverberation(player, monster, echo_damage, log) → extra: int
---- multiplier helpers (called from build_attack_multiplier / calc_crit_damage) ---
-get_iron_momentum_factor(player)             → float
-get_executioners_rite_bonus(player, monster) → float
-get_soul_fracture_factor(player)             → float
-get_counterforce_factor(player)              → float
-get_chain_reaction_crit_bonus(player)        → float
+--- additive stat contributions (called from Player.get_total_attack / get_weapon_crit_multi) ---
+get_iron_momentum_factor(player)             → float (pct_pool contribution)
+get_executioners_rite_bonus(player, monster) → float (pct_pool / crit_mult contribution)
+get_soul_fracture_factor(player)             → float (pct_pool contribution)
+get_counterforce_bonus(player)               → int   (flat bonus_pool contribution)
+get_chain_reaction_crit_bonus(player)        → float (crit_mult contribution)
 get_phantom_reflex_evasion_bonus(player)     → float
 """
 
@@ -50,7 +54,10 @@ def _tv(pid: str, tier: int) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Multiplier helpers — called from build_attack_multiplier each player turn
+# Additive stat contributions — called from Player.get_total_attack() each time
+# that stat is computed. These return a pct_pool fraction (or a flat bonus_pool
+# amount for Counterforce) — never call get_total_attack() from in here, since
+# get_total_attack() calls these (would recurse).
 # ---------------------------------------------------------------------------
 
 
@@ -63,7 +70,8 @@ def get_iron_momentum_factor(player: Player) -> float:
 
 
 def get_executioners_rite_bonus(player: Player, monster: Monster) -> float:
-    """Executioner's Rite: returns fractional bonus when monster < 30% HP."""
+    """Executioner's Rite: returns fractional bonus when monster < 30% HP.
+    Used both for the ATK pct_pool and the crit_mult bonus (same fraction)."""
     tier = get_h(player, "executioners_rite")
     if tier is None:
         return 0.0
@@ -84,14 +92,14 @@ def get_soul_fracture_factor(player: Player) -> float:
     return _tv("soul_fracture", tier) * chunks
 
 
-def get_counterforce_factor(player: Player) -> float:
-    """Counterforce: X% of total DEF expressed as a fractional ATK bonus."""
+def get_counterforce_bonus(player: Player) -> int:
+    """Counterforce: converts X% of total DEF into a flat bonus_pool ATK amount
+    (same shape as the Wrath tome conversion — scales off get_total_defence(),
+    not get_total_attack(), to avoid recursing back into this stat)."""
     tier = get_h(player, "counterforce")
     if tier is None:
-        return 0.0
-    atk = max(player.get_total_attack(), 1)
-    def_bonus_flat = int(player.get_total_defence() * _tv("counterforce", tier))
-    return def_bonus_flat / atk
+        return 0
+    return int(player.get_total_defence() * _tv("counterforce", tier))
 
 
 def get_chain_reaction_crit_bonus(player: Player) -> float:

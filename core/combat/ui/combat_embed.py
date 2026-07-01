@@ -138,6 +138,8 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
             f"🩸 Blood Tithe  {int(player.alchemy_blood_tithe_leech * 100)}% leech"
             f"  · {player.alchemy_blood_tithe_hits} hit{'s' if player.alchemy_blood_tithe_hits != 1 else ''}"
         )
+    if player.alchemy_ailment_immunity_turns > 0:
+        lines.append(f"🌿 Panacea  immune  · {player.alchemy_ailment_immunity_turns}t")
 
     # --- Weapon / accessory stacks ---
     if player.voracious_stacks > 0:
@@ -265,7 +267,7 @@ def create_combat_embed(
             f"**{m}**" for m in monster.display_modifiers
         )
 
-    p_atk = player.get_total_attack()
+    p_atk = player.get_total_attack(monster)
     p_def = player.get_total_defence()
 
     description = f"A level **{monster.level}** {monster.name} approaches!{mod_text}"
@@ -293,14 +295,14 @@ def create_combat_embed(
     embed = discord.Embed(title=title, description=description, color=color)
     embed.set_image(url=monster.image)
 
-    m_atk = monster.attack
+    m_atk = monster.effective_attack
     if player.alchemy_enfeeble_pct > 0 and player.alchemy_enfeeble_turns > 0:
         m_atk = int(m_atk * (1.0 - player.alchemy_enfeeble_pct))
     embed.add_field(
         name=f"🐲 {monster.name}",
         value=(
             f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
-            f"⚔️ {m_atk:,} | 🛡️ {monster.defence:,}\n"
+            f"⚔️ {m_atk:,} | 🛡️ {monster.effective_defence:,}\n"
             f"🎯 ~{m_hit}%"
         ),
         inline=True,

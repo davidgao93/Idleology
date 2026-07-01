@@ -74,7 +74,7 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
 
 
 def _cs_transcendence(player, monster):
-    total_atk = player.get_total_attack()
+    total_atk = player.get_total_attack(monster)
     total_def = player.get_total_defence()
     bonus = int((total_atk + total_def) * 0.20)
     player.bonus_atk += bonus
@@ -131,11 +131,12 @@ def _cs_gilded_hunger(player, monster):
 
 
 def _cs_diabolic_pact(player, monster):
-    # Deduct 90% of max HP from current HP, floor of 1 (max HP is unchanged)
-    cost = int(player.total_max_hp * 0.9)
+    # Deduct 50% of max HP from current HP, floor of 1 (max HP is unchanged)
+    cost = int(player.total_max_hp * 0.5)
     player.current_hp = max(1, player.current_hp - cost)
-    # Double the player's total attack via the combat-start multiplier
-    player.atk_multiplier *= 2.0
+    # +100% ATK via the shared additive atk_multiplier pool (sums with any other
+    # ATK % source active this combat — Codex boons, Apex zone bonus, Enrage, etc.)
+    player.atk_multiplier += 1.0
     return f"🔥 **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ ATK doubled!"
 
 
@@ -408,7 +409,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
         player.equipped_armor and player.equipped_armor.passive == "Transcendence"
     ):
         pct = _SST["transcendence"][ss_transcendence - 1]
-        total_atk = player.get_total_attack()
+        total_atk = player.get_total_attack(monster)
         total_def = player.get_total_defence()
         bonus = int((total_atk + total_def) * pct / 100)
         player.bonus_atk += bonus
@@ -477,7 +478,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
         tyr_pct = res.get("tyr_pct", 0.0)
         if tyr_pct > 0:
             # Current effective totals (after all other bonuses)
-            cur_atk = player.get_total_attack()
+            cur_atk = player.get_total_attack(monster)
             cur_def = player.get_total_defence()
             combined = int((cur_atk + cur_def) * (1 + tyr_pct))
             half = combined // 2

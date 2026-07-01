@@ -76,7 +76,7 @@ class CombatLogger:
             calculate_monster_hit_chance,
         )
 
-        p_atk = player.get_total_attack()
+        p_atk = player.get_total_attack(monster)
         p_def = player.get_total_defence()
         m_atk = monster.effective_attack
         m_def = monster.effective_defence
@@ -386,11 +386,11 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
       raw      = base_raw * (1 + surplus * surplus_mult)   [surplus_mult=1.2 in hard mode]
       max_raw  = raw * 1.15 variance ceiling
     """
-    p_atk = player.get_total_attack()
+    p_atk = player.get_total_attack(monster)
     p_def = player.get_total_defence()
     p_crit = player.get_current_crit_chance()
 
-    crit_mult = player.get_weapon_crit_multi()
+    crit_mult = player.get_weapon_crit_multi(monster)
     if monster.has_modifier("Nullifying"):
         crit_mult *= 1 - monster.get_modifier_value("Nullifying")
     p_max_dmg = int(p_atk * crit_mult)

@@ -9,7 +9,7 @@ Public API
 calculate_hit_chance(player, monster) -> float
 calculate_monster_hit_chance(player, monster) -> float
 calculate_crit_chance(player) -> float
-build_attack_multiplier(player, monster, log, calc) -> float
+build_attack_multiplier(player, monster, log, calc) -> tuple[float, bool]
 resolve_hit(player, monster, attack_multiplier, log, calc) -> tuple[bool, float]
 resolve_crit(player, monster, is_hit, log, calc) -> bool
 """
@@ -52,7 +52,7 @@ def calculate_hit_chance(player: Player, monster: Monster) -> float:
     if m_def <= 0:
         base = _HIT_MAX
     else:
-        pct_diff = (player.get_total_attack() - m_def) / m_def
+        pct_diff = (player.get_total_attack(monster) - m_def) / m_def
         base = min(max(hit_base + pct_diff * _HIT_SENSITIVITY, _HIT_MIN), _HIT_MAX)
 
     # Evelynn's corruption: players start with +30% hit chance at level 1 but lose
@@ -113,8 +113,11 @@ def calculate_crit_chance(player: Player) -> float:
 
 def build_attack_multiplier(
     player: Player, monster: Monster, log: list[str], calc: list[str]
-) -> float:
-    """Phase 1 — compute the pre-hit attack multiplier from emblems and passive sources."""
+) -> tuple[float, bool]:
+    """Phase 1 — compute the pre-hit attack multiplier from emblems and passive sources.
+    Returns (attack_multiplier, sigmund_proc) — sigmund_proc is surfaced for the
+    partner-effects display only, the roll and its bonus are already folded into mult.
+    """
     from core.combat import jewel_engine as _je
 
     mult = 1.0
@@ -129,7 +132,8 @@ def build_attack_multiplier(
     # --- Additive damage bonus pool ---
     # All percentage damage bonuses stack additively here; a single multiplier is applied.
     # Damage emblems (combat_dmg / boss_dmg / slayer_dmg), Instability, Obliterate,
-    # Piety, and Frenzy all contribute to add_pool_bonus.
+    # Piety, Frenzy, Alchemy Eclipse, partner Sigmund, and Soul Stone Piety all
+    # contribute to add_pool_bonus.
     # Solo results: Instability−=×0.5, Instability+=(×1.6–2.0), Obliterate=×2, Piety=×7.
     add_pool_bonus = 0.0
     add_pool_parts: list[str] = []
@@ -199,56 +203,65 @@ def build_attack_multiplier(
         add_pool_parts.append(f"onslaught+{onslaught_bonus:.0f}%")
         log.append(f"🔥 **Onslaught** unleashes fury! (+{onslaught_bonus:.0f}% ATK)")
 
+    # Alchemy: Eclipse — bonus damage for the remaining guaranteed-crit potion strikes
+    if player.alchemy_eclipse_strikes > 0 and player.alchemy_eclipse_bonus > 0:
+        add_pool_bonus += player.alchemy_eclipse_bonus
+        add_pool_parts.append(f"eclipse+{int(player.alchemy_eclipse_bonus * 100)}%")
+        log.append(
+            f"🌑 **Eclipse** empowers your strike! (+{int(player.alchemy_eclipse_bonus * 100)}% damage bonus)"
+        )
+
+    # Partner signature — Sigmund: chance for bonus damage
+    sigmund_proc = False
+    _partner = player.active_partner
+    if (
+        _partner
+        and _partner.sig_combat_key == "sig_co_sigmund"
+        and _partner.sig_combat_lvl >= 1
+        and random.random() < _partner.sig_combat_lvl * 0.02
+    ):
+        add_pool_bonus += 1.0  # +100% = ×2 when alone
+        add_pool_parts.append("sigmund")
+        sigmund_proc = True
+
+    # Soul stone: piety — 10% chance for T1=+120% → T5=+600% bonus damage multiplier
+    # Conflict: skipped if Piety armor passive is equipped (rolled separately above).
+    if not (player.equipped_armor and player.equipped_armor.passive == "Piety"):
+        _ss_piety = player.get_soul_stone_passive("piety")
+        if _ss_piety and random.random() < 0.10:
+            from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+
+            _piety_bonus = _SST["piety"][_ss_piety - 1] / 100
+            add_pool_bonus += _piety_bonus
+            add_pool_parts.append(f"soul_piety_T{_ss_piety}")
+            log.append(
+                f"✨ **Soul Piety T{_ss_piety}** — divine favour! "
+                f"+{int(_piety_bonus * 100)}% bonus damage!"
+            )
+
     if add_pool_bonus != 0:
         pool_factor = 1 + add_pool_bonus
         mult *= pool_factor
         calc_sources.append(f"add_pool[{'+'.join(add_pool_parts)}]×{pool_factor:.3f}")
 
-    if player.alchemy_atk_boost_pct > 0:
-        factor = 1 + player.alchemy_atk_boost_pct
-        mult *= factor
-        calc_sources.append(f"enrage×{factor:.3f}")
-        log.append(
-            f"💪 **Enrage** boosts damage! (+{int(player.alchemy_atk_boost_pct * 100)}% ATK)"
-        )
-
-    # --- Hematurgy ATK multipliers ---
+    # Hematurgy ATK sources (Iron Momentum, Executioner's Rite, Soul Fracture,
+    # Counterforce) are applied directly inside Player.get_total_attack()'s
+    # pct_pool/bonus_pool now, not as a multiplier here — this just logs
+    # Executioner's Rite's activation window since it doesn't fire elsewhere.
     if player.hematurgy_passives:
-        from core.hematurgy.engine import (
-            get_counterforce_factor,
-            get_executioners_rite_bonus,
-            get_iron_momentum_factor,
-            get_soul_fracture_factor,
-        )
-
-        im_f = get_iron_momentum_factor(player)
-        if im_f > 0:
-            mult *= 1 + im_f
-            calc_sources.append(f"iron_momentum×{1 + im_f:.3f}")
+        from core.hematurgy.engine import get_executioners_rite_bonus
 
         er_f = get_executioners_rite_bonus(player, monster)
         if er_f > 0:
-            mult *= 1 + er_f
-            calc_sources.append(f"executioners_rite×{1 + er_f:.3f}")
             log.append(
                 f"⚔️ **Executioner's Rite** — monster below 30% HP! +{int(er_f * 100)}% ATK!"
             )
 
-        sf_f = get_soul_fracture_factor(player)
-        if sf_f > 0:
-            mult *= 1 + sf_f
-            calc_sources.append(f"soul_fracture×{1 + sf_f:.3f}")
-
-        cf_f = get_counterforce_factor(player)
-        if cf_f > 0:
-            mult *= 1 + cf_f
-            calc_sources.append(f"counterforce×{1 + cf_f:.3f}")
-
     src_str = " × ".join(calc_sources) if calc_sources else "none"
     calc.append(
-        f"  mult: {src_str} → {mult:.4f}x  (base_atk={player.get_total_attack()})"
+        f"  mult: {src_str} → {mult:.4f}x  (base_atk={player.get_total_attack(monster)})"
     )
-    return mult
+    return mult, sigmund_proc
 
 
 def resolve_hit(

@@ -292,6 +292,8 @@ class ForgeView(BaseUpgradeView):
             )
             return
 
+        self._forgemaxx_planned = forges_possible
+
         mat_lines = "\n".join(
             f"{_MAT_LABEL.get(col, col)}: {qty:,}"
             for col, qty in cost_totals.items()
@@ -324,7 +326,7 @@ class ForgeView(BaseUpgradeView):
         self.message = await interaction.original_response()
 
     async def forgemaxx_execute(self, interaction: Interaction):
-        """Loop-forge until the player runs out of resources or forge slots."""
+        """Loop-forge up to the planned count confirmed in the preview."""
         if self._processing:
             await interaction.response.defer()
             return
@@ -334,11 +336,13 @@ class ForgeView(BaseUpgradeView):
             item.disabled = True
         await interaction.edit_original_response(view=self)
         uid, gid = self.user_id, str(interaction.guild.id)
+        planned = getattr(self, "_forgemaxx_planned", self.item.forges_remaining)
         forges_done = 0
         successes = 0
         final_passive = self.item.passive
+        attempt_log: list[str] = []
 
-        while self.item.forges_remaining > 0:
+        while self.item.forges_remaining > 0 and forges_done < planned:
             costs = EquipmentMechanics.calculate_forge_cost(self.item)
             if not costs:
                 break
@@ -389,6 +393,9 @@ class ForgeView(BaseUpgradeView):
                 self.item.passive = new_passive
                 self.item.forge_tier += 1
                 final_passive = new_passive
+                attempt_log.append(
+                    f"**#{forges_done}** ✅ → {fmt_weapon_passive(new_passive)}"
+                )
                 await self.bot.database.equipment.update_passive(
                     self.item.item_id, "weapon", new_passive
                 )
@@ -398,6 +405,8 @@ class ForgeView(BaseUpgradeView):
                     "forge_tier",
                     self.item.forge_tier,
                 )
+            else:
+                attempt_log.append(f"**#{forges_done}** ❌ Failed")
 
             await self.bot.database.equipment.update_counter(
                 self.item.item_id,
@@ -413,16 +422,22 @@ class ForgeView(BaseUpgradeView):
         )
         result_embed = discord.Embed(
             title="⚒️ Forgemaxx Complete",
-            description=(
-                f"**Attempts:** {forges_done}  |  **Successes:** {successes}\n"
-                f"**Final Passive:** {fmt_weapon_passive(final_passive) if final_passive != 'none' else 'None'}"
-                + (f"\n*{final_passive_desc}*" if final_passive_desc else "")
-                + f"\n**Forges Remaining:** {self.item.forges_remaining}"
-            ),
             color=discord.Color.gold() if successes > 0 else discord.Color.dark_grey(),
         )
         result_embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         result_embed.set_thumbnail(url=UPGRADE_FORGE)
+        result_embed.description = (
+            f"**Attempts:** {forges_done}  |  **Successes:** {successes}\n"
+            f"**Final Passive:** {fmt_weapon_passive(final_passive) if final_passive != 'none' else 'None'}"
+            + (f"\n*{final_passive_desc}*" if final_passive_desc else "")
+            + f"\n**Forges Remaining:** {self.item.forges_remaining}"
+        )
+        if attempt_log:
+            result_embed.add_field(
+                name="Attempt Log",
+                value="\n".join(attempt_log),
+                inline=False,
+            )
 
         self.clear_items()
         self.add_back_button()

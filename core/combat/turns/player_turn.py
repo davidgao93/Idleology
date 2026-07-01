@@ -562,22 +562,12 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
         on_haemorrhage_tick(player, monster, log)
 
-    attack_multiplier = build_attack_multiplier(player, monster, log, calc)
+    attack_multiplier, _sigmund_proc = build_attack_multiplier(
+        player, monster, log, calc
+    )
     is_hit, attack_multiplier = resolve_hit(
         player, monster, attack_multiplier, log, calc
     )
-
-    _sigmund_proc = False
-    if is_hit:
-        _partner = player.active_partner
-        if (
-            _partner
-            and _partner.sig_combat_key == "sig_co_sigmund"
-            and _partner.sig_combat_lvl >= 1
-            and random.random() < _partner.sig_combat_lvl * 0.02
-        ):
-            attack_multiplier += 1.0  # additive +100% with the damage pool
-            _sigmund_proc = True
 
     is_crit = resolve_crit(player, monster, is_hit, log, calc)
 
@@ -595,34 +585,14 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         is_crit = False
         calc.append("  neet: accuracy 0, always miss")
 
-    # Eclipse: force crit + bonus damage for remaining strikes
+    # Eclipse: force crit for remaining strikes (damage bonus already folded into
+    # attack_multiplier by build_attack_multiplier)
     if player.alchemy_eclipse_strikes > 0:
         is_crit = True
-        if player.alchemy_eclipse_bonus > 0:
-            attack_multiplier += player.alchemy_eclipse_bonus
-            calc.append(
-                f"  eclipse: +{player.alchemy_eclipse_bonus:.2f} mult + guaranteed crit"
-            )
+        calc.append("  eclipse: guaranteed crit")
         player.alchemy_eclipse_strikes -= 1
         if player.alchemy_eclipse_strikes <= 0:
             player.alchemy_eclipse_bonus = 0.0
-
-    # Soul stone: piety — 10% chance for T1=+120% → T5=+600% bonus damage multiplier
-    # Conflict: skipped if Piety armor passive is equipped.
-    if (is_hit or is_crit) and not (
-        player.equipped_armor and player.equipped_armor.passive == "Piety"
-    ):
-        _ss_piety = player.get_soul_stone_passive("piety")
-        if _ss_piety and random.random() < 0.10:
-            from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
-
-            _piety_bonus = _SST["piety"][_ss_piety - 1] / 100
-            attack_multiplier += _piety_bonus
-            log.append(
-                f"✨ **Soul Piety T{_ss_piety}** — divine favour! "
-                f"+{int(_piety_bonus * 100)}% bonus damage!"
-            )
-            calc.append(f"  soul_piety_T{_ss_piety}: atk_mult +{_piety_bonus:.2f}")
 
     if is_crit:
         raw_damage = calc_crit_damage(

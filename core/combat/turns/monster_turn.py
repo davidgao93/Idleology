@@ -50,6 +50,15 @@ def process_monster_turn(
                 f"🌿 **Panacea** — protected from ailments this turn ({player.alchemy_ailment_immunity_turns} remaining)."
             )
 
+    # Decrement Enrage duration unconditionally each monster turn (it's advertised as
+    # "next N monster turns", not "next N hits taken" — must expire on schedule even
+    # if the monster's attack misses entirely).
+    if player.alchemy_def_boost_turns > 0:
+        player.alchemy_def_boost_turns -= 1
+        if player.alchemy_def_boost_turns <= 0:
+            player.alchemy_def_boost_pct = 0.0
+            player.alchemy_atk_boost_pct = 0.0
+
     celestial = player.get_celestial_armor_passive()
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
@@ -595,22 +604,6 @@ def process_monster_turn(
                 clog.append(_enf_msg)
             if player.alchemy_enfeeble_turns <= 0:
                 player.alchemy_enfeeble_pct = 0.0
-
-        # --- Apply damage to ward / HP ---
-        if player.alchemy_def_boost_turns > 0 and total_damage > 0:
-            reduction = int(total_damage * player.alchemy_def_boost_pct)
-            total_damage = max(0, total_damage - reduction)
-            player.alchemy_def_boost_turns -= 1
-            if reduction > 0:
-                _enrage_msg = (
-                    f"💪 **Enrage** DEF absorbs **{reduction}** damage! "
-                    f"({player.alchemy_def_boost_turns} turn{'s' if player.alchemy_def_boost_turns != 1 else ''} left)"
-                )
-                log.append(_enrage_msg)
-                clog.append(_enrage_msg)
-            if player.alchemy_def_boost_turns <= 0:
-                player.alchemy_def_boost_pct = 0.0
-                player.alchemy_atk_boost_pct = 0.0
 
         if player.alchemy_dmg_reduction_turns > 0 and total_damage > 0:
             reduction = int(total_damage * player.alchemy_dmg_reduction_pct)

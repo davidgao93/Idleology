@@ -1163,91 +1163,156 @@ class Player:
 
     # -----------------------------------------------------------------------
     # Total stat calculations
+    #
+    # Stat stacking model (applies to both get_total_attack and get_total_defence):
+    #
+    #   total = flat (Base + Equipment) + bonus_pool + int(flat * pct_pool)
+    #
+    # `flat` is the anchor (gear stats only, immutable during combat). Everything
+    # else the player can gain — flat additions (companion %, stat investment,
+    # tome conversions, void engram bonus_atk, gilded hunger bonus_atk, etc.) and
+    # percentage-of-flat bonuses (ascension pinnacle %, soul stone resonance,
+    # codex atk/def_multiplier, Alchemy Enrage, ...) — all accumulate into ONE
+    # additive pool. They do NOT compound on top of each other or on top of
+    # already-applied bonuses: a +50% source and a +20% source combine to +70%
+    # of flat, never 1.5 * 1.2 = +80%. Every percentage source must be scaled off
+    # `flat` specifically (not off `total`) to keep this true. When adding a new
+    # ATK/DEF source, add it to bonus_pool (flat amount) or pct_pool (fraction of
+    # flat) — never multiply `total` directly.
     # -----------------------------------------------------------------------
 
-    def get_total_attack(self) -> int:
-        flat = self.flat_atk  # pre-computed; immutable during combat
+    def get_total_attack(self, monster: "Monster | None" = None) -> int:
+        """monster is optional — only needed for the conditional Hematurgy
+        Executioner's Rite bonus (which reads monster HP%). Every other caller
+        can omit it."""
+        flat = self.flat_atk  # Base + Equipment; pre-computed, immutable during combat
 
-        # Layer 1: flat gear total + per-combat bonus accumulator
-        total = flat + self.bonus_atk
+        # ---- Flat bonus pool (gear/companion/tome sources) ----
+        bonus_pool = self.bonus_atk
 
-        # Layer 2: always-on percentage bonuses (scale off flat, not base)
         comp_pct = self._get_companion_bonus("atk")
         if comp_pct > 0:
-            total += int(flat * (comp_pct / 100))
+            bonus_pool += int(flat * (comp_pct / 100))
 
         # Stat investment bonus (0.1% per point, scales off flat)
         if self.stat_invest_atk > 0:
-            total += int(flat * (self.stat_invest_atk * 0.001))
+            bonus_pool += int(flat * (self.stat_invest_atk * 0.001))
 
         # Wrath tome: converts % of flat DEF into bonus ATK
         wrath_pct = self.get_tome_bonus("wrath")
         if wrath_pct > 0:
-            total += int(self.flat_def * (wrath_pct / 100))
+            bonus_pool += int(self.flat_def * (wrath_pct / 100))
 
-        # Layer 3: permanent run penalty (fragment_boost downside in codex runs)
-        total -= self.run_atk_penalty
+        # Hematurgy Counterforce: converts % of total DEF into flat bonus ATK —
+        # same shape as Wrath tome above, just scaled off the full DEF stat
+        # (including DEF buffs) instead of flat_def.
+        if self.hematurgy_passives:
+            from core.hematurgy.engine import get_counterforce_bonus
 
-        # Layer 4: unified multiplier (codex signature/boon + diabolic_pact, etc.)
+            bonus_pool += get_counterforce_bonus(self)
+
+        # ---- Percentage-of-flat pool (every "+X% ATK" source sums here) ----
+        pct_pool = 0.0
+
+        # Unified multiplier (codex signature/boon + diabolic_pact, etc.)
         if self.atk_multiplier != 1.0:
-            total = int(total * self.atk_multiplier)
+            pct_pool += self.atk_multiplier - 1.0
 
-        # Layer 5: ascension pinnacle % bonus
+        # Ascension pinnacle % bonus
         if self.ascension_unlocks:
             atk_pct = self.get_ascension_bonuses()["atk_pct"]
             if atk_pct:
-                total = int(total * (1 + atk_pct / 100))
+                pct_pool += atk_pct / 100
 
-        # Layer 6: Soul Stone Vulcan Resonance (offensive_2 / offensive_3)
+        # Soul Stone Vulcan Resonance (offensive_2 / offensive_3)
         if self.soul_stone:
             from core.apex.mechanics import ApexMechanics
 
             res = ApexMechanics.get_resonance_multipliers(self.soul_stone)
             if res["atk_mult"] != 1.0:
-                total = int(total * res["atk_mult"])
+                pct_pool += res["atk_mult"] - 1.0
+
+        # Alchemy Enrage (temporary potion % ATK boost) — applies only to Base +
+        # Equipment, same as every other pct_pool source, and expires on its own
+        # turn timer (see monster_turn.py).
+        if self.alchemy_atk_boost_pct > 0:
+            pct_pool += self.alchemy_atk_boost_pct
+
+        # Hematurgy: Iron Momentum (stacking) + Soul Fracture (HP-lost scaling) +
+        # Executioner's Rite (conditional on monster < 30% HP, needs monster arg).
+        if self.hematurgy_passives:
+            from core.hematurgy.engine import (
+                get_executioners_rite_bonus,
+                get_iron_momentum_factor,
+                get_soul_fracture_factor,
+            )
+
+            pct_pool += get_iron_momentum_factor(self)
+            pct_pool += get_soul_fracture_factor(self)
+            if monster is not None:
+                pct_pool += get_executioners_rite_bonus(self, monster)
+
+        total = flat + bonus_pool
+        if pct_pool:
+            total += int(flat * pct_pool)
+
+        # Permanent run penalty (fragment_boost downside in codex runs) — a flat
+        # deduction, not part of the pct_pool base.
+        total -= self.run_atk_penalty
 
         return max(0, total)
 
     def get_total_defence(self) -> int:
-        flat = self.flat_def  # pre-computed; immutable during combat
+        flat = self.flat_def  # Base + Equipment; pre-computed, immutable during combat
 
-        # Layer 1: flat gear total + per-combat bonus accumulator
-        total = flat + self.bonus_def
+        # ---- Flat bonus pool ----
+        bonus_pool = self.bonus_def
 
-        # Layer 2: always-on percentage bonuses
         comp_pct = self._get_companion_bonus("def")
         if comp_pct > 0:
-            total += int(flat * (comp_pct / 100))
+            bonus_pool += int(flat * (comp_pct / 100))
 
         # Stat investment bonus (0.1% per point, scales off flat)
         if self.stat_invest_def > 0:
-            total += int(flat * (self.stat_invest_def * 0.001))
+            bonus_pool += int(flat * (self.stat_invest_def * 0.001))
 
         # Bastion tome: converts % of flat ATK into bonus DEF
         bastion_pct = self.get_tome_bonus("bastion")
         if bastion_pct > 0:
-            total += int(self.flat_atk * (bastion_pct / 100))
+            bonus_pool += int(self.flat_atk * (bastion_pct / 100))
 
-        # Layer 3: permanent run penalty
-        total -= self.run_def_penalty
+        # ---- Percentage-of-flat pool ----
+        pct_pool = 0.0
 
-        # Layer 4: unified multiplier
+        # Unified multiplier
         if self.def_multiplier != 1.0:
-            total = int(total * self.def_multiplier)
+            pct_pool += self.def_multiplier - 1.0
 
-        # Layer 5: ascension pinnacle % bonus
+        # Ascension pinnacle % bonus
         if self.ascension_unlocks:
             def_pct = self.get_ascension_bonuses()["def_pct"]
             if def_pct:
-                total = int(total * (1 + def_pct / 100))
+                pct_pool += def_pct / 100
 
-        # Layer 6: Soul Stone Athena Resonance (defensive_2 / defensive_3)
+        # Soul Stone Athena Resonance (defensive_2 / defensive_3)
         if self.soul_stone:
             from core.apex.mechanics import ApexMechanics
 
             res = ApexMechanics.get_resonance_multipliers(self.soul_stone)
             if res["def_mult"] != 1.0:
-                total = int(total * res["def_mult"])
+                pct_pool += res["def_mult"] - 1.0
+
+        # Alchemy Enrage (temporary potion % DEF boost) — same pct_pool treatment
+        # as ATK; expires on its own turn timer (see monster_turn.py).
+        if self.alchemy_def_boost_pct > 0:
+            pct_pool += self.alchemy_def_boost_pct
+
+        total = flat + bonus_pool
+        if pct_pool:
+            total += int(flat * pct_pool)
+
+        # Permanent run penalty — a flat deduction, not part of the pct_pool base.
+        total -= self.run_def_penalty
 
         return max(0, total)
 
@@ -1482,15 +1547,24 @@ class Player:
     def get_weapon_utmost(self) -> str:
         return self.equipped_weapon.u_passive if self.equipped_weapon else "none"
 
-    def get_weapon_crit_multi(self) -> float:
+    def get_weapon_crit_multi(self, monster: "Monster | None" = None) -> float:
         """Returns the total crit damage multiplier.
 
-        Additive sources (all stacked into a single multiplier):
+        Additive sources (all stacked into a single multiplier, never compounded):
         - Weapon base crit_multi (from DB template)
         - Deftness essence bonuses (glove / boot / helmet essence slots)
         - Insight helmet passive (+lvl × 0.1)
         - Slayer crit_dmg emblem (+tier × 0.05 per total tier)
         - Active partner co_crit_damage skill (+lvl × 0.10)
+        - Hematurgy Chain Reaction (+per consecutive crit stack)
+        - Hematurgy Executioner's Rite (conditional on monster < 30% HP, needs
+          monster arg — omit to get the stat without it, e.g. profile displays)
+
+        One-shot/consumed bonuses (Jewel of Paradise Cataclysm) are NOT included
+        here since they must be consumed exactly once per crit resolution — see
+        calc_crit_damage() in damage_calc.py, which adds them on top of this.
+        Debuffs (Nullifying, chapter_crit_dmg_reduction) are also handled there,
+        as multiplicative dampeners applied to the fully-summed total.
         """
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
@@ -1515,6 +1589,17 @@ class Player:
             for key, lvl in self.active_partner.combat_skills:
                 if key == "co_crit_damage":
                     base += lvl * 0.10
+
+        # Hematurgy: Chain Reaction + Executioner's Rite (crit damage half)
+        if self.hematurgy_passives:
+            from core.hematurgy.engine import (
+                get_chain_reaction_crit_bonus,
+                get_executioners_rite_bonus,
+            )
+
+            base += get_chain_reaction_crit_bonus(self)
+            if monster is not None:
+                base += get_executioners_rite_bonus(self, monster)
 
         return base
 
