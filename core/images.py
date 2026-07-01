@@ -398,13 +398,11 @@ APEX_NEXUS_ABOMINATION = "https://cdn.discordapp.com/attachments/133463741136332
 APEX_RIFT_LEVIATHAN = "https://cdn.discordapp.com/attachments/1334637411363323996/1509612122735120434/rift_leviathan.jpg?ex=6a19cf59&is=6a187dd9&hm=053b56c2498cc3873dc79861d2d7f7df005cfb5552dfa566eac6ef379c03c72e&"
 
 # ── NETHER MARKET ──────────────────────────────────────────────────────────
-# TODO: source real art via scripts/upload_new.py — left as None so embed
-# builders can gracefully skip set_author/set_thumbnail until then.
-VEX_PORTRAIT = None
-VEX_THUMBNAIL = None
-NETHER_NPC_PENNY_LOAFER_THUMBNAIL = None
-NETHER_NPC_OLD_OTTO_THUMBNAIL = None
-NETHER_NPC_LADY_FENWICK_THUMBNAIL = None
-NETHER_NPC_IRONMONGER_THUMBNAIL = None
-NETHER_NPC_COUNTESS_VAELORA_THUMBNAIL = None
-NETHER_NPC_THE_HOARDER_THUMBNAIL = None
+VEX_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970542851133460/vex_profile.jpg?ex=6a46c506&is=6a457386&hm=55beb84cdd195a26304e4f82320d30e4fb19a12a82b29b1eb9de52ca6057cc5b&"
+VEX_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970543086272613/vex_thumbnail.jpg?ex=6a46c506&is=6a457386&hm=ff17d623f1882fb2b065ec971ef56092412ce57ae728e8d511efb780ad780052&"
+NETHER_NPC_PENNY_LOAFER_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970542486225008/penny_loafer.jpg?ex=6a46c506&is=6a457386&hm=7caa5e4cd429a2b35b139a4f548f8658cefc5e538a4e5abab9eadc8f21a20c69&"
+NETHER_NPC_OLD_OTTO_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970542272577667/old_otto.jpg?ex=6a46c506&is=6a457386&hm=3fe3dab377854548139722d7be77017c397f56c9d60f9da1f1d1822e7a7fe1e0&"
+NETHER_NPC_LADY_FENWICK_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541999689818/lady_fenwick.jpg?ex=6a46c506&is=6a457386&hm=d4eedb41df0ed79cb4aa51c720c8f721075f1bc8f20c407b19d032953845cd8d&"
+NETHER_NPC_IRONMONGER_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541785911366/ironmonger.jpg?ex=6a46c506&is=6a457386&hm=53836ee6838e694938e5a045f2175d5b01b471d7d32b9de12b86be66d0e5d245&"
+NETHER_NPC_COUNTESS_VAELORA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541261623418/countess_vael.jpg?ex=6a46c505&is=6a457385&hm=0c1795051ce727338745f048c29af1d925e8f774d54ed713dfa7e2a3b1be0212&"
+NETHER_NPC_THE_HOARDER_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541529927791/hoarder.jpg?ex=6a46c505&is=6a457385&hm=2801dad317700dda1301488e10f7d52d71658fe88bdd0538fa947a40d3f4b5a1&"

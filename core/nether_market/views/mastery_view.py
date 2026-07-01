@@ -1,6 +1,6 @@
 """
 core/nether_market/views/mastery_view.py — Cutpurse / Strongbox mastery tree,
-plus the shared trunk (holdings cap / market read). Pattern mirrors
+plus the shared Stash branch (holdings cap / market read). Pattern mirrors
 core/companions/mastery_views.py (branch buttons + node select + confirm step).
 """
 
@@ -12,7 +12,7 @@ from core.nether_market.data import NETHER_MARKET_NODES
 from core.nether_market.mechanics import NetherMarketMechanics as M
 
 _BRANCH_LABELS = {
-    "trunk": "Trunk",
+    "trunk": "\U0001f45b Stash",
     "cutpurse": "\U0001f5e1️ Cutpurse",
     "strongbox": "\U0001f6e1️ Strongbox",
 }
@@ -41,7 +41,7 @@ class MasteryView(BaseView):
         marks = self.profile["nether_marks"]
 
         embed = discord.Embed(
-            title=f"\U0001f333 Nether Market Mastery — {_BRANCH_LABELS[self.active_branch]}",
+            title=f"\U0001f3ad Tricks of the Trade — {_BRANCH_LABELS[self.active_branch]}",
             color=discord.Color.dark_purple(),
         )
         embed.set_footer(text=f"Nether Marks: {marks:,}")

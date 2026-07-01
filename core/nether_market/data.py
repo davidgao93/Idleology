@@ -5,6 +5,15 @@ Everything here is flavor-only "curiosities" with a fixed true_value — zero in
 with any other item table (weapons/armor/accessories/etc). See docs/design/nether_market.md.
 """
 
+from core.images import (
+    NETHER_NPC_COUNTESS_VAELORA_THUMBNAIL,
+    NETHER_NPC_IRONMONGER_THUMBNAIL,
+    NETHER_NPC_LADY_FENWICK_THUMBNAIL,
+    NETHER_NPC_OLD_OTTO_THUMBNAIL,
+    NETHER_NPC_PENNY_LOAFER_THUMBNAIL,
+    NETHER_NPC_THE_HOARDER_THUMBNAIL,
+)
+
 # ---------------------------------------------------------------------------
 # Item pool (6 per offer tier; only 1 per tier is "active" in any given rotation)
 # ---------------------------------------------------------------------------
@@ -53,7 +62,8 @@ WEALTH_TIERS: list[dict] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Mastery tree — shared trunk (cap/market-read) + Cutpurse (offense) + Strongbox (defense).
+# Mastery tree — shared Stash branch (cap/market-read) + Cutpurse (offense) + Strongbox (defense).
+# Internal branch key stays "trunk" for backward compatibility with existing node grouping.
 # Node shape mirrors core/slayer/mechanics.py:SLAYER_TREE_NODES.
 # ---------------------------------------------------------------------------
 
@@ -65,14 +75,14 @@ NETHER_MARKET_NODES: dict[str, dict] = {
     "trunk_cap_4": {"branch": "trunk", "name": "Bigger Pockets IV", "cost": 35, "prereq": "trunk_cap_3", "desc": "+25 holdings cap"},
     "trunk_market_sense": {"branch": "trunk", "name": "Market Sense", "cost": 15, "prereq": None, "desc": "Reveals true value alongside listed price"},
     # Cutpurse (offense)
-    "cp_attempts_1": {"branch": "cutpurse", "name": "Cutpurse I", "cost": 5, "prereq": None, "desc": "+2 attempts per session (as attacker)"},
-    "cp_attempts_2": {"branch": "cutpurse", "name": "Cutpurse II", "cost": 15, "prereq": "cp_attempts_1", "desc": "+3 additional attempts per session (as attacker)"},
+    "cp_attempts_1": {"branch": "cutpurse", "name": "Steady Hands I", "cost": 5, "prereq": None, "desc": "+2 attempts per session (as attacker)"},
+    "cp_attempts_2": {"branch": "cutpurse", "name": "Steady Hands II", "cost": 15, "prereq": "cp_attempts_1", "desc": "+3 additional attempts per session (as attacker)"},
     "cp_regen_1": {"branch": "cutpurse", "name": "Quick Fingers I", "cost": 10, "prereq": None, "desc": "Charge regen 8h -> 6h"},
     "cp_regen_2": {"branch": "cutpurse", "name": "Quick Fingers II", "cost": 25, "prereq": "cp_regen_1", "desc": "Charge regen 6h -> 4h"},
     "cp_haul": {"branch": "cutpurse", "name": "Bigger Haul", "cost": 20, "prereq": "cp_attempts_1", "desc": "Plunder % ceiling raised from 30% to 40%"},
     # Strongbox (defense)
-    "sb_defense_1": {"branch": "strongbox", "name": "Strongbox I", "cost": 5, "prereq": None, "desc": "Attacker attempts -1 when you're the target"},
-    "sb_defense_2": {"branch": "strongbox", "name": "Strongbox II", "cost": 15, "prereq": "sb_defense_1", "desc": "Attacker attempts an additional -2 (total -3)"},
+    "sb_defense_1": {"branch": "strongbox", "name": "Reinforced Lock I", "cost": 5, "prereq": None, "desc": "Attacker attempts -1 when you're the target"},
+    "sb_defense_2": {"branch": "strongbox", "name": "Reinforced Lock II", "cost": 15, "prereq": "sb_defense_1", "desc": "Attacker attempts an additional -2 (total -3)"},
     "sb_shield_1": {"branch": "strongbox", "name": "Vigilant Ward I", "cost": 10, "prereq": None, "desc": "Shield duration +2h"},
     "sb_shield_2": {"branch": "strongbox", "name": "Vigilant Ward II", "cost": 25, "prereq": "sb_shield_1", "desc": "Shield duration +4h (total +6h)"},
     "sb_grip": {"branch": "strongbox", "name": "Tight Grip", "cost": 20, "prereq": "sb_defense_1", "desc": "Plunder % ceiling lowered to 20% when you're hit"},
@@ -81,8 +91,10 @@ NETHER_MARKET_NODES: dict[str, dict] = {
 # ---------------------------------------------------------------------------
 # NPC vendors — one guaranteed target per tier T2-T7 (index 1-6), pre-teched with
 # Strongbox-equivalent `attempt_reduction` so they're a real challenge at their tier.
-# Rewards are fixed (Marks + gold) rather than real item transfer since NPCs don't
-# hold trackable inventories.
+# `reward_marks` is a flat Nether Mark payout on success; `reward_gold` is not
+# paid directly — NetherMarketMechanics.build_npc_holdings() uses it to size a
+# simulated item inventory (drawn from the server's active rotation) that gets
+# plundered the same way a player's real holdings would (see plunder_view.py).
 # ---------------------------------------------------------------------------
 
 NPC_VENDORS: list[dict] = [
@@ -94,6 +106,7 @@ NPC_VENDORS: list[dict] = [
         "attempt_reduction": 1,
         "reward_marks": 1,
         "reward_gold": 5_000,
+        "thumbnail": NETHER_NPC_PENNY_LOAFER_THUMBNAIL,
     },
     {
         "key": "old_otto",
@@ -103,6 +116,7 @@ NPC_VENDORS: list[dict] = [
         "attempt_reduction": 1,
         "reward_marks": 1,
         "reward_gold": 25_000,
+        "thumbnail": NETHER_NPC_OLD_OTTO_THUMBNAIL,
     },
     {
         "key": "lady_fenwick",
@@ -112,6 +126,7 @@ NPC_VENDORS: list[dict] = [
         "attempt_reduction": 2,
         "reward_marks": 1,
         "reward_gold": 100_000,
+        "thumbnail": NETHER_NPC_LADY_FENWICK_THUMBNAIL,
     },
     {
         "key": "ironmonger",
@@ -121,6 +136,7 @@ NPC_VENDORS: list[dict] = [
         "attempt_reduction": 2,
         "reward_marks": 1,
         "reward_gold": 400_000,
+        "thumbnail": NETHER_NPC_IRONMONGER_THUMBNAIL,
     },
     {
         "key": "countess_vaelora",
@@ -130,6 +146,7 @@ NPC_VENDORS: list[dict] = [
         "attempt_reduction": 3,
         "reward_marks": 1,
         "reward_gold": 1_500_000,
+        "thumbnail": NETHER_NPC_COUNTESS_VAELORA_THUMBNAIL,
     },
     {
         "key": "the_hoarder",
@@ -139,5 +156,6 @@ NPC_VENDORS: list[dict] = [
         "attempt_reduction": 3,
         "reward_marks": 1,
         "reward_gold": 5_000_000,
+        "thumbnail": NETHER_NPC_THE_HOARDER_THUMBNAIL,
     },
 ]

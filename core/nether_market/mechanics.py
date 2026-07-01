@@ -19,6 +19,9 @@ MIN_PLUNDER_PCT = 0.10
 MAX_PLUNDER_PCT = 0.30
 TIGHT_GRIP_MAX_PCT = 0.20
 PLUNDER_PCT_FLOOR = 0.05
+AVERAGE_PLUNDER_PCT = (MIN_PLUNDER_PCT + MAX_PLUNDER_PCT) / 2
+
+NPC_HOLDINGS_TIER_WEIGHTS = (("cheap", 0.5), ("med", 0.3), ("expensive", 0.2))
 
 ROTATION_MULTIPLIER_MIN = 0.55
 ROTATION_MULTIPLIER_MAX = 1.55
@@ -248,6 +251,29 @@ class NetherMarketMechanics:
                 guess_counts[g] = guess_counts.get(g, 0) + 1
         white = sum(min(code_counts.get(d, 0), n) for d, n in guess_counts.items())
         return black, white
+
+    # ------------------------------------------------------------------
+    # NPC simulated inventory
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def build_npc_holdings(npc: dict, rotation: dict) -> dict[str, int]:
+        """Builds a simulated holdings dict for an NPC vendor from the server's
+        currently active rotation offers (cheap/med/expensive), weighted 50/30/20.
+        Sized so that an average plunder roll (~20%, the midpoint of the player
+        pct range) nets roughly the NPC's old flat `reward_gold` in total item
+        value — this is what actually gets plundered now instead of raw gold."""
+        total_value = npc["reward_gold"] / AVERAGE_PLUNDER_PCT
+        holdings: dict[str, int] = {}
+        for tier, weight in NPC_HOLDINGS_TIER_WEIGHTS:
+            item_key = rotation[f"{tier}_item"]
+            price = rotation[f"{tier}_price"]
+            qty = round((total_value * weight) / price)
+            if qty > 0:
+                holdings[item_key] = qty
+        if not holdings:
+            holdings[rotation["cheap_item"]] = 1
+        return holdings
 
     # ------------------------------------------------------------------
     # Plunder resolution

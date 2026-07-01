@@ -10,6 +10,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.nether_market.data import NPC_VENDORS, WEALTH_TIERS
+from core.nether_market.mechanics import MAX_CHARGES
 from core.nether_market.mechanics import NetherMarketMechanics as M
 
 _PAGE_SIZE = 5
@@ -86,7 +87,7 @@ class BrowseListView(BaseView):
     async def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="\U0001f3af Browse Targets", color=discord.Color.dark_purple())
         charges = self.attacker_profile["plunder_charges"]
-        embed.add_field(name="Plunder Charges", value=f"{charges} / {M.MAX_CHARGES}", inline=True)
+        embed.add_field(name="Plunder Charges", value=f"{charges} / {MAX_CHARGES}", inline=True)
 
         lines = []
         for i, target in enumerate(self._page_targets(), start=1):

@@ -102,11 +102,15 @@ class NetherMarketHubView(BaseView):
             sell_btn.callback = self._make_sell_callback(item_key, price)
             self.add_item(sell_btn)
 
+        holdings_btn = ui.Button(label="Holdings", style=ButtonStyle.blurple, emoji="\U0001f4e6", row=2)
+        holdings_btn.callback = self.open_holdings
+        self.add_item(holdings_btn)
+
         browse_btn = ui.Button(label="Browse Targets", style=ButtonStyle.blurple, emoji="\U0001f3af", row=2)
         browse_btn.callback = self.open_browse
         self.add_item(browse_btn)
 
-        mastery_btn = ui.Button(label="Mastery", style=ButtonStyle.blurple, emoji="\U0001f333", row=2)
+        mastery_btn = ui.Button(label="Tricks of the Trade", style=ButtonStyle.blurple, emoji="\U0001f3ad", row=2)
         mastery_btn.callback = self.open_mastery
         self.add_item(mastery_btn)
 
@@ -130,6 +134,18 @@ class NetherMarketHubView(BaseView):
 
         return _callback
 
+    async def open_holdings(self, interaction: Interaction):
+        if self._processing:
+            return await interaction.response.defer()
+        self._processing = True
+        await interaction.response.defer()
+        from core.nether_market.views.holdings_view import build_holdings_view
+
+        view = await build_holdings_view(self.bot, self.user_id, self.server_id)
+        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        view.message = msg
+        self.stop()
+
     async def open_browse(self, interaction: Interaction):
         if self._processing:
             return await interaction.response.defer()
@@ -138,7 +154,7 @@ class NetherMarketHubView(BaseView):
         from core.nether_market.views.browse_view import build_browse_view
 
         view = await build_browse_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(embed=await view.build_embed(), view=view)
         view.message = msg
         self.stop()
 
@@ -158,10 +174,7 @@ class NetherMarketHubView(BaseView):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
         await interaction.response.defer()
-        try:
-            await interaction.message.edit(view=None)
-        except Exception:
-            pass
+        await interaction.delete_original_response()
 
     async def refresh(self, interaction: Interaction):
         """Re-fetches state and re-renders in place (used after buy/sell)."""

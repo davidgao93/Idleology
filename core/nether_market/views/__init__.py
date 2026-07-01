@@ -2,6 +2,7 @@ from core.nether_market.views.hub_view import NetherMarketHubView, build_hub_vie
 from core.nether_market.views.browse_view import BrowseListView, build_browse_view
 from core.nether_market.views.plunder_view import PlunderView, build_plunder_view
 from core.nether_market.views.mastery_view import MasteryView, build_mastery_view
+from core.nether_market.views.holdings_view import HoldingsView, build_holdings_view
 
 __all__ = [
     "NetherMarketHubView",
@@ -12,4 +13,6 @@ __all__ = [
     "build_plunder_view",
     "MasteryView",
     "build_mastery_view",
+    "HoldingsView",
+    "build_holdings_view",
 ]
