@@ -539,6 +539,7 @@ class BossPartyProgressView(BaseView):
 
         elapsed = _elapsed_hours(self.party_row["start_time"])
         if elapsed < BOSS_PARTY_DURATION_HOURS:
+            self._processing = False
             await interaction.followup.send("The raid isn't done yet!", ephemeral=True)
             return
 
@@ -548,6 +549,7 @@ class BossPartyProgressView(BaseView):
         healer = self.partners_by_id.get(row["healer_id"])
 
         if not (attacker and tank and healer):
+            self._processing = False
             await interaction.followup.send(
                 "Could not load party data.", ephemeral=True
             )
@@ -647,6 +649,7 @@ class BossPartyProgressView(BaseView):
         back_btn = ui.Button(label="Back to Partners", style=ButtonStyle.secondary)
         back_btn.callback = self._back
         self.add_item(back_btn)
+        self._processing = False
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def _raid_again(self, interaction: Interaction):

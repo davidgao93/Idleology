@@ -54,5 +54,6 @@ class Settlement:
     stone: int
     last_collection_time: str
     last_zeal_gather_time: Optional[str] = None
+    last_war_camp_stamina_time: Optional[str] = None
     buildings: List[Building] = field(default_factory=list)
     plots: List[Plot] = field(default_factory=list)

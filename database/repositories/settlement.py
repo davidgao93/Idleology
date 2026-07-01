@@ -20,9 +20,21 @@ class SettlementRepository:
         except Exception:
             pass  # column already exists
 
+    async def migrate_settlements_schema(self) -> None:
+        """Add new columns to the settlements table for existing databases."""
+        try:
+            await self.connection.execute(
+                "ALTER TABLE settlements ADD COLUMN last_war_camp_stamina_time TEXT DEFAULT NULL"
+            )
+            await self.connection.commit()
+        except Exception:
+            pass  # column already exists
+
     async def get_settlement(self, user_id: str, server_id: str) -> Settlement:
         cursor = await self.connection.execute(
-            "SELECT user_id, server_id, town_hall_tier, building_slots, timber, stone, last_collection_time, last_zeal_gather_time FROM settlements WHERE user_id = ? AND server_id = ?",
+            "SELECT user_id, server_id, town_hall_tier, building_slots, timber, stone, "
+            "last_collection_time, last_zeal_gather_time, last_war_camp_stamina_time "
+            "FROM settlements WHERE user_id = ? AND server_id = ?",
             (user_id, server_id),
         )
         row = await cursor.fetchone()
@@ -46,6 +58,7 @@ class SettlementRepository:
             stone=row["stone"],
             last_collection_time=row["last_collection_time"],
             last_zeal_gather_time=row["last_zeal_gather_time"],
+            last_war_camp_stamina_time=row["last_war_camp_stamina_time"],
         )
 
         b_cursor = await self.connection.execute(
@@ -153,16 +166,18 @@ class SettlementRepository:
         await self.connection.commit()
 
     async def init_timestamps(self, user_id: str, server_id: str) -> None:
-        """Stamps last_collection_time and last_zeal_gather_time to now if they are NULL."""
+        """Stamps last_collection_time, last_zeal_gather_time, and
+        last_war_camp_stamina_time to now if they are NULL."""
         from datetime import datetime
 
         ts = datetime.now().isoformat()
         await self.connection.execute(
             "UPDATE settlements "
             "SET last_collection_time = COALESCE(last_collection_time, ?), "
-            "    last_zeal_gather_time = COALESCE(last_zeal_gather_time, ?) "
+            "    last_zeal_gather_time = COALESCE(last_zeal_gather_time, ?), "
+            "    last_war_camp_stamina_time = COALESCE(last_war_camp_stamina_time, ?) "
             "WHERE user_id = ? AND server_id = ?",
-            (ts, ts, user_id, server_id),
+            (ts, ts, ts, user_id, server_id),
         )
         await self.connection.commit()
 
@@ -173,6 +188,18 @@ class SettlementRepository:
         ts = datetime.now().isoformat()
         await self.connection.execute(
             "UPDATE settlements SET last_zeal_gather_time = ? WHERE user_id = ? AND server_id = ?",
+            (ts, user_id, server_id),
+        )
+        await self.connection.commit()
+        return ts
+
+    async def update_war_camp_stamina_time(self, user_id: str, server_id: str) -> str:
+        """Stamps last_war_camp_stamina_time to now; returns the ISO timestamp."""
+        from datetime import datetime
+
+        ts = datetime.now().isoformat()
+        await self.connection.execute(
+            "UPDATE settlements SET last_war_camp_stamina_time = ? WHERE user_id = ? AND server_id = ?",
             (ts, user_id, server_id),
         )
         await self.connection.commit()

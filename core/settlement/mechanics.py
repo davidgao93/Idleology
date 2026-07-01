@@ -317,6 +317,45 @@ class SettlementMechanics:
         return changes
 
     @staticmethod
+    def calculate_war_camp_stamina(
+        buildings: list[Building],
+        plots: list[Plot],
+        hours: float,
+    ) -> float:
+        """
+        Raw (uncapped) Combat Stamina accrued from all War Camp buildings plus any
+        adjacent Encampment flat bonus, over `hours`. Collected on its own dedicated
+        timer — separate from the main resource Collect button — so caller code
+        must still cap the result at the 10-stamina collection cap before crediting.
+        """
+        if hours <= 0 or not buildings:
+            return 0.0
+
+        adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(plots, buildings)
+        plot_by_idx = {p.plot_index: p for p in plots}
+
+        total = 0.0
+        for b in buildings:
+            if b.building_type != "war_camp" or b.is_disabled or b.workers_assigned <= 0:
+                continue
+            plot = plot_by_idx.get(b.plot_index) if b.plot_index is not None else None
+            plot_bonus = plot.bonus_type if plot else None
+            adj = adj_bonuses.get(b.plot_index, {}) if b.plot_index is not None else {}
+
+            changes = SettlementMechanics.calculate_production(
+                building_type="war_camp",
+                tier=b.tier,
+                workers=b.workers_assigned,
+                hours_elapsed=hours,
+                plot_bonus_type=plot_bonus,
+                adj_production_mult=adj.get("production_mult", 0.0),
+            )
+            total += changes.get("war_camp_stamina", 0.0)
+            total += adj.get("flat_stamina_per_hr", 0.0) * hours
+
+        return total
+
+    @staticmethod
     def get_converter_rates(
         building_type: str, tier: int, workers: int
     ) -> list[tuple[str, str, int]]:
@@ -513,10 +552,13 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
     Additional keys when has_output is True:
       display_changes    – dict (display-ready keys including renamed specials)
       cookie_xp          – int
-      war_camp_stamina   – int (capped at 10)
       market_gold        – int
       dc_earned          – int
       collection_time    – ISO string stamped after commit
+
+    Note: War Camp Combat Stamina is NOT collected here — it has its own dedicated
+    timer/button (see collect_war_camp_stamina) so players can collect regular
+    resources without being forced to also collect (or cap out) their stamina.
     """
     from datetime import datetime
 
@@ -582,7 +624,7 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
 
     total_changes: dict[str, float] = {}
     for b in settlement.buildings:
-        if b.is_disabled:
+        if b.is_disabled or b.building_type == "war_camp":
             continue
         plot = plot_by_idx.get(b.plot_index) if b.plot_index is not None else None
         plot_bonus = plot.bonus_type if plot else None
@@ -606,13 +648,6 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
             if k in raw_inv:
                 raw_inv[k] = raw_inv[k] + v  # type: ignore[assignment]
 
-        if b.building_type == "war_camp" and b.workers_assigned > 0:
-            flat_stamina = adj.get("flat_stamina_per_hr", 0.0) * hours
-            if flat_stamina > 0:
-                total_changes["war_camp_stamina"] = (
-                    total_changes.get("war_camp_stamina", 0) + flat_stamina
-                )
-
     expedition_count = sum(
         1 for p in plots if p.is_developed and p.bonus_type == "expedition_camp"
     )
@@ -628,11 +663,6 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
         cookie_xp = int(total_changes.pop("companion_cookie"))
         display_changes["Companion XP"] = display_changes.pop("companion_cookie", cookie_xp)
 
-    war_camp_stamina = 0
-    if "war_camp_stamina" in total_changes:
-        war_camp_stamina = min(10, int(float(total_changes.pop("war_camp_stamina"))))
-        display_changes.pop("war_camp_stamina", None)
-
     market_gold = 0
     if "market_gold" in total_changes:
         market_gold = int(total_changes.pop("market_gold"))
@@ -643,8 +673,6 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
     await bot.database.settlement.commit_production(uid, sid, total_changes)
     if market_gold > 0:
         await bot.database.users.modify_gold(uid, market_gold)
-    if war_camp_stamina > 0:
-        await bot.database.users.add_stamina_capped(uid, war_camp_stamina)
     if dc_earned > 0:
         await bot.database.settlement.modify_development_contracts(uid, sid, dc_earned)
     await bot.database.settlement.update_collection_timer(uid, sid)
@@ -657,10 +685,55 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
         "hours": hours,
         "display_changes": display_changes,
         "cookie_xp": cookie_xp,
-        "war_camp_stamina": war_camp_stamina,
         "market_gold": market_gold,
         "dc_earned": dc_earned,
         "collection_time": now.isoformat(),
+    }
+
+
+async def collect_war_camp_stamina(bot, uid: str, sid: str, settlement, plots: list) -> dict:
+    """
+    Calculates and credits accumulated War Camp Combat Stamina, using its own
+    dedicated timer (last_war_camp_stamina_time) — independent from the main
+    resource-collection timer — so collecting stamina never forces (or is forced
+    by) a full resource collection.
+
+    Result keys (always present):
+      too_early          – bool: < 0.1 h elapsed; nothing committed
+      has_output         – bool: any stamina was collected
+      hours              – float
+
+    Additional keys when has_output is True:
+      stamina_collected  – int (0-10)
+      collection_time    – ISO string stamped after commit
+    """
+    from datetime import datetime
+
+    now = datetime.now()
+    last = datetime.fromisoformat(settlement.last_war_camp_stamina_time)
+    hours = max(0.0, (now - last).total_seconds() / 3600)
+
+    if hours < 0.1:
+        return {"too_early": True, "has_output": False, "hours": hours}
+
+    raw_stamina = SettlementMechanics.calculate_war_camp_stamina(
+        settlement.buildings, plots, hours
+    )
+    stamina_collected = min(10, int(raw_stamina))
+
+    new_ts = await bot.database.settlement.update_war_camp_stamina_time(uid, sid)
+
+    if stamina_collected <= 0:
+        return {"too_early": False, "has_output": False, "hours": hours}
+
+    await bot.database.users.add_stamina_capped(uid, stamina_collected)
+
+    return {
+        "too_early": False,
+        "has_output": True,
+        "hours": hours,
+        "stamina_collected": stamina_collected,
+        "collection_time": new_ts,
     }
 
 

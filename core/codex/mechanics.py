@@ -108,7 +108,7 @@ def _desc_player_mod(mod_type: str, value: float) -> str:
     if mod_type == "max_hp_pct":
         return f"-{int(value * 100)}% Max HP"
     if mod_type == "ward_disable":
-        return "Ward disabled"
+        return "Initial ward disabled"
     if mod_type == "crit_pct":
         return f"-{int(value)} crit chance"
     if mod_type == "hit_flat":

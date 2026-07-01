@@ -17,7 +17,11 @@ from core.settlement.constants import (
     ZEAL_GATHER_CAP,
     ZEAL_TO_DT,
 )
-from core.settlement.mechanics import SettlementMechanics, collect_settlement_resources
+from core.settlement.mechanics import (
+    SettlementMechanics,
+    collect_settlement_resources,
+    collect_war_camp_stamina,
+)
 from core.settlement.models import Plot
 from core.settlement.plots import META_BUILDINGS, get_meta_slots, render_grid
 from core.settlement.turn_engine import passive_zeal_for_period, process_next_turn
@@ -757,6 +761,34 @@ class SettlementDashboardView(SettlementBaseView):
         collect_btn.callback = self.collect_resources
         self.add_item(collect_btn)
 
+        _ws = 0
+        try:
+            _ws_ts = self.settlement.last_war_camp_stamina_time
+            if _ws_ts:
+                _ws_hours = max(
+                    0.0,
+                    (datetime.now() - datetime.fromisoformat(_ws_ts)).total_seconds()
+                    / 3600,
+                )
+                _ws = min(
+                    10,
+                    int(
+                        SettlementMechanics.calculate_war_camp_stamina(
+                            self.settlement.buildings, self.plots, _ws_hours
+                        )
+                    ),
+                )
+        except Exception:
+            pass
+        war_camp_btn = ui.Button(
+            label=f"Gather Stamina ({_ws}/10)",
+            style=ButtonStyle.blurple,
+            emoji="⚔️",
+            row=1,
+        )
+        war_camp_btn.callback = self.on_collect_war_camp_stamina
+        self.add_item(war_camp_btn)
+
         # --- Row 2: management buttons ---
         th_btn = ui.Button(
             label=f"Town Hall (T{self.settlement.town_hall_tier})",
@@ -953,17 +985,11 @@ class SettlementDashboardView(SettlementBaseView):
             hours = result["hours"]
             display_changes = result["display_changes"]
             cookie_xp = result["cookie_xp"]
-            war_camp_stamina = result["war_camp_stamina"]
             dc_earned = result["dc_earned"]
 
             xp_msg = (
                 f"\n🐾 **Companion Ranch:** +{cookie_xp:,} XP added to your Companion XP pool."
                 if cookie_xp > 0
-                else ""
-            )
-            stamina_msg = (
-                f"\n⚔️ **War Camp:** +{war_camp_stamina} Combat Stamina."
-                if war_camp_stamina > 0
                 else ""
             )
             dc_msg = (
@@ -979,15 +1005,58 @@ class SettlementDashboardView(SettlementBaseView):
 
             self._rebuild_ui()
             embed = self.build_embed()
-            formatted = (
-                format_collection_changes(display_changes)
-                + xp_msg
-                + stamina_msg
-                + dc_msg
-            )
+            formatted = format_collection_changes(display_changes) + xp_msg + dc_msg
             embed.add_field(
                 name="Last Collection",
                 value=f"⏱️ Time since last collection: {hours:.2f}h\n\n📦 Yield:\n{formatted}",
+                inline=False,
+            )
+
+            try:
+                await interaction.edit_original_response(
+                    content=None, embed=embed, view=self
+                )
+            except Exception:
+                if self.message:
+                    await self.message.edit(embed=embed, view=self)
+        finally:
+            self._processing = False
+
+    async def on_collect_war_camp_stamina(self, interaction: Interaction):
+        """Collects accumulated War Camp Combat Stamina on its own dedicated timer,
+        independent of the main resource Collect button."""
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        try:
+            result = await collect_war_camp_stamina(
+                self.bot, self.user_id, self.server_id, self.settlement, self.plots
+            )
+
+            if result["too_early"]:
+                await interaction.followup.send(
+                    "Your War Camp hasn't generated any stamina yet.", ephemeral=True
+                )
+                return
+
+            if not result["has_output"]:
+                await interaction.followup.send(
+                    "No stamina to collect — assign workers to a War Camp first.",
+                    ephemeral=True,
+                )
+                return
+
+            stamina_collected = result["stamina_collected"]
+            self.settlement.last_war_camp_stamina_time = result["collection_time"]
+
+            self._rebuild_ui()
+            embed = self.build_embed()
+            embed.add_field(
+                name="⚔️ War Camp Stamina Collected",
+                value=f"+{stamina_collected} Combat Stamina.",
                 inline=False,
             )
 

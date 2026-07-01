@@ -752,12 +752,14 @@ class CodexRunView(BaseView):
         await self.bot.database.users.update_from_player_object(self.player)
 
         embed = self._summary_embed(fragments, len(self.page_drops), exp_changes)
-        self.clear_items()
         self.stop()
         self.bot.state_manager.clear_active(self.user_id)
 
         if message:
-            await message.edit(embed=embed, view=None)
+            lobby_view = CodexRunCompleteView(
+                self.bot, self.user_id, self.player, server_id=self.server_id
+            )
+            await message.edit(embed=embed, view=lobby_view)
 
     # ------------------------------------------------------------------
     # Defeat / Retreat
@@ -951,4 +953,48 @@ class CodexRunView(BaseView):
         await self.bot.database.users.update_from_player_object(self.player)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
-        await interaction.response.edit_message(embed=embed, view=None)
+        lobby_view = CodexRunCompleteView(
+            self.bot, self.user_id, self.player, server_id=self.server_id
+        )
+        await interaction.response.edit_message(embed=embed, view=lobby_view)
+
+
+class CodexRunCompleteView(BaseView):
+    """Shown after a Codex run ends (complete or retreat) — lets the player jump back to the lobby."""
+
+    def __init__(self, bot, user_id: str, player: Player, server_id: str = ""):
+        super().__init__(bot, user_id, server_id)
+        self.player = player
+        self._processing = False
+
+    @ui.button(label="Back to Lobby", style=ButtonStyle.primary, emoji="📖", row=0)
+    async def back_to_lobby(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        from core.codex.views.menu_view import CodexMenuView
+
+        cur = await self.bot.database.users.get_all_currencies(self.user_id)
+        try:
+            chapter_history = await self.bot.database.codex.get_chapter_clears(
+                self.user_id
+            )
+        except Exception:
+            chapter_history = {}
+
+        menu = CodexMenuView(
+            self.bot,
+            self.user_id,
+            self.player,
+            cur["codex_fragments"],
+            cur["codex_pages"],
+            cur["codex_rerolls"],
+            chapter_history,
+            antique_tomes=cur["antique_tome"],
+            server_id=self.server_id,
+        )
+        self.stop()
+        await interaction.edit_original_response(embed=menu.build_embed(), view=menu)

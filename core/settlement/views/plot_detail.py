@@ -1580,8 +1580,12 @@ class MetaBuildingConstructionView(SettlementBaseView):
                 suffix = " *(under construction)*"
             elif needs_research:
                 prereq = RESEARCH_PREREQUISITES.get(key)
-                prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title()) if prereq else "prerequisite"
-                suffix = f" *(🔒 Research **{prereq_name}** first)*"
+                if prereq and prereq not in self.researched:
+                    prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title())
+                    suffix = f" *(🔒 Research **{prereq_name}** first)*"
+                else:
+                    own_name = RESEARCHABLE_BUILDINGS.get(key, key.replace("_", " ").title())
+                    suffix = f" *(🔒 Research **{own_name}** first)*"
             else:
                 suffix = ""
             value = data["description"]

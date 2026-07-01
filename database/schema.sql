@@ -791,6 +791,7 @@ CREATE TABLE IF NOT EXISTS settlements (
   stone                     INTEGER DEFAULT 0,
   last_collection_time      TEXT DEFAULT NULL,
   last_zeal_gather_time     TEXT DEFAULT NULL,
+  last_war_camp_stamina_time TEXT DEFAULT NULL,
   -- Zeal economy
   settlement_zeal           INTEGER NOT NULL DEFAULT 0,
   pending_zeal              INTEGER NOT NULL DEFAULT 0,

@@ -42,6 +42,7 @@ class SettlementCog(commands.Cog, name="settlement"):
             if (
                 not settlement.last_collection_time
                 or not settlement.last_zeal_gather_time
+                or not settlement.last_war_camp_stamina_time
             ):
                 from datetime import datetime
 
@@ -49,6 +50,9 @@ class SettlementCog(commands.Cog, name="settlement"):
                 settlement.last_collection_time = settlement.last_collection_time or ts
                 settlement.last_zeal_gather_time = (
                     settlement.last_zeal_gather_time or ts
+                )
+                settlement.last_war_camp_stamina_time = (
+                    settlement.last_war_camp_stamina_time or ts
                 )
             ideology = existing_user["ideology"]
             total_followers = await self.bot.database.social.get_follower_count(

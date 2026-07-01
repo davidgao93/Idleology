@@ -617,12 +617,13 @@ async def _check_schedule_events(
             b.building_type for b in settlement.buildings if not b.is_meta
         }
 
+    # First pass: figure out which events are due this turn, without firing any yet.
+    # This lets combat events be rolled as one group below instead of each being
+    # checked (and potentially fired) independently in the same tick.
+    eligible: list[tuple[str, dict]] = []
     for key, ev_def in SETTLEMENT_EVENTS.items():
         if key in existing_keys:
             continue  # Already active
-        # Only one combat event can be active at a time
-        if key in _COMBAT_EVENTS and combat_event_active:
-            continue
 
         trigger_at = ev_def.get("trigger_at", [])
         rec_interval = ev_def.get("recurring_interval", 0)
@@ -645,6 +646,18 @@ async def _check_schedule_events(
         if requires and not any(b in player_building_types for b in requires):
             continue
 
+        eligible.append((key, ev_def))
+
+    # Combat events: roll once across all due combat events and fire at most one,
+    # and only if no combat event is already active/pending.
+    combat_due = [item for item in eligible if item[0] in _COMBAT_EVENTS]
+    non_combat_due = [item for item in eligible if item[0] not in _COMBAT_EVENTS]
+
+    to_fire = list(non_combat_due)
+    if combat_due and not combat_event_active:
+        to_fire.append(random.choice(combat_due))
+
+    for key, ev_def in to_fire:
         # Roll banded modifier.
         ev_data: dict = {}
         bands = ev_def.get("modifier_bands", [])

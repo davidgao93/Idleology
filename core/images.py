@@ -63,8 +63,8 @@ TESSARA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/
 TESSARA_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684191926419476/tessara_lapidary_portrait.jpg?ex=6a372d0c&is=6a35db8c&hm=02bf22c965b775160c5ab2f48efce90edc46f1c4aeee6c11e86f453d2bb2fe19&"
 
 # ── COMBAT ────────────────────────────────────────────────────────────────────
-COMBAT_VICTORY = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512645961482270/combat_victory.png?ex=69f8b4cc&is=69f7634c&hm=98c607e7f4ef046069201a604d70b06c0adc16b42dfde6feb11d8ec5489a699c&"
-COMBAT_REDEMPTION = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512646523260968/combat_redemption.png?ex=69f8b4cd&is=69f7634d&hm=8872a1beecb580641323693b67bd3f2235a2f7a14a2248b5a478b9cd5ff5721a&"
+COMBAT_VICTORY = "https://cdn.discordapp.com/attachments/1334637411363323996/1521926282831724674/combat_victory.png?ex=6a469bcd&is=6a454a4d&hm=dc26b97e719a462648394e6988d92487bb4e069139823a775ef5590fd74774a2&"
+COMBAT_REDEMPTION = "https://cdn.discordapp.com/attachments/1334637411363323996/1521926291178262649/combat_redemption.png?ex=6a469bcf&is=6a454a4f&hm=f0084a2b079e1126beb4e0c9d1a058a518654ce16e6f160345dd041aadfb5d07&"
 COMBAT_ELEMENTAL = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512647081361730/combat_elemental.png?ex=69f8b4cd&is=69f7634d&hm=51af5a2214e2ddedcae29fe6fc52f4113669b2a2a77120c181f8a479b71a6a26&"
 COMBAT_DUMMY = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512846797213838/commoner_f.png?ex=69f8b4fc&is=69f7637c&hm=65b9cf447b2c8fc98dadeab8f21692279631f496c79dc9d1e526fc67ec99a899&"
 COMBAT_LOW_HEALTH = "https://cdn.discordapp.com/attachments/1334637411363323996/1507523688075890708/COMBAT_LOW_HEALTH.jpg?ex=6a123657&is=6a10e4d7&hm=1084f405af2092a55216f5ae245f102ffc6d3f679183e0963dea63ae5435efed&"

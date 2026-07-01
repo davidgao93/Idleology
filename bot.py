@@ -266,6 +266,7 @@ class DiscordBot(commands.Bot):
         self.database = DatabaseManager(connection=_conn)
         await self.database.quests.create_tables()
         await self.database.settlement.migrate_buildings_schema()
+        await self.database.settlement.migrate_settlements_schema()
         await self.load_cogs()
         self.status_task.start()
 
