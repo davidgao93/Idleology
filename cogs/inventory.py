@@ -7,7 +7,7 @@ from discord.ext import commands
 from core.character.profile_hub import ProfileHubView
 from core.character.profile_ui import ProfileBuilder
 from core.first_use import TutorialGateView
-from core.inventory.views import SLOT_ORDER, GearView, InventoryListView
+from core.inventory.views import SLOT_ORDER, GearView, InventoryListView, LoadoutView
 
 # Core
 from core.items.factory import (
@@ -173,6 +173,29 @@ class Inventory(commands.Cog, name="inventory"):
     @app_commands.command(name="helmets", description="Manage your helmets.")
     async def helmets(self, interaction: Interaction):
         await self._generic_gear_command(interaction, initial_slot="helmet")
+
+    @app_commands.command(name="loadouts", description="Manage your gear loadouts.")
+    async def loadouts(self, interaction: Interaction):
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
+            return
+        if not await self.bot.check_is_active(interaction, user_id):
+            return
+
+        self.bot.state_manager.set_active(user_id, "inventory")
+
+        try:
+            view = await LoadoutView.create(self.bot, user_id, server_id, mode="standalone")
+        except Exception:
+            self.bot.state_manager.clear_active(user_id)
+            raise
+
+        embed = view.build_embed(interaction.user.display_name)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     @app_commands.command(name="essences", description="View your stored essences.")
     async def essences(self, interaction: discord.Interaction):

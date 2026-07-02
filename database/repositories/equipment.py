@@ -6,6 +6,15 @@ from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 
 ItemType = Literal["weapon", "armor", "accessory", "glove", "boot", "helmet"]
 
+LOADOUT_SLOT_DEFS = [
+    ("weapon",    "weapon_id",    "items"),
+    ("armor",     "armor_id",     "armor"),
+    ("helmet",    "helmet_id",    "helmets"),
+    ("glove",     "glove_id",     "gloves"),
+    ("boot",      "boot_id",      "boots"),
+    ("accessory", "accessory_id", "accessories"),
+]
+
 
 class EquipmentRepository:
     def __init__(self, connection: aiosqlite.Connection):
@@ -448,6 +457,43 @@ class EquipmentRepository:
             f"UPDATE {table} SET {set_clause} WHERE item_id = ?", values
         )
         await self.connection.commit()
+
+    # ---------------------------------------------------------
+    # Loadout Application
+    # ---------------------------------------------------------
+
+    async def apply_loadout(self, user_id: str, loadout_row) -> list:
+        """
+        Apply a saved loadout. For each slot:
+        - item_id present and owned: equip it.
+        - item_id missing or not owned: unequip the slot.
+        All 6 updates share one commit. Returns slot type names for skipped slots.
+        """
+        skipped = []
+        for slot_type, id_col, table in LOADOUT_SLOT_DEFS:
+            item_id = loadout_row[id_col]
+            owned = False
+            if item_id is not None:
+                cursor = await self.connection.execute(
+                    f"SELECT item_id FROM {table} WHERE item_id = ? AND user_id = ?",
+                    (item_id, user_id),
+                )
+                owned = (await cursor.fetchone()) is not None
+
+            await self.connection.execute(
+                f"UPDATE {table} SET is_equipped = 0 WHERE user_id = ? AND is_equipped = 1",
+                (user_id,),
+            )
+            if owned:
+                await self.connection.execute(
+                    f"UPDATE {table} SET is_equipped = 1 WHERE item_id = ?",
+                    (item_id,),
+                )
+            elif item_id is not None:
+                skipped.append(slot_type)
+
+        await self.connection.commit()
+        return skipped
 
     async def fetch_void_forge_candidates(self, user_id: str) -> List[Tuple]:
         """Specific query for Voidforge eligibility."""

@@ -990,8 +990,14 @@ class CombatView(BaseView):
                     pass
             embed.add_field(
                 name="⚡ Stamina",
-                value=f"Out of stamina — next combat in **{time_str}**",
-                inline=False,
+                value=f"0/10 — next in **{time_str}**",
+                inline=True,
+            )
+        else:
+            embed.add_field(
+                name="⚡ Stamina",
+                value=f"{stamina}/10 — Fight Again ready!",
+                inline=True,
             )
 
         # If the player levelled up during this fight, show the stat-package picker

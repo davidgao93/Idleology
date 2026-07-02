@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `stat_invest_def`             INTEGER NOT NULL DEFAULT 0,
   `stat_invest_hp`              INTEGER NOT NULL DEFAULT 0,
   `stat_invest_gold`            INTEGER NOT NULL DEFAULT 0,
+  `loadout_slots`               INTEGER NOT NULL DEFAULT 3,
 
   -- Base Stats
   `attack`                      INTEGER NOT NULL DEFAULT 1,
@@ -232,6 +233,21 @@ CREATE TABLE IF NOT EXISTS helmets (
   reinforces_remaining  INTEGER DEFAULT 0,
   reinforcement_lvl     INTEGER DEFAULT 0,
   is_equipped           BOOLEAN DEFAULT 0
+);
+
+
+CREATE TABLE IF NOT EXISTS gear_loadouts (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id      TEXT    NOT NULL,
+  slot_index   INTEGER NOT NULL,
+  name         TEXT    NOT NULL DEFAULT 'Loadout',
+  weapon_id    INTEGER DEFAULT NULL,
+  armor_id     INTEGER DEFAULT NULL,
+  helmet_id    INTEGER DEFAULT NULL,
+  glove_id     INTEGER DEFAULT NULL,
+  boot_id      INTEGER DEFAULT NULL,
+  accessory_id INTEGER DEFAULT NULL,
+  UNIQUE(user_id, slot_index)
 );
 
 

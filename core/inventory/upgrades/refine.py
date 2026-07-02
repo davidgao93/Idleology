@@ -184,6 +184,7 @@ class RefineView(BaseUpgradeView):
             embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
             embed.set_thumbnail(url=UPGRADE_REFINE)
             embed.description = (
+                f"{get_quip('refine')}\n\n"
                 f"**Gains:** {res_str}\n"
                 f"**Refinement:** +{self.item.refinement_lvl}\n\n"
                 f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
@@ -394,6 +395,7 @@ class RefineView(BaseUpgradeView):
         embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REFINE)
         embed.description = (
+            f"{get_quip('refine')}\n\n"
             f"**Refines Performed:** {refines_done}\n"
             f"**Stopped Because:** {stop_reason}\n\n"
             f"**Total Gains:** {gains_str}\n"
@@ -644,6 +646,7 @@ class RefineView(BaseUpgradeView):
         embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REFINE)
         embed.description = (
+            f"{get_quip('refine')}\n\n"
             f"**Refines Performed:** {refines_done:,}\n"
             f"**Runes Consumed:** {runes_used}\n"
             f"**Stopped Because:** {stop_reason}\n\n"

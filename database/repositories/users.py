@@ -115,6 +115,7 @@ class UserRepository:
             "quest_contracts",
             "quest_horizon",
             "quest_meta",
+            "gear_loadouts",
         ]
         for table in _by_user:
             try:

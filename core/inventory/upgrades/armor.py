@@ -202,6 +202,7 @@ class TemperView(BaseUpgradeView):
 
             res_embed.color = discord.Color.green()
             res_embed.description = (
+                f"{get_quip('temper')}\n\n"
                 f"🛡️ **Success!**\nIncreased **{stat.upper()}** by **{amount}**."
             )
         else:
@@ -296,7 +297,8 @@ class ImbueView(BaseUpgradeView):
             embed.color = discord.Color.gold()
             passive_desc = get_armor_passive_description(new_p)
             embed.description = (
-                f"✨ Success! Imbued with **{new_p}**!"
+                f"{get_quip('imbue')}\n\n"
+                f"✨ **Success!** Imbued with **{new_p}**!"
                 + (f"\n*{passive_desc}*" if passive_desc else "")
             )
         else:
@@ -492,6 +494,7 @@ class ReinforceView(BaseUpgradeView):
             embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
             embed.set_thumbnail(url=UPGRADE_REINFORCE)
             embed.description = (
+                f"{get_quip('reinforce')}\n\n"
                 f"**Gain:** +{gain}{suffix} {stat_label}\n"
                 f"**Reinforcement:** +{self.item.reinforcement_lvl}\n\n"
                 f"**{stat_label}:** {new_val:,}{suffix}"
@@ -708,6 +711,7 @@ class ReinforceView(BaseUpgradeView):
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REINFORCE)
         embed.description = (
+            f"{get_quip('reinforce')}\n\n"
             f"**Reinforces Performed:** {reinforces_done}\n"
             f"**Shatter Runes Used:** {shatter_runes_used}\n"
             f"**Total Gain:** +{total_gain}{suffix} {stat_label}\n"

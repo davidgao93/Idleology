@@ -18,6 +18,7 @@ from .repositories.hematurgy import HematurgyRepository
 from .repositories.journey import JourneyRepository
 from .repositories.maw import MawRepository
 from .repositories.monster_parts import MonsterPartsRepository
+from .repositories.loadouts import LoadoutRepository
 from .repositories.nether_market import NetherMarketRepository
 from .repositories.paradise import ParadiseRepository
 from .repositories.partners import PartnerRepository
@@ -68,4 +69,5 @@ class DatabaseManager:
         self.quests = QuestsRepository(connection)
         self.tutorials = TutorialsRepository(connection)
         self.codes = CodesRepository(connection)
+        self.loadouts = LoadoutRepository(connection)
         self.nether_market = NetherMarketRepository(connection)

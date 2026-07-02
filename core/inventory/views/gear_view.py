@@ -19,17 +19,15 @@ from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 from core.util import stars
 
 from .detail_view import ItemDetailView
+from .loadout_view import LoadoutView
 from .modals import MassDiscardModal
+from ._slot_defs import SLOT_EMOJIS as _SLOT_EMOJIS, SLOT_LABELS as _SLOT_LABELS, SLOT_ORDER
 
+_FACTORIES = [create_weapon, create_armor, create_helmet, create_glove, create_boot, create_accessory]
 SLOT_CONFIG = {
-    "weapon": {"emoji": "⚔️", "label": "Weapon", "factory": create_weapon},
-    "armor": {"emoji": "🛡️", "label": "Armor", "factory": create_armor},
-    "helmet": {"emoji": "🎩", "label": "Helmet", "factory": create_helmet},
-    "glove": {"emoji": "🧤", "label": "Glove", "factory": create_glove},
-    "boot": {"emoji": "👢", "label": "Boot", "factory": create_boot},
-    "accessory": {"emoji": "📿", "label": "Accessory", "factory": create_accessory},
+    slot: {"emoji": _SLOT_EMOJIS[slot], "label": _SLOT_LABELS[slot], "factory": factory}
+    for slot, factory in zip(SLOT_ORDER, _FACTORIES)
 }
-SLOT_ORDER = ["weapon", "armor", "helmet", "glove", "boot", "accessory"]
 
 
 class GearView(BaseView):
@@ -57,6 +55,7 @@ class GearView(BaseView):
         self.all_items = all_items  # dict[slot -> List[item model]]
         self.active_slot = initial_slot
         self.current_page = 0
+        self._processing = False
 
         # Per-slot equipped IDs — source of truth; updated by ItemDetailView.toggle_equip
         self.equipped_ids: dict = {
@@ -295,7 +294,7 @@ class GearView(BaseView):
             nxt.callback = self.next_page
             self.add_item(nxt)
 
-        # Row 4 — Mass Discard + Close
+        # Row 4 — Mass Discard | Loadouts | Close
         mass = Button(
             label="Mass Discard",
             style=ButtonStyle.danger,
@@ -305,6 +304,10 @@ class GearView(BaseView):
         )
         mass.callback = self.mass_discard_callback
         self.add_item(mass)
+
+        loadouts_btn = Button(label="📦 Loadouts", style=ButtonStyle.secondary, row=4)
+        loadouts_btn.callback = self.open_loadouts
+        self.add_item(loadouts_btn)
 
         close = Button(label="Close", style=ButtonStyle.secondary, row=4)
         close.callback = self.close_view
@@ -376,6 +379,24 @@ class GearView(BaseView):
 
     async def mass_discard_callback(self, interaction: Interaction):
         await interaction.response.send_modal(MassDiscardModal(self))
+
+    async def open_loadouts(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        server_id = str(interaction.guild_id)
+        try:
+            view = await LoadoutView.create(
+                self.bot, self.user_id, server_id, mode="from_gear", parent_view=self
+            )
+        except Exception:
+            self._processing = False
+            raise
+        await interaction.response.edit_message(
+            embed=view.build_embed(interaction.user.display_name), view=view
+        )
+        self.message = await interaction.original_response()
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()

@@ -269,6 +269,10 @@ def create_combat_embed(
 
     p_atk = player.get_total_attack(monster)
     p_def = player.get_total_defence()
+    p_crit = player.get_current_crit_chance()
+    p_pdr = player.get_total_pdr()
+    p_fdr = player.get_total_fdr()
+    p_ward_pct = player.get_total_ward_percentage()
 
     description = f"A level **{monster.level}** {monster.name} approaches!{mod_text}"
 
@@ -307,12 +311,22 @@ def create_combat_embed(
         ),
         inline=True,
     )
+    _mit_parts = []
+    if p_pdr > 0:
+        _mit_parts.append(f"PDR {p_pdr}%")
+    if p_fdr > 0:
+        _mit_parts.append(f"FDR {p_fdr}%")
+    if p_ward_pct > 0:
+        _mit_parts.append(f"Ward {p_ward_pct}%")
+    _mit_line = ("\n" + " • ".join(_mit_parts)) if _mit_parts else ""
+
     embed.add_field(
         name=f"🧠 {player.name}",
         value=(
             f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
             f"⚔️ {p_atk:,} | 🛡️ {p_def:,}\n"
-            f"🎯 ~{p_hit}%"
+            f"🎯 ~{p_hit}% • 💥 {p_crit}%"
+            f"{_mit_line}"
         ),
         inline=True,
     )

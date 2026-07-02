@@ -153,6 +153,7 @@ class ForgeView(BaseUpgradeView):
 
             passive_desc = get_weapon_passive_description(new_passive)
             result_embed.description = (
+                f"{get_quip('forge')}\n\n"
                 f"🔥 **Success!**\nNew Passive: **{fmt_weapon_passive(new_passive)}**"
                 + (f"\n*{passive_desc}*" if passive_desc else "")
             )
@@ -426,7 +427,9 @@ class ForgeView(BaseUpgradeView):
         )
         result_embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         result_embed.set_thumbnail(url=UPGRADE_FORGE)
+        _forgemaxx_quip = f"{get_quip('forge')}\n\n" if successes > 0 else ""
         result_embed.description = (
+            f"{_forgemaxx_quip}"
             f"**Attempts:** {forges_done}  |  **Successes:** {successes}\n"
             f"**Final Passive:** {fmt_weapon_passive(final_passive) if final_passive != 'none' else 'None'}"
             + (f"\n*{final_passive_desc}*" if final_passive_desc else "")
