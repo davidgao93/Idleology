@@ -130,8 +130,14 @@ class NurseryView(SettlementBaseView):
             self._processing = False
 
     async def _on_back(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         self.parent._rebuild_ui()
+        if hasattr(self.parent, "_processing"):
+            self.parent._processing = False
         await interaction.edit_original_response(
             embed=self.parent.build_embed(), view=self.parent
         )
@@ -261,8 +267,14 @@ class IdlemFoundryView(SettlementBaseView):
             self._processing = False
 
     async def _on_back(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         self.parent._rebuild_ui()
+        if hasattr(self.parent, "_processing"):
+            self.parent._processing = False
         await interaction.edit_original_response(
             embed=self.parent.build_embed(), view=self.parent
         )
@@ -517,7 +529,13 @@ class SanctumView(SettlementBaseView):
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def _on_back(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         self.parent_detail._rebuild_ui()
+        if hasattr(self.parent_detail, "_processing"):
+            self.parent_detail._processing = False
         await interaction.response.edit_message(
             embed=self.parent_detail.build_embed(), view=self.parent_detail
         )

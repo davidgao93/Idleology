@@ -195,7 +195,7 @@ class LoadoutView(BaseView):
             back_btn.callback = self._go_back_callback
             self.add_item(back_btn)
 
-        close_btn = Button(label="Close", style=ButtonStyle.secondary, row=4)
+        close_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=4)
         close_btn.callback = self._close_callback
         self.add_item(close_btn)
 
@@ -371,7 +371,13 @@ class LoadoutView(BaseView):
         self.message = await interaction.original_response()
 
     async def _close_callback(self, interaction: Interaction):
+        # Session-terminating Close — ends the inventory session regardless of
+        # whether LoadoutView was opened standalone or from_gear (message is shared).
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()

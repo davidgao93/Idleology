@@ -300,6 +300,7 @@ class ParadiseHubView(BaseView):
         self.data = data
         self.jewel_count = jewel_count
         self.dust = dust
+        self._processing = False
         self._build_buttons()
 
     def _build_buttons(self) -> None:
@@ -327,12 +328,20 @@ class ParadiseHubView(BaseView):
         return _build_hub_embed(self.data, self.jewel_count, self.dust)
 
     async def _exit_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         self.bot.state_manager.clear_active(self.user_id)
         await interaction.delete_original_response()
         self.stop()
 
     async def _manage_skills_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         view = _ManageSkillsView(
             self.bot,
@@ -346,6 +355,10 @@ class ParadiseHubView(BaseView):
         self.stop()
 
     async def _manage_passives_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         view = _ManagePassivesView(
             self.bot,
@@ -456,6 +469,10 @@ class _ManageSkillsView(BaseView):
         self.stop()
 
     async def _back_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         view = await _reload_hub(self.bot, self.user_id, self.server_id)
         view.message = self.message
@@ -530,6 +547,10 @@ class _SkillPickView(BaseView):
         await self._back_to_skills(interaction)
 
     async def _on_back(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         await self._back_to_skills(interaction)
 
@@ -556,6 +577,7 @@ class _ManagePassivesView(BaseView):
         self.jewel_count = jewel_count
         self.dust = dust
         self.message = message
+        self._processing = False
         self._build_items()
 
     def _build_items(self) -> None:
@@ -603,6 +625,10 @@ class _ManagePassivesView(BaseView):
         return _build_manage_passives_embed(self.data, self.dust)
 
     async def _on_slot_select(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         slot_idx = int(interaction.data["values"][0])
         view = _RerollActionView(
@@ -624,6 +650,10 @@ class _ManagePassivesView(BaseView):
         await interaction.response.send_modal(modal)
 
     async def _back_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         view = await _reload_hub(self.bot, self.user_id, self.server_id)
         view.message = self.message

@@ -579,6 +579,11 @@ class CombatView(BaseView):
             await interaction.response.defer()
             return
 
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
         self.player.cs.is_snared = (
             False  # Clean up any transient snare before leaving the fight
         )

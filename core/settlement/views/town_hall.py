@@ -343,11 +343,19 @@ class TownHallView(SettlementBaseView):
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def go_back(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
         self.parent.projects = await self.bot.database.settlement.get_projects(
             self.user_id, self.parent.server_id
         )
         self.parent._rebuild_ui()
-        await interaction.response.edit_message(
+        if hasattr(self.parent, "_processing"):
+            self.parent._processing = False
+        await interaction.edit_original_response(
             embed=self.parent.build_embed(), view=self.parent
         )
         self.stop()

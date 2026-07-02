@@ -126,7 +126,7 @@ class CodexTomsView(BaseView):
                 reroll_type_btn.callback = self._on_reroll_type
                 self.add_item(reroll_type_btn)
 
-        exit_btn = ui.Button(label="Close", style=ButtonStyle.secondary, row=3)
+        exit_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=3)
         exit_btn.callback = self._on_exit
         self.add_item(exit_btn)
 
@@ -317,6 +317,7 @@ class CodexTomsView(BaseView):
         await interaction.edit_original_response(embed=self._build_embed(), view=self)
 
     async def _on_exit(self, interaction: Interaction):
+        # Back navigation to CodexMenuView — no clear_active (neither view owns active state).
         self.stop()
         from core.codex.views.menu_view import CodexMenuView
 

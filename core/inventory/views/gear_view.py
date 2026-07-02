@@ -309,7 +309,7 @@ class GearView(BaseView):
         loadouts_btn.callback = self.open_loadouts
         self.add_item(loadouts_btn)
 
-        close = Button(label="Close", style=ButtonStyle.secondary, row=4)
+        close = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=4)
         close.callback = self.close_view
         self.add_item(close)
 
@@ -399,7 +399,11 @@ class GearView(BaseView):
         self.message = await interaction.original_response()
 
     async def close_view(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()

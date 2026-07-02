@@ -92,15 +92,6 @@ class BuildingDetailView(SettlementBaseView):
         self._processing = False
         self.setup_ui()
 
-    async def on_timeout(self):
-        try:
-            await self.parent.message.delete()
-        except Exception:
-            pass
-        finally:
-            self.bot.state_manager.clear_active(self.user_id)
-            self.stop()
-
     def build_embed(self):
         b_data = SettlementMechanics.BUILDINGS.get(self.building.building_type)
         max_w = SettlementMechanics.get_max_workers(self.building.tier)
@@ -339,6 +330,8 @@ class BuildingDetailView(SettlementBaseView):
         # 3. Refresh Parent Grid
         self.parent._rebuild_ui()
 
+        if hasattr(self.parent, "_processing"):
+            self.parent._processing = False
         await interaction.edit_original_response(
             content=f"💥 **{self.building.name}** has been demolished. Workers returned to pool.",
             embed=self.parent.build_embed(),
@@ -490,6 +483,8 @@ class BuildingDetailView(SettlementBaseView):
             queued_embed.set_thumbnail(url=thumb)
 
         self._processing = False
+        if hasattr(self.parent, "_processing"):
+            self.parent._processing = False
         await interaction.edit_original_response(embed=queued_embed, view=self.parent)
         self.stop()
         await asyncio.sleep(3)
@@ -589,6 +584,8 @@ class BuildingDetailView(SettlementBaseView):
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
     async def go_back(self, interaction: Interaction):
+        if hasattr(self.parent, "_processing"):
+            self.parent._processing = False
         await interaction.response.edit_message(
             embed=self.parent.build_embed(), view=self.parent
         )
@@ -762,6 +759,8 @@ class UberShrineView(SettlementBaseView):
         btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
 
         async def _on_back(interaction: Interaction):
+            if hasattr(self.parent_detail, "_processing"):
+                self.parent_detail._processing = False
             await interaction.response.edit_message(
                 embed=self.parent_detail.build_embed(), view=self.parent_detail
             )

@@ -108,7 +108,7 @@ class InventoryListView(BaseView):
         self.add_item(mass_btn)
 
         close_btn = Button(
-            label="Close", style=ButtonStyle.secondary, custom_id="close", row=2
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", custom_id="close", row=2
         )
         close_btn.callback = self.close_view
         self.add_item(close_btn)
@@ -158,7 +158,8 @@ class InventoryListView(BaseView):
         self.message = await interaction.original_response()
 
     async def close_view(self, interaction: Interaction):
+        # Session-terminating Close — InventoryListView owns the "inventory" active state.
         await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()

@@ -34,6 +34,7 @@ class ProfileHubView(BaseView):
         self.update_buttons()
 
     async def on_timeout(self):
+        # Overrides BaseView default: no clear_active since this view never sets it.
         if self.message:
             try:
                 await self.message.delete()
@@ -66,6 +67,9 @@ class ProfileHubView(BaseView):
         self.add_item(close_btn)
 
     async def handle_close(self, interaction: Interaction):
+        # No clear_active: ProfileHubView is never set_active (read-only, can be
+        # opened alongside another active session) — clearing here would wipe
+        # whatever other feature the user has genuinely active.
         self.stop()
         try:
             await interaction.message.delete()

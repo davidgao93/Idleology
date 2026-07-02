@@ -55,6 +55,7 @@ class AlchemyHubView(BaseView):
         self.player_gold = player_gold
         self.spirit_stones = spirit_stones
         self.cosmic_dust = cosmic_dust
+        self._processing = False
         if alchemy_level >= AlchemyMechanics.MAX_LEVEL:
             # Remove Level Up button at max level
             self.remove_item(self.level_up)
@@ -109,6 +110,10 @@ class AlchemyHubView(BaseView):
 
     @ui.button(label="Synthesis", style=ButtonStyle.secondary, emoji="⚗️", row=0)
     async def synthesis(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         from core.alchemy.synthesis_views import _build_synthesis_hub
 
         await interaction.response.defer()
@@ -120,6 +125,10 @@ class AlchemyHubView(BaseView):
 
     @ui.button(label="Transmute", style=ButtonStyle.blurple, emoji="🔄", row=0)
     async def transmute(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         view = AlchemyTransmuteView(
             self.bot,

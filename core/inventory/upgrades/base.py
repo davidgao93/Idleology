@@ -127,7 +127,7 @@ class BaseUpgradeView(BaseView):
 
     async def go_back(self, interaction: Interaction):
         self._render_gen += 1  # invalidate any render still awaiting DB results
-        self.bot.state_manager.clear_active(self.user_id)
+        # Intra-inventory navigation — do NOT clear_active; the inventory session stays active.
         # 1. Import inside method to avoid circular import at top of file
         from core.inventory.inventory import InventoryUI
         from core.inventory.views import ItemDetailView

@@ -147,8 +147,12 @@ class CodexMenuView(BaseView):
             embed=tomes_view._build_embed(), view=tomes_view
         )
 
-    @ui.button(label="Close", style=ButtonStyle.secondary, row=0)
+    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=0)
     async def exit_btn(self, interaction: Interaction, button: ui.Button):
+        # No clear_active here: the /codex cog never calls set_active for the browsing
+        # menu (only begin_run does, and it clears on every exit path of CodexRunView).
+        # Clearing here could wipe an unrelated feature's active state if the user
+        # started something else while this menu sat open.
         self.stop()
         await interaction.response.defer()
         await interaction.delete_original_response()

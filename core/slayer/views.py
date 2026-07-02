@@ -216,6 +216,10 @@ class SlayerDashboardView(BaseView):
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
     async def close_view(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
@@ -375,6 +379,7 @@ class SlotManageView(BaseView):
         self.slot_data = slot_data
         self.parent = parent_view
         self.result_msg: str = ""
+        self._processing = False
         self.setup_ui()
 
     def build_embed(self) -> discord.Embed:
@@ -458,12 +463,17 @@ class SlotManageView(BaseView):
         self.add_item(btn_back)
 
     async def awaken_slot(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         # ATOMIC DEDUCTION CHECK
         if not await self.bot.database.slayer.consume_material(
             self.user_id, self.server_id, "violent_essence", 1
         ):
+            self._processing = False
             return await interaction.followup.send(
                 "Not enough Violent Essence!", ephemeral=True
             )
@@ -482,9 +492,14 @@ class SlotManageView(BaseView):
         new_desc = SlayerMechanics.get_passive_description(new_type, 1)
         self.result_msg = f"✅ Slot Awakened! Gained: **{new_desc}**"
         self.setup_ui()
+        self._processing = False
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def upgrade_slot(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         old_tier = self.slot_data["tier"]
@@ -494,6 +509,7 @@ class SlotManageView(BaseView):
         if not await self.bot.database.slayer.consume_material(
             self.user_id, self.server_id, "violent_essence", upgrade_cost
         ):
+            self._processing = False
             return await interaction.followup.send(
                 f"Not enough Violent Essence! You need {upgrade_cost}.", ephemeral=True
             )
@@ -521,15 +537,21 @@ class SlotManageView(BaseView):
 
         self.result_msg = msg
         self.setup_ui()
+        self._processing = False
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def reroll_slot(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
 
         # ATOMIC DEDUCTION CHECK
         if not await self.bot.database.slayer.consume_material(
             self.user_id, self.server_id, "imbued_heart", 1
         ):
+            self._processing = False
             return await interaction.followup.send(
                 "Not enough Imbued Hearts!", ephemeral=True
             )
@@ -554,6 +576,7 @@ class SlotManageView(BaseView):
         )
         self.result_msg = f"❤️ **Rerolled!** New Passive: **{new_desc}**"
         self.setup_ui()
+        self._processing = False
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def go_back(self, interaction: Interaction):

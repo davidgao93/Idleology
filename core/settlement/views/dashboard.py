@@ -1102,11 +1102,15 @@ class SettlementDashboardView(SettlementBaseView):
     # build_embed() with no args still works (all optional) — keep backward compat
 
     async def close_view(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
         try:
-            await interaction.message.delete()
+            await interaction.delete_original_response()
         except Exception:
             pass
 
