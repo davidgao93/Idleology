@@ -122,6 +122,7 @@ class NetherMarketHubView(BaseView):
         async def _callback(interaction: Interaction):
             if self._processing:
                 return await interaction.response.defer()
+            self._processing = True
             await interaction.response.send_modal(BuyModal(item_key, price, self))
 
         return _callback
@@ -130,6 +131,7 @@ class NetherMarketHubView(BaseView):
         async def _callback(interaction: Interaction):
             if self._processing:
                 return await interaction.response.defer()
+            self._processing = True
             await interaction.response.send_modal(SellModal(item_key, price, self))
 
         return _callback
@@ -205,6 +207,7 @@ class BuyModal(ui.Modal, title="Buy Curiosity"):
             if qty <= 0:
                 raise ValueError
         except ValueError:
+            self.parent_view._processing = False
             return await interaction.response.send_message(
                 "Enter a positive whole number.", ephemeral=True
             )
@@ -216,12 +219,14 @@ class BuyModal(ui.Modal, title="Buy Curiosity"):
         cap = M.get_holdings_cap(self.parent_view.profile["mastery_nodes"])
         held_count = await bot.database.nether_market.get_holdings_count(user_id, server_id)
         if held_count + qty > cap:
+            self.parent_view._processing = False
             return await interaction.response.send_message(
                 f"That would exceed your holdings cap ({held_count}/{cap}).", ephemeral=True
             )
 
         cost = self.price * qty
         if not await bot.database.users.deduct_gold_atomic(user_id, cost):
+            self.parent_view._processing = False
             return await interaction.response.send_message("You don't have enough gold.", ephemeral=True)
 
         await bot.database.nether_market.modify_holdings(user_id, server_id, self.item_key, qty)
@@ -248,6 +253,7 @@ class SellModal(ui.Modal, title="Sell Curiosity"):
             if qty <= 0:
                 raise ValueError
         except ValueError:
+            self.parent_view._processing = False
             return await interaction.response.send_message(
                 "Enter a positive whole number.", ephemeral=True
             )
@@ -256,8 +262,10 @@ class SellModal(ui.Modal, title="Sell Curiosity"):
         user_id = self.parent_view.user_id
         server_id = self.parent_view.server_id
 
-        held = self.parent_view.holdings.get(self.item_key, 0)
+        holdings = await bot.database.nether_market.get_holdings(user_id, server_id)
+        held = holdings.get(self.item_key, 0)
         if qty > held:
+            self.parent_view._processing = False
             return await interaction.response.send_message(
                 f"You only hold {held} of that.", ephemeral=True
             )

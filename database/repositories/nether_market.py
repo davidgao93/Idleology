@@ -183,17 +183,14 @@ class NetherMarketRepository(BaseRepository):
     # ------------------------------------------------------------------
 
     async def consume_charge(self, user_id: str, server_id: str) -> None:
-        profile = await self.get_or_create_profile(user_id, server_id)
-        new_charges = max(0, profile["plunder_charges"] - 1)
-        now_ts = (
-            time.time()
-            if profile["last_charge_time"] is None
-            else profile["last_charge_time"]
-        )
+        await self.get_or_create_profile(user_id, server_id)
+        now_ts = time.time()
         await self.connection.execute(
-            "UPDATE nether_market_profile SET plunder_charges = ?, last_charge_time = ? "
+            "UPDATE nether_market_profile SET "
+            "  plunder_charges = MAX(0, plunder_charges - 1), "
+            "  last_charge_time = COALESCE(last_charge_time, ?) "
             "WHERE user_id = ? AND server_id = ?",
-            (new_charges, now_ts, user_id, server_id),
+            (now_ts, user_id, server_id),
         )
         await self.connection.commit()
 
