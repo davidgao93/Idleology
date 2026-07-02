@@ -753,7 +753,7 @@ class CodexRunView(BaseView):
 
         embed = self._summary_embed(fragments, len(self.page_drops), exp_changes)
         self.stop()
-        self.bot.state_manager.clear_active(self.user_id)
+        self.bot.state_manager.clear_active(self.user_id)  # session-terminating exit from CodexRunView (set in begin_run)
 
         if message:
             lobby_view = CodexRunCompleteView(
@@ -951,7 +951,7 @@ class CodexRunView(BaseView):
             inline=True,
         )
         await self.bot.database.users.update_from_player_object(self.player)
-        self.bot.state_manager.clear_active(self.user_id)
+        self.bot.state_manager.clear_active(self.user_id)  # session-terminating Retreat (top-level for "codex" active)
         self.stop()
         lobby_view = CodexRunCompleteView(
             self.bot, self.user_id, self.player, server_id=self.server_id

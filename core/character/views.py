@@ -508,7 +508,7 @@ class UnregisterView(BaseView):
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
-    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="❌")
+    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="✖️")
     async def cancel(self, interaction: Interaction, button: ui.Button):
         embed = discord.Embed(
             title="Good choice",

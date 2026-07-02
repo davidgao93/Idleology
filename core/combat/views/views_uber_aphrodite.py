@@ -50,7 +50,7 @@ class UberAphroditeLobbyView(BaseView):
         btn_back.callback = self.go_back
         self.add_item(btn_back)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
         btn_close.callback = self.close_view
         self.add_item(btn_close)
 

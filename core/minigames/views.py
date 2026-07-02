@@ -172,7 +172,7 @@ class RouletteView(BaseView):
         restart_btn.callback = self.reset_table
         self.add_item(restart_btn)
 
-        quit_btn = Button(label="Close", style=ButtonStyle.secondary)
+        quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         quit_btn.callback = self.quit_game
         self.add_item(quit_btn)
 
@@ -404,7 +404,7 @@ class BlackjackView(BaseView):
         restart_btn.callback = self.restart_game
         self.add_item(restart_btn)
 
-        quit_btn = Button(label="Close", style=ButtonStyle.secondary)
+        quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         quit_btn.callback = self.quit_game
         self.add_item(quit_btn)
 
@@ -623,7 +623,7 @@ class CrashView(BaseView):
         restart_btn.callback = self.restart_game
         self.add_item(restart_btn)
 
-        quit_btn = Button(label="Close", style=ButtonStyle.secondary)
+        quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         quit_btn.callback = self.quit_game
         self.add_item(quit_btn)
 
@@ -801,7 +801,7 @@ class HorseRaceView(BaseView):
         restart_btn.callback = self.restart_game
         self.add_item(restart_btn)
 
-        quit_btn = Button(label="Close", style=ButtonStyle.secondary)
+        quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         quit_btn.callback = self.quit_game
         self.add_item(quit_btn)
 

@@ -151,9 +151,9 @@ class ItemDetailView(BaseView):
         discard_btn.callback = self.discard_item
         self.add_item(discard_btn)
 
-        back_btn = Button(label="Back", style=ButtonStyle.secondary)
+        back_btn = Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
         back_btn.callback = self.go_back
-        self.add_item(back_btn)
+        self.add_item(back_btn)  # intra-inventory navigation (detail -> list) — do not clear_active
 
     def add_upgrade_button(self, label, style, action_type):
         btn = Button(label=label, style=style)
@@ -334,6 +334,7 @@ class ItemDetailView(BaseView):
         await interaction.edit_original_response(embed=embed, view=self.parent)
 
     async def go_back(self, interaction: Interaction):
+        # Back navigation within inventory session (detail -> list). Do not clear_active.
         self.parent.update_buttons()
         embed = await self.parent.get_current_embed(interaction.user.display_name)
         await interaction.response.edit_message(embed=embed, view=self.parent)

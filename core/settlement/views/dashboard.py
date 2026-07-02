@@ -140,7 +140,7 @@ class _MaidTutorialView(BaseView):
         last = len(_SPRITZ_SCENES) - 1
 
         if self.index > 0:
-            prev = ui.Button(label="← Back", style=ButtonStyle.secondary, row=0)
+            prev = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=0)
             prev.callback = self._on_prev
             self.add_item(prev)
 
@@ -149,7 +149,7 @@ class _MaidTutorialView(BaseView):
             nxt.callback = self._on_next
             self.add_item(nxt)
         else:
-            close = ui.Button(label="Close", style=ButtonStyle.secondary, row=0)
+            close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=0)
             close.callback = self._on_close
             self.add_item(close)
 
@@ -878,6 +878,7 @@ class SettlementDashboardView(SettlementBaseView):
         close_btn = ui.Button(
             label="Close",
             style=ButtonStyle.secondary,
+            emoji="✖️",
             row=4,
         )
         close_btn.callback = self.close_view

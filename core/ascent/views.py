@@ -268,12 +268,13 @@ class AscentLobbyView(BaseView):
         embed = view.build_embed()
         await interaction.response.edit_message(embed=embed, view=view)
 
-    @ui.button(label="Close", style=ButtonStyle.secondary, row=0)
+    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=0)
     async def close_btn(self, interaction: Interaction, button: ui.Button):
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        # session-terminating Close for ascent lobby
         await interaction.response.defer()
+        self.bot.state_manager.clear_active(self.user_id)
         await interaction.delete_original_response()
+        self.stop()
 
 
 class AscentPinnacleListView(BaseView):

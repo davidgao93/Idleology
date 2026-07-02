@@ -40,6 +40,7 @@ class ProfileHubView(BaseView):
                 await self.message.delete()
             except Exception:
                 pass
+        self.stop()
 
     def update_buttons(self):
         self.clear_items()
@@ -70,9 +71,11 @@ class ProfileHubView(BaseView):
         # No clear_active: ProfileHubView is never set_active (read-only, can be
         # opened alongside another active session) — clearing here would wipe
         # whatever other feature the user has genuinely active.
+        # session-terminating Close (special: no guard)
+        await interaction.response.defer()
         self.stop()
         try:
-            await interaction.message.delete()
+            await interaction.delete_original_response()
         except Exception:
             pass
 

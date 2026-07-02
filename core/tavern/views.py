@@ -106,11 +106,11 @@ class ShopView(BaseView):
             )
         await self.process_potion_buy(interaction, qty)
 
-    @ui.button(label="Close", style=ButtonStyle.secondary)
+    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
     async def leave(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()
 
 

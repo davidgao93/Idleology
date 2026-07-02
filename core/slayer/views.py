@@ -119,7 +119,7 @@ class SlayerDashboardView(BaseView):
             btn_shop.callback = self.open_shop
             self.add_item(btn_shop)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
         btn_close.callback = self.close_view
         self.add_item(btn_close)
 
@@ -221,8 +221,8 @@ class SlayerDashboardView(BaseView):
             return
         self._processing = True
         await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()
 
 

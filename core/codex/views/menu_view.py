@@ -153,6 +153,7 @@ class CodexMenuView(BaseView):
         # menu (only begin_run does, and it clears on every exit path of CodexRunView).
         # Clearing here could wipe an unrelated feature's active state if the user
         # started something else while this menu sat open.
-        self.stop()
+        # session-terminating Close for menu (no active guard for browse state)
         await interaction.response.defer()
+        self.stop()
         await interaction.delete_original_response()

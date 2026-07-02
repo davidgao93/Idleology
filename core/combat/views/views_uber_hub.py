@@ -106,7 +106,7 @@ class UberHubView(BaseView):
         btn_evelynn.callback = self.open_evelynn
         self.add_item(btn_evelynn)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=2)
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2)
         btn_close.callback = self.close_view
         self.add_item(btn_close)
 

@@ -110,8 +110,8 @@ class CompanionListView(BaseView):
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()
 
     def update_buttons(self):
@@ -186,7 +186,7 @@ class CompanionListView(BaseView):
         mastery_btn.callback = self.open_mastery
         self.add_item(mastery_btn)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
         close_btn.callback = self.close_view
         self.add_item(close_btn)
 

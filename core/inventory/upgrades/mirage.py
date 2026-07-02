@@ -407,9 +407,9 @@ class MirageView(BaseUpgradeView):
             btn.callback = self._use_perfected
             self.add_item(btn)
 
-        back_btn = discord.ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
+        back_btn = discord.ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2)
         back_btn.callback = self._back_to_stage1
-        self.add_item(back_btn)
+        self.add_item(back_btn)  # intra-mirage stage navigation — do not clear
 
         await interaction.response.edit_message(embed=embed, view=self)
 

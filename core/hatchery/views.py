@@ -216,7 +216,7 @@ class HatcheryView(BaseView):
             btn_back.callback = self._back
             self.add_item(btn_back)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
         btn_close.callback = self._close
         self.add_item(btn_close)
 
@@ -308,7 +308,7 @@ class HatcheryView(BaseView):
         self.stop()
 
     async def _close(self, interaction: Interaction):
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
         await interaction.response.defer()
-        await interaction.message.delete()
+        self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
+        self.stop()

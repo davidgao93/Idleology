@@ -246,7 +246,7 @@ class TownHallView(SettlementBaseView):
         btn_up.callback = self.upgrade
         self.add_item(btn_up)
 
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1)
         btn_back.callback = self.go_back
         self.add_item(btn_back)
 

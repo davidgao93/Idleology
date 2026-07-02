@@ -204,12 +204,13 @@ class AlchemyHubView(BaseView):
         view.message = interaction.message
         self.stop()
 
-    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="❌", row=0)
+    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=0)
     async def close(self, interaction: Interaction, button: ui.Button):
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
+        # session-terminating Close for alchemy hub
         await interaction.response.defer()
+        self.bot.state_manager.clear_active(self.user_id)
         await interaction.delete_original_response()
+        self.stop()
 
 
 # ---------------------------------------------------------------------------

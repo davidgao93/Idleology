@@ -294,7 +294,7 @@ class PartDetailView(BaseView):
         await interaction.edit_original_response(embed=embed, view=self.parent)
         self.stop()
 
-    @ui.button(label="Back", style=ButtonStyle.secondary)
+    @ui.button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
     async def back(self, interaction: Interaction, button: ui.Button):
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
         await interaction.response.edit_message(embed=embed, view=self.parent)
@@ -443,7 +443,7 @@ class RecycleConfirmView(BaseView):
         await interaction.edit_original_response(embed=embed, view=self.consume_view)
         self.stop()
 
-    @ui.button(label="Back", style=ButtonStyle.secondary)
+    @ui.button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
     async def back(self, interaction: Interaction, button: ui.Button):
         recycle_view = RecycleView(self.consume_view)
         embed = _build_recycle_select_embed(len(self.consume_view.inventory))
@@ -600,9 +600,9 @@ class ConsumeView(BaseView):
     async def bulk_discard(self, interaction: Interaction, button: ui.Button):
         await interaction.response.send_modal(BulkDiscardModal(self))
 
-    @ui.button(label="Close", style=ButtonStyle.secondary, row=2)
+    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2)
     async def exit(self, interaction: Interaction, button: ui.Button):
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
         await interaction.response.defer()
-        await interaction.message.delete()
+        self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
+        self.stop()

@@ -383,9 +383,9 @@ class PartnerMainView(PartnerBaseView):
         view.message = self.message
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
-    @ui.button(label="Close", style=ButtonStyle.secondary, row=1)
+    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
     async def close_btn(self, interaction: Interaction, button: ui.Button):
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
         await interaction.response.defer()
+        self.bot.state_manager.clear_active(self.user_id)
         await interaction.delete_original_response()
+        self.stop()

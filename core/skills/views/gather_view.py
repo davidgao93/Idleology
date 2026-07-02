@@ -202,7 +202,7 @@ class GatherView(BaseView):
                 )
                 self.add_item(max_btn)
 
-        close_btn = Button(label="Close", style=ButtonStyle.secondary, row=3)
+        close_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3)
         close_btn.callback = self.close_callback
         self.add_item(close_btn)
 
@@ -553,8 +553,8 @@ class GatherView(BaseView):
             return
         self._processing = True
         await interaction.response.defer()
-        await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()
 
     async def mastery_callback(self, interaction: Interaction):

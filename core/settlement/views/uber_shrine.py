@@ -200,7 +200,7 @@ class EmptySlotView(SettlementBaseView):
             sel.callback = self._on_type_select
             self.add_item(sel)
 
-        back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1)
         back.callback = self._on_back
         self.add_item(back)
 
@@ -441,7 +441,7 @@ class StatueSlotView(SettlementBaseView):
                 )
             )
 
-        back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1)
         back.callback = self._on_back
         self.add_item(back)
 
@@ -751,7 +751,7 @@ class UberShrineView(SettlementBaseView):
             sel.callback = self._on_slot_select
             self.add_item(sel)
 
-        back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1)
         back.callback = self._on_back
         self.add_item(back)
 

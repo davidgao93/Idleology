@@ -89,16 +89,17 @@ class DelveEntryView(BaseView):
         )
         await interaction.edit_original_response(embed=shop_embed, view=shop_view)
 
-    @ui.button(label="Cancel", style=ButtonStyle.secondary)
+    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="✖️")
     async def cancel(self, interaction: Interaction, button: ui.Button):
+        # Cancel on Entry: when no parent this terminates the "delve" session (clear).
+        # When parent_gather_view present, delegate without clearing here (gather flow manages state).
         if self.parent_gather_view:
             self.stop()
             await self.parent_gather_view.refresh_and_resume(interaction)
         else:
-            await interaction.response.edit_message(
-                content="Expedition cancelled.", embed=None, view=None
-            )
+            await interaction.response.defer()
             self.bot.state_manager.clear_active(self.user_id)
+            await interaction.delete_original_response()
             self.stop()
 
 
@@ -482,11 +483,11 @@ class DelveView(BaseView):
         self.add_item(restart_btn)
 
         if self.parent_gather_view:
-            gather_btn = ui.Button(label="Back", style=ButtonStyle.secondary)
+            gather_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
             gather_btn.callback = self.leave_callback
             self.add_item(gather_btn)
         else:
-            leave_btn = ui.Button(label="Close", style=ButtonStyle.secondary)
+            leave_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
             leave_btn.callback = self.leave_callback
             self.add_item(leave_btn)
 
@@ -542,6 +543,7 @@ class DelveView(BaseView):
         self.stop()
 
     async def leave_callback(self, interaction: Interaction):
+        # session-terminating for delve (or handoff to gather); explicit clear here
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
         if self.parent_gather_view:
@@ -561,8 +563,14 @@ class DelveUpgradeView(BaseView):
         self.update_buttons()
         # Fix 10: add the nav button dynamically so the label is set at construction
         # time rather than via a fragile children[-1] index mutation.
-        label = "Back" if back_callback else "Close"
-        nav = discord.ui.Button(label=label, style=ButtonStyle.secondary, row=1)
+        # "Back" for intra-delve (entry<->shop), "Close" only for direct /delve_shop (no active guard).
+        if back_callback:
+            label = "Back"
+            emoji = "⬅️"
+        else:
+            label = "Close"
+            emoji = "✖️"
+        nav = discord.ui.Button(label=label, style=ButtonStyle.secondary, emoji=emoji, row=1)
         nav.callback = self._on_nav
         self.add_item(nav)
 
@@ -623,6 +631,7 @@ class DelveUpgradeView(BaseView):
         await self._upgrade(interaction, "sensor_lvl", "sensor_level")
 
     async def _on_nav(self, interaction: Interaction):
+        # nav back/close in delve upgrades: Back is intra (no clear), Close for shop-only (no set_active so no clear)
         self.stop()
         if self.back_callback:
             await self.back_callback(interaction)

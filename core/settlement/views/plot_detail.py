@@ -697,7 +697,7 @@ class PlotDetailView(SettlementBaseView):
         if p.is_developed:
             self._add_diviners_rod_button()
 
-        back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1)
         back.callback = self._go_back
         self.add_item(back)
 

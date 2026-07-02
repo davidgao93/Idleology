@@ -739,12 +739,12 @@ class HematurgyView(BaseView):
         )
 
     # Row 2 — hard exit
-    @ui.button(label="Close", style=ButtonStyle.secondary, row=2)
+    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2)
     async def exit_btn(self, interaction: Interaction, button: ui.Button):
-        self.bot.state_manager.clear_active(self.user_id)
-        self.stop()
         await interaction.response.defer()
-        await interaction.message.delete()
+        self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
+        self.stop()
 
 
 class TransmuteSourceView(BaseView):

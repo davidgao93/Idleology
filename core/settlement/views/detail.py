@@ -277,7 +277,7 @@ class BuildingDetailView(SettlementBaseView):
             self.add_item(btn_demo)
 
         # Back
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary)
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
         btn_back.callback = self.go_back
         self.add_item(btn_back)
 
@@ -756,7 +756,7 @@ class UberShrineView(SettlementBaseView):
                 btn_max.callback = _on_max
                 self.add_item(btn_max)
 
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2)
 
         async def _on_back(interaction: Interaction):
             if hasattr(self.parent_detail, "_processing"):

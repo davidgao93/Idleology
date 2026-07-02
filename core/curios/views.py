@@ -112,7 +112,7 @@ class CurioView(BaseView):
         btn_box.callback = self._open_puzzle_box
         self.add_item(btn_box)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, row=1)
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
         btn_close.callback = self._close
         self.add_item(btn_close)
 
@@ -235,6 +235,8 @@ class CurioView(BaseView):
         view.message = await interaction.original_response()
 
     async def _close(self, interaction: Interaction):
+        # session-terminating Close for curios
+        await interaction.response.defer()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()
-        await interaction.response.edit_message(view=None)
