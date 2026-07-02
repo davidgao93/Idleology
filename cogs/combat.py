@@ -14,6 +14,7 @@ from core.base_view import BaseView
 from core.combat import jewel_engine as _je
 from core.combat import ui
 from core.combat.dojo.views_dojo import DummyConfigView
+from core.combat.economy.config import CORRUPTED_MIN_LEVEL, get_corrupted_base_chance
 from core.combat.mobgen.encounters import EncounterManager
 from core.combat.mobgen.gen_mob import (
     generate_boss,
@@ -317,7 +318,7 @@ class Combat(commands.Cog, name="combat"):
 
         _DIFFICULTY_CORRUPTED_BONUS = [0.0, 0.02, 0.05, 0.08, 0.10]
 
-        # 3a. Corrupted encounter roll — resolves first (level 100+)
+        # 3a. Corrupted encounter roll — resolves first (level 70+)
         # Gate-view state-clear contract: CorruptedEncounterGateView and
         # DoorPromptView do NOT clear active state on their own.  They are
         # fire-and-wait gates inside _execute_combat, which always continues
@@ -325,9 +326,12 @@ class Combat(commands.Cog, name="combat"):
         # falls through to a regular fight).  The CombatView owns the
         # clear_active call on combat end; BaseView.on_timeout handles the gate
         # timeout case by clearing state early (10-min fallback).
-        if player.level >= 100:
+        corrupted_enabled = await self.bot.database.users.get_corrupted_encounters_enabled(
+            user_id
+        )
+        if player.level >= CORRUPTED_MIN_LEVEL and corrupted_enabled:
             corrupted_chance = (
-                0.01
+                get_corrupted_base_chance(player.level)
                 + player.get_emblem_bonus("corrupted_find") * 0.002
                 + _DIFFICULTY_CORRUPTED_BONUS[hard_mode]
             )

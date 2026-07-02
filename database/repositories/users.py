@@ -625,6 +625,40 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def get_corrupted_encounters_enabled(self, user_id: str) -> bool:
+        """Fetches the corrupted encounter preference for a user. Defaults to True."""
+        cursor = await self.connection.execute(
+            "SELECT corrupted_encounters_enabled FROM users WHERE user_id = ?",
+            (user_id,),
+        )
+        row = await cursor.fetchone()
+        return bool(row["corrupted_encounters_enabled"]) if row else True
+
+    async def toggle_corrupted_encounters(self, user_id: str, status: bool) -> None:
+        """Updates the corrupted encounter preference."""
+        val = 1 if status else 0
+        await self.connection.execute(
+            "UPDATE users SET corrupted_encounters_enabled = ? WHERE user_id = ?",
+            (val, user_id),
+        )
+        await self.connection.commit()
+
+    async def get_auto_potion_reload(self, user_id: str) -> bool:
+        """Fetches the auto-reload-potions preference for a user. Defaults to False."""
+        cursor = await self.connection.execute(
+            "SELECT auto_potion_reload FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return bool(row["auto_potion_reload"]) if row else False
+
+    async def toggle_auto_potion_reload(self, user_id: str, status: bool) -> None:
+        """Updates the auto-reload-potions preference."""
+        val = 1 if status else 0
+        await self.connection.execute(
+            "UPDATE users SET auto_potion_reload = ? WHERE user_id = ?", (val, user_id)
+        )
+        await self.connection.commit()
+
     async def toggle_hard_mode(self, user_id: str, status: bool) -> None:
         """Legacy shim — sets difficulty to 1 (Hard) or 0 (Off)."""
         await self.set_difficulty(user_id, 1 if status else 0)

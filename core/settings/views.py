@@ -45,6 +45,8 @@ class SettingsView(BaseView):
         auto_rest_pay: bool = False,
         difficulty: int = 0,
         player_level: int = 1,
+        corrupted_status: bool = True,
+        auto_potion_reload: bool = False,
     ):
         super().__init__(bot, user_id)
         self.doors_status = doors_status
@@ -52,6 +54,8 @@ class SettingsView(BaseView):
         self.auto_rest_pay = auto_rest_pay
         self.difficulty = max(0, min(4, difficulty))
         self.player_level = player_level
+        self.corrupted_status = corrupted_status
+        self.auto_potion_reload = auto_potion_reload
         self._processing = False
         self.rebuild_buttons()
 
@@ -63,6 +67,20 @@ class SettingsView(BaseView):
         doors_btn = ui.Button(label=doors_lbl, style=doors_style, emoji="🚪", row=0)
         doors_btn.callback = self.toggle_doors
         self.add_item(doors_btn)
+
+        corrupted_lbl = (
+            "Disable Corrupted Encounters"
+            if self.corrupted_status
+            else "Enable Corrupted Encounters"
+        )
+        corrupted_style = (
+            ButtonStyle.danger if self.corrupted_status else ButtonStyle.success
+        )
+        corrupted_btn = ui.Button(
+            label=corrupted_lbl, style=corrupted_style, emoji="☠️", row=0
+        )
+        corrupted_btn.callback = self.toggle_corrupted_encounters
+        self.add_item(corrupted_btn)
 
         exp_lbl = (
             "Disable EXP Protection" if self.exp_protection else "Enable EXP Protection"
@@ -76,9 +94,23 @@ class SettingsView(BaseView):
             "Disable Auto-Pay Rest" if self.auto_rest_pay else "Enable Auto-Pay Rest"
         )
         rest_style = ButtonStyle.danger if self.auto_rest_pay else ButtonStyle.success
-        rest_btn = ui.Button(label=rest_lbl, style=rest_style, emoji="💰", row=2)
+        rest_btn = ui.Button(label=rest_lbl, style=rest_style, emoji="💰", row=1)
         rest_btn.callback = self.toggle_auto_rest_pay
         self.add_item(rest_btn)
+
+        reload_lbl = (
+            "Disable Auto-Reload Potions"
+            if self.auto_potion_reload
+            else "Enable Auto-Reload Potions"
+        )
+        reload_style = (
+            ButtonStyle.danger if self.auto_potion_reload else ButtonStyle.success
+        )
+        reload_btn = ui.Button(
+            label=reload_lbl, style=reload_style, emoji="🧪", row=1
+        )
+        reload_btn.callback = self.toggle_auto_potion_reload
+        self.add_item(reload_btn)
 
         if self.player_level >= 100:
             select = ui.Select(
@@ -151,16 +183,24 @@ class SettingsView(BaseView):
             "When enabled, your keys and fragments will resonate, giving you a chance to "
             "encounter Boss Doors during regular `/combat`. Disable to bypass all boss "
             "encounters and fight only standard monsters (useful for Slayer tasks or general grinding).\n\n"
+            "**☠️ Corrupted Encounters** — {corrupted}\n"
+            "When enabled, Corrupted monsters can appear during regular `/combat` from level 70+. "
+            "Disable to skip all Corrupted encounters.\n\n"
             "**🛡️ EXP Protection** — {exp}\n"
             "When enabled, you will no longer gain any experience. "
             "Useful for staying at your current level.\n\n"
             "**💰 Auto-Pay for Rest** — {rest}\n"
             "When enabled, using `/rest` while on cooldown will automatically pay the gold cost "
-            "to instantly rest (if you have enough gold), skipping the confirmation prompt."
+            "to instantly rest (if you have enough gold), skipping the confirmation prompt.\n\n"
+            "**🧪 Auto-Reload Potions** — {reload}\n"
+            "When enabled, winning a normal `/combat` fight will automatically buy enough potions "
+            "to top off your stock (if you have enough gold)."
         ).format(
             doors=doors_str,
+            corrupted=("🟢 ENABLED" if self.corrupted_status else "🔴 DISABLED"),
             exp=exp_str,
             rest=("🟢 ENABLED" if self.auto_rest_pay else "🔴 DISABLED"),
+            reload=("🟢 ENABLED" if self.auto_potion_reload else "🔴 DISABLED"),
         )
 
         if self.player_level >= 100:
@@ -208,6 +248,32 @@ class SettingsView(BaseView):
         self.auto_rest_pay = not self.auto_rest_pay
         await self.bot.database.users.toggle_auto_rest_pay(
             self.user_id, self.auto_rest_pay
+        )
+        self.rebuild_buttons()
+        self._processing = False
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def toggle_corrupted_encounters(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        self.corrupted_status = not self.corrupted_status
+        await self.bot.database.users.toggle_corrupted_encounters(
+            self.user_id, self.corrupted_status
+        )
+        self.rebuild_buttons()
+        self._processing = False
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def toggle_auto_potion_reload(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        self.auto_potion_reload = not self.auto_potion_reload
+        await self.bot.database.users.toggle_auto_potion_reload(
+            self.user_id, self.auto_potion_reload
         )
         self.rebuild_buttons()
         self._processing = False

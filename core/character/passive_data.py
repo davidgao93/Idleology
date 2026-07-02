@@ -237,7 +237,7 @@ _SLAYER_EMBLEM_FUNCS: dict = {
     "task_progress": lambda t: f"{t * 5}% chance for a kill to count twice",
     "slayer_drops": lambda t: f"{t * 5}% chance for extra slayer drops",
     "corrupted_find": lambda t: (
-        f"+{t * 0.2:.1f}% corrupted encounter chance (Level 100+)"
+        f"+{t * 0.2:.1f}% corrupted encounter chance (Level 70+)"
     ),
 }
 

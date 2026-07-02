@@ -26,6 +26,12 @@ class Settings(commands.Cog, name="player_settings"):
         auto_rest_pay = await self.bot.database.users.get_auto_rest_pay(user_id)
         difficulty = await self.bot.database.users.get_hard_mode(user_id)
         player_level = existing_user["level"]
+        corrupted_status = (
+            await self.bot.database.users.get_corrupted_encounters_enabled(user_id)
+        )
+        auto_potion_reload = await self.bot.database.users.get_auto_potion_reload(
+            user_id
+        )
 
         view = SettingsView(
             self.bot,
@@ -35,6 +41,8 @@ class Settings(commands.Cog, name="player_settings"):
             auto_rest_pay,
             difficulty,
             player_level,
+            corrupted_status,
+            auto_potion_reload,
         )
         await interaction.response.send_message(
             embed=view.build_embed(), view=view, ephemeral=False

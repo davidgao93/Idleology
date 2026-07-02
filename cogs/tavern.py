@@ -134,6 +134,11 @@ class Tavern(commands.Cog, name="tavern"):
                 inline=False,
             )
             embed.add_field(name="Elara", value="What'll it be?", inline=False)
+            if not await self.bot.database.users.get_auto_potion_reload(user_id):
+                embed.set_footer(
+                    text="💡 Tip: enable Auto-Reload Potions in /player_settings "
+                    "to top off automatically after combat."
+                )
             view = ShopView(self.bot, user_id, user_data)
             return embed, view
 
@@ -241,6 +246,9 @@ class Tavern(commands.Cog, name="tavern"):
                     embed.add_field(
                         name="Gilda",
                         value=f"I have an extra room available for **{cost} gold**. Clean sheets and no questions asked.",
+                    )
+                    embed.set_footer(
+                        text="💡 Tip: enable Auto-Pay Rest in /player_settings to skip this prompt."
                     )
                     view = RestView(self.bot, user_id, cost, max_hp)
                     await interaction.response.send_message(embed=embed, view=view)

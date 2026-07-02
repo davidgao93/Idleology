@@ -37,6 +37,7 @@ from core.images import (
 )
 from core.items.factory import load_player
 from core.models import Monster, Player
+from core.tavern.mechanics import TavernMechanics
 
 # ---------------------------------------------------------------------------
 # Boss-specific victory embed configuration
@@ -855,6 +856,24 @@ class CombatView(BaseView):
                 reward_data["msgs"].extend(bonus_exp_changes["msgs"])
             if bonus_gold > 0:
                 await self.bot.database.users.modify_gold(self.user_id, bonus_gold)
+
+        # Auto-Reload Potions setting: top off to the 20-potion cap if fully affordable.
+        if await self.bot.database.users.get_auto_potion_reload(self.user_id):
+            topup_qty = max(0, 20 - self.player.potions)
+            if topup_qty > 0:
+                topup_cost = (
+                    TavernMechanics.calculate_potion_cost(self.player.level) * topup_qty
+                )
+                if await self.bot.database.users.deduct_gold_atomic(
+                    self.user_id, topup_cost
+                ):
+                    await self.bot.database.users.modify_stat(
+                        self.user_id, "potions", topup_qty
+                    )
+                    self.player.potions += topup_qty
+                    reward_data["msgs"].append(
+                        f"🧪 **Auto-Reload:** bought {topup_qty} potions for {topup_cost:,} gold"
+                    )
 
         embed = combat_ui.create_victory_embed(
             self.player,

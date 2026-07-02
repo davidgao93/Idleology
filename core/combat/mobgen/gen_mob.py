@@ -694,7 +694,7 @@ def _assign_incubated_modifiers(monster, player_level: int) -> None:
 def generate_corrupted_encounter(player, monster) -> "Monster":
     """Generate a Corrupted monster encounter.
 
-    Corrupted monsters are post-level-100 elite variants carrying every common
+    Corrupted monsters are post-level-70 elite variants carrying every common
     and rare modifier at max tier. Stats are fixed at player ceiling (no random
     difficulty roll) and HP/attack are heavily amplified.
 

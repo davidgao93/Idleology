@@ -20,9 +20,9 @@ class Paradise(commands.Cog, name="paradise"):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
-        if existing_user["level"] < 100:
+        if existing_user["level"] < 70:
             return await interaction.response.send_message(
-                "The Jewel of Paradise awakens at level 100.", ephemeral=True
+                "The Jewel of Paradise awakens at level 70.", ephemeral=True
             )
         if not await self.bot.check_is_active(interaction, user_id):
             return

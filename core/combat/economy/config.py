@@ -125,6 +125,24 @@ CORRUPTED_ESSENCE_CHANCE: float = 0.03
 CORRUPTED_PARADISE_JEWEL_CHANCE: float = 0.25
 CORRUPTED_MIRAGE_RUNE_CHANCE: float = 0.0001
 
+# Corrupted-monster encounter gate — unlocked at level 70. Base roll chance
+# scales by level bracket, capping out at level 100+.
+CORRUPTED_MIN_LEVEL: int = 70
+CORRUPTED_BASE_CHANCE_BY_LEVEL: list[tuple[int, float]] = [
+    (100, 0.03),
+    (90, 0.015),
+    (80, 0.01),
+    (70, 0.005),
+]
+
+
+def get_corrupted_base_chance(level: int) -> float:
+    """Base corrupted-encounter roll chance for a player's level (0 below CORRUPTED_MIN_LEVEL)."""
+    for threshold, chance in CORRUPTED_BASE_CHANCE_BY_LEVEL:
+        if level >= threshold:
+            return chance
+    return 0.0
+
 # ---------------------------------------------------------------------------
 # Boss / corruption sigil drops
 # ---------------------------------------------------------------------------

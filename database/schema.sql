@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `exp_protection`              INTEGER NOT NULL DEFAULT 0,
   `hard_mode`                   INTEGER NOT NULL DEFAULT 0,
   `auto_rest_pay`               INTEGER NOT NULL DEFAULT 0,
+  `corrupted_encounters_enabled` INTEGER NOT NULL DEFAULT 1,
+  `auto_potion_reload`          INTEGER NOT NULL DEFAULT 0,
 
   -- Prestige Cosmetics
   `prestige_border`             TEXT NOT NULL DEFAULT 'none',

@@ -214,6 +214,9 @@ class DiscordBot(commands.Bot):
                 "ALTER TABLE nether_market_rotation ADD COLUMN expensive_hi_price INTEGER",
                 # Nether Market: one-shot notice shown next time a plundered victim opens /nether.
                 "ALTER TABLE nether_market_profile ADD COLUMN pending_plunder_notice TEXT DEFAULT NULL",
+                # Corrupted Monsters / Paradise moved to level 70: new player settings.
+                "ALTER TABLE users ADD COLUMN corrupted_encounters_enabled INTEGER NOT NULL DEFAULT 1",
+                "ALTER TABLE users ADD COLUMN auto_potion_reload INTEGER NOT NULL DEFAULT 0",
             ]:
                 try:
                     await db.execute(stmt)

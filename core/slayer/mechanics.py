@@ -38,7 +38,7 @@ SLAYER_PASSIVE_DEFS: dict[str, Callable[[int], str]] = {
     "xp_find": lambda t: f"+{t * 3}% XP from combat",
     "task_progress": lambda t: f"{t * 5}% chance for a task kill to count twice",
     "slayer_drops": lambda t: f"{t * 5}% chance for extra slayer material drops",
-    "corrupted_find": lambda t: f"+{t * 0.2:.1f}% corrupted spawn chance",
+    "corrupted_find": lambda t: f"+{t * 0.2:.1f}% corrupted spawn chance (Level 70+)",
 }
 
 
