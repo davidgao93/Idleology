@@ -106,7 +106,11 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         )
         lines.append(f"🌑 Eclipse  ×{player.alchemy_eclipse_strikes} crit{bonus_str}")
     if player.alchemy_shield_hp > 0:
-        dur_str = f"  · {player.alchemy_shield_turns}t" if player.alchemy_shield_turns > 0 else ""
+        dur_str = (
+            f"  · {player.alchemy_shield_turns}t"
+            if player.alchemy_shield_turns > 0
+            else ""
+        )
         lines.append(f"🛡️ Aegis  {player.alchemy_shield_hp:,} shield{dur_str}")
     if player.alchemy_enfeeble_turns > 0:
         lines.append(
@@ -159,44 +163,44 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         cs = player.cs
 
         if "iron_momentum" in hp and cs.hema_momentum_stacks > 0:
-            lines.append(f"⚡ Iron Momentum  {cs.hema_momentum_stacks}/5")
+            lines.append(f"⚡ Momentum {cs.hema_momentum_stacks}/5")
 
         if "serrated" in hp and cs.hema_serrated_total > 0:
-            lines.append(f"🔪 Serrated  −{cs.hema_serrated_total} ATK")
+            lines.append(f"🔪 Serrated  −{cs.hema_serrated_total} Monster ATK")
 
         if "haemorrhage" in hp and cs.hema_bleed_total > 0:
             lines.append(f"🩸 Bleed Pool  {cs.hema_bleed_total:,}")
 
         if "chain_reaction" in hp and cs.hema_chain_stacks > 0:
-            lines.append(f"⛓️ Chain Reaction  {cs.hema_chain_stacks}/5")
+            lines.append(f"⛓️ Chained {cs.hema_chain_stacks}/5")
 
         if "phantom_reflex" in hp and cs.hema_phantom_stacks > 0:
-            lines.append(f"🌀 Phantom Reflex  {cs.hema_phantom_stacks}/2")
+            lines.append(f"🌀 Phantom {cs.hema_phantom_stacks}/2")
 
         if "executioners_rite" in hp and monster is not None:
             if monster.max_hp > 0 and monster.hp / monster.max_hp < 0.30:
-                lines.append("⚔️ Executioner's Rite  ACTIVE")
+                lines.append("⚔️ Executioner")
 
         if "fevered_strike" in hp and cs.hema_fevered_count > 0:
-            lines.append(f"🔥 Fevered Strike  ×{cs.hema_fevered_count} potions")
+            lines.append(f"🔥 Fevered ×{cs.hema_fevered_count}")
 
         if "predators_mark" in hp and cs.hema_predators_mark:
-            lines.append("🎯 Predator's Mark  MARKED")
+            lines.append("🎯 Marked")
 
         if "flash_frost" in hp and cs.hema_frost_misses > 0:
             from core.hematurgy.mechanics import tier_val as _hema_tv
 
             threshold = int(_hema_tv("flash_frost", hp["flash_frost"]))
-            lines.append(f"❄️ Flash Frost  {cs.hema_frost_misses}/{threshold}")
+            lines.append(f"❄️ Frost {cs.hema_frost_misses}/{threshold}")
 
         if "spectral_waltz" in hp and cs.hema_blade_count > 0:
-            lines.append(f"👻 Spectral Blades  ×{cs.hema_blade_count}")
+            lines.append(f"👻 Blades ×{cs.hema_blade_count}")
 
         if "defiance" in hp and cs.hema_defiance_triggered:
-            lines.append("💪 Defiance  ACTIVE")
+            lines.append("💪 Defiance")
 
         if "puncture" in hp and cs.hema_puncture_bleed > 0:
-            lines.append(f"💉 Puncture Pool  {cs.hema_puncture_bleed:,}")
+            lines.append(f"🩸 Punctured {cs.hema_puncture_bleed:,}")
 
     return "\n".join(lines)
 
@@ -315,18 +319,16 @@ def create_combat_embed(
     if p_pdr > 0:
         _mit_parts.append(f"PDR {p_pdr}%")
     if p_fdr > 0:
-        _mit_parts.append(f"FDR {p_fdr}%")
-    if p_ward_pct > 0:
-        _mit_parts.append(f"Ward {p_ward_pct}%")
-    _mit_line = ("\n" + " • ".join(_mit_parts)) if _mit_parts else ""
+        _mit_parts.append(f"FDR {p_fdr}")
+    _mit_line = ("\n" + " | ".join(_mit_parts)) if _mit_parts else ""
 
     embed.add_field(
         name=f"🧠 {player.name}",
         value=(
             f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
             f"⚔️ {p_atk:,} | 🛡️ {p_def:,}\n"
-            f"🎯 ~{p_hit}% • 💥 {p_crit}%"
-            f"{_mit_line}"
+            f"🎯 ~{p_hit}% | 🗡️ {p_crit}%"
+            f"🛡️ {_mit_line}"
         ),
         inline=True,
     )

@@ -1044,13 +1044,3 @@ CREATE TABLE IF NOT EXISTS tutorial_seen (
   seen_at     TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, feature_key)
 );
-
-
--- ============================================================
--- MIGRATIONS (for existing databases — run via ALTER TABLE)
--- ============================================================
--- ALTER TABLE gathering_mastery ADD COLUMN attunement_alloc TEXT DEFAULT '{}';
--- ALTER TABLE gathering_mastery ADD COLUMN mastery_insight INTEGER DEFAULT 0;
--- ALTER TABLE gathering_mastery ADD COLUMN blessed_bismuth INTEGER DEFAULT 0;
--- ALTER TABLE gathering_mastery ADD COLUMN sparkling_sprig INTEGER DEFAULT 0;
--- ALTER TABLE gathering_mastery ADD COLUMN capricious_carp INTEGER DEFAULT 0;

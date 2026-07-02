@@ -132,9 +132,8 @@ TUTORIALS: dict[str, dict] = {
             "Run out mid-combat and you'll regret it."
         ),
         "tips": [
-            "**Top Up** buys only as many as you need to reach 20 — efficient and cheap.",
+            "You can hold up to 20 potions - **Top Up** buys only as many as you need.",
             "Alchemy passives can make potions stronger or add bonus effects — check `/alchemy`.",
-            "Gold comes from combat. `/journey` gives bonus gold at level milestones.",
         ],
         "image": POTION_SHOP,
         "color": discord.Color.gold(),
@@ -167,19 +166,19 @@ TUTORIALS: dict[str, dict] = {
         "author_icon": AMARA_AUTHOR,
         "description": (
             "*Every great force needs a home. This is yours.*\n\n"
-            "Your Settlement is what makes this ideology real — it's not just buildings, it's leverage. "
+            "Your Settlement is what makes this ideology real — it's a central base for that ideology's followers. "
             "**Logging Camps** and **Quarries** generate materials automatically. "
             "The **Nursery** produce followers. Assign staff, take Development Turns, "
             "and watch it compound.\n\n"
             "**Zeal** is the fuel you earn from fighting and quests. Spend it to take a **Development Turn**, "
             "which advances construction, upgrades, and events. "
-            "As your **Town Hall** tiers up, new buildings unlock — eventually you're working with an "
-            "Uber Shrine, a Black Market passive tree, and Meta Buildings that amplify everything around them. "
-            "Ask Spritz if you're not sure what to do."
+            "As your **Town Hall** tiers up, new building slots unlock — eventually you're working with "
+            "a Black Market, War Camps, and Watchtowers that amplify everything around them. "
+            "Oh, and ask Spritz if you're not sure what to do, she's over there."
         ),
         "tips": [
-            "Earn Zeal through combat and quests. More turns means faster progress across everything.",
-            "Workers are the multiplier — more workers in a building means more output. Staff them.",
+            "Earn Zeal through combat and quests.",
+            "Workers are the multiplier — more workers in a building means more output.",
             "Maybe just read the Wiki page for this one...",
         ],
         "image": SETTLEMENT_HUB,
@@ -197,13 +196,13 @@ TUTORIALS: dict[str, dict] = {
             "The materials from higher-tier nodes are categorically different from what you pull with iron. "
             "Quantity matters, but quality matters more.\n\n"
             "**Artisan Mastery** unlocks passive bonuses that compound over time — yield increases, "
-            "rare material chances, synergy between skills. The longer you invest in a skill, "
+            "rare material chances, synergy between skills. The more you invest in a skill, "
             "the more it pays back."
         ),
         "tips": [
             "Tool tier is the most important upgrade. Don't neglect it.",
             "Artisan Mastery rewards long-term investment — start early, collect the returns later.",
-            "The three skills cross-pollinate. Progress in one unlocks bonuses in others.",
+            "The three skills cross-pollinate. Progress in one might unlock bonuses in others.",
         ],
         "image": MASTERY_MINING,
         "color": discord.Color.dark_orange(),
@@ -219,7 +218,7 @@ TUTORIALS: dict[str, dict] = {
             "Every layer is a hazard — **Gas Pockets**, **Magma Flows**, **Gravel** — and each drains "
             "your **Stability**. Hit zero and the run collapses; you come out with nothing.\n\n"
             "**Ore Veins** are what you're after. They yield rare Obsidian Shards you won't find anywhere else. "
-            "You'll pick up ore along the way.\n\n"
+            "You'll pick up regular ore along the way as well.\n\n"
             "Three upgrades matter: **Fuel** (how deep you go), **Structure** (damage you absorb), "
             "and **Sensor** (preview the next layer before committing). Invest in all three."
         ),
@@ -241,7 +240,7 @@ TUTORIALS: dict[str, dict] = {
             "Set one as your active partner and they contribute **combat skills** in every fight — "
             "attack boosts, crit bonuses, survivability buffs. The skills they bring depend entirely "
             "on who you recruit, so read before you commit.\n\n"
-            "When combat isn't the priority, put them on **Dispatch** — timed missions that run in the "
+            "When combat isn't the priority, put one on **Dispatch** — timed missions that run in the "
             "background and return gold, materials, and keys while you're busy elsewhere. "
             "Dispatch accumulates for up to 48 hours. Check back when it makes sense.\n\n"
             "Rarer partners carry stronger signature skills. The grind for them is real, "
@@ -267,17 +266,15 @@ TUTORIALS: dict[str, dict] = {
             "Efficient. Reliable. Occasionally expensive, but that is the cost of ambition.\n"
             "**Synthesis** — convert keys, essences, and other materials into Cosmic Dust, "
             "or use Dust to produce something more immediately useful. "
-            "The process is straightforward. The results are not always.\n"
+            "The process is straightforward.\n"
             "**The Potion Lab** — my masterwork. Use *Distill Elixir* to run a "
-            "distillation ritual that imprints a powerful passive onto your potions. "
-            "Choose your reagents carefully. The Crimson ones in particular have… opinions.\n\n"
-            "Level up to unlock additional passive slots. "
-            "You may one day have as many as five active distilled passives. "
-            "Try not to waste them."
+            "distillation experiment that imprints a powerful passive onto your potions.\n\n"
+            "Level up to unlock additional potion passive slots. "
+            "You may one day have as many as five active."
         ),
         "tips": [
             "Cosmic Dust is earned through various activities — it's your primary distillation resource, so don't waste it.",
-            "Each reagent color has a different risk profile. Verdant is safe. Crimson is not.",
+            "Each reagent color has a different risk profile.",
             "Higher alchemy level unlocks more passive slots and better transmutation rates.",
         ],
         "image": ELYNDRA_THUMBNAIL,
@@ -337,10 +334,6 @@ TUTORIALS: dict[str, dict] = {
             "The Voidforge channels the essence trapped inside a **sacrifice weapon** — "
             "a weapon you no longer need — and attempts to imprint its passive onto your target weapon. "
             "The sacrifice weapon is consumed regardless of outcome. That's the cost of the void.\n\n"
-            "**What is a Passive?**\n"
-            "Every weapon can carry a primary passive ability — a bonus that activates in combat. "
-            "Think of it as the weapon's soul. Forging and refining can improve a weapon, "
-            "but they cannot change its passive. Only the Voidforge can.\n\n"
             "**What is a Pinnacle Passive?**\n"
             "A second passive slot to hold the passive from another weapon.\n\n"
             "**What is an Utmost Passive?**\n"
@@ -354,7 +347,7 @@ TUTORIALS: dict[str, dict] = {
             "— ❌ **Failure (50%):** The void consumes the essence entirely. "
             "Your target weapon is untouched, but the sacrifice is still gone.\n\n"
             "*I've seen veterans lose many weapons in a row chasing a Pinnacle. "
-            "I've also seen one succeed on the first try. The void doesn't negotiate.*"
+            "I've also seen one succeed on the first try. Congrats. Happy for you.*"
         ),
         "tips": [
             "Pick your sacrifice weapon carefully — its **passive** is what transfers, not its stats.",
@@ -386,7 +379,7 @@ TUTORIALS: dict[str, dict] = {
         "tips": [
             "Each zone has a **zone effect** active during the hunt — read it before you commit.",
             "Extract passives from **max-rank gear** only; quality in determines quality out.",
-            "Two or more **matching passive categories** trigger Resonance — that's where the real power is.",
+            "Two or more **matching passive categories** trigger Resonance.",
         ],
         "image": LUCIEN_THUMBNAIL,
         "color": discord.Color.dark_orange(),
@@ -399,15 +392,12 @@ TUTORIALS: dict[str, dict] = {
             "*So you're the new fool who wants to climb the Spire. Good. "
             "The last one made it to floor 87 before the screams started. You might do better.*\n\n"
             "The Ascent is a tower of progressively harder floors. "
-            "Each cleared floor grants you a **permanent stat bonus** — not just for the Ascent, "
-            "but everywhere, forever.\n\n"
+            "The tower awards you with **permanent stat bonuses**.\n\n"
             "Floors are grouped into milestone tiers that unlock new bonuses at key thresholds. "
-            "The higher you climb, the more your character is permanently shaped. "
+            "The higher you climb, the more your power grows. "
             "Dying ends the run, but every bonus already earned is yours to keep."
         ),
         "tips": [
-            "**Permanent bonuses persist** across all content — every floor cleared makes you stronger forever.",
-            "Milestone floors are significantly harder. Come prepared before pushing into a new tier.",
             "Your gear matters here more than anywhere else. Don't attempt floors you're not ready for.",
         ],
         "image": VALE_THUMBNAIL,
@@ -420,15 +410,14 @@ TUTORIALS: dict[str, dict] = {
         "description": (
             "*Another seeker of the Codex. How many pages will you claim before the tome claims something from you?*\n\n"
             "The Codex is a wave-based survival mode. You fight through escalating waves and collect **Pages** as you go. "
-            "Pages are bound into permanent **Codex Tomes** — powerful multiplier bonuses (Vitality, Wrath, Bastion, and more) "
-            "that apply to your stats in all content, forever.\n\n"
+            "Pages are bound into permanent **Codex Tomes** — providing powerful multiplier bonuses.\n\n"
             "Each run features **Boons** — per-run modifiers that shape your combat — and a **Signature**, "
             "a defining twist that makes no two runs quite the same.\n\n"
             "*The pages remember. They will stay with you long after this run ends… if you survive.*"
         ),
         "tips": [
             "Tomes are **permanent multiplier bonuses** — they make you exponentially stronger.",
-            "**Signatures** are dangerous; pick boons to counteract them accordingly.",
+            "There are no potions allowed in the Codex, so come prepared.",
             "Dying isn't a complete loss, you simply move on to the next chapter.",
         ],
         "image": SERAPHINE_THUMBNAIL,
@@ -464,18 +453,16 @@ TUTORIALS: dict[str, dict] = {
         "author": "Ragna the Fleshwright",
         "author_icon": RAGNA_PORTRAIT,
         "description": (
-            "*You think that's grotesque? You're wearing its arm. It's keeping you alive. "
-            "That's more respect than most people get.*\n\n"
-            "Monster body parts drop from combat and can be **equipped to your body slots** for permanent Max HP bonuses. "
-            "You have 8 slots: head, torso, right arm, left arm, right leg, left leg, cheeks, and organs.\n\n"
+            "Welcome to my shop welp, so you've come to learn about eating monsters, eh?\n\n"
+            "Slain monsters occasionally drop body parts that can be **consumed** for permanent Max HP bonuses. "
+            "You have 8 slots:\n\n"
             "Each part has an HP value. Equipping it replaces whatever was in that slot — "
             "the old part is destroyed, so confirm before you commit. "
             "Your inventory caps at **20 parts**. Discard what you don't need."
         ),
         "tips": [
-            "Equipping a part to an occupied slot **destroys the old one** — a confirmation prompt will appear.",
-            "Parts drop from all combat — your inventory fills fast. Discard lower-value pieces regularly.",
-            "Max HP from parts stacks with every other HP source, including alchemy and companions.",
+            "Equipping a part to an occupied slot **destroys the old one**.",
+            "Parts drop from all combat — your inventory fills fast. Discard or recycle lower-value pieces regularly.",
         ],
         "image": RAGNA_THUMBNAIL,
         "color": discord.Color.dark_red(),
@@ -489,19 +476,17 @@ TUTORIALS: dict[str, dict] = {
             "Hematurgy is a **permanent passive upgrade system** — living power, encoded directly into your blood. "
             "To begin, you need **Primordial Blood**, the raw substrate that opens a passive channel in your body. "
             "Once unlocked, you tier it up with **Evolutionary Blood** (T1–T5) — controlled adaptation, very elegant — "
-            "or **Mutative Blood** for T6 and T7. Those are… less controlled. I find that exciting. You should too.\n\n"
+            "or **Mutative Blood** for higher tiers. Those are… less controlled. I find that exciting, makes my blood curl.\n\n"
             "Now here's the part most people miss: the finest blood does not come from wild kills. "
-            "You raise them. Build a **Hatchery** in your Settlement, let the eggs incubate, "
+            "You raise them. Build a **Hatchery** in your Settlement, incubate their eggs, "
             "then release the creatures yourself and *slay them*. "
             "The blood from a creature you personally hunted — one you raised from nothing — "
-            "that is categorically superior. The fear-response alone does something remarkable to the yield.\n\n"
-            "Passives include reverberation, haemorrhage, vital resonance, soothing venom, and more. "
-            "The effects at high tiers are… dramatic. I would say transformative, but that implies a limit."
+            "that is categorically superior. The fear-response alone does something remarkable to the yield."
         ),
         "tips": [
             "Build the **Hatchery** settlement building and release eggs yourself — that's the best blood pipeline.",
             "Unlock slots with **Primordial Blood** first. No channel, no power. That's just biology.",
-            "T6–T7 need **Mutative Blood** and a certain tolerance for unpredictability. You'll be fine. Probably.",
+            "Higher tier passives need **Mutative Blood** and a certain tolerance for unpredictability. You'll be fine. Probably.",
         ],
         "image": VALDRIS_THUMBNAIL,
         "color": discord.Color.red(),
@@ -515,7 +500,7 @@ TUTORIALS: dict[str, dict] = {
             "You have been warned. The gate is open.*\n\n"
             "Uber Encounters are the pinnacle of combat. "
             "Four bosses — **Aphrodite, Lucifer, NEET, and Gemini** — each requiring a dedicated "
-            "boss key. They are multi-phase encounters that will test every build decision you have made. "
+            "boss key. They are tough encounters that will test every build decision you have made. "
             "There are no shortcuts.\n\n"
             "Defeating each boss can yield rare drops, including a **blueprint** for their statue in your "
             "Settlement's Uber Shrine. Repeat victories yield the rare materials that power the most "
@@ -546,7 +531,6 @@ TUTORIALS: dict[str, dict] = {
         "tips": [
             "Skills charge over turns — pick a skill that fits how long your fights typically last.",
             "Upgrade jewel skills with **Cosmic Dust** and **Paradise Jewels**.",
-            "Charges **carry between floors** in Ascent and Codex — don't waste an almost-charged skill.",
         ],
         "image": TESSARA_THUMBNAIL,
         "color": discord.Color.purple(),
@@ -556,16 +540,16 @@ TUTORIALS: dict[str, dict] = {
         "author": "Vex, the Fence",
         "author_icon": VEX_PORTRAIT,
         "description": (
-            "*Everything here is worthless. That's what makes it interesting.*\n\n"
+            "Hello there! You, yes you, I'm talking to you. Come closer... I'll show you something interesting.\n\n"
             "The Nether Market trades in **curiosities** whose prices drift up and down "
             "every hour — buy low, hold, and sell back when the rotation turns in your favor. "
             "Only 3 items are tradeable at a time, so patience pays.\n\n"
             "You can also **browse** other players' (and a few NPCs') stashes and attempt to **plunder** "
-            "a cut of their holdings by cracking a hidden 4-digit code, Mastermind-style. "
-            "Win and you walk away with goods and a Nether Mark; lose and you walk away with nothing lost."
+            "a cut of their holdings by cracking a hidden 4-digit code. "
+            "Win and you walk away with goods and a Nether Mark; lose and you walk away empty-handed."
         ),
         "tips": [
-            "You can only sell an item back while it's one of the 3 currently active offers. BE CAREFUL TO NOT LOCK UP ALL YOUR GOLD!",
+            "You can only sell an item back while it's one of the 3 currently active offers. Don't say I didn't warn ya!",
             "Plunder charges are limited and regenerate over time — pick your targets carefully.",
             "A successful plunder shields the target from further attempts for a while — the wealthier they are, the longer it lasts.",
             "Spend Nether Marks in the Cutpurse (offense) and Strongbox (defense) trees to get better at plundering, or harder to be plundered.",
