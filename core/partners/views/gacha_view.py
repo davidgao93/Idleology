@@ -228,8 +228,7 @@ class PullView(PartnerBaseView):
         else:
             rarities, new_pity = roll_ten(pity)
 
-        await self.bot.database.partners.update_pity(self.user_id, new_pity)
-
+        # Pity is written atomically with the roll rewards further down.
         max_rarity = max(rarities)
         banner_urls = {
             4: GACHA_BANNER_4STAR,
@@ -261,89 +260,92 @@ class PullView(PartnerBaseView):
         highest_dup_rarity = 0
         highest_dup_static = None
 
-        for rarity in rarities:
-            pool = all_partners_by_rarity.get(rarity, all_partners_by_rarity[4])
-            partner_id = random.choice(pool)
-            static = PARTNER_DATA[partner_id]
-            emoji = _RARITY_EMOJIS.get(rarity, "💙")
+        async with self.bot.database.transaction():
+            for rarity in rarities:
+                pool = all_partners_by_rarity.get(rarity, all_partners_by_rarity[4])
+                partner_id = random.choice(pool)
+                static = PARTNER_DATA[partner_id]
+                emoji = _RARITY_EMOJIS.get(rarity, "💙")
 
-            already_owned = await self.bot.database.partners.owns_partner(
-                self.user_id, partner_id
-            )
-
-            if not already_owned:
-                co_slots = generate_skill_slots(rarity, "combat")
-                di_slots = generate_skill_slots(rarity, "dispatch")
-                await self.bot.database.partners.add_partner(
-                    self.user_id, partner_id, co_slots, di_slots
-                )
-                result_lines.append(
-                    f"{emoji} **NEW** — {_stars(rarity)} **{static['name']}**!"
-                )
-
-                row = await self.bot.database.partners.get_partner(
+                already_owned = await self.bot.database.partners.owns_partner(
                     self.user_id, partner_id
                 )
-                if row:
-                    partner_obj = Partner.from_row(row, static)
-                    new_partners.append(partner_obj)
-            else:
-                if rarity == 6:
-                    cur_sig = await _get_sig_lvl(self.bot, self.user_id, partner_id)
-                    if cur_sig >= _MAX_SIG_TIER:
-                        await self.bot.database.partners.add_tickets(
-                            self.user_id, _MAX_TICKET_GRANT
-                        )
-                        result_lines.append(
-                            f"{emoji} {_stars(rarity)} **{static['name']}** (Sig MAX) → +{_MAX_TICKET_GRANT} 🎫"
-                        )
-                    else:
-                        char_shards_gained[partner_id] = (
-                            char_shards_gained.get(partner_id, 0) + 1
-                        )
-                        result_lines.append(
-                            f"{emoji} {_stars(rarity)} **{static['name']}** → +1 signature skill shard"
-                        )
-                elif rarity == 5:
-                    if random.random() < 0.5:
-                        shards_combat += 3
-                        result_lines.append(
-                            f"{emoji} {_stars(rarity)} **{static['name']}** → +3 combat skill shards ⚔️"
-                        )
-                    else:
-                        shards_dispatch += 3
-                        result_lines.append(
-                            f"{emoji} {_stars(rarity)} **{static['name']}** → +3 dispatch skill shards 📋"
-                        )
+
+                if not already_owned:
+                    co_slots = generate_skill_slots(rarity, "combat")
+                    di_slots = generate_skill_slots(rarity, "dispatch")
+                    await self.bot.database.partners.add_partner(
+                        self.user_id, partner_id, co_slots, di_slots
+                    )
+                    result_lines.append(
+                        f"{emoji} **NEW** — {_stars(rarity)} **{static['name']}**!"
+                    )
+
+                    row = await self.bot.database.partners.get_partner(
+                        self.user_id, partner_id
+                    )
+                    if row:
+                        partner_obj = Partner.from_row(row, static)
+                        new_partners.append(partner_obj)
                 else:
-                    if random.random() < 0.5:
-                        shards_combat += 1
-                        result_lines.append(
-                            f"{emoji} {_stars(rarity)} **{static['name']}** → +1 combat skill shard ⚔️"
-                        )
+                    if rarity == 6:
+                        cur_sig = await _get_sig_lvl(self.bot, self.user_id, partner_id)
+                        if cur_sig >= _MAX_SIG_TIER:
+                            await self.bot.database.partners.add_tickets(
+                                self.user_id, _MAX_TICKET_GRANT
+                            )
+                            result_lines.append(
+                                f"{emoji} {_stars(rarity)} **{static['name']}** (Sig MAX) → +{_MAX_TICKET_GRANT} 🎫"
+                            )
+                        else:
+                            char_shards_gained[partner_id] = (
+                                char_shards_gained.get(partner_id, 0) + 1
+                            )
+                            result_lines.append(
+                                f"{emoji} {_stars(rarity)} **{static['name']}** → +1 signature skill shard"
+                            )
+                    elif rarity == 5:
+                        if random.random() < 0.5:
+                            shards_combat += 3
+                            result_lines.append(
+                                f"{emoji} {_stars(rarity)} **{static['name']}** → +3 combat skill shards ⚔️"
+                            )
+                        else:
+                            shards_dispatch += 3
+                            result_lines.append(
+                                f"{emoji} {_stars(rarity)} **{static['name']}** → +3 dispatch skill shards 📋"
+                            )
                     else:
-                        shards_dispatch += 1
-                        result_lines.append(
-                            f"{emoji} {_stars(rarity)} **{static['name']}** → +1 dispatch skill shard 📋"
-                        )
+                        if random.random() < 0.5:
+                            shards_combat += 1
+                            result_lines.append(
+                                f"{emoji} {_stars(rarity)} **{static['name']}** → +1 combat skill shard ⚔️"
+                            )
+                        else:
+                            shards_dispatch += 1
+                            result_lines.append(
+                                f"{emoji} {_stars(rarity)} **{static['name']}** → +1 dispatch skill shard 📋"
+                            )
 
-                if rarity > highest_dup_rarity:
-                    highest_dup_rarity = rarity
-                    highest_dup_static = static
+                    if rarity > highest_dup_rarity:
+                        highest_dup_rarity = rarity
+                        highest_dup_static = static
 
-        if shards_combat > 0:
-            await self.bot.database.partners.add_combat_shards(
-                self.user_id, shards_combat
-            )
-        if shards_dispatch > 0:
-            await self.bot.database.partners.add_dispatch_shards(
-                self.user_id, shards_dispatch
-            )
-        total_char_shards = sum(char_shards_gained.values())
-        if total_char_shards > 0:
-            await self.bot.database.partners.add_shard(
-                self.user_id, 0, total_char_shards
-            )
+            if shards_combat > 0:
+                await self.bot.database.partners.add_combat_shards(
+                    self.user_id, shards_combat
+                )
+            if shards_dispatch > 0:
+                await self.bot.database.partners.add_dispatch_shards(
+                    self.user_id, shards_dispatch
+                )
+            total_char_shards = sum(char_shards_gained.values())
+            if total_char_shards > 0:
+                await self.bot.database.partners.add_shard(
+                    self.user_id, 0, total_char_shards
+                )
+
+            await self.bot.database.partners.update_pity(self.user_id, new_pity)
 
         items_after = await self.bot.database.partners.get_items(self.user_id)
 

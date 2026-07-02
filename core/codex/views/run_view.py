@@ -1,5 +1,6 @@
 import asyncio
 import random
+from dataclasses import asdict
 
 import discord
 from discord import ButtonStyle, Interaction, ui
@@ -26,6 +27,24 @@ from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
 from core.images import CODEX_BOON, CODEX_CHAPTERS
 from core.models import Monster, Player
+
+
+def build_wave_baseline(player: Player) -> dict:
+    """Snapshot of base stats after chapter/boon setup but before combat
+    passives fire. Shared by run start (menu_view), wave setup, and resume."""
+    return {
+        "bonus_crit": player.bonus_crit,
+        "bonus_max_hp": player.bonus_max_hp,
+        "combat_ward": player.combat_ward,
+        "atk_multiplier": player.atk_multiplier,
+        "def_multiplier": player.def_multiplier,
+        "crit_multiplier": player.crit_multiplier,
+        "chapter_hit_penalty": player.chapter_hit_penalty,
+        "chapter_pdr_reduction": player.chapter_pdr_reduction,
+        "chapter_ward_gen_mult": player.chapter_ward_gen_mult,
+        "chapter_crit_dmg_reduction": player.chapter_crit_dmg_reduction,
+        "chapter_hp_entry_pct": player.chapter_hp_entry_pct,
+    }
 
 
 async def _generate_codex_wave_monster(
@@ -109,11 +128,13 @@ class CodexRunView(BaseView):
       - _retreat_btn: saves immediately so the retreated HP is the DB value.
 
     This is intentional: HP carries across waves and chapters within a single
-    session, and the run is expected to complete (or retreat) before the
-    session ends.  If the bot process restarts mid-run the player returns to
-    whatever HP was last written — either the full-HP reset after the most
-    recent defeat, or the value from load_player at run start if they hadn't
-    died yet.  There is no checkpoint save between waves by design.
+    session.  In addition, the run itself is checkpointed to the codex_runs
+    table at every chapter boundary (run start, chapter clear, defeat, and
+    Save & Exit) via to_snapshot()/_save_run().  If the bot restarts mid-run,
+    /codex offers to resume from the start of the current chapter — no new
+    Antique Tome required.  There is no checkpoint between waves by design;
+    mid-chapter progress (and its unbanked XP/gold) rolls back to the chapter
+    start on resume.
 
     View timeout
     ------------
@@ -175,8 +196,151 @@ class CodexRunView(BaseView):
         self.cumulative_xp = 0
         self.cumulative_gold = 0
 
+        # Whether the CURRENT chapter's signature was nullified (the
+        # sig_nullify_next flag is consumed at wave-1 setup; a mid-chapter
+        # Save & Exit must re-set it so resume re-nullifies the chapter).
+        self._current_chapter_nullified = False
+
         self.combat_logger = CombatLogger(player, initial_monster)
         self.combat_logger.log_combat_start(player, initial_monster)
+
+    # ------------------------------------------------------------------
+    # Run persistence (chapter-boundary snapshots)
+    # ------------------------------------------------------------------
+
+    def to_snapshot(self, at_chapter_start: bool = False) -> dict:
+        """Serialise the run for DB persistence.
+
+        With ``at_chapter_start=True`` (mid-chapter Save & Exit) the current
+        chapter's XP/gold gains are rolled back to the chapter-start values,
+        since resume restarts the chapter at wave 1 — otherwise the same
+        waves could be re-earned."""
+        run_state = dict(self.run_state)
+        if at_chapter_start and self._current_chapter_nullified:
+            run_state["sig_nullify_next"] = True
+        return {
+            "chapter_idx": self.chapter_idx,
+            "chapters": [asdict(ch) for ch in self.chapters],
+            "active_boons": [asdict(b) for b in self.active_boons],
+            "run_state": run_state,
+            "reroll_used_chapters": sorted(self.reroll_used_chapters),
+            "chapters_cleared": self.chapters_cleared,
+            "waves_cleared_this_run": self.waves_cleared_this_run,
+            "deaths": self.deaths,
+            "cumulative_xp": self.chapter_start_xp
+            if at_chapter_start
+            else self.cumulative_xp,
+            "cumulative_gold": self.chapter_start_gold
+            if at_chapter_start
+            else self.cumulative_gold,
+            "cleared_chapter_indices": sorted(self.cleared_chapter_indices),
+            "page_drops": list(self.page_drops),
+            "current_hp": self.player.current_hp,
+            "run_penalties": {
+                "atk": self.player.run_atk_penalty,
+                "def": self.player.run_def_penalty,
+                "crit": self.player.run_crit_penalty,
+                "max_hp_bonus": self.player.run_max_hp_bonus,
+            },
+        }
+
+    async def _save_run(self, at_chapter_start: bool = False):
+        """Persist the snapshot; a save failure must never kill the run."""
+        try:
+            await self.bot.database.codex.upsert_run(
+                self.user_id, self.server_id, self.to_snapshot(at_chapter_start)
+            )
+        except Exception as e:
+            self.bot.logger.error(f"[Codex] run save failed for {self.user_id}: {e}")
+
+    @classmethod
+    async def resume_from_snapshot(
+        cls, bot, user_id: str, player: Player, snap: dict, server_id: str = ""
+    ) -> "CodexRunView":
+        """Rebuild a run from a chapter-boundary snapshot, restarting the
+        current chapter at wave 1 (mirrors begin_run's chapter setup)."""
+        def _mods(pairs):
+            return [tuple(p) for p in pairs]
+
+        chapters = [
+            CodexChapter(
+                **{
+                    **d,
+                    "player_mods": _mods(d.get("player_mods", [])),
+                    "monster_mods": _mods(d.get("monster_mods", [])),
+                }
+            )
+            for d in snap["chapters"]
+        ]
+        active_boons = [CodexBoon(**b) for b in snap.get("active_boons", [])]
+        run_state = dict(snap.get("run_state", {}))
+        chapter_idx = int(snap.get("chapter_idx", 0))
+        chapter = chapters[chapter_idx]
+
+        player.active_task_species = None
+
+        # Run-wide penalties from one-shot boons (fragment_boost downsides,
+        # max_hp_boost) — these live on player.run, not in active_boons.
+        rp = snap.get("run_penalties", {})
+        player.run_atk_penalty = rp.get("atk", 0)
+        player.run_def_penalty = rp.get("def", 0)
+        player.run_crit_penalty = rp.get("crit", 0)
+        player.run_max_hp_bonus = rp.get("max_hp_bonus", 0)
+
+        # Chapter-start setup, mirroring _setup_next_wave's wave-1 branch
+        restore_clean_stats(player)
+        player.combat_ward = player.get_combat_ward_value()
+        nullified = bool(run_state.get("sig_nullify_next", False))
+        if nullified:
+            run_state["sig_nullify_next"] = False
+        else:
+            apply_signature_modifier(player, chapter)
+        apply_per_wave_boons(player, active_boons)
+
+        # Restore HP after max-HP modifiers so clamping is correct. min()
+        # with the live DB value blocks both directions of HP arbitrage
+        # (heal outside and resume, or save at full and tank a hit outside).
+        saved_hp = int(snap.get("current_hp", 0))
+        if saved_hp > 0:
+            player.current_hp = max(
+                1, min(saved_hp, player.current_hp, player.total_max_hp)
+            )
+
+        wave_baseline = build_wave_baseline(player)
+
+        from core.combat.turns.boundary import reset_combat_transients
+
+        reset_combat_transients(player)
+
+        monster = await _generate_codex_wave_monster(player, chapter, 1)
+        engine.apply_stat_effects(player, monster)
+        start_logs = engine.apply_combat_start_passives(player, monster)
+
+        view = cls(
+            bot,
+            user_id,
+            player,
+            chapters,
+            monster,
+            start_logs,
+            chapter_wave_baseline=wave_baseline,
+            server_id=server_id,
+        )
+        view.chapter_idx = chapter_idx
+        view.active_boons = active_boons
+        view.run_state = run_state
+        view._current_chapter_nullified = nullified
+        view.reroll_used_chapters = set(snap.get("reroll_used_chapters", []))
+        view.chapters_cleared = int(snap.get("chapters_cleared", 0))
+        view.waves_cleared_this_run = int(snap.get("waves_cleared_this_run", 0))
+        view.deaths = int(snap.get("deaths", 0))
+        view.cumulative_xp = int(snap.get("cumulative_xp", 0))
+        view.cumulative_gold = int(snap.get("cumulative_gold", 0))
+        view.chapter_start_xp = view.cumulative_xp
+        view.chapter_start_gold = view.cumulative_gold
+        view.cleared_chapter_indices = set(snap.get("cleared_chapter_indices", []))
+        view.page_drops = list(snap.get("page_drops", []))
+        return view
 
     @property
     def current_chapter(self) -> CodexChapter:
@@ -218,19 +382,7 @@ class CodexRunView(BaseView):
         Restored at the top of every wave so combat-start passives (sturdy, omnipotent,
         absorb, juggernaut, gilded_hunger, diabolic_pact, cursed_precision, Enfeeble,
         Impenetrable) don't compound across waves."""
-        self.chapter_wave_baseline = {
-            "bonus_crit": self.player.bonus_crit,
-            "bonus_max_hp": self.player.bonus_max_hp,
-            "combat_ward": self.player.combat_ward,
-            "atk_multiplier": self.player.atk_multiplier,
-            "def_multiplier": self.player.def_multiplier,
-            "crit_multiplier": self.player.crit_multiplier,
-            "chapter_hit_penalty": self.player.chapter_hit_penalty,
-            "chapter_pdr_reduction": self.player.chapter_pdr_reduction,
-            "chapter_ward_gen_mult": self.player.chapter_ward_gen_mult,
-            "chapter_crit_dmg_reduction": self.player.chapter_crit_dmg_reduction,
-            "chapter_hp_entry_pct": self.player.chapter_hp_entry_pct,
-        }
+        self.chapter_wave_baseline = build_wave_baseline(self.player)
 
     def _restore_wave_baseline(self):
         """Reset per-combat bonuses and restore the post-setup snapshot before
@@ -560,6 +712,7 @@ class CodexRunView(BaseView):
             self.player.combat_ward = self.player.get_combat_ward_value()
 
             nullify = self.run_state.get("sig_nullify_next", False)
+            self._current_chapter_nullified = nullify
             if nullify:
                 self.run_state["sig_nullify_next"] = False
             else:
@@ -709,6 +862,7 @@ class CodexRunView(BaseView):
 
         self.chapter_idx = next_idx
         self.wave_num = 1
+        await self._save_run()  # checkpoint: cleared chapter banked
         self._add_combat_buttons()
 
         if msg_obj:
@@ -736,11 +890,17 @@ class CodexRunView(BaseView):
         except Exception as e:
             print(f"[Quest tick error in codex]: {e}")
 
-        await self.bot.database.users.modify_currency(
-            self.user_id, "codex_fragments", fragments
-        )
-
-        await self.bot.database.users.modify_gold(self.user_id, self.cumulative_gold)
+        # Atomic: deleting the saved run is the re-entry guard — a crash
+        # between granting and deleting would let the run be resumed and
+        # re-completed for duplicate fragments.
+        async with self.bot.database.transaction():
+            await self.bot.database.users.modify_currency(
+                self.user_id, "codex_fragments", fragments
+            )
+            await self.bot.database.users.modify_gold(
+                self.user_id, self.cumulative_gold
+            )
+            await self.bot.database.codex.delete_run(self.user_id, self.server_id)
 
         exp_changes = await ExperienceManager.add_experience(
             self.bot,
@@ -823,6 +983,7 @@ class CodexRunView(BaseView):
 
         self.chapter_idx = next_idx
         self.wave_num = 1
+        await self._save_run()  # checkpoint: death rolled back, next chapter
         self._add_combat_buttons()
         if msg_obj:
             await self._setup_next_wave(message=msg_obj)
@@ -837,6 +998,7 @@ class CodexRunView(BaseView):
         self.add_item(self._attack_btn)
         self.add_item(self._auto_btn)
         self.add_item(self._retreat_btn)
+        self.add_item(self._abandon_btn)
 
     async def _refresh_ui(
         self, interaction: Interaction = None, message: discord.Message = None
@@ -930,33 +1092,98 @@ class CodexRunView(BaseView):
         else:
             await self._check_state(message=message)
 
-    @ui.button(label="Retreat", style=ButtonStyle.secondary, emoji="🏃", row=1)
+    @ui.button(label="Save & Exit", style=ButtonStyle.secondary, emoji="💾", row=1)
     async def _retreat_btn(self, interaction: Interaction, button: ui.Button):
+        """Persist the run and leave. Resume via /codex restarts the current
+        chapter at wave 1 (this chapter's unbanked XP/gold are rolled back)."""
+        await self._save_run(at_chapter_start=True)
+        await self.bot.database.users.update_from_player_object(self.player)
+        self.bot.state_manager.clear_active(self.user_id)  # session-terminating Save & Exit (top-level for "codex" active)
+        self.stop()
+
+        embed = discord.Embed(
+            title="💾 Codex Run Saved",
+            description=(
+                f"**{self.player.name}** steps out of the Codex.\n"
+                f"Chapters cleared so far: **{self.chapters_cleared}/5**.\n"
+                f"Use **/codex → Resume Run** to continue from the start of "
+                f"**Chapter {self.chapter_idx + 1}** — no Tome required."
+            ),
+            color=discord.Color.blurple(),
+        )
+        embed.add_field(
+            name="📚 XP Banked", value=f"{self.chapter_start_xp:,}", inline=True
+        )
+        embed.add_field(
+            name="💰 Gold Banked", value=f"{self.chapter_start_gold:,}", inline=True
+        )
+        lobby_view = CodexRunCompleteView(
+            self.bot, self.user_id, self.player, server_id=self.server_id
+        )
+        await interaction.response.edit_message(embed=embed, view=lobby_view)
+
+    @ui.button(label="Abandon", style=ButtonStyle.danger, emoji="🗑️", row=1)
+    async def _abandon_btn(self, interaction: Interaction, button: ui.Button):
+        confirm = CodexAbandonConfirmView(self.bot, self)
+        embed = discord.Embed(
+            title="🗑️ Abandon this run?",
+            description=(
+                "The saved run is **deleted** — no rewards, and the Antique "
+                "Tome is **not** refunded.\n"
+                f"Chapters cleared: {self.chapters_cleared}/5 | "
+                f"XP: {self.cumulative_xp:,} | Gold: {self.cumulative_gold:,} "
+                "— all lost."
+            ),
+            color=discord.Color.red(),
+        )
+        await interaction.response.edit_message(embed=embed, view=confirm)
+
+
+class CodexAbandonConfirmView(BaseView):
+    """Confirmation gate for permanently discarding a Codex run."""
+
+    def __init__(self, bot, run_view: "CodexRunView"):
+        super().__init__(bot, parent=run_view)
+        self.run_view = run_view
+
+    @ui.button(label="Abandon Run", style=ButtonStyle.danger, emoji="🗑️", row=0)
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        rv = self.run_view
+        await self.bot.database.codex.delete_run(rv.user_id, rv.server_id)
+        await self.bot.database.users.update_from_player_object(rv.player)
+        self.bot.state_manager.clear_active(rv.user_id)  # session-terminating Abandon
+        rv.stop()
+        self.stop()
+
         embed = discord.Embed(
             title="📕 Codex Abandoned",
             description=(
-                f"**{self.player.name}** retreated from the Codex.\n"
-                f"Chapters cleared: **{self.chapters_cleared}/5** — No rewards."
+                f"**{rv.player.name}** abandoned the run.\n"
+                f"Chapters cleared: **{rv.chapters_cleared}/5** — No rewards."
             ),
             color=discord.Color.light_grey(),
         )
         embed.add_field(
             name="📚 XP Accumulated (lost)",
-            value=f"{self.cumulative_xp:,}",
+            value=f"{rv.cumulative_xp:,}",
             inline=True,
         )
         embed.add_field(
             name="💰 Gold Accumulated (lost)",
-            value=f"{self.cumulative_gold:,}",
+            value=f"{rv.cumulative_gold:,}",
             inline=True,
         )
-        await self.bot.database.users.update_from_player_object(self.player)
-        self.bot.state_manager.clear_active(self.user_id)  # session-terminating Retreat (top-level for "codex" active)
-        self.stop()
         lobby_view = CodexRunCompleteView(
-            self.bot, self.user_id, self.player, server_id=self.server_id
+            self.bot, rv.user_id, rv.player, server_id=rv.server_id
         )
         await interaction.response.edit_message(embed=embed, view=lobby_view)
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="↩️", row=0)
+    async def cancel(self, interaction: Interaction, button: ui.Button):
+        self.stop()
+        await interaction.response.edit_message(
+            embed=self.run_view._combat_embed(), view=self.run_view
+        )
 
 
 class CodexRunCompleteView(BaseView):
@@ -985,6 +1212,8 @@ class CodexRunCompleteView(BaseView):
         except Exception:
             chapter_history = {}
 
+        saved_run = await self.bot.database.codex.get_run(self.user_id, self.server_id)
+
         menu = CodexMenuView(
             self.bot,
             self.user_id,
@@ -995,6 +1224,7 @@ class CodexRunCompleteView(BaseView):
             chapter_history,
             antique_tomes=cur["antique_tome"],
             server_id=self.server_id,
+            saved_run=saved_run,
         )
         self.stop()
         await interaction.edit_original_response(embed=menu.build_embed(), view=menu)

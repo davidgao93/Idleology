@@ -1306,7 +1306,7 @@ class SettlementDashboardView(SettlementBaseView):
             uid, sid = self.user_id, self.server_id
 
             # Allow transition from settlement state; block any other active state.
-            current_op = self.bot.state_manager.active_operations.get(uid)
+            current_op = self.bot.state_manager.get_operation(uid)
             if current_op and current_op != "settlement":
                 await interaction.followup.send(
                     "You're already in another activity. Finish it first.",

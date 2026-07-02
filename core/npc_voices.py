@@ -224,6 +224,27 @@ _VOICES: dict[str, list[str]] = {
         "'Codes, curiosities, and other people's poor decisions.' Vex spreads their hands. 'Welcome.'",
         "'Max thinks I'm reckless.' Vex counts a stack of coin. 'Max has never cracked a good vault.'",
     ],
+    "nether_market_holdings": [
+        "'Let's see what you've been hoarding.' Vex flips through the ledger. 'Don't worry, I won't judge. Much.'",
+        "'Your stash, in all its glory.' Vex smirks. 'Some of that's worth more than you think. Some of it isn't.'",
+        "'Everything you own, cataloged and priced.' Vex taps the ledger. 'Knowledge is leverage, friend.'",
+        "'A tidy little collection.' Vex eyes the numbers. 'Tidy enough to be worth stealing, anyway.'",
+        "'I keep better records on you than you do.' Vex doesn't apologize for it.",
+    ],
+    "nether_market_browse": [
+        "'Looking for a mark?' Vex leans in. 'I won't tell if you don't.'",
+        "'Everyone's holdings are somebody else's opportunity.' Vex shrugs. 'That's just economics.'",
+        "'Careful who you cross.' Vex nods at the list. 'Some of them remember.'",
+        "'Pick your target wisely.' Vex taps the ledger. 'A cracked vault only pays once.'",
+        "'The weak get plundered. The careless get plundered twice.' Vex smiles thinly. 'Which one are you?'",
+    ],
+    "nether_market_mastery": [
+        "'Tricks of the trade.' Vex grins. 'Every one of them paid for in blood, sweat, or Marks. Usually Marks.'",
+        "'You want to be better at this?' Vex spreads their hands. 'Then invest. That's the whole game.'",
+        "'A sharper eye, a quicker hand, a harder lock.' Vex counts the Marks. 'Pick your poison.'",
+        "'Nether Marks don't spend themselves.' Vex raises an eyebrow. 'Well? Go on.'",
+        "'Every node here makes you a little more dangerous.' Vex smiles. 'I approve.'",
+    ],
 }
 
 

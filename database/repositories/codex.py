@@ -1,3 +1,4 @@
+import json
 import random
 
 import aiosqlite
@@ -256,3 +257,38 @@ class CodexRepository:
             }
             for r in rows
         }
+
+    # ------------------------------------------------------------------
+    # Persisted runs (chapter-boundary save state, distillation pattern)
+    # Snapshot is stored as JSON in the `data` column.
+    # ------------------------------------------------------------------
+
+    async def get_run(self, user_id: str, server_id: str) -> dict | None:
+        """Returns the saved run snapshot dict, or None."""
+        async with self.connection.execute(
+            "SELECT data FROM codex_runs WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if not row or not row["data"]:
+            return None
+        return json.loads(row["data"])
+
+    async def upsert_run(self, user_id: str, server_id: str, data: dict) -> None:
+        """Create or update the saved run for this user/server."""
+        await self.connection.execute(
+            """INSERT INTO codex_runs (user_id, server_id, data)
+               VALUES (?, ?, ?)
+               ON CONFLICT(user_id, server_id) DO UPDATE SET
+                   data = excluded.data""",
+            (user_id, server_id, json.dumps(data)),
+        )
+        await self.connection.commit()
+
+    async def delete_run(self, user_id: str, server_id: str) -> None:
+        """Clear the saved run (completion or abandon)."""
+        await self.connection.execute(
+            "DELETE FROM codex_runs WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()

@@ -453,19 +453,20 @@ class MirageView(BaseUpgradeView):
         fields["item_level"] = new_level
         fields["item_name"] = new_name
 
-        await self.bot.database.equipment.apply_mirage(
-            self.item.item_id, item_type, fields
-        )
-
         rune_col = (
             "mirage_runes_imperfect" if destroy_source else "mirage_runes_perfected"
         )
-        await self.bot.database.users.modify_currency(self.user_id, rune_col, -1)
+        async with self.bot.database.transaction():
+            await self.bot.database.equipment.apply_mirage(
+                self.item.item_id, item_type, fields
+            )
 
-        if destroy_source:
-            if getattr(self.source, "is_equipped", False):
-                await self.bot.database.equipment.unequip(self.user_id, item_type)
-            await self.bot.database.equipment.discard(self.source.item_id, item_type)
+            await self.bot.database.users.modify_currency(self.user_id, rune_col, -1)
+
+            if destroy_source:
+                if getattr(self.source, "is_equipped", False):
+                    await self.bot.database.equipment.unequip(self.user_id, item_type)
+                await self.bot.database.equipment.discard(self.source.item_id, item_type)
 
         # Refresh self.item so the detail view shows updated stats
         new_row = await self.bot.database.equipment.get_by_id(

@@ -506,6 +506,10 @@ class BlackjackView(BaseView):
 
 
 class CrashView(BaseView):
+    # Cash Out must stay clickable while the multiplier loop runs inside
+    # the start callback; this view manages its own is_running flags.
+    concurrent_dispatch = True
+
     def __init__(self, bot, user_id, bet_amount, parent_interaction):
         super().__init__(bot, user_id)
         self.bet_amount = bet_amount

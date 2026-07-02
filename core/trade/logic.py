@@ -102,9 +102,10 @@ class TradeManager:
 
     @staticmethod
     async def transfer_gold(bot, sender_id: str, receiver_id: str, amount: int) -> bool:
-        if not await bot.database.users.deduct_gold_atomic(sender_id, amount):
-            return False
-        await bot.database.users.modify_gold(receiver_id, amount)
+        async with bot.database.transaction():
+            if not await bot.database.users.deduct_gold_atomic(sender_id, amount):
+                return False
+            await bot.database.users.modify_gold(receiver_id, amount)
         return True
 
     @staticmethod
@@ -118,38 +119,39 @@ class TradeManager:
     ) -> bool:
         table, col = TradeManager.RESOURCE_MAP[resource_name]
 
-        if table == "users":
-            if not await bot.database.users.deduct_currency_atomic(
-                sender_id, col, amount
-            ):
-                return False
-            await bot.database.users.modify_currency(receiver_id, col, amount)
-        elif table == "apex":
-            if not await bot.database.apex.deduct_meta_shard_atomic(
-                sender_id, server_id, col, amount
-            ):
-                return False
-            await bot.database.apex.modify_meta_shard(
-                receiver_id, server_id, col, amount
-            )
-        elif table == "essences":
-            if not await bot.database.essences.consume(sender_id, col, amount):
-                return False
-            await bot.database.essences.add(receiver_id, col, amount)
-        elif table == "settlement_materials":
-            all_mats = await bot.database.settlement_materials.get_all(sender_id)
-            if all_mats.get(col, 0) < amount:
-                return False
-            await bot.database.settlement_materials.modify(sender_id, col, -amount)
-            await bot.database.settlement_materials.modify(receiver_id, col, amount)
-        else:
-            # Skill tables require server_id
-            await bot.database.skills.update_single_resource(
-                sender_id, server_id, table, col, -amount
-            )
-            await bot.database.skills.update_single_resource(
-                receiver_id, server_id, table, col, amount
-            )
+        async with bot.database.transaction():
+            if table == "users":
+                if not await bot.database.users.deduct_currency_atomic(
+                    sender_id, col, amount
+                ):
+                    return False
+                await bot.database.users.modify_currency(receiver_id, col, amount)
+            elif table == "apex":
+                if not await bot.database.apex.deduct_meta_shard_atomic(
+                    sender_id, server_id, col, amount
+                ):
+                    return False
+                await bot.database.apex.modify_meta_shard(
+                    receiver_id, server_id, col, amount
+                )
+            elif table == "essences":
+                if not await bot.database.essences.consume(sender_id, col, amount):
+                    return False
+                await bot.database.essences.add(receiver_id, col, amount)
+            elif table == "settlement_materials":
+                all_mats = await bot.database.settlement_materials.get_all(sender_id)
+                if all_mats.get(col, 0) < amount:
+                    return False
+                await bot.database.settlement_materials.modify(sender_id, col, -amount)
+                await bot.database.settlement_materials.modify(receiver_id, col, amount)
+            else:
+                # Skill tables require server_id
+                await bot.database.skills.update_single_resource(
+                    sender_id, server_id, table, col, -amount
+                )
+                await bot.database.skills.update_single_resource(
+                    receiver_id, server_id, table, col, amount
+                )
         return True
 
     @staticmethod

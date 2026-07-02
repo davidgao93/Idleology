@@ -672,6 +672,16 @@ CREATE TABLE IF NOT EXISTS potion_distillations (
   PRIMARY KEY (user_id, server_id)
 );
 
+-- Codex run save state (chapter-boundary snapshots; `data` is a JSON blob:
+-- chapters, chapter_idx, boons, run_state, deaths, cumulative xp/gold, hp, run penalties)
+CREATE TABLE IF NOT EXISTS codex_runs (
+  user_id    TEXT NOT NULL,
+  server_id  TEXT NOT NULL,
+  data       TEXT NOT NULL,
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, server_id)
+);
+
 CREATE TABLE IF NOT EXISTS synthesis_queue (
   user_id    TEXT PRIMARY KEY,
   item_type  TEXT NOT NULL,

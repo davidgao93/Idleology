@@ -417,12 +417,13 @@ class RecycleConfirmView(BaseView):
         slot = random.choices(_PART_SLOTS, weights=_PART_WEIGHTS, k=1)[0]
         avg_ilvl = round(sum(p.ilvl for p in self.selected) / 3)
 
-        for part in self.selected:
-            await self.bot.database.monster_parts.delete_part(part.id)
+        async with self.bot.database.transaction():
+            for part in self.selected:
+                await self.bot.database.monster_parts.delete_part(part.id)
 
-        await self.bot.database.monster_parts.add_part(
-            self.consume_view.user_id, slot, name, avg_ilvl, self.new_hp
-        )
+            await self.bot.database.monster_parts.add_part(
+                self.consume_view.user_id, slot, name, avg_ilvl, self.new_hp
+            )
 
         self.consume_view.inventory = (
             await self.bot.database.monster_parts.get_inventory(

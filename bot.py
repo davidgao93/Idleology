@@ -6,7 +6,6 @@ import platform
 import random
 import sqlite3
 import sys
-from typing import Dict
 
 import aiosqlite
 import discord
@@ -16,6 +15,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from dotenv import load_dotenv
 
+from core.state_manager import StateManager
 from database import DatabaseManager
 from database.backup import create_backup
 
@@ -499,7 +499,7 @@ class DiscordBot(commands.Bot):
         Check if a user has an active operation.
         """
         if self.state_manager.is_active(user_id):
-            operation = self.state_manager.active_operations[user_id]
+            operation = self.state_manager.get_operation(user_id) or "current"
             await interaction.response.send_message(
                 f"Please wrap up your {operation.title()} interaction first.",
                 ephemeral=True,
@@ -518,48 +518,6 @@ class DiscordBot(commands.Bot):
             )
             return False
         return True
-
-
-class StateManager:
-    """Tracks which users are currently inside an interactive view.
-
-    State is cleared in three ways:
-    - Explicitly by each view's exit/complete/flee button path.
-    - By ``clear_all()`` when the bot's shard resumes after a disconnect
-      (users cannot interact with a view during a shard drop, so their
-      session is considered expired on reconnect).
-    - By the owner ``/clearall`` command for manual admin resets.
-
-    There is intentionally no time-based auto-expiry: users are expected
-    to finish views before starting new ones.  A bot restart naturally
-    wipes this in-memory dict, and ``on_resumed`` handles shard drops.
-    """
-
-    def __init__(self, logger):
-        self.logger = logger
-        self.active_operations: Dict[str, str] = {}  # user_id → operation name
-
-    def set_active(self, user_id: str, operation: str):
-        self.logger.info(f"Set {user_id} as {operation}")
-        self.active_operations[user_id] = operation
-
-    def clear_active(self, user_id: str):
-        self.logger.info(f"Attempt to clear {user_id}")
-        if user_id in self.active_operations:
-            self.logger.info(f"{user_id} found in active list, cleared")
-            del self.active_operations[user_id]
-
-    def is_active(self, user_id: str) -> bool:
-        return user_id in self.active_operations
-
-    def clear_all(self):
-        count = len(self.active_operations)
-        self.active_operations.clear()
-        self.logger.info(f"Cleared all {count} active operations")
-
-    def get_active_count(self):
-        """Get count of active operations."""
-        return len(self.active_operations)
 
 
 load_dotenv()

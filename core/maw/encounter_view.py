@@ -42,6 +42,9 @@ _MAW_MONSTER = Monster(
 
 
 class MawEncounterView(BaseView):
+    # Auto-battle loop runs inside a button callback; buttons stay live.
+    concurrent_dispatch = True
+
     MAX_TURNS = mechanics.MAW_TURNS
 
     def __init__(

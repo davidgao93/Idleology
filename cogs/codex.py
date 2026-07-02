@@ -49,6 +49,8 @@ class Codex(commands.Cog, name="codex"):
         except Exception:
             chapter_history = {}
 
+        saved_run = await self.bot.database.codex.get_run(user_id, server_id)
+
         # 7. Show menu
         async def _build():
             _view = CodexMenuView(
@@ -61,6 +63,7 @@ class Codex(commands.Cog, name="codex"):
                 chapter_history,
                 antique_tomes=antique_tomes,
                 server_id=server_id,
+                saved_run=saved_run,
             )
             return _view.build_embed(), _view
 

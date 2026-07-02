@@ -88,6 +88,9 @@ _ELEMENTAL_MONSTER = Monster(
 
 
 class ElementalEncounterView(BaseView):
+    # Auto-battle loop runs inside a button callback; buttons stay live.
+    concurrent_dispatch = True
+
     MAX_TURNS = 20
 
     def __init__(self, bot, player: Player, user_id: str, server_id: str):

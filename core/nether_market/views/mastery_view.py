@@ -8,8 +8,10 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
+from core.images import VEX_PORTRAIT, VEX_THUMBNAIL
 from core.nether_market.data import NETHER_MARKET_NODES
 from core.nether_market.mechanics import NetherMarketMechanics as M
+from core.npc_voices import get_quip
 
 _BRANCH_LABELS = {
     "trunk": "\U0001f45b Stash",
@@ -44,7 +46,10 @@ class MasteryView(BaseView):
             title=f"\U0001f3ad Tricks of the Trade — {_BRANCH_LABELS[self.active_branch]}",
             color=discord.Color.dark_purple(),
         )
-        embed.set_footer(text=f"Nether Marks: {marks:,}")
+        embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
+        if VEX_THUMBNAIL:
+            embed.set_thumbnail(url=VEX_THUMBNAIL)
+        embed.set_footer(text=f"{get_quip('nether_market_mastery')}\nNether Marks: {marks:,}")
 
         lines = []
         for node_id, node in _nodes_for_branch(self.active_branch):
@@ -121,6 +126,7 @@ class MasteryView(BaseView):
             description=f"{node['desc']}\n\n**Cost:** {node['cost']} Nether Marks",
             color=discord.Color.blurple(),
         )
+        embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         await interaction.response.edit_message(embed=embed, view=confirm_view)
 
     async def refresh(self, interaction: Interaction):

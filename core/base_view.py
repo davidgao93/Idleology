@@ -16,6 +16,11 @@ class BaseView(ui.View):
     - Child:    BaseView(bot, parent=parent_view)
     """
 
+    #: Views that intentionally handle clicks while a callback is still
+    #: running (auto-battle loops, casino cash-out) set this to True and
+    #: manage their own per-button re-entry flags instead.
+    concurrent_dispatch = False
+
     def __init__(
         self,
         bot,
@@ -28,6 +33,7 @@ class BaseView(ui.View):
         super().__init__(timeout=timeout)
         self.bot = bot
         self.message: discord.Message | None = None
+        self._dispatch_busy = False
 
         # Smart resolution of user_id / server_id
         if parent is not None:
@@ -39,8 +45,52 @@ class BaseView(ui.View):
             self.user_id = str(user_id)
             self.server_id = str(server_id) if server_id is not None else None
 
+        # Snapshot of the user's session token. force_clear() bumps the
+        # token, which kills every view created before it (see
+        # _session_token_valid).
+        sm = getattr(bot, "state_manager", None)
+        self._session_token = sm.current_token(self.user_id) if sm else 0
+
+    def _session_token_valid(self) -> bool:
+        sm = getattr(self.bot, "state_manager", None)
+        if sm is None or self.user_id is None:
+            return True
+        return self._session_token == sm.current_token(self.user_id)
+
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.user_id
+
+    async def _scheduled_task(self, item: ui.Item, interaction: Interaction):
+        """Central dispatch choke point for every button/select.
+
+        Adds two protections on top of discord.py's dispatch:
+        - Session-token check: orphaned views from a force-cleared session
+          go dead instead of racing a fresh session against the same state.
+        - Re-entry guard: while one callback is running, further clicks on
+          this view are swallowed, preventing double DB writes from rapid
+          clicks. Per-view opt-out via ``concurrent_dispatch``.
+        """
+        if not self._session_token_valid():
+            try:
+                await interaction.response.defer()
+            except discord.HTTPException:
+                pass
+            return
+
+        if self.concurrent_dispatch:
+            return await super()._scheduled_task(item, interaction)
+
+        if self._dispatch_busy:
+            try:
+                await interaction.response.defer()
+            except discord.HTTPException:
+                pass
+            return
+        self._dispatch_busy = True
+        try:
+            await super()._scheduled_task(item, interaction)
+        finally:
+            self._dispatch_busy = False
 
     async def on_timeout(self) -> None:
         """Default safe cleanup."""

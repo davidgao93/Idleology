@@ -9,9 +9,11 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.images import VEX_PORTRAIT, VEX_THUMBNAIL
 from core.nether_market.data import NPC_VENDORS, WEALTH_TIERS
 from core.nether_market.mechanics import MAX_CHARGES
 from core.nether_market.mechanics import NetherMarketMechanics as M
+from core.npc_voices import get_quip
 
 _PAGE_SIZE = 20
 
@@ -87,6 +89,9 @@ class BrowseListView(BaseView):
 
     async def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="\U0001f3af Browse Targets", color=discord.Color.dark_purple())
+        embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
+        if VEX_THUMBNAIL:
+            embed.set_thumbnail(url=VEX_THUMBNAIL)
         charges = self.attacker_profile["plunder_charges"]
         embed.add_field(name="Plunder Charges", value=f"{charges} / {MAX_CHARGES}", inline=True)
         if charges < MAX_CHARGES:
@@ -116,7 +121,9 @@ class BrowseListView(BaseView):
                     f"**[{i}]** {name} — Tier: **{tier_name}** — Last plundered: {last_str}{status}"
                 )
         embed.description = "\n".join(lines) if lines else "No targets available right now."
-        embed.set_footer(text=f"Page {self.current_page + 1} / {self.total_pages}")
+        embed.set_footer(
+            text=f"{get_quip('nether_market_browse')}\nPage {self.current_page + 1} / {self.total_pages}"
+        )
         return embed
 
     async def _build_buttons(self):
@@ -223,6 +230,7 @@ class ConfirmAttackView(BaseView):
 
     async def build_embed(self) -> discord.Embed:
         embed = discord.Embed(title="Confirm Plunder Attempt", color=discord.Color.orange())
+        embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if self.target["kind"] == "npc":
             name = self.target["npc"]["name"]
         else:

@@ -3,7 +3,11 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.codex.mechanics import apply_signature_modifier, select_run_chapters
-from core.codex.views.run_view import CodexRunView, _generate_codex_wave_monster
+from core.codex.views.run_view import (
+    CodexRunView,
+    _generate_codex_wave_monster,
+    build_wave_baseline,
+)
 from core.codex.views.tomes_view import CodexTomsView
 from core.combat import jewel_engine as _je
 from core.combat.turns import engine
@@ -24,6 +28,7 @@ class CodexMenuView(BaseView):
         chapter_history: dict,
         antique_tomes: int = 0,
         server_id: str = "",
+        saved_run: dict | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.player = player
@@ -32,7 +37,11 @@ class CodexMenuView(BaseView):
         self.rerolls = rerolls
         self.chapter_history = chapter_history
         self.antique_tomes = antique_tomes
+        self.saved_run = saved_run
         self._processing = False
+        if saved_run is not None:
+            self.begin_run.label = "Resume Run"
+            self.begin_run.emoji = "▶️"
 
     def build_embed(self) -> discord.Embed:
         tomes = self.player.codex_tomes
@@ -55,6 +64,17 @@ class CodexMenuView(BaseView):
             ),
             inline=False,
         )
+        if self.saved_run is not None:
+            embed.add_field(
+                name="▶️ Run in Progress",
+                value=(
+                    f"Saved at **Chapter {self.saved_run.get('chapter_idx', 0) + 1}/5** "
+                    f"({self.saved_run.get('chapters_cleared', 0)} cleared, "
+                    f"{self.saved_run.get('deaths', 0)} death(s)). "
+                    "Resume costs no Tome."
+                ),
+                inline=False,
+            )
         total_clears = sum(v["clears"] for v in self.chapter_history.values())
         total_perfects = sum(v["perfect_clears"] for v in self.chapter_history.values())
         embed.add_field(name="Chapter Clears", value=str(total_clears), inline=True)
@@ -71,6 +91,25 @@ class CodexMenuView(BaseView):
             await interaction.response.defer()
             return
         self._processing = True
+
+        # Resume a persisted run (chapter-boundary checkpoint) — no Tome cost.
+        saved = await self.bot.database.codex.get_run(self.user_id, self.server_id)
+        if saved is not None:
+            await interaction.response.defer()
+            self.bot.state_manager.set_active(self.user_id, "codex")
+            view = await CodexRunView.resume_from_snapshot(
+                self.bot,
+                self.user_id,
+                self.player,
+                saved,
+                server_id=self.server_id,
+            )
+            embed = view._combat_embed()
+            self.stop()
+            msg = await interaction.edit_original_response(embed=embed, view=view)
+            view._message_ref = msg
+            return
+
         current_tomes = await self.bot.database.users.get_currency(
             self.user_id, "antique_tome"
         )
@@ -82,7 +121,6 @@ class CodexMenuView(BaseView):
 
         await interaction.response.defer()
 
-        await self.bot.database.users.modify_currency(self.user_id, "antique_tome", -1)
         self.bot.state_manager.set_active(self.user_id, "codex")
 
         _je.reset_jewel_charges(self.player)
@@ -97,19 +135,7 @@ class CodexMenuView(BaseView):
         self.player.combat_ward = self.player.get_combat_ward_value()
         apply_signature_modifier(self.player, chapter)
 
-        wave_baseline = {
-            "bonus_crit": self.player.bonus_crit,
-            "bonus_max_hp": self.player.bonus_max_hp,
-            "combat_ward": self.player.combat_ward,
-            "atk_multiplier": self.player.atk_multiplier,
-            "def_multiplier": self.player.def_multiplier,
-            "crit_multiplier": self.player.crit_multiplier,
-            "chapter_hit_penalty": self.player.chapter_hit_penalty,
-            "chapter_pdr_reduction": self.player.chapter_pdr_reduction,
-            "chapter_ward_gen_mult": self.player.chapter_ward_gen_mult,
-            "chapter_crit_dmg_reduction": self.player.chapter_crit_dmg_reduction,
-            "chapter_hp_entry_pct": self.player.chapter_hp_entry_pct,
-        }
+        wave_baseline = build_wave_baseline(self.player)
 
         monster = await _generate_codex_wave_monster(self.player, chapter, 1)
         engine.apply_stat_effects(self.player, monster)
@@ -125,6 +151,17 @@ class CodexMenuView(BaseView):
             chapter_wave_baseline=wave_baseline,
             server_id=self.server_id,
         )
+
+        # Atomic entry: the Tome is only spent together with the initial
+        # checkpoint, so a crash can never eat the entry cost without
+        # leaving a resumable run behind.
+        async with self.bot.database.transaction():
+            await self.bot.database.users.modify_currency(
+                self.user_id, "antique_tome", -1
+            )
+            await self.bot.database.codex.upsert_run(
+                self.user_id, self.server_id, view.to_snapshot()
+            )
 
         embed = view._combat_embed()
         self.stop()

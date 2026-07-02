@@ -9,8 +9,10 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.images import VEX_PORTRAIT, VEX_THUMBNAIL
 from core.nether_market.data import ITEM_POOL
 from core.nether_market.mechanics import NetherMarketMechanics as M
+from core.npc_voices import get_quip
 
 _TIER_LABELS = (("cheap", "Cheap"), ("med", "Medium"), ("expensive", "Expensive"))
 
@@ -38,6 +40,9 @@ class HoldingsView(BaseView):
         total_value = M.compute_holdings_value(self.holdings, self.rotation)
 
         embed = discord.Embed(title="\U0001f4e6 Your Holdings", color=discord.Color.dark_purple())
+        embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
+        if VEX_THUMBNAIL:
+            embed.set_thumbnail(url=VEX_THUMBNAIL)
 
         lines = []
         for tier_key, tier_label in _TIER_LABELS:
@@ -56,7 +61,10 @@ class HoldingsView(BaseView):
         embed.description = "\n".join(lines) if lines else "You aren't holding anything right now."
         embed.add_field(name="Total Slots", value=f"{held_count} / {cap}", inline=True)
         embed.add_field(name="Total Value", value=f"\U0001f4b0 ~{total_value:,}", inline=True)
-        embed.set_footer(text="\U0001f504 = currently one of the 3 active offers, sellable at that price")
+        embed.set_footer(
+            text=f"{get_quip('nether_market_holdings')}\n"
+            "\U0001f504 = currently one of the 6 active offers, sellable at that price"
+        )
         return embed
 
     def _build_buttons(self):

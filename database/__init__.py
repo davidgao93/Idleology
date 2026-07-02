@@ -1,5 +1,9 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 import aiosqlite
 
+from .base import GuardedConnection
 from .repositories.apex import ApexRepository
 from .repositories.codes import CodesRepository
 from .repositories.quests import QuestsRepository
@@ -35,7 +39,9 @@ from .repositories.users import UserRepository
 
 
 class DatabaseManager:
-    def __init__(self, *, connection: aiosqlite.Connection) -> None:
+    def __init__(self, *, connection: "aiosqlite.Connection | GuardedConnection") -> None:
+        if not isinstance(connection, GuardedConnection):
+            connection = GuardedConnection(connection)
         self.connection = connection
 
         # Initialize sub-repositories
@@ -71,3 +77,28 @@ class DatabaseManager:
         self.codes = CodesRepository(connection)
         self.loadouts = LoadoutRepository(connection)
         self.nether_market = NetherMarketRepository(connection)
+
+    @asynccontextmanager
+    async def transaction(self):
+        """Run a block of repository calls as one atomic transaction.
+
+        Inline commits/rollbacks issued by repository methods inside the
+        block are suppressed; everything commits together on exit or rolls
+        back together if the block raises. Statements from other tasks wait
+        until the transaction finishes. Do not nest transaction() calls.
+
+            async with bot.database.transaction():
+                await bot.database.users.modify_gold(...)
+                await bot.database.equipment.transfer(...)
+        """
+        conn = self.connection
+        async with conn._tx_lock:
+            conn._tx_owner = asyncio.current_task()
+            try:
+                yield
+                await conn._real.commit()
+            except BaseException:
+                await conn._real.rollback()
+                raise
+            finally:
+                conn._tx_owner = None

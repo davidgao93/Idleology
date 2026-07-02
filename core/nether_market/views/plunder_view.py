@@ -207,12 +207,13 @@ class PlunderView(BaseView):
         free_slots = max(0, attacker_cap - attacker_held)
 
         moved, overflow_gold, _total_taken = M.apply_plunder(holdings, pct, free_slots)
-        for item_key, qty in moved.items():
-            await self.bot.database.nether_market.modify_holdings(self.user_id, self.server_id, item_key, qty)
-        if overflow_gold:
-            await self.bot.database.users.modify_gold(self.user_id, overflow_gold)
+        async with self.bot.database.transaction():
+            for item_key, qty in moved.items():
+                await self.bot.database.nether_market.modify_holdings(self.user_id, self.server_id, item_key, qty)
+            if overflow_gold:
+                await self.bot.database.users.modify_gold(self.user_id, overflow_gold)
 
-        await self.bot.database.nether_market.add_marks(self.user_id, self.server_id, npc["reward_marks"])
+            await self.bot.database.nether_market.add_marks(self.user_id, self.server_id, npc["reward_marks"])
         return moved, overflow_gold
 
     async def _resolve_player_success(self) -> tuple[dict, int]:
@@ -225,33 +226,38 @@ class PlunderView(BaseView):
         free_slots = max(0, attacker_cap - attacker_held)
 
         moved, overflow_gold, total_taken = M.apply_plunder(holdings, pct, free_slots)
-        for item_key, qty in total_taken.items():
-            await self.bot.database.nether_market.modify_holdings(defender_id, self.server_id, item_key, -qty)
-        for item_key, qty in moved.items():
-            await self.bot.database.nether_market.modify_holdings(self.user_id, self.server_id, item_key, qty)
-        if overflow_gold:
-            await self.bot.database.users.modify_gold(self.user_id, overflow_gold)
 
-        await self.bot.database.nether_market.add_marks(self.user_id, self.server_id, 1)
-        await self.bot.database.nether_market.set_shield(defender_id, self.server_id, time.time() + self.shield_seconds)
-        await self.bot.database.nether_market.record_plunder_time(defender_id, self.server_id)
-
+        # Resolve the display name before opening the transaction — never hold
+        # the DB lock across a Discord API call.
         try:
             attacker_user = await self.bot.fetch_user(int(self.user_id))
             attacker_name = attacker_user.display_name
         except Exception:
             attacker_name = f"Unknown ({self.user_id})"
-        await self.bot.database.nether_market.set_plunder_notice(
-            defender_id,
-            self.server_id,
-            {
-                "attacker_name": attacker_name,
-                "items": moved,
-                "overflow_gold": overflow_gold,
-                "pct": pct,
-                "timestamp": time.time(),
-            },
-        )
+
+        async with self.bot.database.transaction():
+            for item_key, qty in total_taken.items():
+                await self.bot.database.nether_market.modify_holdings(defender_id, self.server_id, item_key, -qty)
+            for item_key, qty in moved.items():
+                await self.bot.database.nether_market.modify_holdings(self.user_id, self.server_id, item_key, qty)
+            if overflow_gold:
+                await self.bot.database.users.modify_gold(self.user_id, overflow_gold)
+
+            await self.bot.database.nether_market.add_marks(self.user_id, self.server_id, 1)
+            await self.bot.database.nether_market.set_shield(defender_id, self.server_id, time.time() + self.shield_seconds)
+            await self.bot.database.nether_market.record_plunder_time(defender_id, self.server_id)
+
+            await self.bot.database.nether_market.set_plunder_notice(
+                defender_id,
+                self.server_id,
+                {
+                    "attacker_name": attacker_name,
+                    "items": moved,
+                    "overflow_gold": overflow_gold,
+                    "pct": pct,
+                    "timestamp": time.time(),
+                },
+            )
         return moved, overflow_gold
 
     async def go_back(self, interaction: Interaction):

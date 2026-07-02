@@ -207,6 +207,10 @@ class StatPackagePicker(BaseView):
 
 
 class CombatView(BaseView):
+    # Flee must stay clickable while the auto-battle loop runs inside a
+    # button callback; this view manages its own re-entry flags.
+    concurrent_dispatch = True
+
     def __init__(
         self,
         bot,

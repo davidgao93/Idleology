@@ -227,8 +227,11 @@ async def process_next_turn(
                 bm_logger=bm_log,
             )
             bm_log.close()
-            await _grant_bm_rewards(bot, user_id, server_id, rewards)
-            await bot.database.settlement.delete_pending_deal(user_id, server_id)
+            # Atomic: a crash between granting and deleting would re-grant the
+            # deal on the next turn.
+            async with bot.database.transaction():
+                await _grant_bm_rewards(bot, user_id, server_id, rewards)
+                await bot.database.settlement.delete_pending_deal(user_id, server_id)
             summary["deal_completed"] = deal
             summary["deal_rewards"] = rewards
 
@@ -1222,5 +1225,6 @@ async def complete_bm_deal_instant(
         value, active_biases, player_level, tree_nodes=tree_nodes, bm_logger=bm_log
     )
     bm_log.close()
-    await _grant_bm_rewards(bot, user_id, server_id, rewards)
+    async with bot.database.transaction():
+        await _grant_bm_rewards(bot, user_id, server_id, rewards)
     return rewards
