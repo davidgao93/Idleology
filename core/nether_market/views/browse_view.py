@@ -13,7 +13,7 @@ from core.nether_market.data import NPC_VENDORS, WEALTH_TIERS
 from core.nether_market.mechanics import MAX_CHARGES
 from core.nether_market.mechanics import NetherMarketMechanics as M
 
-_PAGE_SIZE = 5
+_PAGE_SIZE = 20
 
 
 async def build_browse_view(bot, user_id: str, server_id: str) -> "BrowseListView":
@@ -55,7 +55,9 @@ async def build_browse_view(bot, user_id: str, server_id: str) -> "BrowseListVie
         attacker_profile["plunder_charges"] = charges
         attacker_profile["last_charge_time"] = new_ts
 
-    return BrowseListView(bot, user_id, server_id, targets, attacker_profile)
+    view = BrowseListView(bot, user_id, server_id, targets, attacker_profile)
+    await view._build_buttons()
+    return view
 
 
 class BrowseListView(BaseView):
@@ -67,7 +69,6 @@ class BrowseListView(BaseView):
         self.total_pages = max(1, (len(targets) + _PAGE_SIZE - 1) // _PAGE_SIZE)
         self._processing = False
         self._display_names: dict[str, str] = {}
-        self._build_buttons()
 
     async def _resolve_name(self, uid: str) -> str:
         if uid in self._display_names:
@@ -88,6 +89,13 @@ class BrowseListView(BaseView):
         embed = discord.Embed(title="\U0001f3af Browse Targets", color=discord.Color.dark_purple())
         charges = self.attacker_profile["plunder_charges"]
         embed.add_field(name="Plunder Charges", value=f"{charges} / {MAX_CHARGES}", inline=True)
+        if charges < MAX_CHARGES:
+            regen_seconds = M.get_charge_regen_seconds(self.attacker_profile["mastery_nodes"])
+            seconds_left = M.seconds_until_next_charge(
+                charges, self.attacker_profile["last_charge_time"], regen_seconds
+            )
+            next_ts = int(time.time() + seconds_left)
+            embed.add_field(name="Next Charge", value=f"<t:{next_ts}:R>", inline=True)
 
         lines = []
         for i, target in enumerate(self._page_targets(), start=1):
@@ -111,12 +119,34 @@ class BrowseListView(BaseView):
         embed.set_footer(text=f"Page {self.current_page + 1} / {self.total_pages}")
         return embed
 
-    def _build_buttons(self):
+    async def _build_buttons(self):
+        """Async because player target labels need resolved display names — this
+        also means _build_buttons() must be awaited (see build_browse_view,
+        prev_page, next_page) rather than called synchronously from __init__."""
         self.clear_items()
-        for i, target in enumerate(self._page_targets()):
-            btn = ui.Button(label=str(i + 1), style=ButtonStyle.primary, row=0)
-            btn.callback = self._make_select_callback(target)
-            self.add_item(btn)
+        page_targets = self._page_targets()
+        if page_targets:
+            options = []
+            for i, target in enumerate(page_targets):
+                if target["kind"] == "npc":
+                    npc = target["npc"]
+                    tier_name = WEALTH_TIERS[npc["tier_index"]]["name"]
+                    label = f"{npc['name']} (NPC)"
+                    description = f"Tier: {tier_name}"
+                else:
+                    name = await self._resolve_name(target["user_id"])
+                    tier_name = WEALTH_TIERS[target["tier_index"]]["name"]
+                    status = "Shielded" if target["shielded"] else "Available"
+                    label = name
+                    description = f"Tier: {tier_name} · {status}"
+                options.append(
+                    discord.SelectOption(
+                        label=f"[{i + 1}] {label}"[:100], description=description[:100], value=str(i)
+                    )
+                )
+            select = ui.Select(placeholder="Select a target...", options=options, row=0)
+            select.callback = self._make_select_callback(select, page_targets)
+            self.add_item(select)
 
         if self.total_pages > 1:
             prev_btn = ui.Button(label="Prev", row=1, disabled=self.current_page == 0)
@@ -132,10 +162,11 @@ class BrowseListView(BaseView):
         back_btn.callback = self.go_back
         self.add_item(back_btn)
 
-    def _make_select_callback(self, target: dict):
+    def _make_select_callback(self, select: ui.Select, page_targets: list[dict]):
         async def _callback(interaction: Interaction):
             if self._processing:
                 return await interaction.response.defer()
+            target = page_targets[int(select.values[0])]
             await self._attempt_select(interaction, target)
 
         return _callback
@@ -159,12 +190,12 @@ class BrowseListView(BaseView):
 
     async def prev_page(self, interaction: Interaction):
         self.current_page = max(0, self.current_page - 1)
-        self._build_buttons()
+        await self._build_buttons()
         await interaction.response.edit_message(embed=await self.build_embed(), view=self)
 
     async def next_page(self, interaction: Interaction):
         self.current_page = min(self.total_pages - 1, self.current_page + 1)
-        self._build_buttons()
+        await self._build_buttons()
         await interaction.response.edit_message(embed=await self.build_embed(), view=self)
 
     async def go_back(self, interaction: Interaction):

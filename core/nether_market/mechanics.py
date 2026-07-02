@@ -308,22 +308,27 @@ class NetherMarketMechanics:
     @staticmethod
     def apply_plunder(
         holdings: dict, pct: float, attacker_free_slots: int
-    ) -> tuple[dict, int]:
-        """Splits `pct` of each stack in `holdings` off to the attacker, capped by
-        `attacker_free_slots` (overflow converts to gold at true value). Returns
-        (moved: {item_key: qty}, overflow_gold). If holdings exist but rounding
-        would move nothing, forces 1 unit from the largest stack."""
-        moved: dict[str, int] = {}
+    ) -> tuple[dict, int, dict]:
+        """Splits `pct` of each stack in `holdings` off the victim's holdings.
+        `attacker_free_slots` caps how much of that actually lands in the
+        attacker's inventory — the rest is converted to gold at true value, but
+        is still removed from the victim (it doesn't just vanish for free).
+        Returns (moved: {item_key: qty} the attacker receives as items,
+        overflow_gold, total_taken: {item_key: qty} the full amount to deduct
+        from the victim — always >= moved per item). If holdings exist but
+        rounding would move nothing, forces 1 unit from the largest stack."""
+        total_taken: dict[str, int] = {}
         for item_key, qty in holdings.items():
             take = round(qty * pct)
             if take > 0:
-                moved[item_key] = take
+                total_taken[item_key] = take
 
-        if not moved and holdings:
+        if not total_taken and holdings:
             largest_key = max(holdings, key=holdings.get)
             if holdings[largest_key] > 0:
-                moved[largest_key] = 1
+                total_taken[largest_key] = 1
 
+        moved = dict(total_taken)
         total_units = sum(moved.values())
         overflow_gold = 0
         if attacker_free_slots >= 0 and total_units > attacker_free_slots:
@@ -339,4 +344,4 @@ class NetherMarketMechanics:
                     overflow_gold += trim * item["true_value"]
             moved = {k: v for k, v in moved.items() if v > 0}
 
-        return moved, overflow_gold
+        return moved, overflow_gold, total_taken
