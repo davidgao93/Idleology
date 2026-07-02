@@ -2,9 +2,10 @@
 database/repositories/nether_market.py — Nether Market data layer.
 
 Handles three tables:
-  nether_market_rotation — the 3 currently active offers (1 per tier), shared per server_id
+  nether_market_rotation — the 6 currently active offers (lo/hi per tier), shared per server_id
   nether_market_holdings — per-player item quantities (item_key -> quantity)
-  nether_market_profile  — Nether Marks, mastery nodes_owned, plunder charges, shield/last-plundered timestamps
+  nether_market_profile  — Nether Marks, mastery nodes_owned, plunder charges, shield/last-plundered
+                            timestamps, and a pending one-shot plunder notice
 """
 
 import json
@@ -32,34 +33,54 @@ class NetherMarketRepository(BaseRepository):
     async def save_rotation(
         self,
         server_id: str,
-        cheap_item: str,
-        cheap_price: int,
-        med_item: str,
-        med_price: int,
-        expensive_item: str,
-        expensive_price: int,
+        cheap_lo_item: str,
+        cheap_lo_price: int,
+        cheap_hi_item: str,
+        cheap_hi_price: int,
+        med_lo_item: str,
+        med_lo_price: int,
+        med_hi_item: str,
+        med_hi_price: int,
+        expensive_lo_item: str,
+        expensive_lo_price: int,
+        expensive_hi_item: str,
+        expensive_hi_price: int,
     ) -> None:
         await self.connection.execute(
             """INSERT INTO nether_market_rotation
-                 (server_id, cheap_item, cheap_price, med_item, med_price,
-                  expensive_item, expensive_price, rotated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 (server_id, cheap_lo_item, cheap_lo_price, cheap_hi_item, cheap_hi_price,
+                  med_lo_item, med_lo_price, med_hi_item, med_hi_price,
+                  expensive_lo_item, expensive_lo_price, expensive_hi_item, expensive_hi_price,
+                  rotated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(server_id) DO UPDATE SET
-                 cheap_item = excluded.cheap_item,
-                 cheap_price = excluded.cheap_price,
-                 med_item = excluded.med_item,
-                 med_price = excluded.med_price,
-                 expensive_item = excluded.expensive_item,
-                 expensive_price = excluded.expensive_price,
+                 cheap_lo_item = excluded.cheap_lo_item,
+                 cheap_lo_price = excluded.cheap_lo_price,
+                 cheap_hi_item = excluded.cheap_hi_item,
+                 cheap_hi_price = excluded.cheap_hi_price,
+                 med_lo_item = excluded.med_lo_item,
+                 med_lo_price = excluded.med_lo_price,
+                 med_hi_item = excluded.med_hi_item,
+                 med_hi_price = excluded.med_hi_price,
+                 expensive_lo_item = excluded.expensive_lo_item,
+                 expensive_lo_price = excluded.expensive_lo_price,
+                 expensive_hi_item = excluded.expensive_hi_item,
+                 expensive_hi_price = excluded.expensive_hi_price,
                  rotated_at = excluded.rotated_at""",
             (
                 server_id,
-                cheap_item,
-                cheap_price,
-                med_item,
-                med_price,
-                expensive_item,
-                expensive_price,
+                cheap_lo_item,
+                cheap_lo_price,
+                cheap_hi_item,
+                cheap_hi_price,
+                med_lo_item,
+                med_lo_price,
+                med_hi_item,
+                med_hi_price,
+                expensive_lo_item,
+                expensive_lo_price,
+                expensive_hi_item,
+                expensive_hi_price,
                 time.time(),
             ),
         )
@@ -145,6 +166,7 @@ class NetherMarketRepository(BaseRepository):
             "last_charge_time": None,
             "shield_expires_at": None,
             "last_plundered_at": None,
+            "pending_plunder_notice": None,
         }
 
     async def add_marks(self, user_id: str, server_id: str, amount: int) -> None:
@@ -228,3 +250,32 @@ class NetherMarketRepository(BaseRepository):
             (time.time(), user_id, server_id),
         )
         await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Pending plunder notice — shown once, the next time the victim opens /nether
+    # ------------------------------------------------------------------
+
+    async def set_plunder_notice(self, user_id: str, server_id: str, notice: dict) -> None:
+        await self.get_or_create_profile(user_id, server_id)
+        await self.connection.execute(
+            "UPDATE nether_market_profile SET pending_plunder_notice = ? WHERE user_id = ? AND server_id = ?",
+            (json.dumps(notice), user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def pop_plunder_notice(self, user_id: str, server_id: str) -> dict | None:
+        """Returns the pending plunder notice (if any) and clears it so it only
+        ever displays once."""
+        cursor = await self.connection.execute(
+            "SELECT pending_plunder_notice FROM nether_market_profile WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        row = await cursor.fetchone()
+        if not row or not row[0]:
+            return None
+        await self.connection.execute(
+            "UPDATE nether_market_profile SET pending_plunder_notice = NULL WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+        return json.loads(row[0])

@@ -14,13 +14,15 @@ from core.nether_market.mechanics import NetherMarketMechanics as M
 from core.npc_voices import get_quip
 
 _TIER_LABELS = (("cheap", "Cheap"), ("med", "Medium"), ("expensive", "Expensive"))
+_VARIANT_LABELS = (("lo", "Bargain"), ("hi", "Premium"))
 
 
 async def build_hub_view(bot, user_id: str, server_id: str) -> "NetherMarketHubView":
     """Fetches all Nether Market state from the DB and returns a fresh hub view.
-    Rolls an initial rotation on first-ever use for a server."""
+    Rolls an initial rotation on first-ever use for a server, and also re-rolls
+    if an existing rotation predates the lo/hi expansion (NULL new columns)."""
     rotation = await bot.database.nether_market.get_rotation(server_id)
-    if rotation is None:
+    if rotation is None or rotation.get("cheap_lo_item") is None:
         rolled = M.roll_rotation()
         await bot.database.nether_market.save_rotation(server_id, **rolled)
         rotation = await bot.database.nether_market.get_rotation(server_id)
@@ -28,17 +30,21 @@ async def build_hub_view(bot, user_id: str, server_id: str) -> "NetherMarketHubV
     holdings = await bot.database.nether_market.get_holdings(user_id, server_id)
     profile = await bot.database.nether_market.get_or_create_profile(user_id, server_id)
     gold = await bot.database.users.get_gold(user_id)
+    plunder_notice = await bot.database.nether_market.pop_plunder_notice(user_id, server_id)
 
-    return NetherMarketHubView(bot, user_id, server_id, rotation, holdings, profile, gold)
+    return NetherMarketHubView(
+        bot, user_id, server_id, rotation, holdings, profile, gold, plunder_notice
+    )
 
 
 class NetherMarketHubView(BaseView):
-    def __init__(self, bot, user_id, server_id, rotation, holdings, profile, gold):
+    def __init__(self, bot, user_id, server_id, rotation, holdings, profile, gold, plunder_notice=None):
         super().__init__(bot, user_id, server_id)
         self.rotation = rotation
         self.holdings = holdings
         self.profile = profile
         self.gold = gold
+        self.plunder_notice = plunder_notice
         self._processing = False
         self._build_buttons()
 
@@ -63,18 +69,19 @@ class NetherMarketHubView(BaseView):
 
         lines = []
         for tier_key, label in _TIER_LABELS:
-            item_key = self.rotation[f"{tier_key}_item"]
-            price = self.rotation[f"{tier_key}_price"]
-            item = M.get_item(item_key)
-            dev = M.deviation_pct(price, item["true_value"])
-            sign = "+" if dev >= 0 else ""
-            held = self.holdings.get(item_key, 0)
-            line = f"**[{label}]** {item['name']} — \U0001f4b0 {price:,} ({sign}{dev:.0f}%)"
-            if show_true_value:
-                line += f"  *(true: {item['true_value']:,})*"
-            if held:
-                line += f"\nYou hold: **{held}**"
-            lines.append(line)
+            for variant_key, variant_label in _VARIANT_LABELS:
+                item_key = self.rotation[f"{tier_key}_{variant_key}_item"]
+                price = self.rotation[f"{tier_key}_{variant_key}_price"]
+                item = M.get_item(item_key)
+                dev = M.deviation_pct(price, item["true_value"])
+                sign = "+" if dev >= 0 else ""
+                held = self.holdings.get(item_key, 0)
+                line = f"**[{label} · {variant_label}]** {item['name']} — \U0001f4b0 {price:,} ({sign}{dev:.0f}%)"
+                if show_true_value:
+                    line += f"  *(true: {item['true_value']:,})*"
+                if held:
+                    line += f"\nYou hold: **{held}**"
+                lines.append(line)
         embed.description = "\n\n".join(lines)
 
         embed.add_field(name="Gold", value=f"\U0001f4b0 {self.gold:,}", inline=True)
@@ -83,38 +90,68 @@ class NetherMarketHubView(BaseView):
         )
         embed.add_field(name="Wealth Tier", value=f"**{tier_name}**", inline=True)
         embed.add_field(name="Nether Marks", value=f"\U0001f536 {self.profile['nether_marks']}", inline=True)
+
+        if self.plunder_notice:
+            notice = self.plunder_notice
+            item_lines = []
+            for item_key, qty in notice.get("items", {}).items():
+                item = M.get_item(item_key)
+                name = item["name"] if item else item_key
+                item_lines.append(f"{qty}x {name}")
+            haul_parts = []
+            if item_lines:
+                haul_parts.append(", ".join(item_lines))
+            if notice.get("overflow_gold"):
+                haul_parts.append(f"\U0001f4b0 {notice['overflow_gold']:,} gold (overflow)")
+            haul = "; ".join(haul_parts) if haul_parts else "nothing of value"
+            embed.insert_field_at(
+                0,
+                name="⚠️ You Were Plundered!",
+                value=(
+                    f"**{notice.get('attacker_name', 'Someone')}** cracked your vault "
+                    f"<t:{int(notice['timestamp'])}:R> and made off with {haul}."
+                ),
+                inline=False,
+            )
+            self.plunder_notice = None  # only ever shown on the first render of this view
         return embed
 
     def _build_buttons(self):
         self.clear_items()
-        for tier_key, label in _TIER_LABELS:
-            item_key = self.rotation[f"{tier_key}_item"]
-            price = self.rotation[f"{tier_key}_price"]
+        for row, (tier_key, label) in enumerate(_TIER_LABELS):
+            for variant_key, variant_label in _VARIANT_LABELS:
+                item_key = self.rotation[f"{tier_key}_{variant_key}_item"]
+                price = self.rotation[f"{tier_key}_{variant_key}_price"]
 
-            buy_btn = ui.Button(label=f"Buy {label}", style=ButtonStyle.green, row=0)
-            buy_btn.callback = self._make_buy_callback(item_key, price)
-            self.add_item(buy_btn)
+                buy_btn = ui.Button(
+                    label=f"Buy {label} ({variant_label})", style=ButtonStyle.green, row=row
+                )
+                buy_btn.callback = self._make_buy_callback(item_key, price)
+                self.add_item(buy_btn)
 
-            held = self.holdings.get(item_key, 0)
-            sell_btn = ui.Button(
-                label=f"Sell {label}", style=ButtonStyle.red, row=1, disabled=held <= 0
-            )
-            sell_btn.callback = self._make_sell_callback(item_key, price)
-            self.add_item(sell_btn)
+                held = self.holdings.get(item_key, 0)
+                sell_btn = ui.Button(
+                    label=f"Sell {label} ({variant_label})",
+                    style=ButtonStyle.red,
+                    row=row,
+                    disabled=held <= 0,
+                )
+                sell_btn.callback = self._make_sell_callback(item_key, price)
+                self.add_item(sell_btn)
 
-        holdings_btn = ui.Button(label="Holdings", style=ButtonStyle.blurple, emoji="\U0001f4e6", row=2)
+        holdings_btn = ui.Button(label="Holdings", style=ButtonStyle.blurple, emoji="\U0001f4e6", row=3)
         holdings_btn.callback = self.open_holdings
         self.add_item(holdings_btn)
 
-        browse_btn = ui.Button(label="Browse Targets", style=ButtonStyle.blurple, emoji="\U0001f3af", row=2)
+        browse_btn = ui.Button(label="Browse Targets", style=ButtonStyle.blurple, emoji="\U0001f3af", row=3)
         browse_btn.callback = self.open_browse
         self.add_item(browse_btn)
 
-        mastery_btn = ui.Button(label="Tricks of the Trade", style=ButtonStyle.blurple, emoji="\U0001f3ad", row=2)
+        mastery_btn = ui.Button(label="Tricks of the Trade", style=ButtonStyle.blurple, emoji="\U0001f3ad", row=3)
         mastery_btn.callback = self.open_mastery
         self.add_item(mastery_btn)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2)
+        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3)
         close_btn.callback = self.handle_close
         self.add_item(close_btn)
 

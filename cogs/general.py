@@ -555,32 +555,37 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == "hematurgy":
+            from core.hematurgy.mechanics import (
+                EVO_MAX_TIER,
+                MAX_TIER,
+                MUTATIVE_POOL,
+                PASSIVE_POOL,
+                HematurgyMechanics,
+            )
+
+            def _hematurgy_tier_line(passive_id: str, name: str) -> str:
+                descs = [
+                    HematurgyMechanics.passive_description(passive_id, t)
+                    for t in range(1, MAX_TIER + 1)
+                ]
+                return f"**{name}** — {_compact_tier_descriptions(descs)}"
+
+            main_lines = [
+                _hematurgy_tier_line(pid, defn["name"])
+                for pid, defn in PASSIVE_POOL.items()
+            ]
+            mutated_lines = [
+                _hematurgy_tier_line(pid, defn["name"])
+                for pid, defn in MUTATIVE_POOL.items()
+            ]
+
             embed.title = "🩸 Hematurgy Passives"
             embed.description = (
                 "Hematurgy passives are unlocked with **Primordial Blood** and upgraded with "
-                "**Evolutionary** or **Mutative Blood**. Tiers 6–7 are mutation-only.\n\n"
-                "**— Main Pool (Tiers 1–5) —**\n\n"
-                "**Reverberation** — Echo hits have a chance to retrigger themselves.\n\n"
-                "**Soothing Venom** — Leech HP equal to a % of poison damage dealt.\n\n"
-                "**Iron Momentum** — Gain +ATK per consecutive hit (max 5 stacks; resets on miss).\n\n"
-                "**Serrated** — Reduce monster ATK per hit; crits apply double the reduction.\n\n"
-                "**Haemorrhage** — Hits build a bleed pool equal to % of ATK; pool deals 10% of itself as damage each round.\n\n"
-                "**Vital Resonance** — A % of any ward gained is simultaneously restored as HP.\n\n"
-                "**Executioner's Rite** — +ATK and +crit damage while the monster is below 30% HP.\n\n"
-                "**Crimson Feast** — On kill, restore a % of Max HP.\n\n"
-                "**Phantom Reflex** — On miss, gain a temporary evasion bonus.\n\n"
-                "**Chain Reaction** — +crit damage per consecutive crit (max 5 stacks).\n\n"
-                "**Regenerative Tissue** — Heal a % of Max HP after any round where no damage was dealt.\n\n"
-                "**Fevered Strike** — +ATK for each potion consumed this combat.\n\n"
-                "**Predator's Mark** — Crits mark the target; the next hit deals additional bonus damage.\n\n"
-                "**Counterforce** — A % of total DEF is added as flat bonus ATK.\n\n"
-                "**Defiance** — Dropping below 40% HP triggers +ATK and +DEF for the rest of that combat.\n\n"
-                "**— Mutated Pool (mutation-only) —**\n\n"
-                "**Spectral Waltz** — Build blade stacks on each hit; crits release all stacks for % ATK damage each.\n\n"
-                "**Puncture** — Crits accumulate crit-damage as a bleed; 50% of the bleed bursts on a miss.\n\n"
-                "**Flash Frost** — After a set number of consecutive misses, freeze the monster for one round.\n\n"
-                "**Ward Inoculation** — At combat start ward converts to DEF and Max HP is doubled; ward generated deals % of its value as damage to the monster.\n\n"
-                "**Soul Fracture** — Gain +ATK for every 10% of Max HP lost during this combat."
+                f"**Evolutionary Blood** up to T{EVO_MAX_TIER}, then **Mutative Blood** up to "
+                f"T{MAX_TIER}. Values below are shown T1→T{MAX_TIER}.\n\n"
+                f"**— Main Pool —**\n\n" + "\n\n".join(main_lines) + "\n\n"
+                "**— Mutated Pool (mutation-only) —**\n\n" + "\n\n".join(mutated_lines)
             )
             content_added = True
 
@@ -647,7 +652,7 @@ class General(commands.Cog, name="general"):
                 ("passives", "View your active passives"),
                 ("journey", "Level milestone rewards"),
                 ("cooldowns", "Check command timers"),
-                ("settings", "Manage your personal game settings"),
+                ("player_settings", "Manage your personal game settings"),
                 ("tutorial", "Replay the intro tutorial"),
                 ("unregister", "Delete your character (Permanent!)"),
             ],

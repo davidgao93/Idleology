@@ -1,4 +1,6 @@
+import asyncio
 import collections
+import os
 
 import discord
 from discord import Interaction, app_commands
@@ -8,8 +10,10 @@ from core.combat.economy.victory import apply_victory_rewards
 from core.combat.mobgen.gen_mob import generate_encounter
 from core.items.factory import load_player
 from core.models import Monster
+from database.backup import create_backup, list_backups
 
 _MAX_COUNT = 200
+_BACKUP_RETENTION_COUNT = 28
 
 
 class Admin(commands.Cog, name="admin"):
@@ -190,6 +194,63 @@ class Admin(commands.Cog, name="admin"):
 
         # One API call — the result.
         await interaction.followup.send(embed=embed)
+
+    @app_commands.command(
+        name="db_backup",
+        description="[Admin] Create an on-demand database backup for rollback safety.",
+    )
+    async def db_backup(self, interaction: Interaction) -> None:
+        user_id = str(interaction.user.id)
+        if not self._is_admin(user_id):
+            return await interaction.response.send_message(
+                "You don't have permission to use this command.", ephemeral=True
+            )
+
+        await interaction.response.defer(ephemeral=True)
+        root = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
+        db_path = f"{root}/database/database.db"
+        backup_dir = f"{root}/database/backups"
+        path = await asyncio.to_thread(
+            create_backup, db_path, backup_dir, _BACKUP_RETENTION_COUNT
+        )
+        size_mb = os.path.getsize(path) / (1024 * 1024)
+        total = len(list_backups(backup_dir))
+        await interaction.followup.send(
+            f"Backup created: `{os.path.basename(path)}` ({size_mb:.1f} MB). "
+            f"{total} backup(s) retained (cap {_BACKUP_RETENTION_COUNT}).",
+            ephemeral=True,
+        )
+
+    @app_commands.command(
+        name="db_backups",
+        description="[Admin] List available database backups.",
+    )
+    async def db_backups(self, interaction: Interaction) -> None:
+        user_id = str(interaction.user.id)
+        if not self._is_admin(user_id):
+            return await interaction.response.send_message(
+                "You don't have permission to use this command.", ephemeral=True
+            )
+
+        root = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
+        backup_dir = f"{root}/database/backups"
+        backups = list_backups(backup_dir)
+        if not backups:
+            return await interaction.response.send_message(
+                "No backups found yet.", ephemeral=True
+            )
+
+        lines = []
+        for name in backups[-15:]:
+            size_mb = os.path.getsize(os.path.join(backup_dir, name)) / (1024 * 1024)
+            lines.append(f"`{name}` — {size_mb:.1f} MB")
+        embed = discord.Embed(
+            title="Database Backups",
+            description="\n".join(lines),
+            color=discord.Color.blue(),
+        )
+        embed.set_footer(text=f"{len(backups)} total backup(s) on disk")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot) -> None:

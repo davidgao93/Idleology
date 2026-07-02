@@ -266,7 +266,7 @@ def _desc(pid: str, tier: int) -> str:
             mx = int(tier_val("spectral_waltz_max", tier))
             return (
                 f"+1 blade on hit (max {mx}), −1 blade on miss. Crits release ALL blades "
-                f"simultaneously, each dealing {pct(v)} ATK."
+                f"simultaneously, each dealing {v:.0f}% ATK."
             )
         case "puncture":
             return (

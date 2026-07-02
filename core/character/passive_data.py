@@ -3,6 +3,8 @@ core/character/passive_data.py
 Lookup tables for all passive/essence descriptions used in the profile hub.
 """
 
+from core.hematurgy.mechanics import tier_val as _htv
+
 _WEAPON_PASSIVE_DESC: dict[str, str] = {
     # Burning family — ATK boost (×8% per tier)
     "burning_1": "On equip: Gain 8% of total ATK as bonus ATK",
@@ -257,64 +259,64 @@ _ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}
 
 _HEMATURGY_SHORT_FUNCS: dict = {
     "reverberation": lambda t: (
-        f"On hit: {[40, 50, 60, 70, 80][t - 1]}% chance for echoes to retrigger (−10% per chain)"
+        f"On hit: {_htv('reverberation', t) * 100:.0f}% chance for echoes to retrigger (−10% per chain)"
     ),
     "soothing_venom": lambda t: (
-        f"On miss: Leech {[2, 4, 6, 8, 10][t - 1]}% of poison damage as HP"
+        f"On miss: Leech {_htv('soothing_venom', t) * 100:.0f}% of poison damage as HP"
     ),
     "iron_momentum": lambda t: (
-        f"On hit: +{[3, 5, 7, 9, 11][t - 1]}% ATK per stack (max 5); On miss: reset stacks"
+        f"On hit: +{_htv('iron_momentum', t) * 100:.0f}% ATK per stack (max 5); On miss: reset stacks"
     ),
     "serrated": lambda t: (
-        f"On hit: −{[5, 10, 15, 20, 25][t - 1]} monster ATK (crits: ×2 reduction)"
+        f"On hit: −{_htv('serrated', t):.0f} monster ATK (crits: ×2 reduction)"
     ),
     "haemorrhage": lambda t: (
-        f"On hit: Add {[2, 3, 4, 5, 6][t - 1]}% ATK to bleed pool; Turn start: deal 10% of pool"
+        f"On hit: Add {_htv('haemorrhage', t) * 100:.0f}% ATK to bleed pool; Turn start: deal 10% of pool"
     ),
     "vital_resonance": lambda t: (
-        f"On ward gain: Heal {[10, 15, 20, 25, 30][t - 1]}% of ward gained as HP"
+        f"On ward gain: Heal {_htv('vital_resonance', t) * 100:.0f}% of ward gained as HP"
     ),
     "executioners_rite": lambda t: (
-        f"During combat: +{[10, 15, 20, 25, 30][t - 1]}% ATK and crit damage while monster HP < 30%"
+        f"During combat: +{_htv('executioners_rite', t) * 100:.0f}% ATK and crit damage while monster HP < 30%"
     ),
     "crimson_feast": lambda t: (
-        f"On kill: Restore {[10, 15, 20, 25, 30][t - 1]}% of Max HP"
+        f"On kill: Restore {_htv('crimson_feast', t) * 100:.0f}% of Max HP"
     ),
     "phantom_reflex": lambda t: (
-        f"On miss: +{[10, 15, 20, 25, 30][t - 1]}% evasion per stack (max 2); On hit: lose 1 stack"
+        f"On miss: +{_htv('phantom_reflex', t) * 100:.0f}% evasion per stack (max 2); On hit: lose 1 stack"
     ),
     "chain_reaction": lambda t: (
-        f"On crit: +{[8, 12, 16, 20, 24][t - 1]}% crit damage per stack (max 5); On miss: reset"
+        f"On crit: +{_htv('chain_reaction', t) * 100:.0f}% crit damage per stack (max 5); On miss: reset"
     ),
     "regenerative_tissue": lambda t: (
-        f"During combat: Heal {[2, 3, 4, 5, 6][t - 1]}% Max HP after any zero-damage round"
+        f"During combat: Heal {_htv('regenerative_tissue', t) * 100:.0f}% Max HP after any zero-damage round"
     ),
     "fevered_strike": lambda t: (
-        f"On potion use: +{[5, 8, 11, 14, 17][t - 1]}% ATK for this fight (stacks)"
+        f"On potion use: +{_htv('fevered_strike', t) * 100:.0f}% ATK for this fight (stacks)"
     ),
     "predators_mark": lambda t: (
-        f"On crit: Mark target; next hit deals +{[15, 20, 25, 30, 35][t - 1]}% bonus damage"
+        f"On crit: Mark target; next hit deals +{_htv('predators_mark', t) * 100:.0f}% bonus damage"
     ),
     "counterforce": lambda t: (
-        f"During combat: {[20, 25, 30, 35, 40][t - 1]}% of total DEF added as flat ATK"
+        f"During combat: {_htv('counterforce', t) * 100:.0f}% of total DEF added as flat ATK"
     ),
     "defiance": lambda t: (
-        f"Once per fight: Below 40% HP, gain +{[10, 15, 20, 25, 30][t - 1]}% ATK and DEF"
+        f"Once per fight: Below 40% HP, gain +{_htv('defiance', t) * 100:.0f}% ATK and DEF"
     ),
     "spectral_waltz": lambda t: (
-        f"On hit: Gain 1 blade (max {[5, 6, 7, 8, 10][t - 1]}); On crit: Release all for {[5, 5, 6, 7, 8][t - 1]}% ATK each"
+        f"On hit: Gain 1 blade (max {_htv('spectral_waltz_max', t):.0f}); On crit: Release all for {_htv('spectral_waltz', t):.0f}% ATK each"
     ),
     "puncture": lambda t: (
-        f"On crit: Build {[5, 8, 11, 14, 17][t - 1]}% crit damage as bleed pool; On miss: burst 50%"
+        f"On crit: Build {_htv('puncture', t) * 100:.0f}% crit damage as bleed pool; On miss: burst 50%"
     ),
     "flash_frost": lambda t: (
-        f"On miss: After {[15, 13, 11, 9, 7][t - 1]} consecutive misses, freeze monster for 1 round"
+        f"On miss: After {_htv('flash_frost', t):.0f} consecutive misses, freeze monster for 1 round"
     ),
     "ward_inoculation": lambda t: (
-        f"Combat start: Ward→DEF, Max HP doubled; On ward gain: deal {[60, 70, 80, 90, 100][t - 1]}% as damage"
+        f"Combat start: Ward→DEF, Max HP doubled; On ward gain: deal {_htv('ward_inoculation', t) * 100:.0f}% as damage"
     ),
     "soul_fracture": lambda t: (
-        f"During combat: +{[3, 5, 7, 9, 11][t - 1]}% ATK per 10% Max HP lost this fight"
+        f"During combat: +{_htv('soul_fracture', t) * 100:.0f}% ATK per 10% Max HP lost this fight"
     ),
 }
 

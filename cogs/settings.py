@@ -4,14 +4,14 @@ from discord.ext import commands
 from core.settings.views import SettingsView
 
 
-class Settings(commands.Cog, name="settings"):
+class Settings(commands.Cog, name="player_settings"):
     def __init__(self, bot):
         self.bot = bot
 
     @app_commands.command(
-        name="settings", description="Manage your personal game settings."
+        name="player_settings", description="Manage your personal game settings."
     )
-    async def settings(self, interaction: Interaction):
+    async def player_settings(self, interaction: Interaction):
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
 
@@ -20,7 +20,7 @@ class Settings(commands.Cog, name="settings"):
             return
         if not await self.bot.check_is_active(interaction, user_id):
             return
-        self.bot.state_manager.set_active(user_id, "settings")
+        self.bot.state_manager.set_active(user_id, "player_settings")
         doors_status = await self.bot.database.users.get_doors_enabled(user_id)
         exp_protection = await self.bot.database.users.get_exp_protection(user_id)
         auto_rest_pay = await self.bot.database.users.get_auto_rest_pay(user_id)

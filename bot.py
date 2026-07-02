@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -16,6 +17,10 @@ from discord.ext.commands import Context
 from dotenv import load_dotenv
 
 from database import DatabaseManager
+from database.backup import create_backup
+
+BACKUP_INTERVAL_HOURS = 6
+BACKUP_RETENTION_COUNT = 28  # ~1 week of history at the default 6h interval
 
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
@@ -192,6 +197,23 @@ class DiscordBot(commands.Bot):
                 "ALTER TABLE maw_participants RENAME COLUMN last_damage_check TO last_fight_ts",
                 "ALTER TABLE uber_shrine_statues ADD COLUMN tier INTEGER NOT NULL DEFAULT 1",
                 "ALTER TABLE uber_shrine_statues ADD COLUMN slot_index INTEGER NOT NULL DEFAULT 0",
+                # Nether Market: expand rotation from 1 to 2 items per tier (lo = below
+                # true value, hi = above true value); old single cheap/med/expensive
+                # columns are left in place unused.
+                "ALTER TABLE nether_market_rotation ADD COLUMN cheap_lo_item TEXT",
+                "ALTER TABLE nether_market_rotation ADD COLUMN cheap_lo_price INTEGER",
+                "ALTER TABLE nether_market_rotation ADD COLUMN cheap_hi_item TEXT",
+                "ALTER TABLE nether_market_rotation ADD COLUMN cheap_hi_price INTEGER",
+                "ALTER TABLE nether_market_rotation ADD COLUMN med_lo_item TEXT",
+                "ALTER TABLE nether_market_rotation ADD COLUMN med_lo_price INTEGER",
+                "ALTER TABLE nether_market_rotation ADD COLUMN med_hi_item TEXT",
+                "ALTER TABLE nether_market_rotation ADD COLUMN med_hi_price INTEGER",
+                "ALTER TABLE nether_market_rotation ADD COLUMN expensive_lo_item TEXT",
+                "ALTER TABLE nether_market_rotation ADD COLUMN expensive_lo_price INTEGER",
+                "ALTER TABLE nether_market_rotation ADD COLUMN expensive_hi_item TEXT",
+                "ALTER TABLE nether_market_rotation ADD COLUMN expensive_hi_price INTEGER",
+                # Nether Market: one-shot notice shown next time a plundered victim opens /nether.
+                "ALTER TABLE nether_market_profile ADD COLUMN pending_plunder_notice TEXT DEFAULT NULL",
             ]:
                 try:
                     await db.execute(stmt)
@@ -245,6 +267,27 @@ class DiscordBot(commands.Bot):
         """
         await self.wait_until_ready()
 
+    @tasks.loop(hours=BACKUP_INTERVAL_HOURS)
+    async def backup_task(self) -> None:
+        """Creates a rolling hot-backup of the SQLite database for rollback safety.
+
+        Uses sqlite3's Connection.backup() API, which safely snapshots the file
+        even while our aiosqlite connection holds it open under WAL mode.
+        """
+        try:
+            db_path = f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
+            backup_dir = f"{os.path.realpath(os.path.dirname(__file__))}/database/backups"
+            path = await asyncio.to_thread(
+                create_backup, db_path, backup_dir, BACKUP_RETENTION_COUNT
+            )
+            self.logger.info(f"Database backup created: {path}")
+        except Exception:
+            self.logger.error("backup_task error", exc_info=True)
+
+    @backup_task.before_loop
+    async def before_backup_task(self) -> None:
+        await self.wait_until_ready()
+
     async def setup_hook(self) -> None:
         """
         This will just be executed when the bot starts the first time.
@@ -269,6 +312,7 @@ class DiscordBot(commands.Bot):
         await self.database.settlement.migrate_settlements_schema()
         await self.load_cogs()
         self.status_task.start()
+        self.backup_task.start()
 
     async def close(self) -> None:
         if self.database is not None:

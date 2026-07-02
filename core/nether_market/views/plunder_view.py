@@ -215,6 +215,23 @@ class PlunderView(BaseView):
         await self.bot.database.nether_market.set_shield(defender_id, self.server_id, time.time() + self.shield_seconds)
         await self.bot.database.nether_market.record_plunder_time(defender_id, self.server_id)
 
+        try:
+            attacker_user = await self.bot.fetch_user(int(self.user_id))
+            attacker_name = attacker_user.display_name
+        except Exception:
+            attacker_name = f"Unknown ({self.user_id})"
+        await self.bot.database.nether_market.set_plunder_notice(
+            defender_id,
+            self.server_id,
+            {
+                "attacker_name": attacker_name,
+                "items": moved,
+                "overflow_gold": overflow_gold,
+                "pct": pct,
+                "timestamp": time.time(),
+            },
+        )
+
     async def go_back(self, interaction: Interaction):
         if self._processing:
             return await interaction.response.defer()

@@ -23,8 +23,12 @@ AVERAGE_PLUNDER_PCT = (MIN_PLUNDER_PCT + MAX_PLUNDER_PCT) / 2
 
 NPC_HOLDINGS_TIER_WEIGHTS = (("cheap", 0.5), ("med", 0.3), ("expensive", 0.2))
 
-ROTATION_MULTIPLIER_MIN = 0.55
-ROTATION_MULTIPLIER_MAX = 1.55
+# Below-value ("lo") and above-value ("hi") multiplier bands — split around 1.0
+# so every tier always has one guaranteed bargain and one guaranteed markup.
+ROTATION_LOW_MIN = 0.55
+ROTATION_LOW_MAX = 0.95
+ROTATION_HIGH_MIN = 1.05
+ROTATION_HIGH_MAX = 1.55
 
 BASE_HOLDINGS_CAP = 200
 
@@ -35,21 +39,34 @@ class NetherMarketMechanics:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def roll_price(true_value: int) -> int:
-        """Listed price = true_value * a multiplier in [0.55, 1.55], rounded to
-        the nearest 5% step so the displayed deviation is always a clean number."""
-        multiplier = random.uniform(ROTATION_MULTIPLIER_MIN, ROTATION_MULTIPLIER_MAX)
+    def _roll_price(true_value: int, mult_min: float, mult_max: float) -> int:
+        multiplier = random.uniform(mult_min, mult_max)
         step = round(multiplier / 0.05) * 0.05
         return max(1, round(true_value * step))
 
     @staticmethod
+    def roll_price_below(true_value: int) -> int:
+        """Listed price = true_value * a multiplier in [0.55, 0.95], rounded to
+        the nearest 5% step so the displayed deviation is always a clean number."""
+        return NetherMarketMechanics._roll_price(true_value, ROTATION_LOW_MIN, ROTATION_LOW_MAX)
+
+    @staticmethod
+    def roll_price_above(true_value: int) -> int:
+        """Listed price = true_value * a multiplier in [1.05, 1.55], rounded to
+        the nearest 5% step so the displayed deviation is always a clean number."""
+        return NetherMarketMechanics._roll_price(true_value, ROTATION_HIGH_MIN, ROTATION_HIGH_MAX)
+
+    @staticmethod
     def roll_rotation() -> dict:
-        """Picks 1 item per offer tier and rolls its listed price."""
+        """Picks 2 distinct items per offer tier: one ("lo") listed below true
+        value, one ("hi") listed above."""
         result = {}
         for tier in ("cheap", "med", "expensive"):
-            item = random.choice(ITEM_POOL[tier])
-            result[f"{tier}_item"] = item["key"]
-            result[f"{tier}_price"] = NetherMarketMechanics.roll_price(item["true_value"])
+            item_lo, item_hi = random.sample(ITEM_POOL[tier], 2)
+            result[f"{tier}_lo_item"] = item_lo["key"]
+            result[f"{tier}_lo_price"] = NetherMarketMechanics.roll_price_below(item_lo["true_value"])
+            result[f"{tier}_hi_item"] = item_hi["key"]
+            result[f"{tier}_hi_price"] = NetherMarketMechanics.roll_price_above(item_hi["true_value"])
         return result
 
     @staticmethod
@@ -68,12 +85,13 @@ class NetherMarketMechanics:
 
     @staticmethod
     def active_offers(rotation: dict) -> dict[str, int]:
-        """Returns {item_key: listed_price} for the 3 currently active offers."""
-        return {
-            rotation["cheap_item"]: rotation["cheap_price"],
-            rotation["med_item"]: rotation["med_price"],
-            rotation["expensive_item"]: rotation["expensive_price"],
-        }
+        """Returns {item_key: listed_price} for the 6 currently active offers
+        (one "lo" bargain + one "hi" markup per tier)."""
+        offers: dict[str, int] = {}
+        for tier in ("cheap", "med", "expensive"):
+            offers[rotation[f"{tier}_lo_item"]] = rotation[f"{tier}_lo_price"]
+            offers[rotation[f"{tier}_hi_item"]] = rotation[f"{tier}_hi_price"]
+        return offers
 
     # ------------------------------------------------------------------
     # Wealth tiers
@@ -259,20 +277,22 @@ class NetherMarketMechanics:
     @staticmethod
     def build_npc_holdings(npc: dict, rotation: dict) -> dict[str, int]:
         """Builds a simulated holdings dict for an NPC vendor from the server's
-        currently active rotation offers (cheap/med/expensive), weighted 50/30/20.
-        Sized so that an average plunder roll (~20%, the midpoint of the player
-        pct range) nets roughly the NPC's old flat `reward_gold` in total item
-        value — this is what actually gets plundered now instead of raw gold."""
+        currently active rotation offers (cheap/med/expensive), weighted 50/30/20
+        and split evenly between each tier's "lo" and "hi" item. Sized so that an
+        average plunder roll (~20%, the midpoint of the player pct range) nets
+        roughly the NPC's old flat `reward_gold` in total item value — this is
+        what actually gets plundered now instead of raw gold."""
         total_value = npc["reward_gold"] / AVERAGE_PLUNDER_PCT
         holdings: dict[str, int] = {}
         for tier, weight in NPC_HOLDINGS_TIER_WEIGHTS:
-            item_key = rotation[f"{tier}_item"]
-            price = rotation[f"{tier}_price"]
-            qty = round((total_value * weight) / price)
-            if qty > 0:
-                holdings[item_key] = qty
+            for variant in ("lo", "hi"):
+                item_key = rotation[f"{tier}_{variant}_item"]
+                price = rotation[f"{tier}_{variant}_price"]
+                qty = round((total_value * weight / 2) / price)
+                if qty > 0:
+                    holdings[item_key] = holdings.get(item_key, 0) + qty
         if not holdings:
-            holdings[rotation["cheap_item"]] = 1
+            holdings[rotation["cheap_lo_item"]] = 1
         return holdings
 
     # ------------------------------------------------------------------

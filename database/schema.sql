@@ -996,14 +996,20 @@ CREATE TABLE IF NOT EXISTS code_redemptions (
 -- like Apex/Companion Mastery; rotation is shared per server_id.
 
 CREATE TABLE IF NOT EXISTS nether_market_rotation (
-  server_id       TEXT PRIMARY KEY,
-  cheap_item      TEXT,
-  cheap_price     INTEGER,
-  med_item        TEXT,
-  med_price       INTEGER,
-  expensive_item  TEXT,
-  expensive_price INTEGER,
-  rotated_at      REAL
+  server_id          TEXT PRIMARY KEY,
+  cheap_lo_item      TEXT,
+  cheap_lo_price     INTEGER,
+  cheap_hi_item      TEXT,
+  cheap_hi_price     INTEGER,
+  med_lo_item        TEXT,
+  med_lo_price       INTEGER,
+  med_hi_item        TEXT,
+  med_hi_price       INTEGER,
+  expensive_lo_item  TEXT,
+  expensive_lo_price INTEGER,
+  expensive_hi_item  TEXT,
+  expensive_hi_price INTEGER,
+  rotated_at         REAL
 );
 
 CREATE TABLE IF NOT EXISTS nether_market_holdings (
@@ -1015,14 +1021,15 @@ CREATE TABLE IF NOT EXISTS nether_market_holdings (
 );
 
 CREATE TABLE IF NOT EXISTS nether_market_profile (
-  user_id            TEXT    NOT NULL,
-  server_id          TEXT    NOT NULL,
-  nether_marks       INTEGER NOT NULL DEFAULT 0,
-  mastery_nodes      TEXT    NOT NULL DEFAULT '{}',
-  plunder_charges    INTEGER NOT NULL DEFAULT 3,
-  last_charge_time   REAL    DEFAULT NULL,
-  shield_expires_at  REAL    DEFAULT NULL,
-  last_plundered_at  REAL    DEFAULT NULL,
+  user_id                   TEXT    NOT NULL,
+  server_id                 TEXT    NOT NULL,
+  nether_marks              INTEGER NOT NULL DEFAULT 0,
+  mastery_nodes             TEXT    NOT NULL DEFAULT '{}',
+  plunder_charges           INTEGER NOT NULL DEFAULT 3,
+  last_charge_time          REAL    DEFAULT NULL,
+  shield_expires_at         REAL    DEFAULT NULL,
+  last_plundered_at         REAL    DEFAULT NULL,
+  pending_plunder_notice    TEXT    DEFAULT NULL,
   PRIMARY KEY (user_id, server_id)
 );
 
