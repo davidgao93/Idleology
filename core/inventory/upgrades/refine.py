@@ -100,15 +100,19 @@ class RefineView(BaseUpgradeView):
                 self.item.item_id, "weapon", "refines_remaining", 1
             )
             self.item.refines_remaining += 1
+            quest_msgs = []
             try:
                 from core.quests.mechanics import tick_quest_progress
 
-                await tick_quest_progress(
+                quest_msgs = await tick_quest_progress(
                     self.bot, self.user_id, str(interaction.guild_id), "rune_refinement"
                 )
             except Exception:
                 pass
             await self.render(interaction)
+            from core.quests.mechanics import send_quest_complete_notice
+
+            await send_quest_complete_notice(interaction, quest_msgs)
             return
 
         cost_gold = self.cost_data["gold"]
@@ -621,11 +625,12 @@ class RefineView(BaseUpgradeView):
             )
             refines_done += 1
 
+        quest_msgs = []
         if runes_used > 0:
             try:
                 from core.quests.mechanics import tick_quest_progress
 
-                await tick_quest_progress(
+                quest_msgs = await tick_quest_progress(
                     self.bot,
                     self.user_id,
                     str(interaction.guild_id),
@@ -654,6 +659,10 @@ class RefineView(BaseUpgradeView):
             f"**Refinement Level:** +{self.item.refinement_lvl}\n\n"
             f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
         )
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+            )
 
         self.clear_items()
         self.add_back_button()

@@ -20,8 +20,8 @@ from core.settlement.views.base import SettlementBaseView
 class NurseryView(SettlementBaseView):
     """
     Detail view for the Nursery building.
-    Each "Produce Workers" click queues a 1-turn project.
-    On Next Turn, the project completes and adds workers.
+    Workers assigned to the Nursery automatically produce new followers
+    every Development Turn — no manual queueing required.
     """
 
     def __init__(self, bot, user_id: str, server_id: str, building, parent_view):
@@ -35,40 +35,31 @@ class NurseryView(SettlementBaseView):
     def _build_ui(self) -> None:
         self.clear_items()
 
-        produce_btn = ui.Button(
-            label="Queue Worker Production",
-            style=ButtonStyle.success,
-            emoji="👶",
-            row=0,
-        )
-        produce_btn.callback = self._on_queue
-        self.add_item(produce_btn)
-
         back_btn = ui.Button(
             label="Back",
             style=ButtonStyle.secondary,
             emoji="⬅️",
-            row=1,
+            row=0,
         )
         back_btn.callback = self._on_back
         self.add_item(back_btn)
 
     def _workers_per_turn(self) -> float:
-        """Worker output per turn, scaling with Nursery tier and worker assignment."""
+        """Average worker output per turn, scaling with Nursery tier and worker assignment."""
         tier = self.building.tier
-        workers = max(1, self.building.workers_assigned)
+        workers = self.building.workers_assigned
         base = WORKERS_PER_TURN_BASE
-        return base * tier * (1 + workers / 500)
+        return base * tier * (workers / 100)
 
-    def build_embed(self, projects: list | None = None) -> discord.Embed:
+    def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="👶 Nursery",
             description=(
                 f"*{get_quip('nursery')}*\n\n"
-                "The Nursery produces new workers for your settlement "
-                "through Development Turns. Each queued project completes "
-                "in **1 turn**, adding workers to your ideology.\n\n"
-                f"**Output per turn:** ~{self._workers_per_turn():.1f} workers\n"
+                "The Nursery automatically produces new workers for your "
+                "settlement every Development Turn, scaled by the workers "
+                "assigned here — no queueing needed.\n\n"
+                f"**Output per turn:** ~{self._workers_per_turn():.1f} workers (+0-1 variance)\n"
                 f"**Tier:** {self.building.tier} | "
                 f"**Workers assigned:** {self.building.workers_assigned:,}"
             ),
@@ -77,57 +68,7 @@ class NurseryView(SettlementBaseView):
         embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
         embed.set_thumbnail(url=YUNA_THUMBNAIL)
 
-        if projects:
-            nursery_proj = [p for p in projects if p["project_type"] == "nursery"]
-            if nursery_proj:
-                embed.add_field(
-                    name="🏗️ Production Queue",
-                    value=f"{len(nursery_proj)} batch(es) queued — advance turns to complete.",
-                    inline=False,
-                )
-            else:
-                embed.add_field(
-                    name="🏗️ Production Queue",
-                    value="No batches queued. Click **Queue Worker Production** to start one.",
-                    inline=False,
-                )
-
         return embed
-
-    async def _on_queue(self, interaction: Interaction) -> None:
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-        await interaction.response.defer()
-
-        try:
-            workers_this_turn = self._workers_per_turn()
-
-            await self.bot.database.settlement.upsert_project(
-                user_id=self.user_id,
-                server_id=self.server_id,
-                project_type="nursery",
-                target_id=None,
-                required_turns=1,
-                data={"workers_per_turn": workers_this_turn},
-            )
-
-            projects = await self.bot.database.settlement.get_projects(
-                self.user_id, self.server_id
-            )
-            embed = self.build_embed(projects=projects)
-            embed.add_field(
-                name="✅ Queued",
-                value="Worker production batch queued! Advance **1 Development Turn** to collect.",
-                inline=False,
-            )
-            await interaction.edit_original_response(embed=embed, view=self)
-        except Exception as e:
-            self.bot.logger.error(f"_on_queue exception: {e}", exc_info=True)
-            raise
-        finally:
-            self._processing = False
 
     async def _on_back(self, interaction: Interaction) -> None:
         if self._processing:
@@ -186,11 +127,12 @@ class IdlemFoundryView(SettlementBaseView):
         self.add_item(back_btn)
 
     def _idlem_per_turn(self) -> float:
-        """Base Idlem per turn (1–2 range, scaled by tier). Variance applied on completion."""
+        """Base Idlem per turn, scaled by tier and workers assigned (per 100). Variance applied on completion."""
         tier = self.building.tier
+        workers = self.building.workers_assigned
         base = IDLEM_PER_TURN_BASE
         return (
-            base * tier
+            base * tier * (workers / 100)
         )  # stored as base; actual grant has +0/+1 variance on completion
 
     def build_embed(
@@ -235,6 +177,11 @@ class IdlemFoundryView(SettlementBaseView):
         if self._processing:
             await interaction.response.defer()
             return
+        if self.building.workers_assigned <= 0:
+            return await interaction.response.send_message(
+                "Assign workers to the Idlem Foundry before queueing production.",
+                ephemeral=True,
+            )
         self._processing = True
         await interaction.response.defer()
 

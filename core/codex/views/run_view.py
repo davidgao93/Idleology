@@ -640,7 +640,11 @@ class CodexRunView(BaseView):
         return embed
 
     def _summary_embed(
-        self, fragments: int, pages_dropped: int, exp_changes: dict
+        self,
+        fragments: int,
+        pages_dropped: int,
+        exp_changes: dict,
+        quest_msgs: list | None = None,
     ) -> discord.Embed:
         is_perfect = self.deaths == 0 and self.chapters_cleared == 5
         if is_perfect:
@@ -682,6 +686,10 @@ class CodexRunView(BaseView):
         if exp_changes["msgs"]:
             embed.add_field(
                 name="Level Ups", value="\n".join(exp_changes["msgs"]), inline=False
+            )
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
             )
         chapters_text = "\n".join(
             f"{'✅' if i in self.cleared_chapter_indices else '❌'} {ch.name}"
@@ -881,10 +889,11 @@ class CodexRunView(BaseView):
             chapter_ids = [ch.id for ch in self.chapters]
             await self.bot.database.codex.log_perfect_run(self.user_id, chapter_ids)
 
+        quest_msgs = []
         try:
             from core.quests.mechanics import tick_quest_progress
 
-            await tick_quest_progress(
+            quest_msgs = await tick_quest_progress(
                 self.bot, self.user_id, getattr(self, "server_id", ""), "codex_complete"
             )
         except Exception as e:
@@ -911,7 +920,9 @@ class CodexRunView(BaseView):
         )
         await self.bot.database.users.update_from_player_object(self.player)
 
-        embed = self._summary_embed(fragments, len(self.page_drops), exp_changes)
+        embed = self._summary_embed(
+            fragments, len(self.page_drops), exp_changes, quest_msgs=quest_msgs
+        )
         self.stop()
         self.bot.state_manager.clear_active(self.user_id)  # session-terminating exit from CodexRunView (set in begin_run)
 

@@ -192,10 +192,10 @@ async def process_next_turn(
         workers = int(
             WORKERS_PER_TURN_BASE
             * nursery_building.tier
-            * (1 + nursery_building.workers_assigned / 500)
+            * (nursery_building.workers_assigned / 100)
             * nursery_mult
         )
-        workers = max(1, workers)
+        workers += random.randint(0, 1)
         user_row = await bot.database.users.get(user_id, server_id)
         ideology_name = (user_row["ideology"] or "") if user_row else ""
         if ideology_name:

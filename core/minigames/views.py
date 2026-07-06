@@ -113,6 +113,7 @@ class RouletteView(BaseView):
 
         # 3. Payouts
         payout = 0
+        quest_msgs = []
         if won:
             multiplier = (
                 35 if bet_type == "number" else 2
@@ -124,7 +125,7 @@ class RouletteView(BaseView):
                 try:
                     from core.quests.mechanics import tick_quest_progress
 
-                    await tick_quest_progress(
+                    quest_msgs = await tick_quest_progress(
                         self.bot,
                         self.user_id,
                         str(interaction.guild_id),
@@ -161,6 +162,10 @@ class RouletteView(BaseView):
                 name="Loss",
                 value=f"You bet on **{target_display}**. Better luck next time.",
                 inline=False,
+            )
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
             )
         self.clear_items()
         embed.set_footer(text="Game Over")
@@ -360,6 +365,7 @@ class BlackjackView(BaseView):
         elif result == "lose":
             msg = "**DEALER WINS!** Better luck next time."
 
+        quest_msgs = []
         if payout > 0:
             await self.bot.database.users.modify_gold(self.user_id, payout)
             net_win = payout - self.bet_amount
@@ -370,7 +376,7 @@ class BlackjackView(BaseView):
                     guild_id = (
                         str(interaction.guild_id) if interaction else self.guild_id
                     )
-                    await tick_quest_progress(
+                    quest_msgs = await tick_quest_progress(
                         self.bot, self.user_id, guild_id, "casino_win", value=net_win
                     )
                 except Exception:
@@ -396,6 +402,10 @@ class BlackjackView(BaseView):
             value=self.deck.format_hand(self.player_hand),
             inline=False,
         )
+        if quest_msgs:
+            final_embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+            )
         final_embed.set_footer(text=f"Bet: {self.bet_amount:,} gold")
 
         self.clear_items()
@@ -656,11 +666,12 @@ class CrashView(BaseView):
         winnings = int(self.bet_amount * self.current_multiplier)
         await self.bot.database.users.modify_gold(self.user_id, winnings)
         net_win = winnings - self.bet_amount
+        quest_msgs = []
         if net_win > 0:
             try:
                 from core.quests.mechanics import tick_quest_progress
 
-                await tick_quest_progress(
+                quest_msgs = await tick_quest_progress(
                     self.bot,
                     self.user_id,
                     str(interaction.guild_id),
@@ -676,6 +687,10 @@ class CrashView(BaseView):
             name="Rocket Status",
             value=f"It would have crashed at **{self.crash_point:.2f}x**",
         )
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+            )
 
         await interaction.response.edit_message(embed=embed, view=None)
         await self._add_restart_buttons()
@@ -768,6 +783,7 @@ class HorseRaceView(BaseView):
             value=f"🏆 **{winner['name']}** {winner['emoji']} crosses the line!",
         )
 
+        quest_msgs = []
         if winner == picked_horse:
             winnings = self.bet_amount * 4
             await self.bot.database.users.modify_gold(self.user_id, winnings)
@@ -776,7 +792,7 @@ class HorseRaceView(BaseView):
                 try:
                     from core.quests.mechanics import tick_quest_progress
 
-                    await tick_quest_progress(
+                    quest_msgs = await tick_quest_progress(
                         self.bot,
                         self.user_id,
                         str(self.original_interaction.guild_id),
@@ -797,6 +813,11 @@ class HorseRaceView(BaseView):
                 name="Loss",
                 value=f"You bet on **{picked_horse['name']}**. Better luck next time.",
                 inline=False,
+            )
+
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
             )
 
         self.clear_items()

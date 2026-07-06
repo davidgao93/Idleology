@@ -99,6 +99,7 @@ class TemperView(BaseUpgradeView):
         self._processing = True
 
         # Rune Check
+        quest_msgs = []
         if use_rune:
             runes = await self.bot.database.users.get_currency(
                 self.user_id, "potential_runes"
@@ -113,7 +114,7 @@ class TemperView(BaseUpgradeView):
             try:
                 from core.quests.mechanics import tick_quest_progress
 
-                await tick_quest_progress(
+                quest_msgs = await tick_quest_progress(
                     self.bot, self.user_id, str(interaction.guild_id), "rune_potential"
                 )
             except Exception:
@@ -216,6 +217,11 @@ class TemperView(BaseUpgradeView):
             res_embed.color = discord.Color.dark_grey()
             res_embed.description = (
                 "🔨 **Failed.**\nThe metal cooled too quickly. Materials consumed."
+            )
+
+        if quest_msgs:
+            res_embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
             )
 
         # UI Refresh
@@ -429,15 +435,19 @@ class ReinforceView(BaseUpgradeView):
                 self.item.item_id, itype, "reinforces_remaining", 1
             )
             self.item.reinforces_remaining += 1
+            quest_msgs = []
             try:
                 from core.quests.mechanics import tick_quest_progress
 
-                await tick_quest_progress(
+                quest_msgs = await tick_quest_progress(
                     self.bot, self.user_id, str(interaction.guild_id), "rune_shatter"
                 )
             except Exception:
                 pass
             await self.render(interaction)
+            from core.quests.mechanics import send_quest_complete_notice
+
+            await send_quest_complete_notice(interaction, quest_msgs)
             return
 
         # Perform reinforcement
@@ -635,6 +645,7 @@ class ReinforceView(BaseUpgradeView):
         shatter_runes_used = 0
         total_gain = 0
         stop_reason = "Complete."
+        quest_msgs = []
 
         while True:
             if self.item.reinforces_remaining == 0:
@@ -651,11 +662,13 @@ class ReinforceView(BaseUpgradeView):
                 try:
                     from core.quests.mechanics import tick_quest_progress
 
-                    await tick_quest_progress(
-                        self.bot,
-                        self.user_id,
-                        str(interaction.guild.id),
-                        "rune_shatter",
+                    quest_msgs.extend(
+                        await tick_quest_progress(
+                            self.bot,
+                            self.user_id,
+                            str(interaction.guild.id),
+                            "rune_shatter",
+                        )
                     )
                 except Exception:
                     pass
@@ -719,6 +732,10 @@ class ReinforceView(BaseUpgradeView):
             f"**{stat_label}:** {new_val:,}{suffix}\n\n"
             f"*Stopped: {stop_reason}*"
         )
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+            )
 
         self.clear_items()
         cont_btn = Button(label="Continue", style=ButtonStyle.primary)

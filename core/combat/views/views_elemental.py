@@ -164,16 +164,19 @@ class ElementalEncounterView(BaseView):
         except Exception:
             pass
 
+        quest_msgs = []
         try:
             from core.quests.mechanics import tick_quest_progress
 
-            await tick_quest_progress(
+            quest_msgs = await tick_quest_progress(
                 self.bot, self.user_id, self.server_id, "elemental_defeat"
             )
         except Exception as e:
             print(f"[Quest tick error in elemental]: {e}")
 
-        embed = self._build_completion_embed(rewards, rune_gained=rune_gained)
+        embed = self._build_completion_embed(
+            rewards, rune_gained=rune_gained, quest_msgs=quest_msgs
+        )
         self.clear_items()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
@@ -221,7 +224,10 @@ class ElementalEncounterView(BaseView):
         return False
 
     def _build_completion_embed(
-        self, rewards: dict, rune_gained: bool = False
+        self,
+        rewards: dict,
+        rune_gained: bool = False,
+        quest_msgs: list | None = None,
     ) -> discord.Embed:
         multiplier = self.total_damage // 1000
         embed = discord.Embed(
@@ -237,6 +243,10 @@ class ElementalEncounterView(BaseView):
             embed.description += (
                 "\n\nNo materials awarded — deal at least 1,000 damage next time!"
             )
+            if quest_msgs:
+                embed.add_field(
+                    name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                )
             return embed
 
         for skill_type, resources in rewards.items():
@@ -258,6 +268,11 @@ class ElementalEncounterView(BaseView):
                 name="✨ Rare Drop",
                 value="**You received a Rune of Nature!**",
                 inline=False,
+            )
+
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
             )
 
         return embed

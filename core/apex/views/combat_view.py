@@ -154,8 +154,10 @@ class ApexCombatView(CombatView):
         try:
             from core.quests.mechanics import tick_quest_progress
 
-            await tick_quest_progress(
-                self.bot, self.user_id, self.server_id, "apex_complete"
+            reward_data["msgs"].extend(
+                await tick_quest_progress(
+                    self.bot, self.user_id, self.server_id, "apex_complete"
+                )
             )
         except Exception as e:
             print(f"[Quest tick error in apex]: {e}")

@@ -251,8 +251,10 @@ async def _apply_slayer_rewards(
             try:
                 from core.quests.mechanics import tick_quest_progress
 
-                await tick_quest_progress(
-                    bot, user_id, server_id, "slayer_task_complete"
+                slayer_lines.extend(
+                    await tick_quest_progress(
+                        bot, user_id, server_id, "slayer_task_complete"
+                    )
                 )
             except Exception as _qe:
                 print(f"[Quest tick error in slayer boss task]: {_qe}")
@@ -369,7 +371,9 @@ async def _apply_slayer_rewards(
         try:
             from core.quests.mechanics import tick_quest_progress
 
-            await tick_quest_progress(bot, user_id, server_id, "slayer_task_complete")
+            slayer_lines.extend(
+                await tick_quest_progress(bot, user_id, server_id, "slayer_task_complete")
+            )
         except Exception as _qe:
             print(f"[Quest tick error in slayer regular task]: {_qe}")
         slayer_lines.append(

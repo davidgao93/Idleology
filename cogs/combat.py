@@ -251,7 +251,7 @@ class Combat(commands.Cog, name="combat"):
         # Safety net: every gate view inherits BaseView whose on_timeout calls
         # clear_active, so a user who ignores a gate for 10 min won't be stuck.
         # If an unhandled exception fires between this line and CombatView.send,
-        # StateManager's own 10-minute auto-expiry serves as the final fallback.
+        # StateManager's stale-lock expiry (45 min) serves as the final fallback.
         self.bot.state_manager.set_active(user_id, "combat")
 
         player = await load_player(user_id, existing_user, self.bot.database)

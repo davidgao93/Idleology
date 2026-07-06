@@ -207,15 +207,19 @@ class PullView(PartnerBaseView):
         await interaction.response.defer()
 
         try:
-            from core.quests.mechanics import tick_quest_progress
+            from core.quests.mechanics import (
+                send_quest_complete_notice,
+                tick_quest_progress,
+            )
 
-            await tick_quest_progress(
+            quest_msgs = await tick_quest_progress(
                 self.bot,
                 self.user_id,
                 str(interaction.guild_id),
                 "partner_recruit",
                 count,
             )
+            await send_quest_complete_notice(interaction, quest_msgs)
         except Exception:
             pass
 

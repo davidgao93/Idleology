@@ -99,6 +99,7 @@ class PotentialView(BaseUpgradeView):
         self._processing = True
 
         # Re-check funds/runes
+        quest_msgs = []
         if use_rune:
             runes = await self.bot.database.users.get_currency(
                 self.user_id, "potential_runes"
@@ -113,7 +114,7 @@ class PotentialView(BaseUpgradeView):
             try:
                 from core.quests.mechanics import tick_quest_progress
 
-                await tick_quest_progress(
+                quest_msgs = await tick_quest_progress(
                     self.bot, self.user_id, str(interaction.guild_id), "rune_potential"
                 )
             except Exception:
@@ -185,6 +186,11 @@ class PotentialView(BaseUpgradeView):
         else:
             result_embed.color = discord.Color.dark_grey()
             result_embed.description = "💔 **Failed.**\nThe magic failed to take hold."
+
+        if quest_msgs:
+            result_embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+            )
 
         # UI Refresh
         self.clear_items()

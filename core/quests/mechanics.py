@@ -236,6 +236,27 @@ async def tick_quest_progress(
     return msgs
 
 
+async def send_quest_complete_notice(interaction, msgs: list) -> None:
+    """Ephemeral followup surfacing any freshly-completed contract/horizon lines.
+
+    Call after tick_quest_progress() in views that have no natural embed field
+    to append progress to (upgrade panels, gacha, etc). Safe no-op if msgs is
+    empty, nothing completed, or the interaction response isn't usable.
+    """
+    if not interaction or not msgs:
+        return
+    completed = [m for m in msgs if "Complete!" in m]
+    if not completed:
+        return
+    try:
+        await interaction.followup.send(
+            "📋 " + "  |  ".join(completed) + "\nTurn in your reward at `/quests`!",
+            ephemeral=True,
+        )
+    except Exception:
+        pass
+
+
 async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) -> list:
     """Grant the reward for a completed contract. Returns display strings."""
     contracts = await bot.database.quests.get_contracts(user_id, server_id)

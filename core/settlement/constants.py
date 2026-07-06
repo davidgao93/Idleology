@@ -261,10 +261,10 @@ ZEAL_DAILY_SOFT_CAP = 600
 PASSIVE_ZEAL_PER_HOUR_BASE = 5
 # Maximum Zeal collectible in a single Gather Zeal action.
 ZEAL_GATHER_CAP = 400
-# Idlem produced per turn by the Idlem Foundry (before tier scaling).
+# Idlem produced per 100 workers assigned, per turn, by the Idlem Foundry (before tier scaling).
 IDLEM_PER_TURN_BASE = 1
-# Workers produced per turn by the Nursery (before tier scaling).
-WORKERS_PER_TURN_BASE = 1.2  # fractional — rounded to int each turn
+# Workers produced per 100 workers assigned, per turn, by the Nursery (before tier scaling).
+WORKERS_PER_TURN_BASE = 1.2  # fractional — rounded to int each turn, +0/1 variance
 
 # Project DT costs per building for construction.
 PROJECT_CONSTRUCTION_DT = {

@@ -518,6 +518,16 @@ class AscentView(BaseView):
             self.bot, self.user_id, self.server_id, self.player
         )
 
+        quest_msgs = []
+        try:
+            from core.quests.mechanics import tick_quest_progress
+
+            quest_msgs = await tick_quest_progress(
+                self.bot, self.user_id, self.server_id, "ascent_floor"
+            )
+        except Exception as e:
+            print(f"[Quest tick error in ascent]: {e}")
+
         # Build clear embed
         embed = discord.Embed(
             title=f"Floor {floor} Cleared!",
@@ -530,6 +540,7 @@ class AscentView(BaseView):
             lines.append(f"✨ **Pinnacle Unlock:** {pinnacle_gained}")
         if skiller_msg:
             lines.append(skiller_msg)
+        lines.extend(quest_msgs)
         embed.description = "\n".join(lines) if lines else "Onwards..."
         embed.set_footer(
             text=f"HP: {self.player.current_hp}/{self.player.total_max_hp} | Next floor in 3s..."
@@ -541,15 +552,6 @@ class AscentView(BaseView):
             else (interaction.response.edit_message if interaction else message.edit)
         )
         await target(embed=embed, view=None)
-
-        try:
-            from core.quests.mechanics import tick_quest_progress
-
-            await tick_quest_progress(
-                self.bot, self.user_id, self.server_id, "ascent_floor"
-            )
-        except Exception as e:
-            print(f"[Quest tick error in ascent]: {e}")
 
         await asyncio.sleep(3)
         await self._next_floor(interaction, message)

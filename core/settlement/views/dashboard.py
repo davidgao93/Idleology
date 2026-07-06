@@ -426,6 +426,7 @@ class SettlementDashboardView(SettlementBaseView):
                     lines.append(
                         f"**{cr['event_name']} repelled!** Your settlement is safe. +{zeal} Zeal awarded."
                     )
+                    lines.extend(cr.get("quest_msgs", []))
                 else:
                     plague_losses = cr.get("plague_losses")
                     if plague_losses:
@@ -1145,9 +1146,15 @@ class SettlementDashboardView(SettlementBaseView):
             await self.bot.database.settlement.spend_zeal(uid, sid, ZEAL_TO_DT)
 
             try:
-                from core.quests.mechanics import tick_quest_progress
+                from core.quests.mechanics import (
+                    send_quest_complete_notice,
+                    tick_quest_progress,
+                )
 
-                await tick_quest_progress(self.bot, uid, sid, "zeal_spent", ZEAL_TO_DT)
+                _q_msgs = await tick_quest_progress(
+                    self.bot, uid, sid, "zeal_spent", ZEAL_TO_DT
+                )
+                await send_quest_complete_notice(interaction, _q_msgs)
             except Exception:
                 pass
 
@@ -1377,13 +1384,14 @@ class SettlementDashboardView(SettlementBaseView):
                     uid, sid, event["event_key"]
                 )
                 zeal_reward = 0
+                crisis_quest_msgs = []
                 if won:
                     zeal_reward = 50
                     await self.bot.database.settlement.add_zeal(uid, sid, zeal_reward)
                     try:
                         from core.quests.mechanics import tick_quest_progress
 
-                        await tick_quest_progress(
+                        crisis_quest_msgs = await tick_quest_progress(
                             self.bot, uid, sid, "settlement_event_complete"
                         )
                     except Exception:
@@ -1443,6 +1451,8 @@ class SettlementDashboardView(SettlementBaseView):
                 }
                 if not won and plague_losses:
                     crisis_result["plague_losses"] = plague_losses
+                if crisis_quest_msgs:
+                    crisis_result["quest_msgs"] = crisis_quest_msgs
                 crisis_summary = {"crisis_result": crisis_result}
                 if self.message:
                     await self.message.edit(
