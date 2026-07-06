@@ -223,34 +223,34 @@ def process_monster_turn(
 
     apex_zone = getattr(monster, "apex_zone", None)
 
-    # Tempest zone: every 3rd monster turn → unavoidable 8% max HP true damage
+    # Tempest zone: every 3rd monster turn → unavoidable 10% max HP true damage
     start = len(log)
     if (
         apex_zone == "storm"
         and monster.combat_round % 3 == 0
         and monster.combat_round > 0
     ):
-        lightning_dmg = max(1, int(player.total_max_hp * 0.08))
+        lightning_dmg = max(1, int(player.total_max_hp * 0.10))
         player.current_hp = max(0, player.current_hp - lightning_dmg)
         log.append(
             f"⚡ **Tempest Lightning** — the storm strikes for **{lightning_dmg}** ⚡ true damage!"
         )
     capture_compact_events(log, clog, start)
 
-    # Living Battlefield: monster regen 0.4% max HP per turn
+    # Living Battlefield: monster regen 0.5% max HP per turn
     if apex_zone == "grove" and monster.hp < monster.max_hp:
-        regen = max(1, int(monster.max_hp * 0.004))
+        regen = max(1, int(monster.max_hp * 0.005))
         monster.hp = min(monster.max_hp, monster.hp + regen)
         log.append(
             f"🌿 **Living Battlefield** — the grove heals {monster.name} for **{regen}** HP!"
         )
         # skip in compact — monster HP regen visible in HP bar
 
-    # Tempted Fate: every 4th monster turn drain ALL player ward
+    # Tempted Fate: every 3rd monster turn drain ALL player ward
     start = len(log)
     if (
         apex_zone == "vault"
-        and monster.combat_round % 4 == 0
+        and monster.combat_round % 3 == 0
         and monster.combat_round > 0
     ):
         drained = player.combat_ward
@@ -261,10 +261,10 @@ def process_monster_turn(
             )
     capture_compact_events(log, clog, start)
 
-    # Reality Fracture: every 5th monster turn reroll one modifier
+    # Reality Fracture: every 4th monster turn reroll one modifier
     if (
         apex_zone == "shattered"
-        and monster.combat_round % 5 == 0
+        and monster.combat_round % 4 == 0
         and monster.combat_round > 0
     ):
         if monster.modifiers:

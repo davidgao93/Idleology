@@ -74,8 +74,8 @@ ZONE_DEFS: dict[str, ZoneDef] = {
         modifier_key="scorched",
         modifier_name="Scorched",
         modifier_desc=(
-            "Your ATK is boosted +20%. The monster's Flashfire charges begin at 4 "
-            "and their strikes deal +20% damage."
+            "Your ATK is boosted +20%. The monster's Flashfire charges begin at 5 "
+            "and their strikes deal +25% damage."
         ),
         color=0xCC4400,
     ),
@@ -88,7 +88,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
         modifier_name="Tempest",
         modifier_desc=(
             "You gain +15% Crit Chance. Every 3rd monster turn, unavoidable "
-            "lightning strikes for 8% of your max HP as true damage."
+            "lightning strikes for 10% of your max HP as true damage."
         ),
         color=0x4466FF,
     ),
@@ -100,8 +100,8 @@ ZONE_DEFS: dict[str, ZoneDef] = {
         modifier_key="siege_grounds",
         modifier_name="Siege Grounds",
         modifier_desc=(
-            "You deal +30% ATK. The monster starts with 30% max HP Ward and "
-            "an additional 30% DR against your attacks."
+            "You deal +30% ATK. The monster starts with 35% max HP Ward and "
+            "an additional 35% DR against your attacks."
         ),
         color=0x888888,
     ),
@@ -113,7 +113,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
         modifier_key="living_battlefield",
         modifier_name="Living Battlefield",
         modifier_desc=(
-            "The monster regenerates 0.4% of max HP each monster turn. "
+            "The monster regenerates 0.5% of max HP each monster turn. "
             "You heal 1% of your max HP on each connected hit."
         ),
         color=0x228833,
@@ -126,7 +126,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
         modifier_key="tempted_fate",
         modifier_name="Tempted Fate",
         modifier_desc=(
-            "All XP and Gold rewards are doubled. Every 4th monster turn, "
+            "All XP and Gold rewards are doubled. Every 3rd monster turn, "
             "all your ward is drained instantly."
         ),
         color=0xFFAA00,
@@ -139,7 +139,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
         modifier_key="reality_fracture",
         modifier_name="Reality Fracture",
         modifier_desc=(
-            "One of the monster's modifiers rerolls every 5 turns. "
+            "One of the monster's modifiers rerolls every 4 turns. "
             "Each of your turns has a 12% chance to force a critical hit."
         ),
         color=0x9900CC,

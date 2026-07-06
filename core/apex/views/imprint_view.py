@@ -1,12 +1,13 @@
 """
 core/apex/views/imprint_view.py — Passive extraction (imprint) flow.
 
-Shows the player's extractable (max-rank) passives from equipped gear, with full item
-details and meta shard opt-in toggles, then lets them confirm the extraction.
+Browses the player's UN-EQUIPPED inventory (up to 60 items per slot) for gear
+carrying a max-rank passive, then lets them extract it into the Soul Stone.
 
 Navigation:
-  Select screen → "← Back" returns to SoulStoneView
-  Confirm screen → "← Back" returns to select; "Extract" shows result
+  Browse screen  → type select drives the item select (25 items/page); "← Back" returns to SoulStoneView
+  Confirm screen → full item detail (ItemDetailView-level) + extraction chances;
+                   "← Back" returns to browse; "Extract" shows result
   Result screen  → "Done" returns to SoulStoneView
 """
 
@@ -21,13 +22,43 @@ from core.apex.mechanics import ApexMechanics
 from core.apex.models import MetaShardInventory, ShardInventory, SoulStone
 from core.base_view import BaseView
 from core.images import APEX_IMPRINT
+from core.items.factory import (
+    create_accessory,
+    create_armor,
+    create_boot,
+    create_glove,
+    create_helmet,
+    create_weapon,
+)
+
+# (display label, db item_type, emoji) — display order for the type select
+_TYPE_DEFS: list[tuple[str, str, str]] = [
+    ("Weapon", "weapon", "⚔️"),
+    ("Armor", "armor", "🛡️"),
+    ("Accessory", "accessory", "📿"),
+    ("Glove", "glove", "🧤"),
+    ("Boot", "boot", "👢"),
+    ("Helmet", "helmet", "🎩"),
+]
+
+_FACTORY_FUNCS = {
+    "weapon": create_weapon,
+    "armor": create_armor,
+    "accessory": create_accessory,
+    "glove": create_glove,
+    "boot": create_boot,
+    "helmet": create_helmet,
+}
 
 
 class ImprintView(BaseView):
     """
-    Imprint flow: select a max-rank passive from equipped gear → see item details +
-    extraction chances → toggle meta shard usage → confirm extraction.
+    Imprint flow: pick an equipment type → pick a specific un-equipped item with a
+    max-rank passive → see full item details + extraction chances → toggle meta
+    shard usage → confirm extraction.
     """
+
+    ITEMS_PER_PAGE = 25
 
     def __init__(
         self,
@@ -45,8 +76,14 @@ class ImprintView(BaseView):
         self.shards = shards
         self.meta = meta
         self._processing = False
+        self._loaded = False
 
-        self._candidates = self._gather_candidates()
+        # Browse state — populated by load_candidates()
+        self._by_type: dict[str, list[dict]] = {}
+        self._selected_type: str | None = None
+        self._item_page: int = 0
+
+        # Confirm-screen selection
         self._selected_passive: str | None = None
         self._selected_item_name: str | None = None
         self._selected_item = None
@@ -58,133 +95,205 @@ class ImprintView(BaseView):
         self._use_primal: bool = False
         self._use_vessel: bool = False
 
-        self._build_select()
-
     # ------------------------------------------------------------------
-    # Candidate gathering
+    # Candidate gathering (async — reads unequipped inventory from the DB)
     # ------------------------------------------------------------------
 
-    def _gather_candidates(self) -> list[dict]:
-        """Returns all max-rank extractable passives from equipped gear,
-        excluding any passive already imprinted in the soul stone."""
-        # Build the set of passives already occupying a soul stone slot
+    async def load_candidates(self) -> None:
+        """Fetches every UN-equipped item across all 6 slots and buckets max-rank
+        extractable passives by item type, excluding passives already imprinted."""
         already_imprinted: set[str] = set()
         if self.soul_stone:
             already_imprinted = {
                 s.passive for s in self.soul_stone.slots if not s.is_empty
             }
 
-        candidates = []
-        gear_items = [
-            (self.player.equipped_weapon, "Weapon"),
-            (self.player.equipped_armor, "Armor"),
-            (self.player.equipped_accessory, "Accessory"),
-            (self.player.equipped_glove, "Glove"),
-            (self.player.equipped_boot, "Boot"),
-            (self.player.equipped_helmet, "Helmet"),
-        ]
-        for item, item_type in gear_items:
-            if not item:
-                continue
-            passives = ApexMechanics.get_extractable_passives(item)
-            if not passives:
-                continue  # no max-rank passives — skip this item entirely
-            # passive_count for extraction chance = ALL non-empty passives (investment measure)
-            all_passive_attrs = (
-                "passive",
-                "p_passive",
-                "u_passive",
-                "infernal_passive",
-                "celestial_passive",
-                "void_passive",
-            )
-            passive_count = sum(
-                1
-                for attr in all_passive_attrs
-                if getattr(item, attr, None) not in (None, "", "none")
-            )
-            has_corrupted = bool(
-                getattr(item, "corrupted_essence", None)
-                and getattr(item, "corrupted_essence", "none") not in ("none", "")
-            )
-            for p in passives:
-                if p in already_imprinted:
-                    continue  # already imprinted — not eligible
-                candidates.append(
-                    {
-                        "passive": p,
-                        "item_type": item_type,
-                        "item": item,
-                        "item_name": getattr(item, "name", item_type),
-                        "passive_count": passive_count,
-                        "has_corrupted": has_corrupted,
-                    }
+        all_passive_attrs = (
+            "passive",
+            "p_passive",
+            "u_passive",
+            "infernal_passive",
+            "celestial_passive",
+            "void_passive",
+        )
+
+        by_type: dict[str, list[dict]] = {}
+        for label, db_type, _emoji in _TYPE_DEFS:
+            rows = await self.bot.database.equipment.get_all(self.user_id, db_type)
+            factory_fn = _FACTORY_FUNCS[db_type]
+            entries = []
+            for row in rows:
+                if row["is_equipped"]:
+                    continue  # only unequipped items are eligible
+                item = factory_fn(row)
+                passives = ApexMechanics.get_extractable_passives(item)
+                if not passives:
+                    continue
+                passive_count = sum(
+                    1
+                    for attr in all_passive_attrs
+                    if getattr(item, attr, None) not in (None, "", "none")
                 )
-        return candidates
+                has_corrupted = bool(
+                    getattr(item, "corrupted_essence", None)
+                    and getattr(item, "corrupted_essence", "none") not in ("none", "")
+                )
+                for p in passives:
+                    if p in already_imprinted:
+                        continue
+                    entries.append(
+                        {
+                            "key": f"{item.item_id}:{p}",
+                            "passive": p,
+                            "item": item,
+                            "item_name": item.name,
+                            "level": item.level,
+                            "passive_count": passive_count,
+                            "has_corrupted": has_corrupted,
+                        }
+                    )
+            if entries:
+                by_type[label] = entries
+
+        self._by_type = by_type
+        self._build_browse_view()
 
     # ------------------------------------------------------------------
-    # State 1 — Select screen
+    # State 1 — Browse screen (type select drives item select)
     # ------------------------------------------------------------------
 
-    def _build_select(self):
-        """Builds the item/passive selection dropdown."""
+    def _build_browse_view(self):
+        """Builds the type-select + item-select dropdowns for the browse screen."""
         self.clear_items()
 
-        if not self._candidates:
+        if not self._by_type:
+            back = Button(label="← Back", style=ButtonStyle.secondary)
+            back.callback = self._return_to_soul_stone
+            self.add_item(back)
             return
 
-        options = []
-        seen: set[str] = set()
-        for c in self._candidates[:25]:
-            key = f"{c['passive']}_{c['item_type']}"
-            if key in seen:
-                continue
-            seen.add(key)
-            passive_display = c["passive"].replace("-", " ").replace("_", " ").title()
-            item = c["item"]
-            item_level = getattr(item, "level", "?")
-            item_name = c.get("item_name") or c["item_type"]
-            options.append(
+        if self._selected_type not in self._by_type:
+            self._selected_type = next(iter(self._by_type))
+            self._item_page = 0
+
+        type_options = [
+            discord.SelectOption(
+                label=f"{label} ({len(entries)} eligible)",
+                value=label,
+                emoji=emoji,
+                default=(label == self._selected_type),
+            )
+            for label, _db, emoji in _TYPE_DEFS
+            if (entries := self._by_type.get(label))
+        ]
+        type_select = Select(
+            placeholder="Choose an item type…",
+            options=type_options,
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+        type_select.callback = self._on_type_select
+        self.add_item(type_select)
+
+        entries = self._by_type[self._selected_type]
+        per_page = self.ITEMS_PER_PAGE
+        total_pages = max(1, (len(entries) + per_page - 1) // per_page)
+        self._item_page = max(0, min(self._item_page, total_pages - 1))
+        start = self._item_page * per_page
+        page_entries = entries[start : start + per_page]
+
+        item_options = []
+        for e in page_entries:
+            passive_display = e["passive"].replace("-", " ").replace("_", " ").title()
+            item_options.append(
                 discord.SelectOption(
-                    label=f"{c['item_type']}: {item_name[:40]}",
-                    value=key,
-                    description=f"Extract: {passive_display} (Lv.{item_level})",
+                    label=f"Lv.{e['level']} {e['item_name']}"[:100],
+                    value=e["key"],
+                    description=f"Passive: {passive_display}"[:100],
                     emoji="💎",
                 )
             )
-
-        if not options:
-            return
-
-        select = Select(
+        item_select = Select(
             placeholder="Choose an item to extract from…",
-            options=options,
+            options=item_options,
             min_values=1,
             max_values=1,
+            row=1,
         )
-        select.callback = self._on_select
-        self.add_item(select)
+        item_select.callback = self._on_item_select
+        self.add_item(item_select)
 
-        back = Button(label="← Back", style=ButtonStyle.secondary)
+        if total_pages > 1:
+            prev_btn = Button(
+                label="◀ Prev",
+                style=ButtonStyle.secondary,
+                row=2,
+                disabled=(self._item_page == 0),
+            )
+            prev_btn.callback = self._prev_page
+            self.add_item(prev_btn)
+
+            page_label = Button(
+                label=f"Page {self._item_page + 1}/{total_pages}",
+                style=ButtonStyle.secondary,
+                row=2,
+                disabled=True,
+            )
+            self.add_item(page_label)
+
+            next_btn = Button(
+                label="Next ▶",
+                style=ButtonStyle.secondary,
+                row=2,
+                disabled=(self._item_page >= total_pages - 1),
+            )
+            next_btn.callback = self._next_page
+            self.add_item(next_btn)
+
+        back = Button(label="← Back", style=ButtonStyle.secondary, row=3)
         back.callback = self._return_to_soul_stone
         self.add_item(back)
 
-    async def _on_select(self, interaction: Interaction):
+    async def _on_type_select(self, interaction: Interaction):
+        await interaction.response.defer()
+        self._selected_type = interaction.data["values"][0]
+        self._item_page = 0
+        self._build_browse_view()
+        await interaction.edit_original_response(
+            embed=self.build_browse_embed(), view=self
+        )
+
+    async def _prev_page(self, interaction: Interaction):
+        await interaction.response.defer()
+        self._item_page = max(0, self._item_page - 1)
+        self._build_browse_view()
+        await interaction.edit_original_response(
+            embed=self.build_browse_embed(), view=self
+        )
+
+    async def _next_page(self, interaction: Interaction):
+        await interaction.response.defer()
+        self._item_page += 1
+        self._build_browse_view()
+        await interaction.edit_original_response(
+            embed=self.build_browse_embed(), view=self
+        )
+
+    async def _on_item_select(self, interaction: Interaction):
         await interaction.response.defer()
         sel_key = interaction.data["values"][0]
 
-        for c in self._candidates:
-            key = f"{c['passive']}_{c['item_type']}"
-            if key == sel_key:
-                self._selected_passive = c["passive"]
-                self._selected_item_name = c.get("item_name") or c["item_type"]
-                self._selected_item = c["item"]
-                self._selected_passive_count = c["passive_count"]
-                self._selected_has_corrupted = c["has_corrupted"]
-                break
-
-        if not self._selected_passive:
+        entries = self._by_type.get(self._selected_type, [])
+        match = next((e for e in entries if e["key"] == sel_key), None)
+        if not match:
             return
+
+        self._selected_passive = match["passive"]
+        self._selected_item_name = match["item_name"]
+        self._selected_item = match["item"]
+        self._selected_passive_count = match["passive_count"]
+        self._selected_has_corrupted = match["has_corrupted"]
 
         # Default: opt in to any available meta shards
         self._use_fang = bool(self.meta.sharpened_fang)
@@ -203,13 +312,22 @@ class ImprintView(BaseView):
         """Rebuilds buttons for the confirm screen including meta shard toggles."""
         self.clear_items()
 
+        shard_type = PASSIVE_SHARD_MAP.get(self._selected_passive, "fortune")
+        has_shard = self.shards.get(shard_type) >= 1
+
         # Row 0 — primary actions
-        confirm = Button(label="Extract", style=ButtonStyle.danger, emoji="🔏", row=0)
+        confirm = Button(
+            label="Extract",
+            style=ButtonStyle.danger,
+            emoji="🔏",
+            row=0,
+            disabled=not has_shard,
+        )
         confirm.callback = self._confirm_extract
         self.add_item(confirm)
 
         back = Button(label="← Back", style=ButtonStyle.secondary, row=0)
-        back.callback = self._back_to_select
+        back.callback = self._back_to_browse
         self.add_item(back)
 
         # Row 1 — meta shard toggles (only shown when player has the shard)
@@ -244,6 +362,8 @@ class ImprintView(BaseView):
             self.add_item(vessel_btn)
 
     def _build_confirm_embed(self) -> discord.Embed:
+        from core.inventory.inventory import InventoryUI
+
         passive_display = (
             self._selected_passive.replace("-", " ").replace("_", " ").title()
         )
@@ -261,11 +381,10 @@ class ImprintView(BaseView):
         shard_type = PASSIVE_SHARD_MAP.get(self._selected_passive, "fortune")
         cat = PASSIVE_CATEGORY_MAP.get(self._selected_passive, "utility")
 
-        embed = discord.Embed(
-            title=f"Extract: {passive_display}",
-            description=f"From: **{self._selected_item_name}**",
-            color=0x9900CC,
-        )
+        # Full item detail — same builder as the gear command's Item Detail View
+        embed = InventoryUI.get_item_details_embed(self._selected_item, is_equipped=False)
+        embed.title = f"🔏 Extract {passive_display} — {embed.title}"
+        embed.color = 0x9900CC
         embed.set_thumbnail(url=APEX_IMPRINT)
 
         # Check target slot early so we can warn
@@ -278,17 +397,6 @@ class ImprintView(BaseView):
             )
             embed.color = 0xCC0000
             return embed
-
-        # Full item stats
-        from core.inventory.inventory import InventoryUI
-
-        item_level = getattr(self._selected_item, "level", "?")
-        stats_str = InventoryUI._build_equipped_stats(self._selected_item)
-        embed.add_field(
-            name=f"📦 {self._selected_item_name} (Lv.{item_level})",
-            value=stats_str or "No stats",
-            inline=False,
-        )
 
         # Extraction chance
         chance_lines = [f"Base: **{base_chance * 100:.1f}%**"]
@@ -306,9 +414,22 @@ class ImprintView(BaseView):
             name="📊 Extraction Chance", value="\n".join(chance_lines), inline=False
         )
 
+        shard_owned = self.shards.get(shard_type)
+        embed.add_field(
+            name="💰 Cost",
+            value=f"1x {shard_type.title()} Shard (Owned: {shard_owned})",
+            inline=True,
+        )
         embed.add_field(name="🔮 Shard Type", value=shard_type.title(), inline=True)
         embed.add_field(name="⚡ Category", value=cat.capitalize(), inline=True)
         embed.add_field(name="📍 Target Slot", value=f"Slot {first_empty}", inline=True)
+
+        if shard_owned < 1:
+            embed.add_field(
+                name="⚠️ Insufficient Shards",
+                value=f"You need at least 1 {shard_type.title()} Shard to begin the imprint.",
+                inline=False,
+            )
 
         destruction_note = (
             "🏺 **Soul Vessel active** — the item is preserved regardless of outcome."
@@ -323,8 +444,9 @@ class ImprintView(BaseView):
             or self.meta.primal_essence
             or self.meta.soul_vessel
         ):
-            meta_hint = "Toggle meta shards below to adjust how they're applied."
-            embed.set_footer(text=meta_hint)
+            embed.set_footer(
+                text="Toggle meta shards below to adjust how they're applied."
+            )
 
         return embed
 
@@ -352,15 +474,16 @@ class ImprintView(BaseView):
             embed=self._build_confirm_embed(), view=self
         )
 
-    async def _back_to_select(self, interaction: Interaction):
-        """Returns from confirm back to the passive selection dropdown."""
+    async def _back_to_browse(self, interaction: Interaction):
+        """Returns from confirm back to the browse screen."""
         await interaction.response.defer()
         self._selected_passive = None
         self._selected_item_name = None
         self._selected_item = None
-        self._build_select()
-        embed = await self.build_embed()
-        await interaction.edit_original_response(embed=embed, view=self)
+        self._build_browse_view()
+        await interaction.edit_original_response(
+            embed=self.build_browse_embed(), view=self
+        )
 
     # ------------------------------------------------------------------
     # Extraction logic
@@ -385,6 +508,18 @@ class ImprintView(BaseView):
                 view=None,
             )
             self.stop()
+            return
+
+        shard_type = PASSIVE_SHARD_MAP.get(self._selected_passive, "fortune")
+        paid = await self.bot.database.apex.deduct_upgrade_cost(
+            self.user_id, self.server_id, shard_type, 1, 0
+        )
+        if not paid:
+            self._processing = False
+            self._build_confirm_buttons()
+            await interaction.edit_original_response(
+                embed=self._build_confirm_embed(), view=self
+            )
             return
 
         primal_count = self.meta.primal_essence if self._use_primal else 0
@@ -454,6 +589,7 @@ class ImprintView(BaseView):
 
         embed = discord.Embed(title=result_title, description=result_desc, color=color)
         embed.set_thumbnail(url=APEX_IMPRINT)
+        embed.set_footer(text=f"1x {shard_type.title()} Shard consumed to begin the imprint.")
 
         # Add "Done" button to navigate back to soul stone
         self.clear_items()
@@ -471,7 +607,7 @@ class ImprintView(BaseView):
         """Attempts to delete the item from the DB (best-effort)."""
         if not item:
             return
-        item_id = getattr(item, "id", None)
+        item_id = getattr(item, "item_id", None)
         if not item_id:
             return
         _type_map = {
@@ -506,11 +642,6 @@ class ImprintView(BaseView):
             SoulStoneView,
             _build_soul_stone_embed,
         )
-        from core.items.factory import load_player
-
-        # Reload player to reflect any item destruction that occurred
-        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-        player = await load_player(self.user_id, user_row, self.bot.database)
 
         ss_row = await self.bot.database.apex.get_or_create_soul_stone(
             self.user_id, self.server_id
@@ -525,29 +656,37 @@ class ImprintView(BaseView):
         shards = shards_from_db(shards_row)
         meta = meta_shards_from_db(meta_row)
 
-        view = SoulStoneView(self.bot, self.user_id, self.server_id, player)
-        embed = _build_soul_stone_embed(soul_stone, shards, meta, player.name)
+        view = SoulStoneView(self.bot, self.user_id, self.server_id, self.player)
+        embed = _build_soul_stone_embed(soul_stone, shards, meta, self.player.name)
         await interaction.edit_original_response(embed=embed, view=view)
         view.message = await interaction.original_response()
         self.stop()
 
     # ------------------------------------------------------------------
-    # Initial overview embed (State 1)
+    # Initial overview embed (State 1 — browse screen)
     # ------------------------------------------------------------------
 
     async def build_embed(self) -> discord.Embed:
-        if not self._candidates:
+        """Entry point called by SoulStoneView — loads candidates once, then
+        returns the browse embed."""
+        if not self._loaded:
+            await self.load_candidates()
+            self._loaded = True
+        return self.build_browse_embed()
+
+    def build_browse_embed(self) -> discord.Embed:
+        if not self._by_type:
             embed = discord.Embed(
                 title="🔏 Imprint — No Eligible Passives",
                 description=(
-                    "None of your equipped items have passives at the required max rank for extraction, "
-                    "or all eligible passives are already imprinted in your Soul Stone.\n\n"
+                    "None of your un-equipped items have passives at the required max rank for "
+                    "extraction, or all eligible passives are already imprinted in your Soul Stone.\n\n"
                     "**Requirements:**\n"
-                    "• Weapon: passive at Tier 5 (e.g. Burning 5)\n"
-                    "• Armor: any rank (single-tier passives always eligible)\n"
-                    "• Accessory / Jewelry: passive Lv.10\n"
-                    "• Glove / Helmet: passive Lv.5\n"
-                    "• Boot: passive Lv.6"
+                    "• Weapon: forged passive at Tier 5 (e.g. Burning 5)\n"
+                    "• Armor: any imbued passive\n"
+                    "• Accessory: enchanted to Lv.10\n"
+                    "• Glove / Helmet: enchanted to Lv.5\n"
+                    "• Boot: enchanted to Lv.6"
                 ),
                 color=0xCC6600,
             )
@@ -557,9 +696,11 @@ class ImprintView(BaseView):
         embed = discord.Embed(
             title="🔏 Imprint",
             description=(
-                "Select an item to extract its max-rank passive into the Soul Stone.\n\n"
+                "Choose an item type, then a specific **un-equipped** item to extract its "
+                "max-rank passive into the Soul Stone.\n\n"
                 "**⚠️ The item is destroyed** on the extraction attempt "
-                "(unless Soul Vessel is active — it preserves the item regardless of outcome)."
+                "(unless Soul Vessel is active — it preserves the item regardless of outcome).\n"
+                "**💰 Costs 1 shard** of the passive's matching type to begin the imprint attempt."
             ),
             color=0x9900CC,
         )

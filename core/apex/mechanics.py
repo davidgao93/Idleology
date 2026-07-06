@@ -106,10 +106,11 @@ class ApexMechanics:
         # Apex hunts are endgame content (unlock at 90): monsters sit well above the player
         monster_level = max(100, player_level + random.randint(30, 50))
 
-        # Stats: noticeably stronger than normal mobs at the same level
+        # Stats: noticeably stronger than normal mobs at the same level.
+        # ATK/DEF carry a +20% difficulty tuning pass on top of the base multiplier.
         hp_base = int(monster_level * 140 * random.uniform(0.9, 1.1))
-        atk_base = int(monster_level * 8.5 * random.uniform(0.9, 1.1))
-        def_base = int(monster_level * 4.5 * random.uniform(0.9, 1.1))
+        atk_base = int(monster_level * 8.5 * 1.2 * random.uniform(0.9, 1.1))
+        def_base = int(monster_level * 4.5 * 1.2 * random.uniform(0.9, 1.1))
         xp_base = int(monster_level * 55)
 
         # Build modifiers — use the monster's defined modifier names
@@ -158,45 +159,45 @@ class ApexMechanics:
 
         if zone.modifier_key == "scorched":
             player.cs.atk_multiplier += 0.20
-            monster.flashfire_charges = 4  # Start at 4 instead of 0
-            monster.zone_dmg_boost = 0.20
+            monster.flashfire_charges = 5  # Start at 5 instead of 0
+            monster.zone_dmg_boost = 0.25
             return (
                 "🔥 **Scorched Zone** — Your ATK is boosted +20%. "
-                f"{monster.name}'s Flashfire charges start at 4 and deal +20% damage!"
+                f"{monster.name}'s Flashfire charges start at 5 and deal +25% damage!"
             )
 
         elif zone.modifier_key == "tempest":
             player.cs.bonus_crit += 15
             return (
                 "⚡ **Tempest Zone** — Crit Chance +15%. "
-                "Every 3rd monster turn, unavoidable lightning strikes for 8% max HP true damage!"
+                "Every 3rd monster turn, unavoidable lightning strikes for 10% max HP true damage!"
             )
 
         elif zone.modifier_key == "siege_grounds":
             player.cs.atk_multiplier += 0.30
-            monster.ward = int(monster.max_hp * 0.30)
-            monster.zone_dr = 0.30
+            monster.ward = int(monster.max_hp * 0.35)
+            monster.zone_dr = 0.35
             return (
                 "🏰 **Siege Grounds** — Your ATK +30%. "
-                f"{monster.name} starts with 30% max HP Ward and gains +30% DR!"
+                f"{monster.name} starts with 35% max HP Ward and gains +35% DR!"
             )
 
         elif zone.modifier_key == "living_battlefield":
             return (
                 "🌿 **Living Battlefield** — "
-                f"{monster.name} regenerates 0.4%/turn. You heal 1% max HP on each connected hit!"
+                f"{monster.name} regenerates 0.5%/turn. You heal 1% max HP on each connected hit!"
             )
 
         elif zone.modifier_key == "tempted_fate":
             return (
                 "💰 **Tempted Fate** — All XP and Gold doubled! "
-                "Every 4th monster turn, your ward is fully drained!"
+                "Every 3rd monster turn, your ward is fully drained!"
             )
 
         elif zone.modifier_key == "reality_fracture":
             return (
                 "🌀 **Reality Fracture** — "
-                "One of the monster's modifiers rerolls every 5 turns. "
+                "One of the monster's modifiers rerolls every 4 turns. "
                 "You have a 12% chance each turn to force a critical hit!"
             )
 

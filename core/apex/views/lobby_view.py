@@ -237,6 +237,7 @@ class ApexLobbyView(BaseView):
             if self._processing:
                 await interaction.response.defer()
                 return
+            self._processing = True
             await interaction.response.defer()
             self._selected_zone = zone_key
 
@@ -255,35 +256,36 @@ class ApexLobbyView(BaseView):
             self._charges = charges
             self.profile = profile
 
-            if charges < 1:
-                secs = ApexMechanics.seconds_until_next_charge(profile)
-                await interaction.edit_original_response(
-                    content=(
-                        f"⚠️ No hunt charges remaining. "
-                        f"Next charge in **{_fmt_time(secs)}**."
-                    ),
-                    embed=None,
-                    view=self,
-                )
-                return
-
-            # Show zone confirmation
+            # Show zone confirmation — always the full zone view, even out of charges
             embed = _build_zone_confirm_embed(zone_key, profile, charges)
             self.clear_items()
 
-            confirm_btn = Button(
-                label="Confirm Hunt",
-                style=ButtonStyle.danger,
-                emoji="⚔️",
-                row=0,
-            )
-            confirm_btn.callback = self._confirm_hunt
-            self.add_item(confirm_btn)
+            if charges < 1:
+                secs = ApexMechanics.seconds_until_next_charge(profile)
+                embed.color = 0xCC0000
+                embed.add_field(
+                    name="⚠️ No Hunt Charges",
+                    value=(
+                        "You have no hunt charges remaining. "
+                        f"Next charge in **{_fmt_time(secs)}**."
+                    ),
+                    inline=False,
+                )
+            else:
+                confirm_btn = Button(
+                    label="Confirm Hunt",
+                    style=ButtonStyle.danger,
+                    emoji="⚔️",
+                    row=0,
+                )
+                confirm_btn.callback = self._confirm_hunt
+                self.add_item(confirm_btn)
 
             back_btn = Button(label="Back", style=ButtonStyle.secondary, row=0)
             back_btn.callback = self._back_to_zones
             self.add_item(back_btn)
 
+            self._processing = False
             await interaction.edit_original_response(embed=embed, view=self)
 
         return _callback
@@ -422,6 +424,7 @@ class ApexLobbyView(BaseView):
         if self._processing:
             await interaction.response.defer()
             return
+        self._processing = True
         await interaction.response.defer()
 
         from core.apex.views.soul_stone_view import (
@@ -430,7 +433,7 @@ class ApexLobbyView(BaseView):
         )
         from core.items.factory import load_player
 
-        # Load full player (ImprintView needs equipped gear access)
+        # Load full player (needed for player.name display in the Soul Stone hub)
         user_row = await self.bot.database.users.get(self.user_id, self.server_id)
         player = await load_player(self.user_id, user_row, self.bot.database)
 
