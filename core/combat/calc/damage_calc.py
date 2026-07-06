@@ -344,6 +344,14 @@ def calc_crit_damage(
         base_min = max(base_min, deft_min)
         calc_dmg_notes.append(f"deft_min={base_min}")
         log.append(f"**Deftness ({glove_lvl})** steadies your critical strike!")
+    else:
+        # Soul stone: deftness — 1:1 tier match to glove lvl.
+        _ss_deftness = player.get_soul_stone_passive("deftness")
+        if _ss_deftness:
+            deft_min = int(base_max * (_ss_deftness * 0.05))
+            base_min = max(base_min, deft_min)
+            calc_dmg_notes.append(f"soul_deft_min={base_min}")
+            log.append(f"**Soul Deftness T{_ss_deftness}** steadies your critical strike!")
 
     # crit_mult starts from the additive base stat (weapon + essence + insight +
     # emblem + partner + Hematurgy Chain Reaction/Executioner's Rite — all summed
@@ -496,6 +504,13 @@ def calc_hit_damage(
         floor_pct += glove_lvl * 0.02
         floor_parts.append(f"adroit{glove_lvl * 2}%")
         log.append(f"**Adroit ({glove_lvl})** sharpens your technique!")
+    else:
+        # Soul stone: adroit — 1:1 tier match to glove lvl.
+        _ss_adroit = player.get_soul_stone_passive("adroit")
+        if _ss_adroit:
+            floor_pct += _ss_adroit * 0.02
+            floor_parts.append(f"soul_adroit{_ss_adroit * 2}%")
+            log.append(f"**Soul Adroit T{_ss_adroit}** sharpens your technique!")
 
     shock_idx, shock_name = get_weapon_tier(player, "shocking")
     if shock_idx >= 0:

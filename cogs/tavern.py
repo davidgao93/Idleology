@@ -8,19 +8,17 @@ from core.first_use import TutorialGateView
 from core.images import (
     BAR_MAID,
     BAR_MAID_AUTHOR,
-    CASINO_AUTHOR,
     CHECKIN,
     POTION_SHOP,
     POTION_SHOP_AUTHOR,
     QUEST_SHOP_AUTHOR,
-    TAVERN_CASINO,
     TAVERN_GAMES,
 )
 from core.items.factory import load_player
 from core.npc_voices import get_quip
 from core.quests.data import CHECKIN_DAY_LABELS
 from core.tavern.mechanics import TavernMechanics
-from core.tavern.views import CasinoMenuView, RestView, ShopView
+from core.tavern.views import CasinoMenuView, RestView, ShopView, build_casino_lobby_embed
 
 
 def _build_checkin_embed(
@@ -285,28 +283,7 @@ class Tavern(commands.Cog, name="tavern"):
 
         self.bot.state_manager.set_active(user_id, "gamble")
 
-        embed = discord.Embed(
-            title="The Tavern Casino",
-            description=f"Table Stake: **{amount:,} gold**. {get_quip('casino')}",
-            color=0xFFD700,
-        )
-        embed.set_author(name="Vespera", icon_url=CASINO_AUTHOR)
-        embed.set_thumbnail(url=TAVERN_CASINO)
-        embed.add_field(
-            name="🃏 Blackjack", value="Beat the dealer to 21. (2x Payout)", inline=True
-        )
-        embed.add_field(
-            name="🎡 Roulette", value="Red/Black/Numbers. (2x-35x Payout)", inline=True
-        )
-        embed.add_field(
-            name="🚀 Crash",
-            value="Cash out before the crash! (1.0x - ???x)",
-            inline=True,
-        )
-        embed.add_field(
-            name="🐎 Horse Racing", value="Pick the winner! (4x Payout)", inline=True
-        )
-
+        embed = build_casino_lobby_embed(amount)
         view = CasinoMenuView(self.bot, user_id, amount)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()

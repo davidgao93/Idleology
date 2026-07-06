@@ -114,6 +114,16 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         if random.random() < acc_lvl * INFINITE_WISDOM_CHANCE_PER_LEVEL:
             xp_additive += 1.0
             results["msgs"].append(f"**Infinite Wisdom ({acc_lvl})** grants +100% XP!")
+    elif acc_passive != "Infinite Wisdom":
+        # Soul stone: infinite wisdom — 2:1 tier mapping (matches Absorb's accessory convention).
+        ss_wisdom = player.get_soul_stone_passive("infinite wisdom")
+        if ss_wisdom:
+            equiv_lvl = ss_wisdom * 2
+            if random.random() < equiv_lvl * INFINITE_WISDOM_CHANCE_PER_LEVEL:
+                xp_additive += 1.0
+                results["msgs"].append(
+                    f"**Soul Infinite Wisdom T{ss_wisdom}** grants +100% XP!"
+                )
 
     results["xp"] = int(base_xp * (1 + xp_additive))
 
@@ -188,6 +198,14 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
         if random.random() < acc_lvl * PROSPER_CHANCE_PER_LEVEL:
             gold_additive += 1.0
             results["msgs"].append(f"**Prosper ({acc_lvl})** grants +100% Gold!")
+    elif acc_passive != "Prosper":
+        # Soul stone: prosper — 2:1 tier mapping (matches Absorb's accessory convention).
+        ss_prosper = player.get_soul_stone_passive("prosper")
+        if ss_prosper:
+            equiv_lvl = ss_prosper * 2
+            if random.random() < equiv_lvl * PROSPER_CHANCE_PER_LEVEL:
+                gold_additive += 1.0
+                results["msgs"].append(f"**Soul Prosper T{ss_prosper}** grants +100% Gold!")
 
     results["gold"] = int(gold_base * (1 + gold_additive))
 

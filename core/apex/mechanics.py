@@ -470,6 +470,7 @@ class ApexMechanics:
         from core.character.passive_data import (
             _ACCESSORY_PASSIVE_FUNCS,
             _BOOT_PASSIVE_FUNCS,
+            _GLOVE_PASSIVE_FUNCS,
             _HELMET_PASSIVE_FUNCS,
             _WEAPON_PASSIVE_DESC,
         )
@@ -481,21 +482,46 @@ class ApexMechanics:
         if weapon_key in _WEAPON_PASSIVE_DESC:
             return _WEAPON_PASSIVE_DESC[weapon_key]
 
-        # Boot-family: hearty/thrill-seeker map tier directly to the gear lvl param.
-        # speedster/skiller instead use the "6 gear tiers condensed to 5" ratio,
-        # matching their explicit SOUL_STONE_TIER_VALUES entries.
-        if passive_key in ("hearty", "thrill-seeker") and passive_key in _BOOT_PASSIVE_FUNCS:
+        # Boot-family: most map tier directly to the gear lvl param. speedster/
+        # skiller instead use the "6 gear tiers condensed to 5" ratio, matching
+        # their explicit SOUL_STONE_TIER_VALUES entries.
+        _boot_1to1 = ("hearty", "thrill-seeker", "cleric", "treasure-tracker")
+        if passive_key in _boot_1to1 and passive_key in _BOOT_PASSIVE_FUNCS:
             return _BOOT_PASSIVE_FUNCS[passive_key](tier)
         if passive_key in ("speedster", "skiller") and passive_key in _BOOT_PASSIVE_FUNCS:
             return _BOOT_PASSIVE_FUNCS[passive_key](tier * 6 / 5)
 
         # Helmet-family — 1:1 tier match.
-        if passive_key in ("juggernaut", "leeching") and passive_key in _HELMET_PASSIVE_FUNCS:
+        _helmet_1to1 = (
+            "juggernaut",
+            "leeching",
+            "frenzy",
+            "insight",
+            "ghosted",
+            "thorns",
+            "volatile",
+            "divine",
+        )
+        if passive_key in _helmet_1to1 and passive_key in _HELMET_PASSIVE_FUNCS:
             return _HELMET_PASSIVE_FUNCS[passive_key](tier)
 
+        # Glove-family — 1:1 tier match.
+        _glove_1to1 = (
+            "deftness",
+            "adroit",
+            "ward-touched",
+            "ward-fused",
+            "instability",
+            "plundering",
+            "equilibrium",
+        )
+        if passive_key in _glove_1to1 and passive_key in _GLOVE_PASSIVE_FUNCS:
+            return _GLOVE_PASSIVE_FUNCS[passive_key](tier)
+
         # Accessory-family — 2:1 tier mapping (soul stone tier x2 = equivalent lvl).
-        if passive_key == "absorb":
-            return _ACCESSORY_PASSIVE_FUNCS["absorb"](tier * 2)
+        _accessory_2to1 = ("absorb", "obliterate", "lucky strikes", "prosper", "infinite wisdom")
+        if passive_key in _accessory_2to1 and passive_key in _ACCESSORY_PASSIVE_FUNCS:
+            return _ACCESSORY_PASSIVE_FUNCS[passive_key](tier * 2)
 
         # Armor-family (Imbue passives): the gear item itself has no tiers, so
         # there's no lvl-parameterized template to reuse — hand-templated against

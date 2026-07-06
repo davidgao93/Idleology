@@ -415,7 +415,7 @@ class BlackMarketView(SettlementBaseView):
             embed.add_field(
                 name="⏳ Deal in Progress",
                 value=(
-                    f"Value: **{pending_deal['total_value']:,}** — "
+                    f"Value: **{pending_deal['total_value'] * 100:,}** — "
                     f"**{pending_deal['turns_remaining']}** turn(s) remaining\n"
                     f"Biases: {', '.join(BM_TREE_NODES[b]['name'] for b in pending_deal.get('active_biases', []) if b in BM_TREE_NODES) or 'none'}"
                 ),
@@ -917,7 +917,6 @@ class OfferBuilderView(SettlementBaseView):
             import asyncio
 
             raw_value = result["raw_value"]
-            value = result["value"]
             turns = result["turns"]
 
             if result.get("instant"):

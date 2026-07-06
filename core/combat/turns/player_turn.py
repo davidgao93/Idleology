@@ -46,6 +46,11 @@ def process_heal(player: Player, monster=None) -> str:
 
     if player.equipped_boot and player.equipped_boot.passive == "cleric":
         heal_pct += player.equipped_boot.passive_lvl * 0.10
+    else:
+        # Soul stone: cleric — 1:1 tier match to boot lvl.
+        ss_cleric = player.get_soul_stone_passive("cleric")
+        if ss_cleric:
+            heal_pct += ss_cleric * 0.10
 
     potion_passives_by_type = {
         p["passive_type"]: p["passive_value"] for p in player.potion_passives
@@ -106,25 +111,37 @@ def process_heal(player: Player, monster=None) -> str:
             msg_prefix += "\n".join(_fevered_log) + "\n"
 
     potential_hp = player.current_hp + heal_amount
-    overheal = 0
-    if potential_hp > player.total_max_hp:
-        excess = potential_hp - player.total_max_hp
-        helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
-        overheal = excess * helmet_lvl
-        player.current_hp = player.total_max_hp
-    else:
-        player.current_hp = potential_hp
+    excess = max(0, potential_hp - player.total_max_hp)
+    player.current_hp = min(potential_hp, player.total_max_hp)
 
+    # The displayed heal is always heal_amount minus whatever overflowed past max
+    # HP — independent of which helmet (if any) is equipped. Divine's amplified
+    # overheal->ward conversion is a separate bonus layered on below, not a
+    # reduction of this number.
     msg = (
         msg_prefix
-        + f"{player.name} uses a potion and heals for **{max(0, heal_amount - overheal)}** HP!"
+        + f"{player.name} uses a potion and heals for **{max(0, heal_amount - excess)}** HP!"
     )
     if player.apothecary_workers > 0:
         msg += f" (Apothecary: +{int(player.apothecary_workers * 0.2 * (1.0 + player.apothecary_boost_pct))})"
 
-    if player.get_helmet_passive() == "divine" and overheal > 0:
-        added = _add_ward(player, overheal, [], "Divine")
-        msg += f"\n**Divine** converts **{added}** overheal into 🔮 Ward!"
+    if excess > 0:
+        if player.get_helmet_passive() == "divine":
+            helmet_lvl = (
+                player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
+            )
+            divine_overheal = int(excess * helmet_lvl)
+            if divine_overheal > 0:
+                added = _add_ward(player, divine_overheal, [], "Divine")
+                msg += f"\n**Divine** converts **{added}** overheal into 🔮 Ward!"
+        else:
+            # Soul stone: divine — 1:1 tier match to helmet lvl.
+            ss_divine = player.get_soul_stone_passive("divine")
+            if ss_divine:
+                ss_overheal = int(excess * ss_divine)
+                if ss_overheal > 0:
+                    added = _add_ward(player, ss_overheal, [], "Divine")
+                    msg += f"\n**Soul Divine T{ss_divine}** converts **{added}** overheal into 🔮 Ward!"
 
     # ------------------------------------------------------------------
     # POWERFUL DISTILLED PASSIVES (11-passive system)
@@ -343,8 +360,18 @@ def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
     if glove_passive == "equilibrium" and glove_lvl > 0:
         player.equilibrium_bonus_xp_pending += int(damage * (glove_lvl * 0.05))
+    else:
+        # Soul stone: equilibrium — 1:1 tier match to glove lvl.
+        ss_equilibrium = player.get_soul_stone_passive("equilibrium")
+        if ss_equilibrium:
+            player.equilibrium_bonus_xp_pending += int(damage * (ss_equilibrium * 0.05))
     if glove_passive == "plundering" and glove_lvl > 0:
         player.plundering_bonus_gold_pending += int(damage * (glove_lvl * 0.10))
+    else:
+        # Soul stone: plundering — 1:1 tier match to glove lvl.
+        ss_plundering = player.get_soul_stone_passive("plundering")
+        if ss_plundering:
+            player.plundering_bonus_gold_pending += int(damage * (ss_plundering * 0.10))
 
 
 def _pt_partner_effects(

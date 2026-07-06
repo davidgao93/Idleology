@@ -537,6 +537,15 @@ def process_monster_turn(
                     f"**Ghosted ({helmet_lvl})** manifests **{added}** 🔮 Ward from the movement!"
                 )
                 # skip in compact — ward visible in HP bar
+            else:
+                # Soul stone: ghosted — 1:1 tier match to helmet lvl.
+                ss_ghosted = player.get_soul_stone_passive("ghosted")
+                if ss_ghosted:
+                    ward_gain = ss_ghosted * 10
+                    added = _add_ward(player, ward_gain, log)
+                    log.append(
+                        f"**Soul Ghosted T{ss_ghosted}** manifests **{added}** 🔮 Ward from the movement!"
+                    )
 
         elif is_blocked:
             # Volatile Spikes and Onslaught reset on block
@@ -565,6 +574,15 @@ def process_monster_turn(
                     f"**Thorns ({helmet_lvl})** reflects **{reflect}** damage back!"
                 )
                 # skip in compact — monster HP change visible in HP bar
+            else:
+                # Soul stone: thorns — 1:1 tier match to helmet lvl.
+                ss_thorns = player.get_soul_stone_passive("thorns")
+                if ss_thorns:
+                    reflect = int(dmg_raw * ss_thorns * 5)
+                    monster.hp = max(0, monster.hp - reflect)
+                    log.append(
+                        f"**Soul Thorns T{ss_thorns}** reflects **{reflect}** damage back!"
+                    )
 
         # --- Sundering: 25% of damage bypasses player ward directly to HP ---
         if (
@@ -850,6 +868,22 @@ def process_monster_turn(
                         _vol_msg = f"\n💥 **Volatile** (Aphrodite) — ward struck, dealing **{boom}** damage to {monster.name}!"
                         log.append(_vol_msg)
                         clog.append(_vol_msg.strip())
+            else:
+                # Soul stone: volatile — 1:1 tier match to helmet lvl.
+                ss_volatile = player.get_soul_stone_passive("volatile")
+                if (
+                    ss_volatile
+                    and previous_ward > 0
+                    and (player.combat_ward == 0 or aphrodite_glove_active)
+                ):
+                    boom = int(player.total_max_hp * ss_volatile)
+                    monster.hp = max(0, monster.hp - boom)
+                    if player.combat_ward == 0:
+                        _vol_msg = f"\n💥 **Soul Volatile T{ss_volatile}** Shield shatters, dealing **{boom}** damage to {monster.name}!"
+                    else:
+                        _vol_msg = f"\n💥 **Soul Volatile T{ss_volatile}** (Aphrodite) — ward struck, dealing **{boom}** damage to {monster.name}!"
+                    log.append(_vol_msg)
+                    clog.append(_vol_msg.strip())
 
             # Lucifer helmet: gain PDR burst when ward is fully broken.
             # Also triggers via Aphrodite glove (any ward damage = "broken" condition).

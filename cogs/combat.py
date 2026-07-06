@@ -450,6 +450,11 @@ class Combat(commands.Cog, name="combat"):
             treasure_chance = 1.0
             if player.get_boot_passive() == "treasure-tracker":
                 treasure_chance += player.equipped_boot.passive_lvl * 0.5
+            else:
+                # Soul stone: treasure-tracker — 1:1 tier match to boot lvl.
+                ss_treasure_tracker = player.get_soul_stone_passive("treasure-tracker")
+                if ss_treasure_tracker:
+                    treasure_chance += ss_treasure_tracker * 0.5
             is_treasure = random.random() * 100 < treasure_chance
             monster = await generate_encounter(
                 player,

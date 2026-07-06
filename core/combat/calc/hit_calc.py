@@ -175,11 +175,39 @@ def build_attack_multiplier(
             log.append(
                 f"**Instability ({glove_lvl})** goes wild! (+{int(bonus * 100)}% damage bonus)"
             )
+    else:
+        # Soul stone: instability — 1:1 tier match to glove lvl.
+        _ss_instability = player.get_soul_stone_passive("instability")
+        if _ss_instability:
+            if random.random() < 0.5:
+                add_pool_bonus -= 0.5
+                add_pool_parts.append("soul_instability−")
+                log.append(
+                    f"**Soul Instability T{_ss_instability}** destabilizes! (−50% damage)"
+                )
+            else:
+                bonus = 0.50 + (_ss_instability * 0.10)
+                add_pool_bonus += bonus
+                add_pool_parts.append(f"soul_instability+{int(bonus * 100)}%")
+                log.append(
+                    f"**Soul Instability T{_ss_instability}** goes wild! (+{int(bonus * 100)}% damage bonus)"
+                )
 
     if acc_passive == "Obliterate" and random.random() <= (acc_lvl * 0.04):
         add_pool_bonus += 1.0  # +100% = ×2 when alone
         add_pool_parts.append("obliterate")
         log.append(f"**Obliterate ({acc_lvl})** activates! (+100% damage bonus)")
+    elif acc_passive != "Obliterate":
+        # Soul stone: obliterate — 2:1 tier mapping (matches Absorb's accessory convention).
+        _ss_obliterate = player.get_soul_stone_passive("obliterate")
+        if _ss_obliterate:
+            _equiv_lvl = _ss_obliterate * 2
+            if random.random() <= (_equiv_lvl * 0.04):
+                add_pool_bonus += 1.0
+                add_pool_parts.append("soul_obliterate")
+                log.append(
+                    f"**Soul Obliterate T{_ss_obliterate}** activates! (+100% damage bonus)"
+                )
 
     if player.get_armor_passive() == "Piety" and random.random() < 0.10:
         add_pool_bonus += 6.0  # +600% = ×7 when alone
@@ -196,6 +224,17 @@ def build_attack_multiplier(
         log.append(
             f"**Frenzy ({helmet_lvl})** rage increases damage by {int(frenzy_bonus * 100)}%!"
         )
+    else:
+        # Soul stone: frenzy — 1:1 tier match to helmet lvl.
+        _ss_frenzy = player.get_soul_stone_passive("frenzy")
+        if _ss_frenzy:
+            missing_pct = (1 - (player.current_hp / player.total_max_hp)) * 100
+            frenzy_bonus = missing_pct * (0.005 * _ss_frenzy)
+            add_pool_bonus += frenzy_bonus
+            add_pool_parts.append(f"soul_frenzy{int(frenzy_bonus * 100)}%")
+            log.append(
+                f"**Soul Frenzy T{_ss_frenzy}** rage increases damage by {int(frenzy_bonus * 100)}%!"
+            )
 
     onslaught_bonus = _je.apply_onslaught_mult(player)
     if onslaught_bonus > 0:
@@ -319,6 +358,17 @@ def resolve_hit(
             f"**Lucky Strikes ({acc_lvl})** activates! Hit chance is now 🍀 lucky!"
         )
         lucky_note = "(lucky)"
+    elif acc_passive != "Lucky Strikes":
+        # Soul stone: lucky strikes — 2:1 tier mapping (matches Absorb's accessory convention).
+        _ss_lucky = player.get_soul_stone_passive("lucky strikes")
+        if _ss_lucky:
+            _equiv_lvl = _ss_lucky * 2
+            if random.random() <= (_equiv_lvl * 0.10):
+                attack_roll = max(attack_roll, random.randint(0, 100))
+                log.append(
+                    f"**Soul Lucky Strikes T{_ss_lucky}** activates! Hit chance is now 🍀 lucky!"
+                )
+                lucky_note = "(lucky)"
 
     jinxed_note = ""
     if monster.has_modifier("Jinxed") and random.random() < monster.get_modifier_value(

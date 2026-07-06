@@ -2,11 +2,37 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.images import TAVERN_CASINO
+from core.images import CASINO_AUTHOR, TAVERN_CASINO
+from core.npc_voices import get_quip
 
 # Import minigames directly to handle transitions without Cog
 from core.minigames.views import BlackjackView, CrashView, HorseRaceView, RouletteView
 from core.tavern.mechanics import TavernMechanics
+
+
+def build_casino_lobby_embed(bet_amount: int) -> discord.Embed:
+    embed = discord.Embed(
+        title="The Tavern Casino",
+        description=f"Table Stake: **{bet_amount:,} gold**. {get_quip('casino')}",
+        color=0xFFD700,
+    )
+    embed.set_author(name="Vespera", icon_url=CASINO_AUTHOR)
+    embed.set_thumbnail(url=TAVERN_CASINO)
+    embed.add_field(
+        name="🃏 Blackjack", value="Beat the dealer to 21. (2x Payout)", inline=True
+    )
+    embed.add_field(
+        name="🎡 Roulette", value="Red/Black/Numbers. (2x-35x Payout)", inline=True
+    )
+    embed.add_field(
+        name="🚀 Crash",
+        value="Cash out before the crash! (1.0x - ???x)",
+        inline=True,
+    )
+    embed.add_field(
+        name="🐎 Horse Racing", value="Pick the winner! (4x Payout)", inline=True
+    )
+    return embed
 
 
 class ShopView(BaseView):

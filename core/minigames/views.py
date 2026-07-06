@@ -20,6 +20,24 @@ async def check_funds(bot, user_id, amount, interaction):
     return True
 
 
+def casino_lobby_button(bot, user_id, bet_amount, row=None) -> Button:
+    """A 'Casino Lobby' button shared by every game's end-of-round screen."""
+
+    async def _callback(interaction: Interaction):
+        # Deferred import: core.tavern.views imports this module at load
+        # time, so importing it back at module scope here would be circular.
+        from core.tavern.views import CasinoMenuView, build_casino_lobby_embed
+
+        embed = build_casino_lobby_embed(bet_amount)
+        view = CasinoMenuView(bot, user_id, bet_amount)
+        await interaction.response.edit_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
+    btn = Button(label="Casino Lobby", style=ButtonStyle.secondary, emoji="🎰", row=row)
+    btn.callback = _callback
+    return btn
+
+
 # ==============================================================================
 #  ROULETTE COMPONENTS
 # ==============================================================================
@@ -176,6 +194,7 @@ class RouletteView(BaseView):
         )
         restart_btn.callback = self.reset_table
         self.add_item(restart_btn)
+        self.add_item(casino_lobby_button(self.bot, self.user_id, self.bet_amount))
 
         quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         quit_btn.callback = self.quit_game
@@ -278,22 +297,51 @@ class RouletteView(BaseView):
 
 
 class BlackjackView(BaseView):
+    RESULT_LABELS = {
+        "blackjack": "🂡 BLACKJACK!",
+        "win": "✅ WIN",
+        "push": "➖ PUSH",
+        "lose": "❌ LOSE",
+        "bust": "💥 BUST",
+    }
+
     def __init__(self, bot, user_id, bet_amount, parent_interaction):
         super().__init__(bot, user_id)
-        self.bet_amount = bet_amount
+        self.bet_amount = bet_amount  # original table stake; used for insurance math + rebets
         self.original_interaction = parent_interaction
         self.guild_id = (
             str(parent_interaction.guild_id) if parent_interaction.guild_id else ""
         )
-        self.player_hand = []
-        self.dealer_hand = []
         self.deck = BlackjackLogic()
+        self.dealer_hand = []
+        self.hands = []
+        self.active_hand = 0
+        self.has_split = False
+        self.insurance_bet = 0
+        self.insurance_result = None
+        self.insurance_profit = 0
         self.game_over = False
-        self._processing = False
+
+        self.hit_button = Button(label="Hit", style=ButtonStyle.primary, emoji="👊")
+        self.hit_button.callback = self._on_hit
+        self.stand_button = Button(
+            label="Stand", style=ButtonStyle.secondary, emoji="✋"
+        )
+        self.stand_button.callback = self._on_stand
+        self.double_button = Button(
+            label="Double Down", style=ButtonStyle.success, emoji="💰"
+        )
+        self.double_button.callback = self._on_double
+        self.split_button = Button(label="Split", style=ButtonStyle.success, emoji="✂️")
+        self.split_button.callback = self._on_split
 
     async def on_timeout(self):
         if not self.game_over:
-            await self.bot.database.users.modify_gold(self.user_id, self.bet_amount)
+            # Nothing has been settled yet — every gold amount deducted so far
+            # (main bet(s) + insurance) is still "at risk" and must be refunded.
+            at_risk = sum(h["bet"] for h in self.hands) + self.insurance_bet
+            if at_risk:
+                await self.bot.database.users.modify_gold(self.user_id, at_risk)
             self.bot.state_manager.clear_active(self.user_id)
             try:
                 await self.original_interaction.delete_original_response()
@@ -302,212 +350,420 @@ class BlackjackView(BaseView):
 
     async def start_game(self):
         await self.bot.database.users.modify_gold(self.user_id, -self.bet_amount)
-        self.player_hand = [self.deck.draw_card(), self.deck.draw_card()]
         self.dealer_hand = [self.deck.draw_card(), self.deck.draw_card()]
+        self.hands = [
+            {
+                "cards": [self.deck.draw_card(), self.deck.draw_card()],
+                "bet": self.bet_amount,
+                "done": False,
+                "is_split_aces": False,
+                "result": None,
+            }
+        ]
 
-        if self.deck.calculate_score(self.player_hand) == 21:
-            await self.end_game(result="blackjack")
+        if self.dealer_hand[0][0] == "A":
+            await self._offer_insurance()
         else:
-            await self.update_table()
+            await self._check_naturals()
 
-    async def update_table(self, interaction: Interaction = None):
-        p_score = self.deck.calculate_score(self.player_hand)
+    # --- Insurance ---
+
+    async def _offer_insurance(self):
+        self.clear_items()
+        insure_btn = Button(
+            label=f"Insurance ({self.bet_amount // 2:,})",
+            style=ButtonStyle.secondary,
+            emoji="🛡️",
+        )
+        insure_btn.callback = self._insurance_yes
+        decline_btn = Button(label="No Insurance", style=ButtonStyle.secondary)
+        decline_btn.callback = self._insurance_no
+        self.add_item(insure_btn)
+        self.add_item(decline_btn)
+
+        hand = self.hands[0]
         embed = discord.Embed(title="🃏 Blackjack Table", color=discord.Color.gold())
         embed.set_thumbnail(url=TAVERN_CASINO)
-
-        if self.game_over:
-            d_score = self.deck.calculate_score(self.dealer_hand)
-            embed.add_field(
-                name=f"Dealer's Hand ({d_score})",
-                value=self.deck.format_hand(self.dealer_hand),
-                inline=False,
-            )
-        else:
-            embed.add_field(
-                name="Dealer's Hand",
-                value=self.deck.format_hand(self.dealer_hand, hide_second=True),
-                inline=False,
-            )
-
         embed.add_field(
-            name=f"Your Hand ({p_score})",
-            value=self.deck.format_hand(self.player_hand),
+            name="Dealer's Hand",
+            value=self.deck.format_hand(self.dealer_hand, hide_second=True),
             inline=False,
         )
-        embed.set_footer(text=f"Current Bet: {self.bet_amount:,} gold")
+        embed.add_field(
+            name=f"Your Hand ({self.deck.calculate_score(hand['cards'])})",
+            value=self.deck.format_hand(hand["cards"]),
+            inline=False,
+        )
+        embed.add_field(
+            name="Dealer shows an Ace!",
+            value=(
+                f"Insure your hand for **{self.bet_amount // 2:,} gold**? "
+                "Pays 2:1 if the dealer has Blackjack."
+            ),
+            inline=False,
+        )
+        await self.original_interaction.edit_original_response(embed=embed, view=self)
 
-        # Instead of disabling all, clear items to remove Hit/Stand, we will add Restart later
-        if self.game_over:
-            self.clear_items()
+    async def _insurance_yes(self, interaction: Interaction):
+        cost = self.bet_amount // 2
+        user_data = await self.bot.database.users.get(
+            self.user_id, interaction.guild.id
+        )
+        if user_data["gold"] < cost:
+            await interaction.response.send_message(
+                "Insufficient funds for insurance.", ephemeral=True
+            )
+            return
+        await self.bot.database.users.modify_gold(self.user_id, -cost)
+        self.insurance_bet = cost
+        await self._check_naturals(interaction)
 
-        target = interaction.response if interaction else self.original_interaction
-        if interaction:
-            await target.edit_message(embed=embed, view=self)
+    async def _insurance_no(self, interaction: Interaction):
+        await self._check_naturals(interaction)
+
+    # --- Natural blackjack check (dealer's hole card is "peeked" here, before
+    # any player action, matching standard casino rules) ---
+
+    async def _check_naturals(self, interaction: Interaction = None):
+        dealer_natural = self.deck.calculate_score(self.dealer_hand) == 21
+        player_natural = self.deck.calculate_score(self.hands[0]["cards"]) == 21
+
+        if self.insurance_bet > 0:
+            if dealer_natural:
+                await self.bot.database.users.modify_gold(
+                    self.user_id, self.insurance_bet * 3
+                )
+                self.insurance_result = "won"
+                self.insurance_profit = self.insurance_bet * 2
+            else:
+                self.insurance_result = "lost"
+                self.insurance_profit = -self.insurance_bet
+
+        if dealer_natural or player_natural:
+            if dealer_natural and player_natural:
+                self.hands[0]["result"] = "push"
+            elif player_natural:
+                self.hands[0]["result"] = "blackjack"
+            else:
+                self.hands[0]["result"] = "lose"
+            self.hands[0]["done"] = True
+            await self._settle_round(interaction)
         else:
-            await target.edit_original_response(embed=embed, view=self)
+            await self._start_playing(interaction)
 
-    async def end_game(self, result: str, interaction: Interaction = None):
+    # --- Player turn ---
+
+    def _can_split(self) -> bool:
+        if self.has_split or len(self.hands) != 1:
+            return False
+        cards = self.hands[0]["cards"]
+        return len(cards) == 2 and cards[0][0] == cards[1][0]
+
+    async def _start_playing(self, interaction: Interaction = None):
+        self.clear_items()
+        hand = self.hands[self.active_hand]
+        self.add_item(self.hit_button)
+        self.add_item(self.stand_button)
+        if len(hand["cards"]) == 2 and not hand["is_split_aces"]:
+            self.add_item(self.double_button)
+        if self._can_split():
+            self.add_item(self.split_button)
+        await self._render_table(interaction)
+
+    async def _render_table(self, interaction: Interaction = None):
+        embed = discord.Embed(title="🃏 Blackjack Table", color=discord.Color.gold())
+        embed.set_thumbnail(url=TAVERN_CASINO)
+        embed.add_field(
+            name="Dealer's Hand",
+            value=self.deck.format_hand(self.dealer_hand, hide_second=True),
+            inline=False,
+        )
+        multi = len(self.hands) > 1
+        for idx, hand in enumerate(self.hands):
+            score = self.deck.calculate_score(hand["cards"])
+            marker = (
+                " 👈" if multi and idx == self.active_hand and not hand["done"] else ""
+            )
+            label = f"Hand {idx + 1} ({score}){marker}" if multi else f"Your Hand ({score})"
+            embed.add_field(
+                name=label, value=self.deck.format_hand(hand["cards"]), inline=multi
+            )
+        total_bet = sum(h["bet"] for h in self.hands)
+        footer = f"Current Bet: {total_bet:,} gold"
+        if self.insurance_bet:
+            footer += f" (+{self.insurance_bet:,} insurance)"
+        embed.set_footer(text=footer)
+
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await self.original_interaction.edit_original_response(
+                embed=embed, view=self
+            )
+
+    async def _advance_or_resolve(self, interaction: Interaction):
+        self.active_hand += 1
+        if (
+            self.active_hand < len(self.hands)
+            and not self.hands[self.active_hand]["done"]
+        ):
+            await self._start_playing(interaction)
+        else:
+            await self._play_dealer(interaction)
+
+    async def _on_hit(self, interaction: Interaction):
+        hand = self.hands[self.active_hand]
+        hand["cards"].append(self.deck.draw_card())
+        if self.deck.calculate_score(hand["cards"]) > 21:
+            hand["done"] = True
+            hand["result"] = "bust"
+            await self._advance_or_resolve(interaction)
+        else:
+            await self._start_playing(interaction)
+
+    async def _on_stand(self, interaction: Interaction):
+        self.hands[self.active_hand]["done"] = True
+        await self._advance_or_resolve(interaction)
+
+    async def _on_double(self, interaction: Interaction):
+        hand = self.hands[self.active_hand]
+        user_data = await self.bot.database.users.get(
+            self.user_id, interaction.guild.id
+        )
+        if user_data["gold"] < hand["bet"]:
+            await interaction.response.send_message(
+                "Insufficient funds to double down.", ephemeral=True
+            )
+            return
+        await self.bot.database.users.modify_gold(self.user_id, -hand["bet"])
+        hand["bet"] *= 2
+        hand["cards"].append(self.deck.draw_card())
+        hand["done"] = True
+        if self.deck.calculate_score(hand["cards"]) > 21:
+            hand["result"] = "bust"
+        await self._advance_or_resolve(interaction)
+
+    async def _on_split(self, interaction: Interaction):
+        hand = self.hands[self.active_hand]
+        user_data = await self.bot.database.users.get(
+            self.user_id, interaction.guild.id
+        )
+        if user_data["gold"] < hand["bet"]:
+            await interaction.response.send_message(
+                "Insufficient funds to split.", ephemeral=True
+            )
+            return
+        await self.bot.database.users.modify_gold(self.user_id, -hand["bet"])
+
+        card_a, card_b = hand["cards"]
+        # Split aces are dealt exactly one card each and forced to stand —
+        # standard rule, prevents chaining aces into multiple blackjacks.
+        is_aces = card_a[0] == "A"
+        self.hands = [
+            {
+                "cards": [card_a, self.deck.draw_card()],
+                "bet": hand["bet"],
+                "done": is_aces,
+                "is_split_aces": is_aces,
+                "result": None,
+            },
+            {
+                "cards": [card_b, self.deck.draw_card()],
+                "bet": hand["bet"],
+                "done": is_aces,
+                "is_split_aces": is_aces,
+                "result": None,
+            },
+        ]
+        self.has_split = True
+        self.active_hand = 0
+
+        if is_aces:
+            await self._play_dealer(interaction)
+        else:
+            await self._start_playing(interaction)
+
+    # --- Resolution ---
+
+    async def _play_dealer(self, interaction: Interaction):
+        any_alive = any(h["result"] != "bust" for h in self.hands)
+        if any_alive:
+            while self.deck.calculate_score(self.dealer_hand) < 17:
+                self.dealer_hand.append(self.deck.draw_card())
+        await self._settle_round(interaction)
+
+    async def _settle_round(self, interaction: Interaction = None):
         self.game_over = True
+        dealer_score = self.deck.calculate_score(self.dealer_hand)
+
         payout = 0
-        msg = ""
+        for hand in self.hands:
+            if hand["result"] is None:
+                p_score = self.deck.calculate_score(hand["cards"])
+                if dealer_score > 21 or p_score > dealer_score:
+                    hand["result"] = "win"
+                elif p_score == dealer_score:
+                    hand["result"] = "push"
+                else:
+                    hand["result"] = "lose"
 
-        if result == "blackjack":
-            payout = int(self.bet_amount * 2.5)
-            msg = f"**BLACKJACK!** You win **{payout:,}** gold!"
-        elif result == "win":
-            payout = self.bet_amount * 2
-            msg = f"**YOU WIN!** You receive **{payout:,}** gold!"
-        elif result == "push":
-            payout = self.bet_amount
-            msg = "**PUSH!** Your bet is returned."
-        elif result == "bust":
-            msg = "**BUST!** You went over 21."
-        elif result == "lose":
-            msg = "**DEALER WINS!** Better luck next time."
+            if hand["result"] == "blackjack":
+                payout += int(hand["bet"] * 2.5)
+            elif hand["result"] == "win":
+                payout += hand["bet"] * 2
+            elif hand["result"] == "push":
+                payout += hand["bet"]
 
-        quest_msgs = []
         if payout > 0:
             await self.bot.database.users.modify_gold(self.user_id, payout)
-            net_win = payout - self.bet_amount
-            if net_win > 0:
-                try:
-                    from core.quests.mechanics import tick_quest_progress
 
-                    guild_id = (
-                        str(interaction.guild_id) if interaction else self.guild_id
-                    )
-                    quest_msgs = await tick_quest_progress(
-                        self.bot, self.user_id, guild_id, "casino_win", value=net_win
-                    )
-                except Exception:
-                    pass
+        total_wagered = sum(h["bet"] for h in self.hands)
+        net_win = (payout - total_wagered) + self.insurance_profit
 
-        # Build the final embed from scratch — avoids Discord caching issues with
-        # original_response() that cause stale embeds to appear after a restart.
-        p_score = self.deck.calculate_score(self.player_hand)
-        d_score = self.deck.calculate_score(self.dealer_hand)
-        final_embed = discord.Embed(
-            title="🃏 Blackjack Table",
-            description=msg,
-            color=discord.Color.gold(),
-        )
-        final_embed.set_thumbnail(url=TAVERN_CASINO)
-        final_embed.add_field(
-            name=f"Dealer's Hand ({d_score})",
+        quest_msgs = []
+        if net_win > 0:
+            try:
+                from core.quests.mechanics import tick_quest_progress
+
+                guild_id = str(interaction.guild_id) if interaction else self.guild_id
+                quest_msgs = await tick_quest_progress(
+                    self.bot, self.user_id, guild_id, "casino_win", value=net_win
+                )
+            except Exception:
+                pass
+
+        embed = self._build_result_embed(dealer_score, net_win, quest_msgs)
+        self._add_result_buttons()
+
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await self.original_interaction.edit_original_response(
+                embed=embed, view=self
+            )
+
+    def _build_result_embed(self, dealer_score, net_win, quest_msgs):
+        embed = discord.Embed(title="🃏 Blackjack Table", color=discord.Color.gold())
+        embed.set_thumbnail(url=TAVERN_CASINO)
+        embed.add_field(
+            name=f"Dealer's Hand ({dealer_score})",
             value=self.deck.format_hand(self.dealer_hand),
             inline=False,
         )
-        final_embed.add_field(
-            name=f"Your Hand ({p_score})",
-            value=self.deck.format_hand(self.player_hand),
-            inline=False,
+
+        multi = len(self.hands) > 1
+        for idx, hand in enumerate(self.hands):
+            score = self.deck.calculate_score(hand["cards"])
+            label = f"Hand {idx + 1} ({score})" if multi else f"Your Hand ({score})"
+            tag = self.RESULT_LABELS.get(hand["result"], "")
+            value = f"{self.deck.format_hand(hand['cards'])}\n{tag} — bet {hand['bet']:,}"
+            embed.add_field(name=label, value=value, inline=multi)
+
+        if self.insurance_bet:
+            if self.insurance_result == "won":
+                embed.add_field(
+                    name="🛡️ Insurance",
+                    value=f"Dealer had Blackjack! Insurance paid **{self.insurance_bet * 2:,}** gold profit.",
+                    inline=False,
+                )
+            else:
+                embed.add_field(
+                    name="🛡️ Insurance",
+                    value=f"Dealer didn't have Blackjack. Lost the **{self.insurance_bet:,}** gold insurance stake.",
+                    inline=False,
+                )
+
+        summary = (
+            f"**Net Profit:** {net_win:,} gold"
+            if net_win >= 0
+            else f"**Net Loss:** {-net_win:,} gold"
         )
+        embed.add_field(name="Result", value=summary, inline=False)
+
         if quest_msgs:
-            final_embed.add_field(
+            embed.add_field(
                 name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
             )
-        final_embed.set_footer(text=f"Bet: {self.bet_amount:,} gold")
 
+        total_bet = sum(h["bet"] for h in self.hands) + self.insurance_bet
+        embed.set_footer(text=f"Total Wagered: {total_bet:,} gold")
+        return embed
+
+    def _add_result_buttons(self):
         self.clear_items()
-        # Add Restart Button
-        restart_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
-        restart_btn.callback = self.restart_game
-        self.add_item(restart_btn)
 
-        quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
+        same_btn = Button(
+            label="Play Again", style=ButtonStyle.primary, emoji="🔄", row=0
+        )
+        same_btn.callback = self._rebet_same
+        self.add_item(same_btn)
+
+        half_btn = Button(
+            label="Half Bet", style=ButtonStyle.secondary, emoji="🔽", row=0
+        )
+        half_btn.callback = self._rebet_half
+        self.add_item(half_btn)
+
+        double_btn = Button(
+            label="Double Bet", style=ButtonStyle.secondary, emoji="🔼", row=0
+        )
+        double_btn.callback = self._rebet_double
+        self.add_item(double_btn)
+
+        max_btn = Button(label="Max Bet", style=ButtonStyle.danger, emoji="💯", row=0)
+        max_btn.callback = self._rebet_max
+        self.add_item(max_btn)
+
+        self.add_item(
+            casino_lobby_button(self.bot, self.user_id, self.bet_amount, row=1)
+        )
+
+        quit_btn = Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         quit_btn.callback = self.quit_game
         self.add_item(quit_btn)
 
-        if interaction:
-            await interaction.response.edit_message(embed=final_embed, view=self)
-        else:
-            await self.original_interaction.edit_original_response(
-                embed=final_embed, view=self
-            )
+    # --- Rebet flow ---
 
-    async def restart_game(self, interaction: Interaction):
-        if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+    async def _rebet(self, interaction: Interaction, amount: int):
+        if not await check_funds(self.bot, self.user_id, amount, interaction):
             return
-
-        # Create a FRESH view instance
         new_view = BlackjackView(
-            self.bot, self.user_id, self.bet_amount, self.original_interaction
+            self.bot, self.user_id, amount, self.original_interaction
         )
         await interaction.response.edit_message(
             content="Shuffling deck...", embed=None, view=None
         )
         await new_view.start_game()
-        self.stop()  # Kill old view
+        self.stop()
+
+    async def _rebet_same(self, interaction: Interaction):
+        await self._rebet(interaction, self.bet_amount)
+
+    async def _rebet_half(self, interaction: Interaction):
+        await self._rebet(interaction, max(1, self.bet_amount // 2))
+
+    async def _rebet_double(self, interaction: Interaction):
+        await self._rebet(interaction, self.bet_amount * 2)
+
+    async def _rebet_max(self, interaction: Interaction):
+        user_data = await self.bot.database.users.get(
+            self.user_id, interaction.guild.id
+        )
+        gold = user_data["gold"]
+        if gold <= 0:
+            await interaction.response.send_message(
+                "You have no gold to bet.", ephemeral=True
+            )
+            return
+        await self._rebet(interaction, gold)
 
     async def quit_game(self, interaction: Interaction):
         await interaction.response.defer()
         await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
-
-    @discord.ui.button(label="Hit", style=ButtonStyle.primary, emoji="👊")
-    async def hit_button(self, interaction: Interaction, button: Button):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-        self.player_hand.append(self.deck.draw_card())
-        self.double_button.disabled = True
-        if self.deck.calculate_score(self.player_hand) > 21:
-            await self.end_game("bust", interaction)
-            # game over — _processing stays True (buttons cleared)
-        else:
-            await self.update_table(interaction)
-            self._processing = False  # still in game
-
-    @discord.ui.button(label="Stand", style=ButtonStyle.secondary, emoji="✋")
-    async def stand_button(self, interaction: Interaction, button: Button):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-        while self.deck.calculate_score(self.dealer_hand) < 17:
-            self.dealer_hand.append(self.deck.draw_card())
-        p = self.deck.calculate_score(self.player_hand)
-        d = self.deck.calculate_score(self.dealer_hand)
-        if d > 21 or p > d:
-            await self.end_game("win", interaction)
-        elif p == d:
-            await self.end_game("push", interaction)
-        else:
-            await self.end_game("lose", interaction)
-
-    @discord.ui.button(label="Double Down", style=ButtonStyle.success, emoji="💰")
-    async def double_button(self, interaction: Interaction, button: Button):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-        user_data = await self.bot.database.users.get(
-            self.user_id, interaction.guild.id
-        )
-        if user_data["gold"] < self.bet_amount:
-            self._processing = False
-            await interaction.response.send_message(
-                "Insufficient funds.", ephemeral=True
-            )
-            return
-        await self.bot.database.users.modify_gold(self.user_id, -self.bet_amount)
-        self.bet_amount *= 2
-        self.player_hand.append(self.deck.draw_card())
-        if self.deck.calculate_score(self.player_hand) > 21:
-            await self.end_game("bust", interaction)
-        else:
-            while self.deck.calculate_score(self.dealer_hand) < 17:
-                self.dealer_hand.append(self.deck.draw_card())
-            p = self.deck.calculate_score(self.player_hand)
-            d = self.deck.calculate_score(self.dealer_hand)
-            if d > 21 or p > d:
-                await self.end_game("win", interaction)
-            elif p == d:
-                await self.end_game("push", interaction)
-            else:
-                await self.end_game("lose", interaction)
 
 
 # ==============================================================================
@@ -636,6 +892,7 @@ class CrashView(BaseView):
         restart_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
         restart_btn.callback = self.restart_game
         self.add_item(restart_btn)
+        self.add_item(casino_lobby_button(self.bot, self.user_id, self.bet_amount))
 
         quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         quit_btn.callback = self.quit_game
@@ -825,6 +1082,7 @@ class HorseRaceView(BaseView):
         restart_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
         restart_btn.callback = self.restart_game
         self.add_item(restart_btn)
+        self.add_item(casino_lobby_button(self.bot, self.user_id, self.bet_amount))
 
         quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         quit_btn.callback = self.quit_game

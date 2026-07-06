@@ -1602,6 +1602,11 @@ class Player:
         # Insight helmet passive
         if self.equipped_helmet and self.get_helmet_passive() == "insight":
             base += self.equipped_helmet.passive_lvl * 0.1
+        else:
+            # Soul stone: insight — 1:1 tier match to helmet lvl.
+            ss_insight = self.get_soul_stone_passive("insight")
+            if ss_insight:
+                base += ss_insight * 0.1
 
         # Slayer crit_dmg emblem
         crit_dmg_tiers = self.get_emblem_bonus("crit_dmg")

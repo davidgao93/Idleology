@@ -74,6 +74,15 @@ def generate_player_ward_on_hit(
             added = add_ward(player, ward, log)
             log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{added}** ward!")
             _je.process_jewel_trigger(player, None, "ward", added, log)
+    elif is_hit and not is_crit:
+        # Soul stone: ward-touched — 1:1 tier match to glove lvl.
+        _ss_wt = player.get_soul_stone_passive("ward-touched")
+        if _ss_wt:
+            ward = int(_ss_wt * 25)
+            if ward > 0:
+                added = add_ward(player, ward, log)
+                log.append(f"**Soul Ward-Touched T{_ss_wt}** generates 🔮 **{added}** ward!")
+                _je.process_jewel_trigger(player, None, "ward", added, log)
 
     if is_crit and glove_passive == "ward-fused" and glove_lvl > 0:
         ward = int(glove_lvl * 50)
@@ -81,6 +90,15 @@ def generate_player_ward_on_hit(
             added = add_ward(player, ward, log)
             log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!")
             _je.process_jewel_trigger(player, None, "ward", added, log)
+    elif is_crit:
+        # Soul stone: ward-fused — 1:1 tier match to glove lvl.
+        _ss_wf = player.get_soul_stone_passive("ward-fused")
+        if _ss_wf:
+            ward = int(_ss_wf * 50)
+            if ward > 0:
+                added = add_ward(player, ward, log)
+                log.append(f"**Soul Ward-Fused T{_ss_wf}** generates 🔮 **{added}** ward!")
+                _je.process_jewel_trigger(player, None, "ward", added, log)
 
     if is_hit or is_crit:
         idx, name = get_weapon_tier(player, "arcane")

@@ -390,7 +390,7 @@ class SettlementDashboardView(SettlementBaseView):
         if pending_deal:
             embed.add_field(
                 name="🌑 Market Deal Processing",
-                value=f"Value: {pending_deal['total_value']:,} — {pending_deal['turns_remaining']} turn(s) remaining",
+                value=f"Value: {pending_deal['total_value'] * 100:,} — {pending_deal['turns_remaining']} turn(s) remaining",
                 inline=False,
             )
 
