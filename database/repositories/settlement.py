@@ -302,13 +302,20 @@ class SettlementRepository:
         """
         Fetches the (tier, workers_assigned) of a specific building.
         Returns (0, 0) if the building does not exist.
+        Returns (tier, 0) if the building is disabled (e.g. by a crisis event),
+        so its passive effects and production correctly drop to nothing.
         """
         cursor = await self.connection.execute(
-            "SELECT tier, workers_assigned FROM buildings WHERE user_id = ? AND server_id = ? AND building_type = ?",
+            "SELECT tier, workers_assigned, COALESCE(is_disabled, 0) AS is_disabled "
+            "FROM buildings WHERE user_id = ? AND server_id = ? AND building_type = ?",
             (user_id, server_id, building_type),
         )
         row = await cursor.fetchone()
-        return row if row else (0, 0)
+        if not row:
+            return (0, 0)
+        if row["is_disabled"]:
+            return (row["tier"], 0)
+        return (row["tier"], row["workers_assigned"])
 
     async def get_combat_bonuses(self, user_id: str, server_id: str) -> dict:
         """

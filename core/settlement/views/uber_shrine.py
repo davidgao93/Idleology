@@ -239,7 +239,7 @@ class EmptySlotView(SettlementBaseView):
             color=discord.Color.orange(),
         )
         parent = self.shrine_view.parent
-        await interaction.edit_original_response(embed=queued_embed, view=parent)
+        await interaction.edit_original_response(embed=queued_embed, view=ui.View())
         self.shrine_view.stop()
         self.stop()
         await asyncio.sleep(3)
@@ -543,7 +543,7 @@ class StatueSlotView(SettlementBaseView):
             color=discord.Color.orange(),
         )
         parent = self.shrine_view.parent
-        await interaction.edit_original_response(embed=queued_embed, view=parent)
+        await interaction.edit_original_response(embed=queued_embed, view=ui.View())
         self.shrine_view.stop()
         self.stop()
         await asyncio.sleep(3)

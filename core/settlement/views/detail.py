@@ -485,7 +485,7 @@ class BuildingDetailView(SettlementBaseView):
         self._processing = False
         if hasattr(self.parent, "_processing"):
             self.parent._processing = False
-        await interaction.edit_original_response(embed=queued_embed, view=self.parent)
+        await interaction.edit_original_response(embed=queued_embed, view=ui.View())
         self.stop()
         await asyncio.sleep(3)
         dash_embed = self.parent.build_embed()

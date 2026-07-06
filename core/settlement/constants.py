@@ -50,7 +50,7 @@ BUILDING_INFO = {
     "black_market": "Special: Submit resource bundles as trade offers. Deals process over Development Turns and return curated loot. Invest Idlem into the passive tree to improve deal value, speed, and loot bias.",
     "companion_ranch": "Hybrid: Produces **10 Companion XP/hr per 100 Workers** at T1 passively, scaling with tier. Also awards a **5× burst** each Development Turn. XP accumulates as Cookies and is claimed manually from **/companions**.",
     "hatchery": "Special: Incubate monster eggs for Hematurgy blood drops. Workers reduce incubation time — **10% faster per 100 Workers**. Requires Level 50 to build.",
-    "war_camp": "Passive generator: Produces Combat Stamina — **~10 Stamina per 24h per 100 Workers**. Collected via its own **War Camp Stamina** button (separate from the main Collect button). Stamina is capped at 10 and never exceeds the normal maximum.",
+    "war_camp": "Passive generator: Produces Combat Stamina — **~10 Stamina per 24h per 100 Workers**. Collected via its own **War Camp Stamina** button (separate from the main Collect button). This stamina stacks on top of your current total, even past the normal 10-stamina cap.",
 }
 
 # Construction costs (used by BuildConstructionView)

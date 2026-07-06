@@ -726,7 +726,7 @@ async def collect_war_camp_stamina(bot, uid: str, sid: str, settlement, plots: l
     if stamina_collected <= 0:
         return {"too_early": False, "has_output": False, "hours": hours}
 
-    await bot.database.users.add_stamina_capped(uid, stamina_collected)
+    await bot.database.users.add_stamina_uncapped(uid, stamina_collected)
 
     return {
         "too_early": False,

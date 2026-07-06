@@ -203,6 +203,7 @@ class CodexRunView(BaseView):
 
         self.combat_logger = CombatLogger(player, initial_monster)
         self.combat_logger.log_combat_start(player, initial_monster)
+        self._update_full_send_state()
 
     # ------------------------------------------------------------------
     # Run persistence (chapter-boundary snapshots)
@@ -748,6 +749,7 @@ class CodexRunView(BaseView):
 
         for child in self.children:
             child.disabled = False
+        self._update_full_send_state()
 
         embed = self._combat_embed()
         msg_obj = message or (
@@ -1008,8 +1010,16 @@ class CodexRunView(BaseView):
         self.clear_items()
         self.add_item(self._attack_btn)
         self.add_item(self._auto_btn)
+        self.add_item(self._full_send_btn)
         self.add_item(self._retreat_btn)
         self.add_item(self._abandon_btn)
+        self._update_full_send_state()
+
+    def _update_full_send_state(self):
+        """Full Send unlocks once HP is at/below Auto's low-HP protection threshold (20%)."""
+        self._full_send_btn.disabled = not (
+            0 < self.player.current_hp <= self.player.total_max_hp * 0.2
+        )
 
     async def _refresh_ui(
         self, interaction: Interaction = None, message: discord.Message = None
@@ -1094,14 +1104,51 @@ class CodexRunView(BaseView):
             # Low HP pause — re-enable buttons so the player can act
             for child in self.children:
                 child.disabled = False
+            self._update_full_send_state()
             self.logs["Auto-Wave"] = "🛑 Paused: Low HP Protection triggered!"
             await self._refresh_ui(message=message)
             await message.channel.send(
-                f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused!",
+                f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused! "
+                "**Full Send** is now available if you want to gamble on finishing the fight.",
                 delete_after=15,
             )
         else:
             await self._check_state(message=message)
+
+    @ui.button(
+        label="Full Send",
+        style=ButtonStyle.danger,
+        emoji="💀",
+        row=0,
+        disabled=True,
+    )
+    async def _full_send_btn(self, interaction: Interaction, button: ui.Button):
+        """Unlocked at low HP (same threshold Auto warns on). Repeats attacks with
+        no HP floor until the monster is defeated or the player dies."""
+        await interaction.response.defer()
+        message = interaction.message
+
+        for child in self.children:
+            child.disabled = True
+        await message.edit(view=self)
+
+        while self.player.current_hp > 0 and self.monster.hp > 0:
+            for _ in range(10):
+                if self.player.current_hp <= 0 or self.monster.hp <= 0:
+                    break
+                p_log = engine.process_player_turn(self.player, self.monster)
+                self.combat_logger.log_player_turn(p_log, self.monster)
+                m_log = ""
+                if self.monster.hp > 0:
+                    m_log = engine.process_monster_turn(self.player, self.monster)
+                    self.combat_logger.log_monster_turn(m_log, self.player)
+                self.logs = {self.player.name: p_log, self.monster.name: m_log}
+
+            if self.player.current_hp > 0 and self.monster.hp > 0:
+                await self._refresh_ui(message=message)
+                await asyncio.sleep(1.0)
+
+        await self._check_state(message=message)
 
     @ui.button(label="Save & Exit", style=ButtonStyle.secondary, emoji="💾", row=1)
     async def _retreat_btn(self, interaction: Interaction, button: ui.Button):

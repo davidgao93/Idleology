@@ -576,13 +576,15 @@ class PlotDetailView(SettlementBaseView):
                 b.is_meta
                 and META_BUILDINGS.get(b.building_type, {}).get("max_workers", 1) == 0
             )
-            tier_label = f"Meta Tier {b.tier}/5" if b.is_meta else f"{b.tier}/5"
             if b.building_type == "uber_shrine":
-                desc = f"**Tier:** {tier_label}\n🏛️ Workers are managed per statue — open Monument Hall to assign them."
-            elif is_passive_meta:
-                desc = f"**Tier:** {tier_label} *(Passive — no workers needed)*"
+                desc = f"**Tier:** {b.tier}/5\n🏛️ Workers are managed per statue — open Monument Hall to assign them."
+            elif b.is_meta:
+                if is_passive_meta:
+                    desc = "**Meta Building** *(Passive — no workers needed)*"
+                else:
+                    desc = f"**Meta Building**\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
             else:
-                desc = f"**Tier:** {tier_label}\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
+                desc = f"**Tier:** {b.tier}/5\n**Workers:** {b.workers_assigned:,}/{max_w:,}"
             if b.is_disabled:
                 repair_cost = get_repair_cost(b.tier)
                 desc += f"\n\n🚧 **DISABLED** — damaged by a crisis event.\nRepair cost: **{repair_cost:,} gold**"
@@ -1219,7 +1221,7 @@ class PlotDetailView(SettlementBaseView):
             queued_embed.set_thumbnail(url=thumb)
 
         self._processing = False
-        await interaction.edit_original_response(embed=queued_embed, view=self.parent)
+        await interaction.edit_original_response(embed=queued_embed, view=ui.View())
         self.stop()
         await asyncio.sleep(3)
         dash_embed = self.parent.build_embed()
@@ -1676,7 +1678,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
 
         self._processing = False
         await interaction.edit_original_response(
-            content=None, embed=queued_embed, view=self.parent
+            content=None, embed=queued_embed, view=ui.View()
         )
         self.stop()
         await asyncio.sleep(3)

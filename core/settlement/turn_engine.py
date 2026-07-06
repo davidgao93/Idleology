@@ -174,6 +174,7 @@ async def process_next_turn(
             {
                 "type": proj["project_type"],
                 "label": result.get("label", proj["project_type"]),
+                "is_meta": result.get("is_meta", False),
             }
         )
         if proj["project_type"] == "foundry_idlem":
@@ -418,7 +419,12 @@ async def _calculate_dt_production(
     companion_cookie = 0
 
     for b in settlement.buildings:
-        if b.is_meta or b.building_type in _SKIP or b.workers_assigned <= 0:
+        if (
+            b.is_meta
+            or b.is_disabled
+            or b.building_type in _SKIP
+            or b.workers_assigned <= 0
+        ):
             continue
         b_def = SettlementMechanics.BUILDINGS.get(b.building_type)
         if not b_def or b_def["type"] not in ("generator", "converter"):
@@ -478,7 +484,7 @@ async def _complete_project(
             await bot.database.settlement.build_structure(
                 user_id, server_id, building_type, plot_index, is_meta
             )
-        return {"label": f"{building_type.replace('_', ' ').title()}"}
+        return {"label": f"{building_type.replace('_', ' ').title()}", "is_meta": is_meta}
 
     elif ptype == "upgrade":
         building_id = proj.get("target_id")

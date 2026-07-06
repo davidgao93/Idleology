@@ -401,7 +401,7 @@ class SettlementDashboardView(SettlementBaseView):
                 has_new_building = False
                 for p in turn_summary["projects_completed"]:
                     lines.append(f"✅ {p.get('label', 'Project')} completed!")
-                    if p.get("type") == "construction":
+                    if p.get("type") == "construction" and not p.get("is_meta"):
                         has_new_building = True
                 if has_new_building:
                     lines.append(

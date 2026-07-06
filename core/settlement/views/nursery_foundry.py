@@ -177,6 +177,11 @@ class IdlemFoundryView(SettlementBaseView):
         if self._processing:
             await interaction.response.defer()
             return
+        if self.building.is_disabled:
+            return await interaction.response.send_message(
+                "This Idlem Foundry is disabled — repair it before queueing production.",
+                ephemeral=True,
+            )
         if self.building.workers_assigned <= 0:
             return await interaction.response.send_message(
                 "Assign workers to the Idlem Foundry before queueing production.",

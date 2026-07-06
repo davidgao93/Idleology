@@ -346,25 +346,25 @@ def get_sig_combat_effect_text(partner_id: int, tier: int) -> str:
     if partner_id == 1:  # Skol
         n = _SKOL_SIG_BUFFS[T]
         return (
-            f"Gain {n} random corrupted essence buff(s) at combat start. "
+            f"Combat start: Gain {n} random corrupted essence buff(s). "
             f"Can pick ones already on gear, effect is not doubled."
         )
     if partner_id == 2:  # Eve
         p = _EVE_SIG_POTIONS[T]
-        return f"When HP would drop to 0, survive by consuming {p} potion(s) and restore HP to full."
+        return f"On defeat: Survive by consuming {p} potion(s) and restore HP to full."
     if partner_id == 3:  # Kay
-        return f"{T * 5}% chance to obtain an extra curio after combat (does not apply in Ascent or Codex)"
+        return f"On victory: {T * 5}% chance to obtain an extra curio in regular combat"
     if partner_id == 4:  # Sigmund
-        return f"{T * 2}% chance to add +100% damage on a hit"
+        return f"On hit: {T * 2}% chance to deal 100% increased damage"
     if partner_id == 5:  # Velour
-        return f"{T * 2}% chance to double all special rarity drops"
+        return f"On victory: {T * 2}% chance to double all special rarity drops"
     if partner_id == 6:  # Flora
         return (
-            f"Convert {T * 10}% of final monster gold into skilling materials. "
-            f"Formula: (gold converted ÷ 1000) × skill yield."
+            f"On victory: Convert {T * 10}% of gold into skilling materials. "
+            f"(Gold converted ÷ 1000) × skill yield."
         )
     if partner_id == 7:  # Yvenn
-        return f"All monsters count as slayer task monsters; +{T} bonus slayer progress per kill"
+        return f"On victory: Kill counts as a slayer kill; +{T} bonus slayer progress per kill"
     return "???"
 
 

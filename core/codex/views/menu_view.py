@@ -82,7 +82,13 @@ class CodexMenuView(BaseView):
         embed.add_field(
             name="Tome Slots Unlocked", value=f"{len(tomes)}/5", inline=True
         )
-        embed.set_footer(text="Level 80+ required to begin a run.")
+        embed.set_footer(
+            text=(
+                "Level 80+ required to begin a run.\n"
+                "Save & Exit only checkpoints at the start of each chapter — "
+                "mid-chapter progress is lost if you save."
+            )
+        )
         return embed
 
     @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)

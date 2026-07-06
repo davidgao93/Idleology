@@ -53,6 +53,11 @@ class EggQueueSelect(ui.Select):
             return await interaction.response.send_message(
                 "Egg not found.", ephemeral=True
             )
+        if self.view.building.is_disabled:
+            return await interaction.response.send_message(
+                "This Hatchery is disabled — repair it before incubating eggs.",
+                ephemeral=True,
+            )
         await interaction.response.defer()
         await self.view._start_incubation(interaction, egg)
 
