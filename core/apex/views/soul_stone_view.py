@@ -34,6 +34,44 @@ _CAT_EMOJI: dict[str, str] = {
 }
 _ALL_CATEGORIES = ("offensive", "defensive", "mixed", "utility")
 
+_SHARD_EMOJIS: dict[str, str] = {
+    "pyre": "🔥",
+    "tempest": "⚡",
+    "bulwark": "🏰",
+    "verdant": "🌿",
+    "fortune": "💰",
+    "rift": "🌀",
+}
+
+
+def add_shard_inventory_field(embed: discord.Embed, shards: ShardInventory) -> None:
+    """Adds a '💠 Shard Inventory' field listing every shard type count.
+
+    Shared by ImprintView and UpgradeView — the Soul Stone hub itself no longer
+    shows this (only relevant once you're spending shards)."""
+    shard_parts = []
+    for key, emoji in _SHARD_EMOJIS.items():
+        count = shards.get(key)
+        shard_parts.append(f"{emoji} {key.title()}: **{count}**")
+    shard_parts.append(f"🔘 Soul Fragments: **{shards.soul_fragments}**")
+    embed.add_field(name="💠 Shard Inventory", value="\n".join(shard_parts), inline=True)
+
+
+def add_meta_shards_field(embed: discord.Embed, meta: MetaShardInventory) -> None:
+    """Adds a '🔮 Meta Shards' field listing every meta shard type count.
+
+    Shared by ImprintView and UpgradeView — the Soul Stone hub itself no longer
+    shows this (only relevant once you're spending shards)."""
+    from core.apex.data import META_SHARD_DISPLAY
+
+    meta_parts = []
+    for key, (display, _) in META_SHARD_DISPLAY.items():
+        count = meta.get(key)
+        meta_parts.append(
+            f"{display.split(' ', 1)[0]} {key.replace('_', ' ').title()}: **{count}**"
+        )
+    embed.add_field(name="🔮 Meta Shards", value="\n".join(meta_parts), inline=True)
+
 
 def _resonance_hint_text(soul_stone: SoulStone) -> str | None:
     """
@@ -122,9 +160,14 @@ def _build_soul_stone_embed(
             passive_display = slot.passive.replace("-", " ").replace("_", " ").title()
             stars = "⭐" * (slot.tier or 0)
             cat = slot.category.capitalize() if slot.category else "?"
+            desc = ApexMechanics.get_soul_stone_passive_description(
+                slot.passive, slot.tier or 1
+            )
+            desc_line = f"*{desc}*" if desc else "*(not yet active in combat)*"
             slot_lines.append(
                 f"**Slot {i}:** {passive_display} T{slot.tier} {stars}\n"
-                f"  ↳ Category: *{cat}*"
+                f"  ↳ Category: *{cat}*\n"
+                f"  ↳ {desc_line}"
             )
     embed.add_field(name="🔮 Slots", value="\n".join(slot_lines), inline=False)
 
@@ -151,41 +194,6 @@ def _build_soul_stone_embed(
                 ),
                 inline=False,
             )
-
-    # --- Shard inventory ---
-    shard_parts = []
-    _SHARD_EMOJIS = {
-        "pyre": "🔥",
-        "tempest": "⚡",
-        "bulwark": "🏰",
-        "verdant": "🌿",
-        "fortune": "💰",
-        "rift": "🌀",
-    }
-    for key, emoji in _SHARD_EMOJIS.items():
-        count = shards.get(key)
-        shard_parts.append(f"{emoji} {key.title()}: **{count}**")
-    shard_parts.append(f"🔘 Soul Fragments: **{shards.soul_fragments}**")
-    embed.add_field(
-        name="💠 Shard Inventory",
-        value="\n".join(shard_parts),
-        inline=True,
-    )
-
-    # --- Meta shards ---
-    from core.apex.data import META_SHARD_DISPLAY
-
-    meta_parts = []
-    for key, (display, _) in META_SHARD_DISPLAY.items():
-        count = meta.get(key)
-        meta_parts.append(
-            f"{display.split(' ', 1)[0]} {key.replace('_', ' ').title()}: **{count}**"
-        )
-    embed.add_field(
-        name="🔮 Meta Shards",
-        value="\n".join(meta_parts),
-        inline=True,
-    )
 
     embed.set_thumbnail(url=APEX_SOUL_STONE)
     embed.set_footer(

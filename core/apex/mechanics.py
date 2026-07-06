@@ -26,8 +26,8 @@ if TYPE_CHECKING:
     from core.apex.models import SoulStone
 
 
-CHARGE_REGEN_SECONDS: float = 8 * 3600  # 8 hours per charge
-MAX_CHARGES: int = 3
+CHARGE_REGEN_SECONDS: float = 2 * 3600  # 2 hours per charge
+MAX_CHARGES: int = 5
 
 
 class ApexMechanics:
@@ -300,13 +300,13 @@ class ApexMechanics:
         Rolls loot for a successful apex hunt.
         Returns {
             'shard_type': str,
-            'shard_amount': int,     # 1 or 2
+            'shard_amount': int,     # 15-25, avg 20
             'meta': dict             # meta shard type → count (0 or 1 each)
         }
         """
         zone = ZONE_DEFS.get(zone_key)
         shard_type = zone.shard_type if zone else "rift"
-        shard_amount = 2 if random.random() < 0.20 else 1
+        shard_amount = random.randint(15, 25)
 
         meta: dict[str, int] = {}
         for meta_name, chance in META_SHARD_DROP_CHANCES.items():
@@ -455,3 +455,71 @@ class ApexMechanics:
     def get_passive_category(passive_key: str) -> str:
         """Returns the combat category for a given passive (defaults to 'utility')."""
         return PASSIVE_CATEGORY_MAP.get(passive_key, "utility")
+
+    @staticmethod
+    def get_soul_stone_passive_description(passive_key: str, tier: int) -> str | None:
+        """
+        Returns what the given passive grants at the specified Soul Stone tier (1-5),
+        using the exact formula the combat engine applies for that passive — sourced
+        from core/character/passive_data.py wherever a gear-side formula exists.
+
+        Returns None if the passive has no combat effect wired yet (it can still be
+        imprinted, but currently does nothing in combat).
+        """
+        from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+        from core.character.passive_data import (
+            _ACCESSORY_PASSIVE_FUNCS,
+            _BOOT_PASSIVE_FUNCS,
+            _HELMET_PASSIVE_FUNCS,
+            _WEAPON_PASSIVE_DESC,
+        )
+
+        tier = max(1, min(5, tier or 1))
+
+        # Weapon-family — 1:1 tier match, described verbatim in passive_data.
+        weapon_key = f"{passive_key}_{tier}"
+        if weapon_key in _WEAPON_PASSIVE_DESC:
+            return _WEAPON_PASSIVE_DESC[weapon_key]
+
+        # Boot-family: hearty/thrill-seeker map tier directly to the gear lvl param.
+        # speedster/skiller instead use the "6 gear tiers condensed to 5" ratio,
+        # matching their explicit SOUL_STONE_TIER_VALUES entries.
+        if passive_key in ("hearty", "thrill-seeker") and passive_key in _BOOT_PASSIVE_FUNCS:
+            return _BOOT_PASSIVE_FUNCS[passive_key](tier)
+        if passive_key in ("speedster", "skiller") and passive_key in _BOOT_PASSIVE_FUNCS:
+            return _BOOT_PASSIVE_FUNCS[passive_key](tier * 6 / 5)
+
+        # Helmet-family — 1:1 tier match.
+        if passive_key in ("juggernaut", "leeching") and passive_key in _HELMET_PASSIVE_FUNCS:
+            return _HELMET_PASSIVE_FUNCS[passive_key](tier)
+
+        # Accessory-family — 2:1 tier mapping (soul stone tier x2 = equivalent lvl).
+        if passive_key == "absorb":
+            return _ACCESSORY_PASSIVE_FUNCS["absorb"](tier * 2)
+
+        # Armor-family (Imbue passives): the gear item itself has no tiers, so
+        # there's no lvl-parameterized template to reuse — hand-templated against
+        # the SOUL_STONE_TIER_VALUES table instead, mirroring _ARMOR_PASSIVE_DESC wording.
+        if passive_key == "impregnable":
+            v = _SST["impregnable"][tier - 1]
+            return f"During combat: Your PDR cap is increased by {v}% ({80 + v}% cap)"
+        if passive_key == "piety":
+            v = _SST["piety"][tier - 1]
+            return f"On hit: 10% chance to deal {v}% increased damage"
+        if passive_key == "transcendence":
+            v = _SST["transcendence"][tier - 1]
+            return f"Combat start: Gain {v}% of your total ATK and DEF as bonus ATK"
+        if passive_key == "treasure hunter":
+            v = _SST["treasure hunter"][tier - 1]
+            return (
+                f"Combat start: +{v:.1f}% bonus Rarity "
+                "(also grants the standard +3% Special Rarity on victory)"
+            )
+        if passive_key == "unlimited wealth":
+            v = _SST["unlimited wealth"][tier - 1]
+            return f"Combat start: 20% chance to gain {v}% more Rarity as bonus rarity"
+        if passive_key == "alchemist":
+            v = _SST["alchemist"][tier - 1]
+            return f"During combat: {v}% chance to not consume a potion on use"
+
+        return None  # not yet wired into combat

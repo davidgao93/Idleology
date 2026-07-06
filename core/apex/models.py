@@ -183,7 +183,7 @@ def profile_from_db(row: dict) -> ApexHuntProfile:
     return ApexHuntProfile(
         user_id=row["user_id"],
         server_id=row["server_id"],
-        hunt_charges=row.get("hunt_charges", 3),
+        hunt_charges=row.get("hunt_charges", 5),
         last_charge_time=row.get("last_charge_time"),
         zone_stats=zone_stats,
     )

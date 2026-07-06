@@ -748,7 +748,7 @@ CREATE TABLE IF NOT EXISTS paradise_jewel_data (
 CREATE TABLE IF NOT EXISTS apex_hunt_profiles (
   user_id          TEXT NOT NULL,
   server_id        TEXT NOT NULL,
-  hunt_charges     INTEGER NOT NULL DEFAULT 3,
+  hunt_charges     INTEGER NOT NULL DEFAULT 5,
   last_charge_time REAL    DEFAULT NULL,
   -- Win/loss per zone
   ashen_wins       INTEGER NOT NULL DEFAULT 0,

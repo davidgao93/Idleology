@@ -427,6 +427,16 @@ class UpgradeView(BaseView):
                 inline=False,
             )
 
+        # Shard Inventory / Meta Shards — only shown here and in ImprintView, not
+        # on the Soul Stone hub itself (only relevant once you're spending shards).
+        from core.apex.views.soul_stone_view import (
+            add_meta_shards_field,
+            add_shard_inventory_field,
+        )
+
+        add_shard_inventory_field(embed, self.shards)
+        add_meta_shards_field(embed, self.meta)
+
         embed.set_thumbnail(url=APEX_UPGRADE)
         return embed
 

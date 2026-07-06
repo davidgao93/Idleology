@@ -722,19 +722,15 @@ class ImprintView(BaseView):
             name="💎 Current Slots", value="\n".join(slot_lines), inline=False
         )
 
-        # Active meta shard summary
-        meta_parts = []
-        if self.meta.sharpened_fang:
-            meta_parts.append(f"🦷 Sharpened Fang ×{self.meta.sharpened_fang}")
-        if self.meta.primal_essence:
-            meta_parts.append(f"✨ Primal Essence ×{self.meta.primal_essence}")
-        if self.meta.soul_vessel:
-            meta_parts.append(f"🏺 Soul Vessel ×{self.meta.soul_vessel}")
-        if meta_parts:
-            embed.add_field(
-                name="🔮 Available Meta Shards",
-                value="\n".join(meta_parts) + "\n*Toggle usage on the confirm screen.*",
-                inline=False,
-            )
+        # Shard Inventory / Meta Shards — only shown here and in UpgradeView, not
+        # on the Soul Stone hub itself (only relevant once you're spending shards).
+        from core.apex.views.soul_stone_view import (
+            add_meta_shards_field,
+            add_shard_inventory_field,
+        )
+
+        add_shard_inventory_field(embed, self.shards)
+        add_meta_shards_field(embed, self.meta)
+        embed.set_footer(text="Toggle meta shard usage on the confirm screen.")
 
         return embed

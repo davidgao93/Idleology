@@ -486,13 +486,18 @@ RESONANCE_TABLE: dict[str, tuple[str, str]] = {
 
 # ---------------------------------------------------------------------------
 # Upgrade cost table: (tier_from) → {matching_cost, rift_cost}
+#
+# Rescaled to match the ~20/win shard reward denomination (roll_victory_drops),
+# with an additional +30-50% back-loaded bump on T2->T3/T3->T4/T4->T5 to offset
+# the faster hunt-charge regen (2h/charge instead of 8h/charge). T3->T4 and
+# T4->T5 carry a further +50% on top of that to stretch the endgame climb.
 # ---------------------------------------------------------------------------
 
 UPGRADE_COSTS: dict[int, dict] = {
-    1: {"matching": 3, "rift": 0},
-    2: {"matching": 5, "rift": 0},
-    3: {"matching": 8, "rift": 2},
-    4: {"matching": 12, "rift": 5},
+    1: {"matching": 50, "rift": 0},
+    2: {"matching": 120, "rift": 0},
+    3: {"matching": 290, "rift": 80},
+    4: {"matching": 420, "rift": 180},
 }
 
 # ---------------------------------------------------------------------------

@@ -57,7 +57,7 @@ class ApexRepository(BaseRepository):
         return {
             "user_id": user_id,
             "server_id": server_id,
-            "hunt_charges": 3,
+            "hunt_charges": 5,
             "last_charge_time": None,
             **{f"{z}_wins": 0 for z in _ZONE_KEYS},
             **{f"{z}_losses": 0 for z in _ZONE_KEYS},

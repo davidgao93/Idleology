@@ -15,7 +15,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.apex.data import ZONE_DEFS
-from core.apex.mechanics import ApexMechanics
+from core.apex.mechanics import MAX_CHARGES, ApexMechanics
 from core.apex.models import (
     ApexHuntProfile,
     meta_shards_from_db,
@@ -61,11 +61,11 @@ def _build_lobby_embed(
     embed.set_thumbnail(url=LUCIEN_THUMBNAIL)
 
     # Charges
-    charge_bar = "🔵" * charges + "⚫" * (3 - charges)
-    charge_line = f"{charge_bar}  **{charges}/3 charges**"
-    if charges < 3 and seconds_to_next > 0:
+    charge_bar = "🔵" * charges + "⚫" * (MAX_CHARGES - charges)
+    charge_line = f"{charge_bar}  **{charges}/{MAX_CHARGES} charges**"
+    if charges < MAX_CHARGES and seconds_to_next > 0:
         charge_line += f"\nNext charge in: **{_fmt_time(seconds_to_next)}**"
-    elif charges >= 3:
+    elif charges >= MAX_CHARGES:
         charge_line += "\nAll charges ready!"
     embed.add_field(name="⚡ Hunt Charges", value=charge_line, inline=False)
 
@@ -100,7 +100,7 @@ def _build_lobby_embed(
     embed.add_field(name="🗺️ Zones", value="\n".join(zone_lines), inline=False)
     embed.set_footer(
         text="Apex Hunts consume 1 charge per attempt. "
-        "Charges regenerate 1 per 8 hours (max 3)."
+        f"Charges regenerate 1 per 2 hours (max {MAX_CHARGES})."
     )
     return embed
 
@@ -129,7 +129,7 @@ def _build_zone_confirm_embed(
     embed.add_field(name="📊 Your Record", value=f"W: {w} / L: {losses}", inline=True)
     embed.add_field(
         name="⚡ Charges After",
-        value=f"**{max(0, charges - 1)}/3**",
+        value=f"**{max(0, charges - 1)}/{MAX_CHARGES}**",
         inline=True,
     )
     embed.set_thumbnail(url=APEX_HUB)
