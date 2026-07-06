@@ -100,7 +100,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
         modifier_key="siege_grounds",
         modifier_name="Siege Grounds",
         modifier_desc=(
-            "You deal +30% ATK. The monster starts with 35% max HP Ward and "
+            "Your ATK is increased by 30%. The monster starts with 35% max HP Ward and "
             "an additional 35% DR against your attacks."
         ),
         color=0x888888,

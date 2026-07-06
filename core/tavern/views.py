@@ -6,7 +6,13 @@ from core.images import CASINO_AUTHOR, TAVERN_CASINO
 from core.npc_voices import get_quip
 
 # Import minigames directly to handle transitions without Cog
-from core.minigames.views import BlackjackView, CrashView, HorseRaceView, RouletteView
+from core.minigames.views import (
+    BlackjackView,
+    CrashLaunchView,
+    HorseRaceView,
+    OneVOneView,
+    RouletteView,
+)
 from core.tavern.mechanics import TavernMechanics
 
 
@@ -31,6 +37,11 @@ def build_casino_lobby_embed(bet_amount: int) -> discord.Embed:
     )
     embed.add_field(
         name="🐎 Horse Racing", value="Pick the winner! (4x Payout)", inline=True
+    )
+    embed.add_field(
+        name="⚔️ 1v1",
+        value="Trade blows with Vespera herself. Lower HP hits harder. (2x Payout)",
+        inline=True,
     )
     return embed
 
@@ -188,6 +199,48 @@ class RestView(BaseView):
         self.stop()
 
 
+class AdjustBetModal(ui.Modal, title="Adjust Bet Amount"):
+    amount_input = ui.TextInput(
+        label="New bet amount (gold)",
+        placeholder="e.g. 5000",
+        min_length=1,
+        max_length=12,
+        required=True,
+    )
+
+    def __init__(self, parent_view: "CasinoMenuView"):
+        super().__init__()
+        self.parent_view = parent_view
+
+    async def on_submit(self, interaction: Interaction):
+        raw = self.amount_input.value.replace(",", "").strip()
+        try:
+            amount = int(raw)
+        except ValueError:
+            await interaction.response.send_message(
+                "Please enter a whole number, e.g. 5000.", ephemeral=True
+            )
+            return
+        if amount <= 0:
+            await interaction.response.send_message(
+                "Bet must be positive.", ephemeral=True
+            )
+            return
+
+        gold = await self.parent_view.bot.database.users.get_gold(
+            self.parent_view.user_id
+        )
+        if amount > gold:
+            await interaction.response.send_message(
+                f"Insufficient funds. You have **{gold:,}** gold.", ephemeral=True
+            )
+            return
+
+        self.parent_view.bet_amount = amount
+        embed = build_casino_lobby_embed(amount)
+        await interaction.response.edit_message(embed=embed, view=self.parent_view)
+
+
 class CasinoMenuView(BaseView):
     def __init__(self, bot, user_id, bet_amount):
         super().__init__(bot, user_id)
@@ -241,14 +294,8 @@ class CasinoMenuView(BaseView):
         if not await self._check_funds(interaction):
             return
 
-        view = CrashView(self.bot, self.user_id, self.bet_amount, interaction)
-        embed = discord.Embed(
-            title="🚀 Preparing Launch...",
-            description=f"Fueling up for a bet of **{self.bet_amount:,} gold**.",
-            color=discord.Color.blue(),
-        )
-        await interaction.response.edit_message(embed=embed, view=view)
-        await view.start_game()
+        view = CrashLaunchView(self.bot, self.user_id, self.bet_amount, interaction)
+        await interaction.response.edit_message(embed=view._build_embed(), view=view)
 
     @ui.button(label="Horse Racing", emoji="🐎", style=ButtonStyle.secondary, row=1)
     async def horse(self, interaction: Interaction, button: ui.Button):
@@ -272,6 +319,21 @@ class CasinoMenuView(BaseView):
         embed.add_field(name="4. Dark Horse 🐫", value="Unpredictable.", inline=True)
 
         await interaction.response.edit_message(embed=embed, view=view)
+
+    @ui.button(label="1v1", emoji="⚔️", style=ButtonStyle.danger, row=1)
+    async def one_v_one(self, interaction: Interaction, button: ui.Button):
+        if not await self._check_funds(interaction):
+            return
+
+        view = OneVOneView(self.bot, self.user_id, self.bet_amount, interaction)
+        await interaction.response.edit_message(
+            content="Vespera rolls up her sleeves...", embed=None, view=None
+        )
+        await view.start_game()
+
+    @ui.button(label="Adjust Bet", emoji="✏️", style=ButtonStyle.secondary, row=2)
+    async def adjust_bet(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.send_modal(AdjustBetModal(self))
 
     @ui.button(label="Cancel", emoji="❌", style=ButtonStyle.gray, row=2)
     async def cancel(self, interaction: Interaction, button: ui.Button):

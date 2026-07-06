@@ -1,11 +1,14 @@
 import asyncio
+import random
 
 import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button, Modal, TextInput
 
 from core.base_view import BaseView
-from core.images import TAVERN_CASINO
+from core.images import CASINO_AUTHOR, TAVERN_CASINO
+from core.npc_voices import get_quip
+from core.pvp.engine import PvPEngine
 
 from .logic import BlackjackLogic, CrashLogic, HorseRaceLogic, RouletteLogic
 
@@ -92,7 +95,6 @@ class RouletteView(BaseView):
         self.bet_amount = bet_amount
         self.original_interaction = parent_interaction
         self.game_over = False
-        self._processing = False
 
     async def on_timeout(self):
         if not self.game_over:
@@ -203,13 +205,8 @@ class RouletteView(BaseView):
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def reset_table(self, interaction: Interaction):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
         # Verify they still have money for the base bet size
         if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
-            self._processing = False
             return
 
         self.game_over = False
@@ -229,7 +226,6 @@ class RouletteView(BaseView):
         )
         embed.set_thumbnail(url=TAVERN_CASINO)
 
-        self._processing = False
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def quit_game(self, interaction: Interaction):
@@ -241,53 +237,26 @@ class RouletteView(BaseView):
     # --- UI BUTTONS ---
     @discord.ui.button(label="Red (x2)", style=ButtonStyle.danger, row=0)
     async def bet_red(self, interaction: Interaction, button: Button):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
         if await self._deduct_and_verify(interaction):
             await self.run_spin(interaction, "color", "red")
-        else:
-            self._processing = False
 
     @discord.ui.button(label="Black (x2)", style=ButtonStyle.secondary, row=0)
     async def bet_black(self, interaction: Interaction, button: Button):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
         if await self._deduct_and_verify(interaction):
             await self.run_spin(interaction, "color", "black")
-        else:
-            self._processing = False
 
     @discord.ui.button(label="Even (x2)", style=ButtonStyle.primary, row=1)
     async def bet_even(self, interaction: Interaction, button: Button):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
         if await self._deduct_and_verify(interaction):
             await self.run_spin(interaction, "parity", "even")
-        else:
-            self._processing = False
 
     @discord.ui.button(label="Odd (x2)", style=ButtonStyle.primary, row=1)
     async def bet_odd(self, interaction: Interaction, button: Button):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
         if await self._deduct_and_verify(interaction):
             await self.run_spin(interaction, "parity", "odd")
-        else:
-            self._processing = False
 
     @discord.ui.button(label="Number (x35)", style=ButtonStyle.success, row=2)
     async def bet_number(self, interaction: Interaction, button: Button):
-        if self._processing:
-            await interaction.response.defer()
-            return
         await interaction.response.send_modal(RouletteNumberModal(self))
 
 
@@ -585,12 +554,52 @@ class BlackjackView(BaseView):
 
     # --- Resolution ---
 
+    DEALER_DRAW_DELAY = 1.5
+
     async def _play_dealer(self, interaction: Interaction):
         any_alive = any(h["result"] != "bust" for h in self.hands)
-        if any_alive:
-            while self.deck.calculate_score(self.dealer_hand) < 17:
-                self.dealer_hand.append(self.deck.draw_card())
-        await self._settle_round(interaction)
+        if not any_alive:
+            # Every hand already busted — the dealer's hand can't change the
+            # outcome, so skip straight to settling (no animation needed).
+            await self._settle_round(interaction)
+            return
+
+        self.clear_items()  # no input accepted while the dealer plays out
+        await self._render_dealer_turn(interaction)
+        await asyncio.sleep(self.DEALER_DRAW_DELAY)
+        while self.deck.calculate_score(self.dealer_hand) < 17:
+            self.dealer_hand.append(self.deck.draw_card())
+            await self._render_dealer_turn()
+            await asyncio.sleep(self.DEALER_DRAW_DELAY)
+
+        await self._settle_round()
+
+    async def _render_dealer_turn(self, interaction: Interaction = None):
+        dealer_score = self.deck.calculate_score(self.dealer_hand)
+        embed = discord.Embed(title="🃏 Blackjack Table", color=discord.Color.gold())
+        embed.set_thumbnail(url=TAVERN_CASINO)
+        embed.add_field(
+            name=f"Dealer's Hand ({dealer_score})",
+            value=self.deck.format_hand(self.dealer_hand),
+            inline=False,
+        )
+        multi = len(self.hands) > 1
+        for idx, hand in enumerate(self.hands):
+            score = self.deck.calculate_score(hand["cards"])
+            label = f"Hand {idx + 1} ({score})" if multi else f"Your Hand ({score})"
+            embed.add_field(
+                name=label, value=self.deck.format_hand(hand["cards"]), inline=multi
+            )
+        embed.set_footer(
+            text="Dealer is drawing..." if dealer_score < 17 else "Dealer stands."
+        )
+
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await self.original_interaction.edit_original_response(
+                embed=embed, view=self
+            )
 
     async def _settle_round(self, interaction: Interaction = None):
         self.game_over = True
@@ -770,6 +779,133 @@ class BlackjackView(BaseView):
 #  CRASH VIEW
 # ==============================================================================
 
+_FLIGHT_TRACK_WIDTH = 12
+_FLIGHT_STAR_POSITIONS = (2, 5, 9)
+
+
+def _build_flight_track(multiplier: float, crashed: bool = False) -> str:
+    """A small emoji lane depicting the rocket's flight, in the same style as
+    the horse race track. There's no fixed finish line — the crash point is
+    hidden and unbounded — so the rocket just loops across an infinite
+    starfield, moving further per tick as the multiplier (and pace of growth)
+    climbs. On crash, the rocket's frame is swapped for an explosion."""
+    progress = int((multiplier - 1.0) * 7) % _FLIGHT_TRACK_WIDTH
+    lane = ["➖"] * _FLIGHT_TRACK_WIDTH
+    for idx in _FLIGHT_STAR_POSITIONS:
+        if idx != progress:
+            lane[idx] = "✨"
+    lane[progress] = "💥" if crashed else "🚀"
+    return "`" + "".join(lane) + "`"
+
+
+def _validate_auto_cashout_target(raw: str):
+    """Returns (target, None) on success or (None, error_message) on failure."""
+    try:
+        target = float(raw)
+    except ValueError:
+        return None, "Please enter a valid number, e.g. 2.5"
+    if target <= 1.0:
+        return None, "Target must be greater than 1.00x."
+    return round(min(target, 100.0), 2), None
+
+
+class PreLaunchAutoCashOutModal(Modal, title="Set Auto Cash-Out"):
+    target_input = TextInput(
+        label="Target multiplier (e.g. 2.50)",
+        placeholder="2.50",
+        min_length=1,
+        max_length=6,
+        required=True,
+    )
+
+    def __init__(self, parent_view: "CrashLaunchView"):
+        super().__init__()
+        self.parent_view = parent_view
+
+    async def on_submit(self, interaction: Interaction):
+        target, error = _validate_auto_cashout_target(self.target_input.value)
+        if error:
+            await interaction.response.send_message(error, ephemeral=True)
+            return
+
+        self.parent_view.auto_cashout = target
+        await interaction.response.edit_message(
+            embed=self.parent_view._build_embed(), view=self.parent_view
+        )
+
+
+class CrashLaunchView(BaseView):
+    """Pre-launch pad: lets the player arm an Auto Cash-Out target before the
+    multiplier starts climbing, since fumbling with a modal mid-flight is
+    exactly the friction this screen exists to avoid."""
+
+    def __init__(self, bot, user_id, bet_amount, parent_interaction):
+        super().__init__(bot, user_id)
+        self.bet_amount = bet_amount
+        self.original_interaction = parent_interaction
+        self.auto_cashout = None
+
+    async def on_timeout(self):
+        # No gold has been taken yet — nothing to refund, just tidy up.
+        self.bot.state_manager.clear_active(self.user_id)
+        try:
+            await self.original_interaction.delete_original_response()
+        except Exception:
+            pass
+
+    def _build_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="🚀 Crash — Launch Pad",
+            description=(
+                f"Betting **{self.bet_amount:,} gold**.\n{_build_flight_track(1.0)}"
+            ),
+            color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=TAVERN_CASINO)
+        if self.auto_cashout:
+            embed.add_field(
+                name="🎯 Auto Cash-Out",
+                value=f"Armed at **{self.auto_cashout:.2f}x**",
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name="🎯 Auto Cash-Out",
+                value="Not set — you'll need to Cash Out manually.",
+                inline=False,
+            )
+        embed.set_footer(
+            text="Set an optional Auto Cash-Out target, then Launch when ready."
+        )
+        return embed
+
+    @discord.ui.button(label="Set Auto Cash-Out", style=ButtonStyle.secondary, emoji="🎯")
+    async def set_auto(self, interaction: Interaction, button: Button):
+        await interaction.response.send_modal(PreLaunchAutoCashOutModal(self))
+
+    @discord.ui.button(label="Launch", style=ButtonStyle.success, emoji="🚀")
+    async def launch(self, interaction: Interaction, button: Button):
+        if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+            return
+
+        view = CrashView(self.bot, self.user_id, self.bet_amount, self.original_interaction)
+        view.auto_cashout = self.auto_cashout
+        embed = discord.Embed(
+            title="🚀 Preparing Launch...",
+            description=f"Fueling up for a bet of **{self.bet_amount:,} gold**.",
+            color=discord.Color.blue(),
+        )
+        await interaction.response.edit_message(embed=embed, view=view)
+        await view.start_game()
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="✖️")
+    async def cancel(self, interaction: Interaction, button: Button):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()
+
 
 class CrashView(BaseView):
     # Cash Out must stay clickable while the multiplier loop runs inside
@@ -778,14 +914,27 @@ class CrashView(BaseView):
 
     def __init__(self, bot, user_id, bet_amount, parent_interaction):
         super().__init__(bot, user_id)
-        self.bet_amount = bet_amount
+        self.original_bet = bet_amount  # never mutated; used for profit accounting
+        self.bet_amount = bet_amount  # remaining at-risk stake (shrinks on Bank Half)
         self.original_interaction = parent_interaction
+        self.guild_id = (
+            str(parent_interaction.guild_id) if parent_interaction.guild_id else ""
+        )
 
         self.crash_point = CrashLogic.generate_crash_point()
         self.current_multiplier = 1.00
         self.is_running = False
         self.cashed_out = False
         self.task = None
+
+        self.auto_cashout = None
+        self.banked_half = False
+        self.banked_winnings = 0
+
+        # concurrent_dispatch bypasses BaseView's central re-entry guard, so
+        # every mutating button here needs its own manual guard.
+        self._restarting = False
+        self._closing = False
 
     async def on_timeout(self):
         # If the view times out while running, we auto-lose the player (crashed while AFK)
@@ -819,11 +968,21 @@ class CrashView(BaseView):
             # Initial State
             embed = discord.Embed(title="🚀 Crash", color=discord.Color.blue())
             embed.description = (
-                f"Current Multiplier: **1.00x**\nPotential Win: **{self.bet_amount:,}**"
+                f"Current Multiplier: **1.00x**\n"
+                f"{_build_flight_track(1.0)}\n"
+                f"Potential Win: **{self.bet_amount:,}**"
             )
-            embed.set_footer(
-                text="⚠️ Risk increases significantly after 2.00x! Click Cash out before it crashes!"
-            )
+            if self.auto_cashout:
+                footer = (
+                    f"🎯 Auto Cash-Out armed at {self.auto_cashout:.2f}x. "
+                    "Bank Half anytime for extra safety."
+                )
+            else:
+                footer = (
+                    "⚠️ Risk increases significantly after 2.00x! Cash out before "
+                    "it crashes — or Bank Half for extra safety."
+                )
+            embed.set_footer(text=footer)
 
             await self.original_interaction.edit_original_response(
                 embed=embed, view=self
@@ -848,6 +1007,11 @@ class CrashView(BaseView):
 
                 # Update State
                 self.current_multiplier = next_multi
+
+                if self.auto_cashout and self.current_multiplier >= self.auto_cashout:
+                    await self._finalize_cashout(self.current_multiplier, auto=True)
+                    return
+
                 potential_win = int(self.bet_amount * self.current_multiplier)
 
                 # Update UI
@@ -859,7 +1023,11 @@ class CrashView(BaseView):
                     color = discord.Color.purple()
 
                 embed.color = color
-                embed.description = f"🚀 **{self.current_multiplier:.2f}x**\nPotential Win: **{potential_win:,}**"
+                embed.description = (
+                    f"🚀 **{self.current_multiplier:.2f}x**\n"
+                    f"{_build_flight_track(self.current_multiplier)}\n"
+                    f"Potential Win: **{potential_win:,}**"
+                )
 
                 try:
                     await self.original_interaction.edit_original_response(
@@ -892,7 +1060,7 @@ class CrashView(BaseView):
         restart_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
         restart_btn.callback = self.restart_game
         self.add_item(restart_btn)
-        self.add_item(casino_lobby_button(self.bot, self.user_id, self.bet_amount))
+        self.add_item(casino_lobby_button(self.bot, self.user_id, self.original_bet))
 
         quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         quit_btn.callback = self.quit_game
@@ -902,44 +1070,81 @@ class CrashView(BaseView):
 
     async def _handle_crash(self):
         self.is_running = False
+
+        # Anything already banked via Bank Half stays safe even though the
+        # remaining ride crashed — only self.bet_amount (the remainder) is lost.
+        net_result = self.banked_winnings - self.original_bet
+        quest_msgs = []
+        if net_result > 0:
+            try:
+                from core.quests.mechanics import tick_quest_progress
+
+                quest_msgs = await tick_quest_progress(
+                    self.bot, self.user_id, self.guild_id, "casino_win", value=net_result
+                )
+            except Exception:
+                pass
+
         embed = discord.Embed(title="💥 CRASHED!", color=discord.Color.red())
-        embed.description = f"The rocket crashed at **{self.crash_point:.2f}x**.\nYou lost **{self.bet_amount:,} gold**."
+        lines = [
+            f"The rocket crashed at **{self.crash_point:.2f}x**.",
+            _build_flight_track(self.crash_point, crashed=True),
+            f"You lost **{self.bet_amount:,} gold**.",
+        ]
+        if self.banked_winnings:
+            lines.append(
+                f"You had already banked **{self.banked_winnings:,} gold** earlier — that stays safe."
+            )
+            lines.append(f"**Net Result:** {net_result:+,} gold")
+        embed.description = "\n".join(lines)
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+            )
 
         await self.original_interaction.edit_original_response(
             embed=embed, view=None
         )  # clear buttons briefly
         await self._add_restart_buttons()
 
-    @discord.ui.button(label="Cash Out", style=ButtonStyle.success, emoji="💰")
-    async def cash_out_button(self, interaction: Interaction, button: Button):
-        if not self.is_running or self.cashed_out:
-            return await interaction.response.defer()
-
+    async def _finalize_cashout(
+        self, multiplier: float, interaction: Interaction = None, auto: bool = False
+    ):
         self.cashed_out = True
         self.is_running = False
-        if self.task:
-            self.task.cancel()
 
-        winnings = int(self.bet_amount * self.current_multiplier)
+        winnings = int(self.bet_amount * multiplier)
         await self.bot.database.users.modify_gold(self.user_id, winnings)
-        net_win = winnings - self.bet_amount
+
+        total_payout = winnings + self.banked_winnings
+        net_win = total_payout - self.original_bet
         quest_msgs = []
         if net_win > 0:
             try:
                 from core.quests.mechanics import tick_quest_progress
 
+                guild_id = str(interaction.guild_id) if interaction else self.guild_id
                 quest_msgs = await tick_quest_progress(
-                    self.bot,
-                    self.user_id,
-                    str(interaction.guild_id),
-                    "casino_win",
-                    value=net_win,
+                    self.bot, self.user_id, guild_id, "casino_win", value=net_win
                 )
             except Exception:
                 pass
 
-        embed = discord.Embed(title="✅ Cashed Out!", color=discord.Color.green())
-        embed.description = f"You ejected at **{self.current_multiplier:.2f}x**!\n\n**Winnings:** {winnings:,} gold\n**Profit:** {winnings - self.bet_amount:,} gold"
+        title = "🎯 Auto Cash-Out!" if auto else "✅ Cashed Out!"
+        embed = discord.Embed(title=title, color=discord.Color.green())
+        lines = [
+            f"You ejected at **{multiplier:.2f}x**!",
+            _build_flight_track(multiplier),
+            "",
+        ]
+        if self.banked_winnings:
+            lines.append(f"**Banked Earlier:** {self.banked_winnings:,} gold")
+            lines.append(f"**Final Cash-Out:** {winnings:,} gold")
+            lines.append(f"**Total Winnings:** {total_payout:,} gold")
+        else:
+            lines.append(f"**Winnings:** {winnings:,} gold")
+        lines.append(f"**Profit:** {net_win:,} gold")
+        embed.description = "\n".join(lines)
         embed.add_field(
             name="Rocket Status",
             value=f"It would have crashed at **{self.crash_point:.2f}x**",
@@ -949,27 +1154,72 @@ class CrashView(BaseView):
                 name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
             )
 
-        await interaction.response.edit_message(embed=embed, view=None)
+        self.clear_items()
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=None)
+        else:
+            await self.original_interaction.edit_original_response(
+                embed=embed, view=None
+            )
         await self._add_restart_buttons()
 
+    @discord.ui.button(label="Cash Out", style=ButtonStyle.success, emoji="💰")
+    async def cash_out_button(self, interaction: Interaction, button: Button):
+        if not self.is_running or self.cashed_out:
+            return await interaction.response.defer()
+
+        if self.task:
+            self.task.cancel()
+        await self._finalize_cashout(self.current_multiplier, interaction=interaction)
+
+    @discord.ui.button(label="Bank Half", style=ButtonStyle.secondary, emoji="🏦")
+    async def bank_half_button(self, interaction: Interaction, button: Button):
+        if not self.is_running or self.cashed_out or self.banked_half:
+            return await interaction.response.defer()
+        self.banked_half = True  # close the race window before any await
+
+        secured_stake = self.bet_amount // 2
+        payout = int(secured_stake * self.current_multiplier)
+        self.bet_amount -= secured_stake
+        self.banked_winnings += payout
+
+        await self.bot.database.users.modify_gold(self.user_id, payout)
+
+        self.bank_half_button.disabled = True
+        self.bank_half_button.label = "Halved ✅"
+
+        await interaction.response.send_message(
+            f"🏦 Banked **{secured_stake:,} gold** of your stake at "
+            f"**{self.current_multiplier:.2f}x** for **{payout:,} gold**. "
+            f"Riding the remaining **{self.bet_amount:,} gold** stake.",
+            ephemeral=True,
+        )
+
     async def restart_game(self, interaction: Interaction):
-        if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+        if self._restarting:
+            return await interaction.response.defer()
+        self._restarting = True
+
+        if not await check_funds(self.bot, self.user_id, self.original_bet, interaction):
+            self._restarting = False
             return
 
-        new_view = CrashView(
-            self.bot, self.user_id, self.bet_amount, self.original_interaction
+        # Back to the launch pad, not straight into a new run — same reasoning
+        # as the initial entry point: let the player arm Auto Cash-Out calmly
+        # instead of forcing it into the live, ticking screen.
+        launch_view = CrashLaunchView(
+            self.bot, self.user_id, self.original_bet, self.original_interaction
         )
-        # Update embed to showing it's starting
-        embed = discord.Embed(
-            title="🚀 Preparing Launch...",
-            description=f"Fueling up for a bet of **{self.bet_amount:,} gold**.",
-            color=discord.Color.blue(),
+        await interaction.response.edit_message(
+            embed=launch_view._build_embed(), view=launch_view
         )
-        await interaction.response.edit_message(embed=embed, view=new_view)
-        await new_view.start_game()
         self.stop()
 
     async def quit_game(self, interaction: Interaction):
+        if self._closing:
+            return await interaction.response.defer()
+        self._closing = True
+
         await interaction.response.defer()
         await interaction.delete_original_response()
         self.bot.state_manager.clear_active(self.user_id)
@@ -989,7 +1239,6 @@ class HorseRaceView(BaseView):
         self.race_logic = HorseRaceLogic()
         self.selected_horse_index = None
         self.task = None
-        self._processing = False
 
     async def on_timeout(self):
         if not self.selected_horse_index and not self.task:
@@ -1008,7 +1257,7 @@ class HorseRaceView(BaseView):
         await self.bot.database.users.modify_gold(self.user_id, -self.bet_amount)
 
         embed = discord.Embed(title="🐎 And they're off!", color=discord.Color.green())
-        embed.description = self.race_logic.get_race_string()
+        embed.description = self.race_logic.get_race_string(self.selected_horse_index)
         await self.original_interaction.edit_original_response(
             embed=embed, view=None
         )  # Remove buttons during race
@@ -1016,7 +1265,7 @@ class HorseRaceView(BaseView):
         # Animation Loop
         while not self.race_logic.advance_race():
             await asyncio.sleep(1.5)  # Update delay
-            embed.description = self.race_logic.get_race_string()
+            embed.description = self.race_logic.get_race_string(self.selected_horse_index)
             try:
                 await self.original_interaction.edit_original_response(embed=embed)
             except Exception:
@@ -1034,7 +1283,7 @@ class HorseRaceView(BaseView):
         winner = self.race_logic.winner
         picked_horse = self.race_logic.horses[self.selected_horse_index]
 
-        embed.description = self.race_logic.get_race_string()
+        embed.description = self.race_logic.get_race_string(self.selected_horse_index)
         embed.add_field(
             name="Winner",
             value=f"🏆 **{winner['name']}** {winner['emoji']} crosses the line!",
@@ -1091,12 +1340,7 @@ class HorseRaceView(BaseView):
         await self.original_interaction.edit_original_response(embed=embed, view=self)
 
     async def restart_game(self, interaction: Interaction):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
         if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
-            self._processing = False
             return
 
         # New view instance
@@ -1129,10 +1373,6 @@ class HorseRaceView(BaseView):
         self.stop()
 
     async def _pick_horse(self, interaction: Interaction, index: int):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
         self.selected_horse_index = index
         await interaction.response.defer()
         await self.start_race()
@@ -1158,3 +1398,204 @@ class HorseRaceView(BaseView):
     @discord.ui.button(label="Dark Horse", emoji="🐫", style=ButtonStyle.primary, row=1)
     async def horse_4(self, interaction: Interaction, button: Button):
         await self._pick_horse(interaction, 3)
+
+
+# ==============================================================================
+#  1V1 VIEW
+# ==============================================================================
+
+
+class OneVOneView(BaseView):
+    """Solo push-your-luck brawl against Vespera, the casino dealer. Damage
+    scales with the attacker's OWN missing HP for both sides (lower HP =
+    harder hits), reusing core/pvp/engine.py's duel formula. Vespera never
+    eats — she always swings — while the player has a limited number of Eat
+    charges to out-sustain her."""
+
+    MAX_EATS = 3
+    MISS_CHANCE = 30  # percent, matches core/pvp's duel convention
+    OPPONENT_NAME = "Vespera"
+
+    def __init__(self, bot, user_id, bet_amount, parent_interaction):
+        super().__init__(bot, user_id)
+        self.bet_amount = bet_amount
+        self.original_interaction = parent_interaction
+        self.guild_id = (
+            str(parent_interaction.guild_id) if parent_interaction.guild_id else ""
+        )
+
+        self.player_hp = 100
+        self.opponent_hp = 100
+        self.eats_used = 0
+        self.game_over = False
+        self.log = get_quip("casino_1v1")
+
+    async def on_timeout(self):
+        if not self.game_over:
+            await self.bot.database.users.modify_gold(self.user_id, self.bet_amount)
+        self.bot.state_manager.clear_active(self.user_id)
+        try:
+            await self.original_interaction.delete_original_response()
+        except Exception:
+            pass
+
+    async def start_game(self):
+        await self.bot.database.users.modify_gold(self.user_id, -self.bet_amount)
+        await self._render()
+
+    def _build_embed(self) -> discord.Embed:
+        embed = discord.Embed(title="⚔️ 1v1", color=discord.Color.dark_red())
+        embed.set_author(name="Vespera", icon_url=CASINO_AUTHOR)
+        embed.set_thumbnail(url=TAVERN_CASINO)
+        embed.add_field(name="You", value=f"❤️ {self.player_hp} HP", inline=True)
+        embed.add_field(
+            name=self.OPPONENT_NAME, value=f"❤️ {self.opponent_hp} HP", inline=True
+        )
+        embed.add_field(name="Log", value=self.log, inline=False)
+        embed.set_footer(
+            text=(
+                f"Bet: {self.bet_amount:,} gold | "
+                f"Eats remaining: {self.MAX_EATS - self.eats_used}"
+            )
+        )
+        return embed
+
+    async def _render(self, interaction: Interaction = None):
+        self.eat_button.disabled = self.eats_used >= self.MAX_EATS
+        embed = self._build_embed()
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await self.original_interaction.edit_original_response(
+                embed=embed, view=self
+            )
+
+    def _resolve_attack(self, attacker_hp: int):
+        """Returns (missed, damage). Damage scales with the attacker's own
+        current HP — the lower it is, the harder they swing (Dharok-style)."""
+        if random.randint(1, 100) <= self.MISS_CHANCE:
+            return True, 0
+        return False, PvPEngine.calculate_damage(attacker_hp)
+
+    async def _process_round(self, interaction: Interaction, action: str):
+        logs = []
+
+        if action == "hit":
+            missed, dmg = self._resolve_attack(self.player_hp)
+            if missed:
+                logs.append("💨 You swing and miss!")
+            else:
+                self.opponent_hp = max(0, self.opponent_hp - dmg)
+                logs.append(
+                    f"💥 You hit **{self.OPPONENT_NAME}** for **{dmg}** damage!"
+                )
+        else:  # eat
+            self.eats_used += 1
+            heal = PvPEngine.calculate_heal()
+            old_hp = self.player_hp
+            self.player_hp = min(100, self.player_hp + heal)
+            healed = self.player_hp - old_hp
+            eats_left = self.MAX_EATS - self.eats_used
+            logs.append(
+                f"🍗 You eat, healing **{healed}** HP. ({eats_left} eats left)"
+            )
+
+        if self.opponent_hp <= 0:
+            await self._end_game(interaction, won=True, logs=logs)
+            return
+
+        # The opponent never eats — it always swings, no matter its own HP.
+        missed, dmg = self._resolve_attack(self.opponent_hp)
+        if missed:
+            logs.append(f"💨 **{self.OPPONENT_NAME}** swings and misses!")
+        else:
+            self.player_hp = max(0, self.player_hp - dmg)
+            logs.append(f"🩸 **{self.OPPONENT_NAME}** hits you for **{dmg}** damage!")
+
+        self.log = "\n".join(logs)
+
+        if self.player_hp <= 0:
+            await self._end_game(interaction, won=False, logs=logs)
+            return
+
+        await self._render(interaction)
+
+    async def _end_game(self, interaction: Interaction, won: bool, logs: list):
+        self.game_over = True
+        quest_msgs = []
+
+        if won:
+            payout = self.bet_amount * 2
+            await self.bot.database.users.modify_gold(self.user_id, payout)
+            net_win = payout - self.bet_amount
+            logs.append(
+                f"🏆 **{self.OPPONENT_NAME} falls!** You win **{payout:,} gold**!"
+            )
+            if net_win > 0:
+                try:
+                    from core.quests.mechanics import tick_quest_progress
+
+                    guild_id = (
+                        str(interaction.guild_id) if interaction else self.guild_id
+                    )
+                    quest_msgs = await tick_quest_progress(
+                        self.bot, self.user_id, guild_id, "casino_win", value=net_win
+                    )
+                except Exception:
+                    pass
+        else:
+            logs.append(
+                f"💀 **You fall!** You lose your **{self.bet_amount:,} gold** bet."
+            )
+
+        self.log = "\n".join(logs)
+        embed = self._build_embed()
+        embed.color = discord.Color.gold() if won else discord.Color.red()
+        if quest_msgs:
+            embed.add_field(
+                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+            )
+
+        self.clear_items()
+        same_btn = Button(label="Play Again", style=ButtonStyle.primary, emoji="🔄")
+        same_btn.callback = self._rebet_same
+        self.add_item(same_btn)
+        self.add_item(casino_lobby_button(self.bot, self.user_id, self.bet_amount))
+        quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
+        quit_btn.callback = self.quit_game
+        self.add_item(quit_btn)
+
+        if interaction:
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await self.original_interaction.edit_original_response(
+                embed=embed, view=self
+            )
+
+    @discord.ui.button(label="Hit", style=ButtonStyle.danger, emoji="⚔️")
+    async def hit_button(self, interaction: Interaction, button: Button):
+        await self._process_round(interaction, "hit")
+
+    @discord.ui.button(label="Eat", style=ButtonStyle.success, emoji="🍗")
+    async def eat_button(self, interaction: Interaction, button: Button):
+        if self.eats_used >= self.MAX_EATS:
+            return await interaction.response.defer()
+        await self._process_round(interaction, "eat")
+
+    async def _rebet_same(self, interaction: Interaction):
+        if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
+            return
+        new_view = OneVOneView(
+            self.bot, self.user_id, self.bet_amount, self.original_interaction
+        )
+        await interaction.response.edit_message(
+            content="A new challenger steps up...", embed=None, view=None
+        )
+        await new_view.start_game()
+        self.stop()
+
+    async def quit_game(self, interaction: Interaction):
+        await interaction.response.defer()
+        await interaction.delete_original_response()
+        self.bot.state_manager.clear_active(self.user_id)
+        self.stop()

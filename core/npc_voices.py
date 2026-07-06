@@ -29,6 +29,13 @@ _VOICES: dict[str, list[str]] = {
         "Fortune favours the bold. Or so they keep telling me. Let's find out.",
         "Sit down. The night is young and your gold has places to be.",
     ],
+    "casino_1v1": [
+        "Vespera's smile sharpens as a knife slides out of her sleeve. \"Tired of cards? Fine. Let's settle this properly.\"",
+        "She sets down her deck, draws a wicked little blade, and cracks her knuckles. \"Your call, adventurer — hit or eat.\"",
+        "\"The house doesn't lose,\" Vespera purrs, flipping her knife between her fingers, \"but I'll let you try anyway.\"",
+        "Vespera cracks her neck and draws steel. \"Hope you brought more than luck this time.\"",
+        "\"Ooh, feisty tonight.\" Vespera grins, knife glinting. \"Let's see how you bleed for your gold.\"",
+    ],
     "rest": [
         "Rough out there? I've got a room with your name on it.",
         "You look like you've been through a war. The bed doesn't judge.",

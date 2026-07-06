@@ -168,14 +168,18 @@ class HorseRaceLogic:
 
         return self.winner is not None
 
-    def get_race_string(self) -> str:
-        """Generates the visual track string."""
+    def get_race_string(self, selected_index: int = None) -> str:
+        """Generates the visual track string. `selected_index` (if given)
+        highlights the bettor's own horse so it's easy to track mid-race."""
         track = ""
-        for horse in self.horses:
+        for idx, horse in enumerate(self.horses):
             # Calculate progress
             prog = min(self.track_length, horse["pos"])
 
             # Draw lane
             lane = "➖" * prog + horse["emoji"] + "➖" * (self.track_length - prog)
-            track += f"`{horse['name']}`\n|{lane}|🏁\n\n"
+            is_picked = idx == selected_index
+            marker = "👉 " if is_picked else ""
+            name = f"**`{horse['name']}`**" if is_picked else f"`{horse['name']}`"
+            track += f"{marker}{name}\n|🚦{lane}|🏁\n\n"
         return track
