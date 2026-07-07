@@ -43,6 +43,7 @@ class ApexCombatView(CombatView):
         monster: Monster,
         zone_key: str,
         initial_logs: dict,
+        title_override: str | None = None,
     ):
         super().__init__(
             bot,
@@ -51,6 +52,7 @@ class ApexCombatView(CombatView):
             player,
             monster,
             initial_logs,
+            title_override=title_override,
         )
         self.zone_key = zone_key
 
@@ -97,7 +99,8 @@ class ApexCombatView(CombatView):
                 value=f"You received **{frags}** Soul Fragment{'s' if frags > 1 else ''} for your effort.",
                 inline=False,
             )
-            await message.edit(embed=embed, view=None)
+            self._sync_items(combat_ui.embed_to_container(embed), interactive=False)
+            await message.edit(view=self)
 
             await self._cleanup()
             return
@@ -195,8 +198,7 @@ class ApexCombatView(CombatView):
             self.player.name,
             self.zone_key,
         )
-        await message.edit(embed=embed, view=post_view)
-        post_view.message = message
+        await combat_ui.freeze_and_handoff(message, embed, post_view)
         self.stop()  # release this view without clearing active state
 
     # ------------------------------------------------------------------
@@ -297,13 +299,6 @@ class _PostApexView(BaseView):
             }
 
         zone = ZONE_DEFS[self.zone_key]
-        embed = combat_ui.create_combat_embed(
-            player,
-            monster,
-            start_logs,
-            title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
-        )
-
         view = ApexCombatView(
             self.bot,
             self.user_id,
@@ -312,9 +307,13 @@ class _PostApexView(BaseView):
             monster,
             self.zone_key,
             start_logs,
+            title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
         )
 
-        await interaction.edit_original_response(embed=embed, view=view)
+        # embed=None is required: this message currently carries the classic
+        # post-victory embed, and Discord rejects an edit that would leave
+        # both an embed and Components V2 components on the same message.
+        await interaction.edit_original_response(embed=None, view=view)
         view.message = await interaction.original_response()
         self.stop()
 

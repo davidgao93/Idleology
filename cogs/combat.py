@@ -12,7 +12,6 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.combat import jewel_engine as _je
-from core.combat import ui
 from core.combat.dojo.views_dojo import DummyConfigView
 from core.combat.economy.config import CORRUPTED_MIN_LEVEL, get_corrupted_base_chance
 from core.combat.mobgen.encounters import EncounterManager
@@ -549,9 +548,6 @@ class Combat(commands.Cog, name="combat"):
         # on the very first frame. The reset in CombatView.__init__ is kept as a guard.
         _je.reset_jewel_charges(player)
         title = "⚔️ BOSS PHASE 1" if is_boss else None
-        embed = ui.create_combat_embed(
-            player, monster, start_logs, title_override=title
-        )
         view = CombatView(
             self.bot,
             user_id,
@@ -563,12 +559,15 @@ class Combat(commands.Cog, name="combat"):
             rematch_callback=self._rematch_execute,
             hard_mode=hard_mode,
             combat_streak=combat_streak,
+            player_avatar_url=existing_user["appearance"],
+            title_override=title,
         )
 
         if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=view)
+            await interaction.edit_original_response(embed=None, view=view)
         else:
-            await interaction.response.send_message(embed=embed, view=view)
+            await interaction.response.send_message(view=view)
+        view.message = await interaction.original_response()
 
     @app_commands.command(
         name="dojo", description="Test your DPS against a customizable dummy."

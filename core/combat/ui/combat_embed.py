@@ -247,6 +247,205 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
     return "\n".join(lines)
 
 
+def static_layout_view(container: discord.ui.Container) -> discord.ui.LayoutView:
+    """A bare, non-interactive LayoutView wrapping a single Container — used
+    to display final content on a message with no callbacks to dispatch."""
+    view = discord.ui.LayoutView(timeout=None)
+    view.add_item(container)
+    return view
+
+
+async def freeze_and_handoff(
+    message: discord.Message, embed: discord.Embed, next_view=None
+) -> discord.Message:
+    """Sends `embed` (+ `next_view`, a classic BaseView) as a NEW message and
+    points `next_view.message` at it, leaving `message` untouched.
+
+    Discord's IS_COMPONENTS_V2 flag can never be removed once set on a
+    message, so once CombatView has rendered a message as a LayoutView, any
+    hand-off to a classic BaseView-based screen (PostCombatView,
+    LuciferChoiceView, PrestigeBossHarvestView, ...) must happen on a fresh
+    message rather than editing the old one.
+    """
+    new_message = await message.channel.send(embed=embed, view=next_view)
+    if next_view is not None:
+        next_view.message = new_message
+    return new_message
+
+
+def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
+    """Wraps a classic discord.Embed's content into a single Components V2
+    Container, preserving title/description/fields/thumbnail/image/footer/color.
+
+    Discord's IS_COMPONENTS_V2 message flag is permanent once set on a
+    message — every later edit to that message must supply components,
+    never content/embeds. CombatView's own terminal frames (defeat/victory
+    embeds built elsewhere by defeat_screen.py/victory_screen.py) still
+    return classic Embeds; this adapter re-renders them for a message
+    CombatView has already turned into a LayoutView, without needing to
+    touch those builders.
+    """
+    children: list = []
+
+    header_lines = []
+    if embed.title:
+        header_lines.append(f"## {embed.title}")
+    if embed.description:
+        header_lines.append(embed.description)
+    header_text = "\n".join(header_lines) if header_lines else None
+
+    thumb_url = embed.thumbnail.url if embed.thumbnail else None
+    if header_text and thumb_url:
+        children.append(
+            discord.ui.Section(header_text, accessory=discord.ui.Thumbnail(thumb_url))
+        )
+    else:
+        if header_text:
+            children.append(discord.ui.TextDisplay(header_text))
+        if thumb_url:
+            children.append(discord.ui.MediaGallery(discord.MediaGalleryItem(media=thumb_url)))
+
+    for field in embed.fields:
+        value = field.value or ""
+        children.append(discord.ui.TextDisplay(f"**{field.name}**\n{value}"))
+
+    if embed.image and embed.image.url:
+        children.append(
+            discord.ui.MediaGallery(discord.MediaGalleryItem(media=embed.image.url))
+        )
+
+    if embed.footer and embed.footer.text:
+        children.append(discord.ui.TextDisplay(f"-# {embed.footer.text}"))
+
+    if not children:
+        children.append(discord.ui.TextDisplay("​"))
+
+    return discord.ui.Container(*children, accent_color=embed.color)
+
+
+def create_combat_layout(
+    player: Player,
+    monster: Monster,
+    logs: Dict[str, str] = None,
+    title_override: str = None,
+    compact: bool = False,
+    player_avatar_url: str | None = None,
+) -> discord.ui.Container:
+    """Components V2 equivalent of create_combat_embed for the live in-fight
+    turn HUD. Gives the player an actual portrait (Section+Thumbnail) next
+    to their stats, which the classic embed had no room for since its one
+    image slot is used by the monster's art.
+    """
+    logs = logs or {}
+    is_uber = getattr(monster, "is_uber", False)
+
+    from core.combat.calc.hit_calc import (
+        calculate_hit_chance,
+        calculate_monster_hit_chance,
+    )
+
+    p_hit = int(calculate_hit_chance(player, monster) * 100)
+    m_hit = int(calculate_monster_hit_chance(player, monster) * 100)
+
+    mod_text = ""
+    if monster.modifiers:
+        mod_text = "\n__Modifiers:__ " + ", ".join(
+            f"**{m}**" for m in monster.display_modifiers
+        )
+
+    p_atk = player.get_total_attack(monster)
+    p_def = player.get_total_defence()
+    p_crit = player.get_current_crit_chance()
+    p_pdr = player.get_total_pdr()
+    p_fdr = player.get_total_fdr()
+
+    description = f"A level **{monster.level}** {monster.name} approaches!{mod_text}"
+
+    is_essence = getattr(monster, "is_essence", False)
+    if is_uber:
+        title = "UBER ENCOUNTER"
+        accent = discord.Color.gold()
+    elif is_essence:
+        title = title_override or f"Witness {player.name} (Level {player.level})"
+        accent = discord.Color.from_rgb(255, 255, 255)
+    else:
+        title = title_override or f"Witness {player.name} (Level {player.level})"
+        accent = discord.Color.green()
+
+    children: list = [discord.ui.TextDisplay(f"## {title}\n{description}")]
+
+    m_atk = monster.effective_attack
+    if player.alchemy_enfeeble_pct > 0 and player.alchemy_enfeeble_turns > 0:
+        m_atk = int(m_atk * (1.0 - player.alchemy_enfeeble_pct))
+
+    _mit_parts = []
+    if p_pdr > 0:
+        _mit_parts.append(f"PDR {p_pdr}%")
+    if p_fdr > 0:
+        _mit_parts.append(f"FDR {p_fdr}")
+    _mit_line = ("\n" + " | ".join(_mit_parts)) if _mit_parts else ""
+
+    player_text = (
+        f"### 🧠 {player.name}\n"
+        f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
+        f"⚔️ {p_atk:,} | 🛡️ {p_def:,}\n"
+        f"🎯 ~{p_hit}% | 🗡️ {p_crit}%{_mit_line}"
+    )
+    if player_avatar_url:
+        children.append(
+            discord.ui.Section(
+                player_text,
+                accessory=discord.ui.Thumbnail(player_avatar_url, description=player.name),
+            )
+        )
+    else:
+        children.append(discord.ui.TextDisplay(player_text))
+
+    monster_text = (
+        f"### 🐲 {monster.name}\n"
+        f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
+        f"⚔️ {m_atk:,} | 🛡️ {monster.effective_defence:,}\n"
+        f"🎯 ~{m_hit}%"
+    )
+    children.append(discord.ui.TextDisplay(monster_text))
+    if monster.image:
+        children.append(
+            discord.ui.MediaGallery(
+                discord.MediaGalleryItem(media=monster.image, description=monster.name)
+            )
+        )
+
+    status_text = build_status_text(player, monster)
+    afflictions = build_afflictions_text(player, monster)
+    log_lines = []
+    for name, message in logs.items():
+        if message:
+            text = (
+                (getattr(message, "compact_log", None) or str(message))
+                if compact
+                else str(message)
+            )
+            log_lines.append(f"**{name}**\n{text}")
+            if (
+                hasattr(message, "partner_log")
+                and message.partner_log
+                and hasattr(message, "partner_name")
+                and message.partner_name
+            ):
+                log_lines.append(f"**{message.partner_name}**\n{message.partner_log}")
+
+    if status_text or afflictions or log_lines:
+        children.append(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
+        if status_text:
+            children.append(discord.ui.TextDisplay(f"**⚙️ Status**\n{status_text}"))
+        if afflictions:
+            children.append(discord.ui.TextDisplay(f"**⚠️ Afflictions**\n{afflictions}"))
+        if log_lines:
+            children.append(discord.ui.TextDisplay("\n\n".join(log_lines)))
+
+    return discord.ui.Container(*children, accent_color=accent)
+
+
 def create_combat_embed(
     player: Player,
     monster: Monster,

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.base_layout_view import BaseLayoutView
 from core.base_view import BaseView
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
@@ -206,7 +207,41 @@ class StatPackagePicker(BaseView):
         return embed
 
 
-class CombatView(BaseView):
+class CombatActionRow(discord.ui.ActionRow["CombatView"]):
+    """Row 0: primary combat actions. Thin dispatchers — logic lives on
+    CombatView so it stays easy to follow and share with the auto-battle
+    loop, which drives the same methods directly."""
+
+    @discord.ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
+    async def attack_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_attack(interaction)
+
+    @discord.ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
+    async def heal_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_heal(interaction)
+
+    @discord.ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
+    async def auto_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_auto(interaction)
+
+    @discord.ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
+    async def flee_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_flee(interaction)
+
+
+class CombatActionRow2(discord.ui.ActionRow["CombatView"]):
+    """Row 1: Free Yourself (Verdant Colossus only) + 10 Turns."""
+
+    @discord.ui.button(label="Free Yourself", style=ButtonStyle.secondary, emoji="🌿")
+    async def free_yourself_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_free_yourself(interaction)
+
+    @discord.ui.button(label="10 Turns", style=ButtonStyle.secondary, emoji="⚡")
+    async def fast_auto_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_fast_auto(interaction)
+
+
+class CombatView(BaseLayoutView):
     # Flee must stay clickable while the auto-battle loop runs inside a
     # button callback; this view manages its own re-entry flags.
     concurrent_dispatch = True
@@ -225,6 +260,8 @@ class CombatView(BaseView):
         hard_mode: int = 0,
         combat_streak: int = 0,
         crisis_callback=None,
+        player_avatar_url: str | None = None,
+        title_override: str | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
@@ -240,6 +277,7 @@ class CombatView(BaseView):
             hard_mode  # int: 0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious
         )
         self.combat_streak = combat_streak  # streak at start of this fight
+        self.player_avatar_url = player_avatar_url
 
         _je.reset_jewel_charges(player)
 
@@ -263,12 +301,40 @@ class CombatView(BaseView):
         self.combat_logger = CombatLogger(player, monster)
         self.combat_logger.log_combat_start(player, monster)
 
-        self.update_buttons()
-
         # Free Yourself is only relevant during a Verdant Colossus encounter.
-        # Remove it entirely for every other fight so it never appears.
+        # Built without it entirely for every other fight so it never appears.
+        self.row1 = CombatActionRow()
+        self.row2 = CombatActionRow2()
         if "Verdant Colossus" not in monster.name:
-            self.remove_item(self.free_yourself_btn)
+            self.row2.remove_item(self.row2.free_yourself_btn)
+
+        self.update_buttons()
+        self._sync_items(self._build_layout(title_override=title_override))
+
+    def _build_layout(self, *, title_override: str = None, compact: bool = False):
+        return combat_ui.create_combat_layout(
+            self.player,
+            self.monster,
+            self.logs,
+            title_override=title_override,
+            compact=compact,
+            player_avatar_url=self.player_avatar_url,
+        )
+
+    def _sync_items(self, container=None, *, interactive: bool = True):
+        """Rebuilds the LayoutView's top-level items: the display Container
+        plus whichever action rows are still interactive. row1/row2 keep
+        their identity across rebuilds so button .disabled state set by
+        update_buttons() carries over. interactive=False fully drops the
+        button rows (used for truly-final frames — flee/exhaustion/timeout/
+        defeat — matching the old embed+view=None behaviour)."""
+        container = container if container is not None else self._build_layout()
+        self.clear_items()
+        self.add_item(container)
+        if interactive:
+            self.add_item(self.row1)
+            if self.row2.children:
+                self.add_item(self.row2)
 
     async def on_timeout(self):
         # Only trigger flee logic if the fight is still active
@@ -277,13 +343,10 @@ class CombatView(BaseView):
                 "You hesitated too long! You failed to step up to the challenge."
             )
 
-            self.update_buttons()
-
-            embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
-            embed.set_footer(text="Combat ended due to timeout.")
+            self._sync_items(interactive=False)
 
             try:
-                await self.message.edit(embed=embed, view=None)
+                await self.message.edit(view=self)
             except (discord.NotFound, discord.HTTPException):
                 pass
 
@@ -299,46 +362,50 @@ class CombatView(BaseView):
         is_over = self.player.current_hp <= 0 or self.monster.hp <= 0
         is_snared = getattr(self.player.cs, "is_snared", False)
 
-        for child in self.children:
+        row1, row2 = self.row1, self.row2
+
+        for child in (*row1.children, *row2.children):
             # Flee remains accessible even during auto so the player can always escape.
-            child.disabled = is_over or (self._auto_running and child is not self.flee_btn)
+            child.disabled = is_over or (
+                self._auto_running and child is not row1.flee_btn
+            )
 
         # always disable fast_auto_btn if player level < 2:
         if self.player.level < 2:
-            self.auto_btn.disabled = True
+            row1.auto_btn.disabled = True
 
         # always disable 10 turns if player level < 20:
         if self.player.level < 20:
-            self.fast_auto_btn.disabled = True
+            row2.fast_auto_btn.disabled = True
 
         # always disable heal if potions is 0 or hp is >= max
         if (
             self.player.potions <= 0
             or self.player.current_hp >= self.player.get_effective_max_hp()
         ):
-            self.heal_btn.disabled = True
+            row1.heal_btn.disabled = True
 
-        # Free Yourself is only in self.children during Verdant Colossus encounters
-        # (removed in __init__ for all other fights).
+        # Free Yourself is only in row2's children during Verdant Colossus
+        # encounters (removed in __init__ for all other fights).
         snare_locks_combat = False
-        if self.free_yourself_btn in self.children:
+        if row2.free_yourself_btn in row2.children:
             if is_snared and not is_over and not self._auto_running:
                 # Player is snared — only Free Yourself is usable, lock everything else.
-                self.attack_btn.disabled = True
-                self.heal_btn.disabled = True
-                self.flee_btn.disabled = True
-                self.auto_btn.disabled = True
-                self.fast_auto_btn.disabled = True
-                self.free_yourself_btn.disabled = False
+                row1.attack_btn.disabled = True
+                row1.heal_btn.disabled = True
+                row1.flee_btn.disabled = True
+                row1.auto_btn.disabled = True
+                row2.fast_auto_btn.disabled = True
+                row2.free_yourself_btn.disabled = False
                 snare_locks_combat = True
             else:
-                self.free_yourself_btn.disabled = True
+                row2.free_yourself_btn.disabled = True
 
         # Always update potion count on the heal button label.
         # Re-enable heal normally if combat is ongoing and player isn't locked by a snare.
-        self.heal_btn.label = f"Heal ({self.player.potions}/20)"
+        row1.heal_btn.label = f"Heal ({self.player.potions}/20)"
         if not is_over and not self._auto_running and not snare_locks_combat:
-            self.heal_btn.disabled = self.player.potions <= 0
+            row1.heal_btn.disabled = self.player.potions <= 0
 
     def _do_monster_turn(self, *, context_note: str = "") -> str:
         hp_before = self.player.current_hp
@@ -366,24 +433,22 @@ class CombatView(BaseView):
 
     async def refresh_embed(self, interaction: Interaction):
         self._apply_phase_image_transition()
-        embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
+        self.update_buttons()
+        container = self._build_layout()
 
-        # Append streak info to footer
         streak_txt = self._streak_footer()
         if streak_txt:
-            existing = embed.footer.text or ""
-            embed.set_footer(
-                text=f"{streak_txt}  •  {existing}" if existing else streak_txt
-            )
+            container.add_item(discord.ui.TextDisplay(f"-# {streak_txt}"))
+
+        self._sync_items(container)
 
         # Check if we have already deferred or responded (e.g. via Fast Auto)
         if interaction.response.is_done():
-            await interaction.edit_original_response(embed=embed, view=self)
+            await interaction.edit_original_response(view=self)
         else:
-            await interaction.response.edit_message(embed=embed, view=self)
+            await interaction.response.edit_message(view=self)
 
-    @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
-    async def attack_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_attack(self, interaction: Interaction):
         if self._processing:
             await interaction.response.defer()
             return
@@ -419,8 +484,7 @@ class CombatView(BaseView):
                 self._processing = False
             await self.check_combat_state(interaction)
 
-    @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
-    async def heal_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_heal(self, interaction: Interaction):
         if self._processing:
             await interaction.response.defer()
             return
@@ -443,8 +507,7 @@ class CombatView(BaseView):
             self._processing = False
         await self.check_combat_state(interaction)
 
-    @ui.button(label="Free Yourself", style=ButtonStyle.secondary, emoji="🌿", row=1)
-    async def free_yourself_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_free_yourself(self, interaction: Interaction):
         # Re-entry guard (mandatory for any button that mutates combat state per AGENTS.md)
         if self._processing:
             await interaction.response.defer()
@@ -475,8 +538,7 @@ class CombatView(BaseView):
             self._processing = False
         await self.check_combat_state(interaction)
 
-    @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
-    async def auto_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_auto(self, interaction: Interaction):
         # Simple Auto: Process turns in a loop.
         # For bosses: run all the way through without HP protection.
         # For regular enemies: pause at < 20% HP.
@@ -513,10 +575,8 @@ class CombatView(BaseView):
                 self._turn_count += 1
 
                 self._apply_phase_image_transition()
-                embed = combat_ui.create_combat_embed(
-                    self.player, self.monster, self.logs, compact=True
-                )
-                await message.edit(embed=embed, view=self)
+                self._sync_items(self._build_layout(compact=True))
+                await message.edit(view=self)
                 await asyncio.sleep(1.0)
 
             was_auto = self._auto_running
@@ -527,8 +587,8 @@ class CombatView(BaseView):
                 self._stop_auto = False
                 self.player.cs.is_snared = False
                 self.logs["Flee"] = "You managed to escape safely!"
-                embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
-                await message.edit(embed=embed, view=None)
+                self._sync_items(interactive=False)
+                await message.edit(view=self)
                 self.bot.state_manager.clear_active(self.user_id)
                 await self.bot.database.users.update_from_player_object(self.player)
                 await _je.save_jewel_state(self.bot, self.user_id, self.player)
@@ -552,10 +612,8 @@ class CombatView(BaseView):
             ):
                 self.logs["Auto-Battle"] = "🛑 Paused: Low HP Protection triggered!"
                 self.update_buttons()
-                embed = combat_ui.create_combat_embed(
-                    self.player, self.monster, self.logs
-                )
-                await message.edit(embed=embed, view=self)
+                self._sync_items()
+                await message.edit(view=self)
                 await message.channel.send(
                     f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused!",
                     delete_after=15,
@@ -576,8 +634,7 @@ class CombatView(BaseView):
                 continue
             break
 
-    @ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
-    async def flee_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_flee(self, interaction: Interaction):
         if self._auto_running:
             # Signal the auto loop to exit on its next iteration, then handle cleanup there.
             self._stop_auto = True
@@ -593,10 +650,9 @@ class CombatView(BaseView):
             False  # Clean up any transient snare before leaving the fight
         )
         self.logs["Flee"] = "You managed to escape safely!"
-        self.update_buttons()  # Disable all
+        self._sync_items(interactive=False)
 
-        embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
-        await interaction.response.edit_message(embed=embed, view=None)
+        await interaction.response.edit_message(view=self)
 
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
@@ -611,8 +667,7 @@ class CombatView(BaseView):
 
         self.stop()
 
-    @ui.button(label="10 Turns", style=ButtonStyle.secondary, emoji="⚡", row=1)
-    async def fast_auto_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_fast_auto(self, interaction: Interaction):
         if self.player.level < 20:
             return await interaction.response.send_message(
                 "This unlocks at Level 20!", ephemeral=True
@@ -627,7 +682,7 @@ class CombatView(BaseView):
 
         # Lock all buttons immediately so rapid clicks can't queue stale
         # deferred interactions that later corrupt the post-combat view.
-        for child in self.children:
+        for child in (*self.row1.children, *self.row2.children):
             child.disabled = True
         await interaction.message.edit(view=self)
 
@@ -690,14 +745,14 @@ class CombatView(BaseView):
             "⚔️ After **600 turns** of relentless combat, both sides collapse from exhaustion. "
             "The battle ends in a draw — no rewards granted."
         )
-        self.update_buttons()
-        embed = combat_ui.create_combat_embed(self.player, self.monster, self.logs)
-        embed.set_footer(text="Draw: 600 turn limit reached.")
+        container = self._build_layout()
+        container.add_item(discord.ui.TextDisplay("-# Draw: 600 turn limit reached."))
+        self._sync_items(container, interactive=False)
 
         if interaction and not interaction.response.is_done():
-            await interaction.response.edit_message(embed=embed, view=None)
+            await interaction.response.edit_message(view=self)
         else:
-            await message.edit(embed=embed, view=None)
+            await message.edit(view=self)
 
         self.combat_logger.log_combat_end(self.player, self.monster, "exhaustion")
         self.bot.state_manager.clear_active(self.user_id)
@@ -766,7 +821,8 @@ class CombatView(BaseView):
                     value=f"Your {self.combat_streak}-win streak has ended.",
                     inline=False,
                 )
-            await message.edit(embed=embed, view=None)
+            self._sync_items(combat_ui.embed_to_container(embed), interactive=False)
+            await message.edit(view=self)
             self.bot.state_manager.clear_active(self.user_id)
             await self.bot.database.users.update_from_player_object(self.player)
             await _je.save_jewel_state(self.bot, self.user_id, self.player)
@@ -800,7 +856,8 @@ class CombatView(BaseView):
                 color=discord.Color.orange(),
             )
             trans_embed.set_thumbnail(url=self.monster.image)
-            await message.edit(embed=trans_embed, view=None)
+            self._sync_items(combat_ui.embed_to_container(trans_embed), interactive=False)
+            await message.edit(view=self)
             await asyncio.sleep(2)
 
             if not self._was_auto:
@@ -809,13 +866,12 @@ class CombatView(BaseView):
             # Release the guard so the next phase's buttons are clickable.
             self._processing = False
 
-            embed = combat_ui.create_combat_embed(
-                self.player,
-                self.monster,
-                new_logs,
-                title_override=f"⚔️ BOSS PHASE {self.current_phase_index + 1}",
+            self._sync_items(
+                self._build_layout(
+                    title_override=f"⚔️ BOSS PHASE {self.current_phase_index + 1}"
+                )
             )
-            await message.edit(embed=embed, view=self)
+            await message.edit(view=self)
             return  # Keep view alive for next phase
 
         # --- FINAL VICTORY ---
@@ -944,8 +1000,7 @@ class CombatView(BaseView):
                 server_id=self.server_id,
                 rematch_callback=self.rematch_callback,
             )
-            await message.edit(embed=embed, view=contract_choice_view)
-            contract_choice_view.message = message
+            await combat_ui.freeze_and_handoff(message, embed, contract_choice_view)
             self.stop()
             return  # LuciferChoiceView takes over
 
@@ -964,8 +1019,7 @@ class CombatView(BaseView):
                 prestige_type,
                 self.rematch_callback,
             )
-            await message.edit(embed=embed, view=harvest_view)
-            harvest_view.message = message
+            await combat_ui.freeze_and_handoff(message, embed, harvest_view)
             self.stop()
             return  # Harvest view takes over the interaction
 
@@ -984,14 +1038,14 @@ class CombatView(BaseView):
                 # Settlement transition failed — show a plain recovery message so the
                 # player isn't stuck looking at dead combat buttons.
                 try:
-                    await message.edit(
-                        content=(
+                    fallback = discord.ui.Container(
+                        discord.ui.TextDisplay(
                             "⚔️ Crisis resolved! Your settlement is safe. "
                             "Use `/settlement` to return."
-                        ),
-                        embed=None,
-                        view=None,
+                        )
                     )
+                    self._sync_items(fallback, interactive=False)
+                    await message.edit(view=self)
                 except Exception:
                     pass
             self.stop()
@@ -1077,8 +1131,7 @@ class CombatView(BaseView):
                 pending_packages,
                 on_done=_after_packages,
             )
-            await message.edit(embed=picker.build_embed(), view=picker)
-            picker.message = message
+            await combat_ui.freeze_and_handoff(message, picker.build_embed(), picker)
             self.stop()
             return
 
@@ -1095,7 +1148,9 @@ class CombatView(BaseView):
             else None
         )
 
-        await message.edit(embed=embed, view=post_view)
-        if post_view:
-            post_view.message = message
+        if post_view is not None:
+            await combat_ui.freeze_and_handoff(message, embed, post_view)
+        else:
+            self._sync_items(combat_ui.embed_to_container(embed), interactive=False)
+            await message.edit(view=self)
         self.stop()

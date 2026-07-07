@@ -1331,7 +1331,6 @@ class SettlementDashboardView(SettlementBaseView):
             target_building_type = (event.get("data") or {}).get("target_building")
 
             from core.combat import jewel_engine as _je
-            from core.combat import ui as combat_ui
             from core.combat.mobgen.gen_mob import generate_encounter
             from core.combat.turns import engine
             from core.combat.turns.boundary import reset_combat_transients
@@ -1368,13 +1367,6 @@ class SettlementDashboardView(SettlementBaseView):
             start_logs = engine.apply_combat_start_passives(player, monster)
             _je.reset_jewel_charges(player)
             reset_combat_transients(player)
-
-            combat_embed = combat_ui.create_combat_embed(
-                player,
-                monster,
-                start_logs,
-                title_override=f"⚔️ Crisis: {enemy_name}",
-            )
 
             # Callback fires when CombatView reaches a terminal state.
             # By the time it runs, CombatView has already called clear_active.
@@ -1455,10 +1447,15 @@ class SettlementDashboardView(SettlementBaseView):
                     crisis_result["quest_msgs"] = crisis_quest_msgs
                 crisis_summary = {"crisis_result": crisis_result}
                 if self.message:
-                    await self.message.edit(
+                    # CombatView rendered the fight with Components V2, which
+                    # permanently flags that message — it can never be edited
+                    # back to a classic embed, so the dashboard returns on a
+                    # fresh message instead of reusing the old one.
+                    new_message = await self.message.channel.send(
                         embed=self.build_embed(turn_summary=crisis_summary),
                         view=self,
                     )
+                    self.message = new_message
                 self.bot.state_manager.set_active(uid, "settlement")
 
             # Switch active state: settlement → combat
@@ -1473,10 +1470,14 @@ class SettlementDashboardView(SettlementBaseView):
                 start_logs,
                 combat_phases=[None],
                 crisis_callback=_crisis_end,
+                player_avatar_url=user_row["appearance"],
             )
 
             # Transition the settlement message into the combat view (same message).
-            await interaction.edit_original_response(embed=combat_embed, view=view)
+            # embed=None is required: the message currently carries the classic
+            # dashboard embed, and Discord rejects an edit that would leave both
+            # an embed and Components V2 components on the same message.
+            await interaction.edit_original_response(embed=None, view=view)
             view.message = self.message
 
         except Exception:

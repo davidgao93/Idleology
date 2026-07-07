@@ -364,22 +364,15 @@ class ApexLobbyView(BaseView):
                 **start_logs,
             }
 
-        # Build initial combat embed
+        # Build initial combat view
         from core.apex.views.combat_view import ApexCombatView
         from core.combat import jewel_engine as _je
-        from core.combat import ui as combat_ui
 
-        # Reset jewel charges before building the embed so the status bar shows 0
-        # on the very first frame. The reset in CombatView.__init__ is kept as a guard.
+        # Reset jewel charges before building the layout so the status bar
+        # shows 0 on the very first frame. The reset in CombatView.__init__
+        # is kept as a guard.
         _je.reset_jewel_charges(player)
         zone = ZONE_DEFS[zone_key]
-        embed = combat_ui.create_combat_embed(
-            player,
-            monster,
-            start_logs,
-            title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
-        )
-
         view = ApexCombatView(
             self.bot,
             self.user_id,
@@ -388,9 +381,13 @@ class ApexLobbyView(BaseView):
             monster,
             zone_key,
             start_logs,
+            title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
         )
 
-        await interaction.edit_original_response(embed=embed, view=view)
+        # embed=None is required: this message currently carries the classic
+        # lobby embed, and Discord rejects an edit that would leave both an
+        # embed and Components V2 components on the same message.
+        await interaction.edit_original_response(embed=None, view=view)
         view.message = await interaction.original_response()
 
     # ------------------------------------------------------------------

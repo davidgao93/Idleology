@@ -158,7 +158,7 @@ async def _uber_defeat(
         dmg_frac=dmg_frac,
         killing_blow=view.killing_blow,
     )
-    await message.edit(embed=embed, view=view.post_combat_view)
+    await combat_ui.freeze_and_handoff(message, embed, view.post_combat_view)
     view.bot.state_manager.clear_active(view.user_id)
     await view.bot.database.users.update_from_player_object(view.player)
     await _je.save_jewel_state(view.bot, view.user_id, view.player)
@@ -271,7 +271,7 @@ async def _uber_complete_standard(view, message, cfg: dict, reward_data: dict) -
     embed = combat_ui.create_victory_embed(view.player, view.monster, reward_data)
     embed.title = cfg["embed_title"]
     getattr(embed, cfg["image_fn"])(url=cfg["victory_image"])
-    await message.edit(embed=embed, view=view.post_combat_view)
+    await combat_ui.freeze_and_handoff(message, embed, view.post_combat_view)
     view.bot.state_manager.clear_active(view.user_id)
     view.stop()
 
@@ -309,7 +309,7 @@ async def _handle_lucifer(view, message) -> None:
         value=contract_view.contract_summary(),
         inline=False,
     )
-    await message.edit(embed=embed, view=contract_view)
+    await combat_ui.freeze_and_handoff(message, embed, contract_view)
     view.stop()
 
 

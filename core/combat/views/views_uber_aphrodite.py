@@ -2,7 +2,6 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.combat import ui as combat_ui
 from core.combat.mobgen.gen_mob import generate_uber_aphrodite
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
@@ -137,9 +136,6 @@ class UberAphroditeLobbyView(BaseView):
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
         monster.is_uber = True
-        embed = combat_ui.create_combat_embed(
-            self.player, monster, start_logs, title_override="UBER ENCOUNTER"
-        )
         return_view = UberReturnView(
             self.bot, self.user_id, self.server_id, self.player
         )
@@ -152,6 +148,7 @@ class UberAphroditeLobbyView(BaseView):
             start_logs,
             combat_phases=None,
             post_combat_view=return_view,
+            title_override="UBER ENCOUNTER",
         )
 
         # Spend sigils and commit the encounter. Refund on any failure so the
@@ -159,7 +156,7 @@ class UberAphroditeLobbyView(BaseView):
         await self.bot.database.uber.increment_sigils(self.user_id, self.server_id, -3)
         self.bot.state_manager.set_active(self.user_id, "uber_boss")
         try:
-            await interaction.edit_original_response(embed=embed, view=view)
+            await interaction.edit_original_response(embed=None, view=view)
             view.message = await interaction.original_response()
         except Exception:
             await self.bot.database.uber.increment_sigils(
