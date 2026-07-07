@@ -45,11 +45,10 @@ class NurseryView(SettlementBaseView):
         self.add_item(back_btn)
 
     def _workers_per_turn(self) -> float:
-        """Average worker output per turn, scaling with Nursery tier and worker assignment."""
-        tier = self.building.tier
+        """Average worker output per turn, scaling with worker assignment (flat rate per 100 workers)."""
         workers = self.building.workers_assigned
         base = WORKERS_PER_TURN_BASE
-        return base * tier * (workers / 100)
+        return base * (workers / 100)
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -127,12 +126,11 @@ class IdlemFoundryView(SettlementBaseView):
         self.add_item(back_btn)
 
     def _idlem_per_turn(self) -> float:
-        """Base Idlem per turn, scaled by tier and workers assigned (per 100). Variance applied on completion."""
-        tier = self.building.tier
+        """Base Idlem per turn, scaled by workers assigned (per 100, flat rate). Variance applied on completion."""
         workers = self.building.workers_assigned
         base = IDLEM_PER_TURN_BASE
         return (
-            base * tier * (workers / 100)
+            base * (workers / 100)
         )  # stored as base; actual grant has +0/+1 variance on completion
 
     def build_embed(

@@ -181,7 +181,7 @@ class CompanionListView(BaseView):
         self.add_item(fusion_btn)
 
         mastery_btn = ui.Button(
-            label="Mastery", style=ButtonStyle.blurple, emoji="✨", row=1
+            label="Forged Bonds", style=ButtonStyle.blurple, emoji="✨", row=1
         )
         mastery_btn.callback = self.open_mastery
         self.add_item(mastery_btn)

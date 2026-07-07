@@ -85,6 +85,7 @@ BUILDING_CODES: dict[str, tuple[str, str]] = {
     "nursery": ("NUR", "SRY"),
     "idlem_foundry": ("IDL", "FDY"),
     "uber_shrine": ("UBR", "SHR"),
+    "sanctum": ("SNC", "TUM"),
     # Meta buildings
     "servants_quarters": ("SRV", "QTR"),
     "grand_cathedral": ("GRD", "CTH"),
@@ -119,6 +120,7 @@ BUILDING_EMOJIS: dict[str, str] = {
     "nursery": "👶",
     "idlem_foundry": "🏭",
     "uber_shrine": "🏛️",
+    "sanctum": "🕍",
     # Meta buildings
     "servants_quarters": "🏠",
     "grand_cathedral": "🕍",
@@ -421,6 +423,7 @@ MINI_GRID_LABELS: dict[str, str] = {
     "nursery": "Nursery",
     "idlem_foundry": "IdlFdry",
     "uber_shrine": "UbrShr.",
+    "sanctum": "Sanctum",
     # Meta buildings
     "servants_quarters": "SrvtQtr",
     "grand_cathedral": "GndCthl",

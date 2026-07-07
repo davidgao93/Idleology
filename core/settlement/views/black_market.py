@@ -354,7 +354,7 @@ class BlackMarketView(SettlementBaseView):
         self.add_item(offer_btn)
 
         tree_btn = ui.Button(
-            label="Passive Tree", style=ButtonStyle.blurple, emoji="🌿", row=0
+            label="Merchanting", style=ButtonStyle.blurple, emoji="🪙", row=0
         )
         tree_btn.callback = self._on_passive_tree
         self.add_item(tree_btn)
@@ -1095,7 +1095,7 @@ class BMPassiveTreeView(SettlementBaseView):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="🌿 Black Market Passive Tree",
+            title="🪙 Merchanting",
             description=(
                 f"Invest **Idlem** to unlock and upgrade passive nodes that modify "
                 f"your deal processing, value, and reward composition.\n\n"

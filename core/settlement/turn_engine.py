@@ -185,7 +185,6 @@ async def process_next_turn(
         nursery_mult = event_effects.get("nursery_mult", 1.0)
         workers = int(
             WORKERS_PER_TURN_BASE
-            * nursery_building.tier
             * (nursery_building.workers_assigned / 100)
             * nursery_mult
         )

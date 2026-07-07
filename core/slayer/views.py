@@ -101,7 +101,7 @@ class SlayerDashboardView(BaseView):
         self.add_item(btn_skip)
 
         btn_tree = ui.Button(
-            label="Mastery", style=ButtonStyle.primary, emoji="💀", row=0
+            label="Slayer Shop", style=ButtonStyle.primary, emoji="💀", row=0
         )
         btn_tree.callback = self.open_tree
         self.add_item(btn_tree)
@@ -646,7 +646,7 @@ class SlayerTreeView(BaseView):
         prefix = {"taskmaster": "tm", "hunter": "hu", "purveyor": "pu"}[branch]
 
         embed = discord.Embed(
-            title=f"💀 Slayer Mastery — {icon} {name}",
+            title=f"💀 Slayer Shop — {icon} {name}",
             description=(
                 f"**Slayer Points:** {pts} | 🩸 **Violent Essence:** {ess}\n"
                 f"*Points spent: {self.pts_spent}*\n\n"

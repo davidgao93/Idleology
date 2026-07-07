@@ -89,7 +89,7 @@ class CompanionMasteryView(BaseView):
 
         branch = MASTERY_BRANCHES[self.active_branch]
         embed = discord.Embed(
-            title=f"✨ Companion Mastery — {branch['label']}",
+            title=f"✨ Forged Bonds — {branch['label']}",
             color=discord.Color.purple(),
         )
         embed.set_footer(text=f"Kinship Points: {kp:,} | Total Spent: {spent:,} KP")
