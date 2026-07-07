@@ -126,8 +126,7 @@ class Character(commands.Cog, name="character"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "profile")
         embed = await ProfileBuilder.build_card(self.bot, user_id, server_id)
-        view.set_content(embed)
-        await interaction.response.send_message(view=view)
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(name="sheet", description="Detailed character sheet.")
@@ -140,8 +139,7 @@ class Character(commands.Cog, name="character"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "stats")
         embed = await ProfileBuilder.build_stats(self.bot, user_id, server_id)
-        view.set_content(embed)
-        await interaction.response.send_message(view=view)
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(name="stats", description="View your character stats.")
@@ -155,8 +153,7 @@ class Character(commands.Cog, name="character"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "stats")
         embed = await ProfileBuilder.build_stats(self.bot, user_id, server_id)
-        view.set_content(embed)
-        await interaction.response.send_message(view=view)
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(
@@ -259,8 +256,7 @@ class Character(commands.Cog, name="character"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "gear_passives")
         embed = await ProfileBuilder.build_gear_passives(self.bot, user_id, server_id)
-        view.set_content(embed)
-        await interaction.response.send_message(view=view)
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
 

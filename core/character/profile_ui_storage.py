@@ -185,6 +185,7 @@ class StorageProfileBuilder:
 
     @staticmethod
     async def build_resources(bot, user_id: str, server_id: str) -> discord.Embed:
+        user = await bot.database.users.get(user_id, server_id)
         settlement = await bot.database.settlement.get_settlement(user_id, server_id)
         mat_all = await bot.database.settlement_materials.get_all(user_id)
         blueprint_count = mat_all.get("unidentified_blueprint", 0)
@@ -259,6 +260,7 @@ class StorageProfileBuilder:
         embed = discord.Embed(
             title="Storage Warehouse", color=discord.Color.dark_orange()
         )
+        embed.set_thumbnail(url=user["appearance"])
 
         gathering_value = (
             f"**Ores:** Iron {ores[0]:,} · Coal {ores[1]:,} · {GOLD_ORE} Gold {ores[2]:,} · "
@@ -293,10 +295,12 @@ class StorageProfileBuilder:
 
     @staticmethod
     async def build_uber(bot, user_id: str, server_id: str) -> discord.Embed:
+        user = await bot.database.users.get(user_id, server_id)
         uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
         specials = await bot.database.settlement_materials.get_uber_materials(user_id)
 
         embed = discord.Embed(title="Uber Encounters", color=discord.Color.dark_gold())
+        embed.set_thumbnail(url=user["appearance"])
 
         bp_status = (
             "✅ Unlocked" if uber_data["celestial_blueprint_unlocked"] else "🔒 Locked"

@@ -409,7 +409,13 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
     elif header_text:
         children.append(discord.ui.TextDisplay(header_text))
 
-    for text in field_texts:
+    # A small separator between each stacked field keeps a busy tab (10+
+    # stat blocks) reading as a sequence of distinct entries rather than one
+    # undifferentiated wall of text — Components V2 has no side-by-side
+    # column layout to fall back on, so this is the only lever available.
+    for idx, text in enumerate(field_texts):
+        if idx > 0:
+            children.append(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
         children.append(discord.ui.TextDisplay(text))
 
     if ran_out:

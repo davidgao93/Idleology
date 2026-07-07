@@ -95,8 +95,7 @@ class Inventory(commands.Cog, name="inventory"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "inventory")
         embed = await ProfileBuilder.build_inventory(self.bot, user_id, server_id)
-        view.set_content(embed)
-        await interaction.response.send_message(view=view)
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(
@@ -111,8 +110,7 @@ class Inventory(commands.Cog, name="inventory"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "resources")
         embed = await ProfileBuilder.build_resources(self.bot, user_id, server_id)
-        view.set_content(embed)
-        await interaction.response.send_message(view=view)
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(name="weapons", description="Manage your weapons.")
@@ -172,9 +170,8 @@ class Inventory(commands.Cog, name="inventory"):
         embed = await ProfileBuilder.build_essences(self.bot, user_id, server_id)
 
         view = ProfileHubView(self.bot, user_id, server_id, active_tab="essences")
-        view.set_content(embed)
 
-        await interaction.response.send_message(view=view)
+        await interaction.response.send_message(embed=embed, view=view)
 
 
 async def setup(bot):

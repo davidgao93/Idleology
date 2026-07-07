@@ -3,12 +3,10 @@ core/character/profile_hub.py
 ProfileHubView — tabbed profile UI. Embed building lives in profile_ui.py.
 """
 
-import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.base_layout_view import BaseLayoutView
+from core.base_view import BaseView
 from core.character.profile_ui import ProfileBuilder
-from core.combat import ui as combat_ui
 
 # Row 0: Profile | Cooldowns | Inventory | Crafting | Resources
 _ROW0 = [
@@ -28,16 +26,15 @@ _ROW1 = [
 ]
 
 
-class ProfileHubView(BaseLayoutView):
+class ProfileHubView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str, active_tab: str):
         super().__init__(bot, user_id, server_id)
         self.active_tab = active_tab
         self._processing = False
+        self.update_buttons()
 
     async def on_timeout(self):
-        # Overrides BaseLayoutView default: no clear_active since this view
-        # never sets it, and the whole message is deleted rather than
-        # stripped (read-only view, nothing worth leaving behind).
+        # Overrides BaseView default: no clear_active since this view never sets it.
         if self.message:
             try:
                 await self.message.delete()
@@ -45,33 +42,30 @@ class ProfileHubView(BaseLayoutView):
                 pass
         self.stop()
 
-    def _build_rows(self) -> list[discord.ui.ActionRow]:
-        row0 = discord.ui.ActionRow()
-        row1 = discord.ui.ActionRow()
+    def update_buttons(self):
+        self.clear_items()
 
-        for tab_id, label, emoji, row_idx in [*_ROW0, *_ROW1]:
+        for tab_id, label, emoji, row in [*_ROW0, *_ROW1]:
             style = (
                 ButtonStyle.primary
                 if self.active_tab == tab_id
                 else ButtonStyle.secondary
             )
-            btn = ui.Button(label=label, emoji=emoji, style=style, custom_id=tab_id)
+            btn = ui.Button(
+                label=label, emoji=emoji, style=style, custom_id=tab_id, row=row
+            )
             btn.callback = self.handle_tab_switch
-            (row0 if row_idx == 0 else row1).add_item(btn)
+            self.add_item(btn)
 
         close_btn = ui.Button(
-            label="Close", emoji="✖️", style=ButtonStyle.secondary, custom_id="close"
+            label="Close",
+            emoji="✖️",
+            style=ButtonStyle.secondary,
+            custom_id="close",
+            row=1,
         )
         close_btn.callback = self.handle_close
-        row1.add_item(close_btn)
-
-        return [row0, row1]
-
-    def set_content(self, embed: discord.Embed) -> None:
-        self.clear_items()
-        self.add_item(combat_ui.embed_to_container(embed))
-        for row in self._build_rows():
-            self.add_item(row)
+        self.add_item(close_btn)
 
     async def handle_close(self, interaction: Interaction):
         # No clear_active: ProfileHubView is never set_active (read-only, can be
@@ -93,6 +87,7 @@ class ProfileHubView(BaseLayoutView):
             return await interaction.response.defer()
         self._processing = True
         self.active_tab = tab_id
+        self.update_buttons()
         await interaction.response.defer()
 
         embed = None
@@ -134,5 +129,4 @@ class ProfileHubView(BaseLayoutView):
             )
 
         self._processing = False
-        self.set_content(embed)
-        await interaction.edit_original_response(view=self)
+        await interaction.edit_original_response(embed=embed, view=self)

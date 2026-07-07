@@ -772,8 +772,7 @@ class General(commands.Cog, name="general"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "cooldowns")
         embed = await ProfileBuilder.build_cooldowns(self.bot, user_id, server_id)
-        view.set_content(embed)
-        await interaction.response.send_message(view=view)
+        await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(
