@@ -1456,12 +1456,20 @@ class SettlementDashboardView(SettlementBaseView):
                 crisis_summary = {"crisis_result": crisis_result}
                 # The dashboard message was never touched by CombatView (the
                 # fight ran on its own separate message), so it's still
-                # plain classic content — just edit it in place as usual.
+                # plain classic content — just edit it in place as usual,
+                # which also lifts the "confrontation ongoing" lock.
                 if self.message:
                     await self.message.edit(
                         embed=self.build_embed(turn_summary=crisis_summary),
                         view=self,
                     )
+                # The battle message has served its purpose — clean it up
+                # rather than leaving it behind.
+                if view.message:
+                    try:
+                        await view.message.delete()
+                    except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                        pass
                 self.bot.state_manager.set_active(uid, "settlement")
 
             # Switch active state: settlement → combat
@@ -1481,10 +1489,23 @@ class SettlementDashboardView(SettlementBaseView):
 
             # CombatView renders with Components V2, which permanently flags
             # whatever message it's sent on — so the fight runs on its own
-            # new message instead of taking over the dashboard's. The
-            # dashboard message is left untouched until the fight resolves.
+            # new message instead of taking over the dashboard's.
             battle_message = await interaction.followup.send(view=view)
             view.message = battle_message
+
+            # Lock the dashboard until the confrontation resolves — otherwise
+            # the player could keep taking turns on it while the fight (on a
+            # separate message) is still pending.
+            for item in self.children:
+                item.disabled = True
+            locked_embed = self.build_embed()
+            locked_embed.add_field(
+                name="⚔️ Confrontation Ongoing",
+                value=f"[Resolve your battle here]({battle_message.jump_url}) "
+                "before continuing.",
+                inline=False,
+            )
+            await interaction.edit_original_response(embed=locked_embed, view=self)
 
         except Exception:
             self._processing = False

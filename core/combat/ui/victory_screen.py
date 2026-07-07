@@ -80,7 +80,6 @@ def create_victory_embed(
         value=f"+{rewards.get('xp', 0):,} XP{_xp_suffix}",
         inline=True,
     )
-    embed.add_field(name="💰 Gold", value=f"{rewards.get('gold', 0):,} GP", inline=True)
 
     # --- LOOT COMPILATION ---
     loot_lines = []
@@ -201,6 +200,7 @@ def create_victory_embed(
         value="\n".join(loot_lines) if loot_lines else "None",
         inline=False,
     )
+    embed.add_field(name="💰 Gold", value=f"{rewards.get('gold', 0):,} GP", inline=True)
 
     # Extra fields from cfg (e.g. Lucifer's Soul Core prompt)
     for field in cfg.get("extra_fields", []):

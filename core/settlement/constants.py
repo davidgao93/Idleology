@@ -393,8 +393,8 @@ BM_BASE_LOOT_WEIGHTS: list[tuple[str, int]] = [
 BM_ROLLS_PER_VALUE = 2_000
 
 # Gold range per gold roll (multiplied by value bonus)
-BM_GOLD_MIN = 15_000
-BM_GOLD_MAX = 150_000
+BM_GOLD_MIN = 65_000
+BM_GOLD_MAX = 350_000
 
 # ---------------------------------------------------------------------------
 # Black Market passive tree node definitions

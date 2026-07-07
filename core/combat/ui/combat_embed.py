@@ -314,9 +314,40 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
                 discord.ui.MediaGallery(discord.MediaGalleryItem(media=thumb_url))
             )
 
-    for field in embed.fields:
-        value = field.value or ""
-        children.append(discord.ui.TextDisplay(f"**{field.name}**\n{value}"))
+    def _field_line(f) -> str:
+        value = f.value or ""
+        # Single-line values read better packed as "Name: value"; multi-line
+        # values (lists, multi-stat blocks) keep the header on its own line.
+        if "\n" in value:
+            return f"**{f.name}**\n{value}"
+        return f"**{f.name}:** {value}"
+
+    # Group consecutive inline fields (mirrors Discord's own inline-field
+    # packing, e.g. Experience/Gold side by side) so short stats share one
+    # component instead of each claiming a full paragraph — classic embeds
+    # render inline fields in a row; Components V2 has no such layout, so
+    # this is the closest equivalent.
+    fields = embed.fields
+    i = 0
+    while i < len(fields):
+        field = fields[i]
+        if field.inline:
+            group = [field]
+            i += 1
+            while i < len(fields) and fields[i].inline and len(group) < 3:
+                group.append(fields[i])
+                i += 1
+            if len(group) > 1:
+                children.append(
+                    discord.ui.TextDisplay(
+                        "   ".join(_field_line(f) for f in group)
+                    )
+                )
+            else:
+                children.append(discord.ui.TextDisplay(_field_line(group[0])))
+        else:
+            children.append(discord.ui.TextDisplay(_field_line(field)))
+            i += 1
 
     if embed.image and embed.image.url:
         children.append(
@@ -392,33 +423,36 @@ def create_combat_layout(
         _mit_parts.append(f"PDR {p_pdr}%")
     if p_fdr > 0:
         _mit_parts.append(f"FDR {p_fdr}")
-    _mit_line = ("\n" + " | ".join(_mit_parts)) if _mit_parts else ""
+    _mit_suffix = (" | " + " | ".join(_mit_parts)) if _mit_parts else ""
 
+    # One stat line per combatant instead of two — still fully readable
+    # pipe-separated, just without the extra line break.
     player_text = (
         f"### 🧠 {player.name}\n"
         f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
-        f"⚔️ {p_atk:,} | 🛡️ {p_def:,}\n"
-        f"🎯 ~{p_hit}% | 🗡️ {p_crit}%{_mit_line}"
+        f"⚔️ {p_atk:,} | 🛡️ {p_def:,} | 🎯 ~{p_hit}% | 🗡️ {p_crit}%{_mit_suffix}"
     )
+    monster_text = (
+        f"### 🐲 {monster.name}\n"
+        f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
+        f"⚔️ {m_atk:,} | 🛡️ {monster.effective_defence:,} | 🎯 ~{m_hit}%"
+    )
+    # Player and monster share one component (Section when there's a
+    # portrait, plain text otherwise) instead of two, closing the gap
+    # between them.
+    combined_text = f"{player_text}\n\n{monster_text}"
     if player_avatar_url:
         children.append(
             discord.ui.Section(
-                player_text,
+                combined_text,
                 accessory=discord.ui.Thumbnail(
                     player_avatar_url, description=player.name
                 ),
             )
         )
     else:
-        children.append(discord.ui.TextDisplay(player_text))
+        children.append(discord.ui.TextDisplay(combined_text))
 
-    monster_text = (
-        f"### 🐲 {monster.name}\n"
-        f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
-        f"⚔️ {m_atk:,} | 🛡️ {monster.effective_defence:,}\n"
-        f"🎯 ~{m_hit}%"
-    )
-    children.append(discord.ui.TextDisplay(monster_text))
     if monster.image:
         children.append(
             discord.ui.MediaGallery(
@@ -445,12 +479,19 @@ def create_combat_layout(
             ):
                 log_lines.append(f"**{message.partner_name}**\n{message.partner_log}")
 
-    if status_text or afflictions or log_lines:
+    # Status + Afflictions share one component (both are persistent-effect
+    # readouts); the turn log gets its own since it's the part that changes
+    # every turn and reads best set apart.
+    status_block_lines = []
+    if status_text:
+        status_block_lines.append(f"**⚙️ Status**\n{status_text}")
+    if afflictions:
+        status_block_lines.append(f"**⚠️ Afflictions**\n{afflictions}")
+
+    if status_block_lines or log_lines:
         children.append(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
-        if status_text:
-            children.append(discord.ui.TextDisplay(f"**⚙️ Status**\n{status_text}"))
-        if afflictions:
-            children.append(discord.ui.TextDisplay(f"**⚠️ Afflictions**\n{afflictions}"))
+        if status_block_lines:
+            children.append(discord.ui.TextDisplay("\n\n".join(status_block_lines)))
         if log_lines:
             children.append(discord.ui.TextDisplay("\n\n".join(log_lines)))
 
