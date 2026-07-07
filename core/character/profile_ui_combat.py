@@ -30,7 +30,21 @@ from core.character.passive_formatters import (
     _get_piercing_crit_bonus,
     _normalize,
 )
-from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
+from core.emojis import (
+    ACCESSORY_SLOT,
+    ARMOR_SLOT,
+    BOOT_SLOT,
+    GLOVE_SLOT,
+    HELMET_SLOT,
+    STAT_ATK,
+    STAT_BLOCK,
+    STAT_DEF,
+    STAT_FDR,
+    STAT_HP,
+    STAT_PDR,
+    STAT_WARD,
+    WEAPON_SLOT,
+)
 from core.items.factory import load_player
 
 
@@ -69,7 +83,7 @@ class CombatProfileBuilder:
             atk_val += f"\n↳ Bonuses: {atk_bonuses:+,}"
         if cb["atk"]:
             atk_val += f"\n↳ Combat start: {cb['atk']:+,}"
-        embed.add_field(name="⚔️ Attack", value=atk_val, inline=True)
+        embed.add_field(name=f"{STAT_ATK} Attack", value=atk_val, inline=True)
 
         # ── Defence ──────────────────────────────────────────────────────────
         gear_def = 0
@@ -93,7 +107,7 @@ class CombatProfileBuilder:
             def_val += f"\n↳ Bonuses: {def_bonuses:+,}"
         if cb["def"]:
             def_val += f"\n↳ Combat start: {cb['def']:+,}"
-        embed.add_field(name="🛡️ Defence", value=def_val, inline=True)
+        embed.add_field(name=f"{STAT_DEF} Defence", value=def_val, inline=True)
 
         # ── HP ───────────────────────────────────────────────────────────────
         total_hp = p.total_max_hp
@@ -106,7 +120,7 @@ class CombatProfileBuilder:
             hp_val += f"\n↳ Bonuses: {other_hp_bonuses:+,}"
         if cb["hp"]:
             hp_val += f"\n↳ Combat start: {cb['hp']:+,}"
-        embed.add_field(name="❤️ HP", value=hp_val, inline=True)
+        embed.add_field(name=f"{STAT_HP} HP", value=hp_val, inline=True)
 
         # ── Ward ─────────────────────────────────────────────────────────────
         ward_equip = 0
@@ -128,7 +142,7 @@ class CombatProfileBuilder:
         if total_ward > 0:
             ward_hp = p.get_combat_ward_value()
             embed.add_field(
-                name="🔮 Ward",
+                name=f"{STAT_WARD} Ward",
                 value=f"**{total_ward}%** (= {ward_hp:,} Ward)\n↳ Equipment: {ward_equip}%\n↳ Other: {ward_other}%",
                 inline=True,
             )
@@ -225,7 +239,7 @@ class CombatProfileBuilder:
             f" ({raw_pdr}% uncapped)" if raw_pdr > 80 else ""
         )
         embed.add_field(
-            name="🛡️ PDR",
+            name=f"{STAT_PDR} PDR",
             value=f"{pdr_str}\n↳ Equipment: {pdr_equip}%\n↳ Other: {pdr_other}%",
             inline=True,
         )
@@ -251,7 +265,7 @@ class CombatProfileBuilder:
             fdr_val = f"**{total_fdr:,}**\n↳ Equipment: {fdr_equip}"
             if fdr_other > 0:
                 fdr_val += f"\n↳ Other: {fdr_other}"
-            embed.add_field(name="🛡️ FDR", value=fdr_val, inline=True)
+            embed.add_field(name=f"{STAT_FDR} FDR", value=fdr_val, inline=True)
 
         # ── Evasion ───────────────────────────────────────────────────────────
         evasion_armor = p.equipped_armor.evasion if p.equipped_armor else 0
@@ -277,7 +291,7 @@ class CombatProfileBuilder:
             blk_val = f"**{total_block}%**\n↳ Armor: {block_armor}%"
             if block_essence:
                 blk_val += f"\n↳ Essences: +{block_essence}%"
-            embed.add_field(name="🧱 Block", value=blk_val, inline=True)
+            embed.add_field(name=f"{STAT_BLOCK} Block", value=blk_val, inline=True)
 
         # ── Rarity ───────────────────────────────────────────────────────────
         gear_rarity = p.rarity
@@ -364,7 +378,7 @@ class CombatProfileBuilder:
                 lines.append(
                     f"• **Infernal:** {w.infernal_passive.replace('_', ' ').title()} — {_desc_fixed(_INFERNAL_PASSIVE_DESC, w.infernal_passive)}"
                 )
-            _add("⚔️ Weapon", lines)
+            _add(f"{WEAPON_SLOT} Weapon", lines)
 
         # ── Armor ─────────────────────────────────────────────────────────────
         if p.equipped_armor:

@@ -11,16 +11,16 @@ from typing import Dict
 
 import discord
 
-from core.emojis import QUENCH
+from core.emojis import QUENCH, STAT_ATK, STAT_DEF, STAT_FDR, STAT_HP, STAT_PDR, STAT_WARD
 from core.models import Monster, Player
 
 
 def get_hp_display(current: int, max_hp: int, ward: int) -> str:
     """Formats HP string, e.g., '100/100 ❤️ (50 🔮)' or '100/100 ❤️ (~1.2k 🔮)'"""
-    display = f"{current}/{max_hp} ❤️"
+    display = f"{current}/{max_hp} {STAT_HP}"
     if ward > 0:
         ward_str = _format_ward(ward)
-        display += f" ({ward_str} 🔮)"
+        display += f" ({ward_str} {STAT_WARD})"
     return display
 
 
@@ -496,9 +496,9 @@ def create_combat_layout(
 
     _mit_parts = []
     if p_pdr > 0:
-        _mit_parts.append(f"PDR {p_pdr}%")
+        _mit_parts.append(f"{STAT_PDR} {p_pdr}%")
     if p_fdr > 0:
-        _mit_parts.append(f"FDR {p_fdr}")
+        _mit_parts.append(f"{STAT_FDR} {p_fdr}")
     _mit_suffix = (" | " + " | ".join(_mit_parts)) if _mit_parts else ""
 
     # One stat line per combatant instead of two — still fully readable
@@ -506,12 +506,12 @@ def create_combat_layout(
     player_text = (
         f"### 🧠 {player.name}\n"
         f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
-        f"⚔️ {p_atk:,} | 🛡️ {p_def:,} | 🎯 ~{p_hit}% | 🗡️ {p_crit}%{_mit_suffix}"
+        f"{STAT_ATK} {p_atk:,} | {STAT_DEF} {p_def:,} | 🎯 ~{p_hit}% | 🗡️ {p_crit}%{_mit_suffix}"
     )
     monster_text = (
         f"### 🐲 {monster.name}\n"
-        f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
-        f"⚔️ {m_atk:,} | 🛡️ {monster.effective_defence:,} | 🎯 ~{m_hit}%"
+        f"{monster.hp:,}/{monster.max_hp:,} {STAT_HP}\n"
+        f"{STAT_ATK} {m_atk:,} | {STAT_DEF} {monster.effective_defence:,} | 🎯 ~{m_hit}%"
     )
     # Player and monster share one component (Section when there's a
     # portrait, plain text otherwise) instead of two, closing the gap
@@ -636,26 +636,26 @@ def create_combat_embed(
     embed.add_field(
         name=f"🐲 {monster.name}",
         value=(
-            f"{monster.hp:,}/{monster.max_hp:,} ❤️\n"
-            f"⚔️ {m_atk:,} | 🛡️ {monster.effective_defence:,}\n"
+            f"{monster.hp:,}/{monster.max_hp:,} {STAT_HP}\n"
+            f"{STAT_ATK} {m_atk:,} | {STAT_DEF} {monster.effective_defence:,}\n"
             f"🎯 ~{m_hit}%"
         ),
         inline=True,
     )
     _mit_parts = []
     if p_pdr > 0:
-        _mit_parts.append(f"PDR {p_pdr}%")
+        _mit_parts.append(f"{STAT_PDR} {p_pdr}%")
     if p_fdr > 0:
-        _mit_parts.append(f"FDR {p_fdr}")
+        _mit_parts.append(f"{STAT_FDR} {p_fdr}")
     _mit_line = ("\n" + " | ".join(_mit_parts)) if _mit_parts else ""
 
     embed.add_field(
         name=f"🧠 {player.name}",
         value=(
             f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
-            f"⚔️ {p_atk:,} | 🛡️ {p_def:,}\n"
+            f"{STAT_ATK} {p_atk:,} | {STAT_DEF} {p_def:,}\n"
             f"🎯 ~{p_hit}% | 🗡️ {p_crit}%"
-            f"🛡️ {_mit_line}"
+            f"{_mit_line}"
         ),
         inline=True,
     )

@@ -288,7 +288,7 @@ class GearView(BaseView):
                     else ButtonStyle.secondary
                 )
                 btn = Button(
-                    label=f"{cfg['emoji']} {cfg['label']}", style=style, row=row_idx
+                    label=cfg["label"], emoji=cfg["emoji"], style=style, row=row_idx
                 )
                 btn.callback = lambda i, s=slot: self.switch_slot(i, s)
                 self.add_item(btn)

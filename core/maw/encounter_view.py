@@ -20,6 +20,7 @@ from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
 from core.combat.turns import engine
+from core.emojis import INFINITE_MAW
 from core.images import MAW_MAIN
 from core.maw import mechanics
 from core.models import Monster, Player
@@ -96,7 +97,7 @@ class MawEncounterView(BaseView):
             desc += f"\n\n{self.last_log}"
 
         embed = discord.Embed(
-            title="🌑 The Infinite Maw",
+            title=f"{INFINITE_MAW} The Infinite Maw",
             description=desc,
             color=0x1A0033,
         )
@@ -226,7 +227,7 @@ class MawEncounterView(BaseView):
         fights_left = max(0, mechanics.MAX_FIGHTS_PER_CYCLE - fights_done)
 
         embed = discord.Embed(
-            title="🌑 The Infinite Maw — Run Complete",
+            title=f"{INFINITE_MAW} The Infinite Maw — Run Complete",
             description=(
                 f"**Damage This Run:** {self.total_damage:,}\n"
                 f"**Your Cycle Total:** {cycle_total:,}  ({pct:.1f}% of all damage)\n\n"

@@ -29,7 +29,14 @@ from core.character.passive_data import (
     _VOID_PASSIVE_DESC,
     _WEAPON_PASSIVE_DESC,
 )
-from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
+from core.emojis import (
+    ACCESSORY_SLOT,
+    ARMOR_SLOT,
+    BOOT_SLOT,
+    GLOVE_SLOT,
+    HELMET_SLOT,
+    WEAPON_SLOT,
+)
 from core.images import AMARA_AUTHOR, AMARA_PORTRAIT
 from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
 
@@ -330,7 +337,7 @@ class General(commands.Cog, name="general"):
             return
 
         elif category == "weapon":
-            embed.title = "⚔️ Weapon Passives"
+            embed.title = f"{WEAPON_SLOT} Weapon Passives"
             infernal_text = (
                 "\n**🔥 Infernal Passives (Engram):**\n"
                 + self._format_passive_descs(_INFERNAL_PASSIVE_DESC)

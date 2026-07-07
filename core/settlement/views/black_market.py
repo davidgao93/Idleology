@@ -103,9 +103,16 @@ _BM_RESOURCE_PAGES: list[list[tuple[str, str]]] = [
     for page in _BM_RESOURCE_NAMES
 ]
 
-# Flat key→label lookup built from all pages
+# Flat key→label lookup built from all pages. _BM_ALL_LABELS bakes the emoji
+# into the string — only safe in embed/message text, NOT in a SelectOption
+# label, Button label, or Modal title (those don't render custom emoji tags,
+# they'd show the literal "<:name:id>" text). Use _BM_ALL_NAMES + the
+# emoji= kwarg for those.
 _BM_ALL_LABELS: dict[str, str] = {
     key: label for page in _BM_RESOURCE_PAGES for key, label in page
+}
+_BM_ALL_NAMES: dict[str, str] = {
+    key: name for page in _BM_RESOURCE_NAMES for key, name in page
 }
 
 # Category filter buttons: (id, button_label, [resource_keys])
@@ -702,13 +709,14 @@ class OfferBuilderView(SettlementBaseView):
             qty = self._inventory.get(key, 0)
             if qty <= 0:
                 continue  # player doesn't have any
-            label = _BM_ALL_LABELS.get(key, key)
+            label = _BM_ALL_NAMES.get(key, key)
             unit_val = BM_ITEM_VALUES.get(key, 0)
             options.append(
                 SelectOption(
                     label=label,
                     value=key,
                     description=f"Owned: {qty:,} | {unit_val:,}/unit",
+                    emoji=RESOURCE_EMOJI.get(key),
                 )
             )
         return options[:25]
@@ -883,7 +891,7 @@ class OfferBuilderView(SettlementBaseView):
             )
             return
 
-        label = _BM_ALL_LABELS.get(resource_key, resource_key)
+        label = _BM_ALL_NAMES.get(resource_key, resource_key)
         max_qty = self._inventory.get(resource_key, 0)
         modal = QuantityInputModal(self, resource_key, label, max_qty)
         await interaction.response.send_modal(modal)

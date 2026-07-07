@@ -41,11 +41,69 @@ SPARKLING_SPRIG = "<:sparkling_sprig:1524165436130725988>"
 CAPRICIOUS_CARP = "<:capricious_carp:1524165423162069033>"
 
 # ── Equipment slots (see core/inventory/views/_slot_defs.py: SLOT_EMOJIS) ───
+WEAPON_SLOT = "<:weapon:1524182189208637521>"
 ARMOR_SLOT = "<:armor:1524165420196823055>"
 HELMET_SLOT = "<:helmet:1524165426857246930>"
 GLOVE_SLOT = "<:gloves:1524165426186293360>"
 BOOT_SLOT = "<:boots:1524165422503563374>"
 ACCESSORY_SLOT = "<:accessory:1524165418598797512>"
+
+# ── Combat stats (profile stat sheet + in-combat stat lines) ───────────────
+STAT_ATK = "<:stat_atk:1524182195516870756>"
+STAT_DEF = "<:stat_def:1524182194229084250>"
+STAT_HP = "<:stat_hp:1524182193037901954>"
+STAT_WARD = "<:stat_ward:1524182191867691129>"
+STAT_PDR = "<:stat_pdr:1524182192438251650>"
+STAT_FDR = "<:stat_fdr:1524182193725902898>"
+STAT_BLOCK = "<:stat_block:1524182194728210696>"
+
+STAT_EMOJI: dict[str, str] = {
+    "atk": STAT_ATK,
+    "def": STAT_DEF,
+    "hp": STAT_HP,
+    "ward": STAT_WARD,
+    "pdr": STAT_PDR,
+    "fdr": STAT_FDR,
+    "block": STAT_BLOCK,
+}
+
+# ── Runes (9 types — previously all shared one generic 🔮) ──────────────────
+RUNE_REFINEMENT = "<:rune_refinement:1524182208817139763>"
+RUNE_POTENTIAL = "<:rune_potential:1524182209882493098>"
+RUNE_SHATTER = "<:rune_shatter:1524182207701192785>"
+RUNE_IMBUE = "<:rune_imbue:1524182215544672266>"
+RUNE_PARTNERSHIP = "<:rune_partnership:1524182211190984735>"
+RUNE_REGRET = "<:rune_regret:1524182208347373718>"
+RUNE_NATURE = "<:rune_nature:1524182212084498585>"
+RUNE_MIRAGE_IMPERFECT = "<:rune_mirage_imperfect:1524182214458343565>"
+RUNE_MIRAGE_PERFECT = "<:rune_mirage_perfect:1524182212734484520>"
+
+# ── Essence tiers (category headers, not per-type essence icons) ───────────
+ESSENCE_COMMON = "<:essence_common:1524182185802731744>"
+ESSENCE_RARE = "<:essence_rare:1524182184028672162>"
+ESSENCE_CORRUPT = "<:essence_corrupt:1524182184947224640>"
+
+# ── Misc materials / currencies ─────────────────────────────────────────────
+CURIO = "<:curio:1524182187656876143>"
+PUZZLE_BOX = "<:puzzle_box:1524182216165560442>"
+PINNACLE_KEY = "<:pinnacle_key:1524182216975061083>"
+VOID_KEY = "<:void_key:1524182190240432338>"
+DIVINER_ROD = "<:diviner_rod:1524182186910285854>"
+SPIRIT_STONE = "<:spirit_stone:1524182196267651122>"
+SPIRIT_SHARD = "<:spirit_shard:1524182197395783691>"
+MAGMA_CORE = "<:magma_core:1524182219080601622>"
+LIFE_ROOT = "<:life_root:1524182219768336464>"
+PARADISE_JEWEL_UNCUT = "<:paradise_jewel_uncut:1524182217595551955>"
+
+# ── Artisan Mastery remnants (prestige gathering-boss drops) ───────────────
+TIDE_RELIC = "<:tide_relic:1524182191188349008>"
+HEARTWOOD_SHARD = "<:heartwood_shard:1524182220976423057>"
+GEODE_CORE = "<:geode_core:1524182222062747699>"
+
+# ── Feature / hub branding icons ─────────────────────────────────────────────
+CONSUME_ICON = "<:consume:1524182188256526376>"
+NETHER_MARKET_PLUNDER = "<:nether_market_plunder:1524182218329555055>"
+INFINITE_MAW = "<:infinite_maw:1524182220552798238>"
 
 # ── RESOURCE_EMOJI ─────────────────────────────────────────────────────────
 # Single source of truth for gathering/settlement/Black Market material icons.
@@ -85,21 +143,31 @@ RESOURCE_EMOJI: dict[str, str] = {
     "sturdy_essence": "⚗️",
     "reinforced_essence": "⚗️",
     "titanium_essence": "⚗️",
-    "refinement_runes": "🔮",
-    "potential_runes": "🔮",
-    "shatter_runes": "🔮",
-    "imbue_runes": "🔮",
+    "refinement_runes": RUNE_REFINEMENT,
+    "potential_runes": RUNE_POTENTIAL,
+    "shatter_runes": RUNE_SHATTER,
+    "imbue_runes": RUNE_IMBUE,
+    "partnership_runes": RUNE_PARTNERSHIP,
+    "rune_of_regret": RUNE_REGRET,
+    "runes_of_nature": RUNE_NATURE,
+    "mirage_runes_imperfect": RUNE_MIRAGE_IMPERFECT,
+    "mirage_runes_perfected": RUNE_MIRAGE_PERFECT,
     "dragon_key": DRAGON_KEY,
     "angel_key": ANGEL_KEY,
     "soul_cores": SOUL_CORE,
     "balance_fragment": "⚖️",
     "void_frags": VOID_FRAG,
-    "magma_core": "🔥",
-    "life_root": "🌿",
-    "spirit_shard": "🌟",
-    "curios": "📦",
+    "void_keys": VOID_KEY,
+    "magma_core": MAGMA_CORE,
+    "life_root": LIFE_ROOT,
+    "spirit_shard": SPIRIT_SHARD,
+    "curios": CURIO,
+    "curio_puzzle_boxes": PUZZLE_BOX,
     "unidentified_blueprint": "📋",
-    "spirit_stones": "🔮",
+    "diviners_rod": DIVINER_ROD,
+    "spirit_stones": SPIRIT_STONE,
+    "pinnacle_key": PINNACLE_KEY,
+    "paradise_jewels": PARADISE_JEWEL_UNCUT,
     "celestial_stone": "⭐",
     "infernal_cinder": "🔥",
     "void_crystal": "💜",
@@ -108,4 +176,7 @@ RESOURCE_EMOJI: dict[str, str] = {
     "blessed_bismuth": BLESSED_BISMUTH,
     "sparkling_sprig": SPARKLING_SPRIG,
     "capricious_carp": CAPRICIOUS_CARP,
+    "tide_relics": TIDE_RELIC,
+    "heartwood_shards": HEARTWOOD_SHARD,
+    "geode_cores": GEODE_CORE,
 }

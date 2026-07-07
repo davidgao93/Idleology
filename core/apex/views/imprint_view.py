@@ -21,7 +21,14 @@ from core.apex.data import PASSIVE_CATEGORY_MAP, PASSIVE_SHARD_MAP
 from core.apex.mechanics import ApexMechanics
 from core.apex.models import MetaShardInventory, ShardInventory, SoulStone
 from core.base_view import BaseView
-from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
+from core.emojis import (
+    ACCESSORY_SLOT,
+    ARMOR_SLOT,
+    BOOT_SLOT,
+    GLOVE_SLOT,
+    HELMET_SLOT,
+    WEAPON_SLOT,
+)
 from core.images import APEX_IMPRINT
 from core.items.factory import (
     create_accessory,
@@ -34,7 +41,7 @@ from core.items.factory import (
 
 # (display label, db item_type, emoji) — display order for the type select
 _TYPE_DEFS: list[tuple[str, str, str]] = [
-    ("Weapon", "weapon", "⚔️"),
+    ("Weapon", "weapon", WEAPON_SLOT),
     ("Armor", "armor", ARMOR_SLOT),
     ("Accessory", "accessory", ACCESSORY_SLOT),
     ("Glove", "glove", GLOVE_SLOT),

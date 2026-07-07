@@ -1,6 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction
 
+from core.emojis import RUNE_MIRAGE_IMPERFECT, RUNE_MIRAGE_PERFECT
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.factory import (
     create_accessory,
@@ -391,7 +392,8 @@ class MirageView(BaseUpgradeView):
 
         if self.mirage_runes_imperfect > 0:
             btn = discord.ui.Button(
-                label=f"🪞 Imperfect (x{self.mirage_runes_imperfect})",
+                label=f"Imperfect (x{self.mirage_runes_imperfect})",
+                emoji=RUNE_MIRAGE_IMPERFECT,
                 style=ButtonStyle.danger,
                 row=0,
             )
@@ -400,7 +402,8 @@ class MirageView(BaseUpgradeView):
 
         if self.mirage_runes_perfected > 0:
             btn = discord.ui.Button(
-                label=f"🪞 Perfected (x{self.mirage_runes_perfected})",
+                label=f"Perfected (x{self.mirage_runes_perfected})",
+                emoji=RUNE_MIRAGE_PERFECT,
                 style=ButtonStyle.primary,
                 row=1,
             )

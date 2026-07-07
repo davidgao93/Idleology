@@ -1,9 +1,16 @@
-from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
+from core.emojis import (
+    ACCESSORY_SLOT,
+    ARMOR_SLOT,
+    BOOT_SLOT,
+    GLOVE_SLOT,
+    HELMET_SLOT,
+    WEAPON_SLOT,
+)
 
 SLOT_ORDER = ["weapon", "armor", "helmet", "glove", "boot", "accessory"]
 
 SLOT_EMOJIS = {
-    "weapon": "⚔️",
+    "weapon": WEAPON_SLOT,
     "armor": ARMOR_SLOT,
     "helmet": HELMET_SLOT,
     "glove": GLOVE_SLOT,

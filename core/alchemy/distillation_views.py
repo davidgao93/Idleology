@@ -248,7 +248,8 @@ class PotionDistillationView(BaseView):
             bases = DistillationMechanics.get_prepared_core_choices(s)
             for i, b in enumerate(bases):
                 btn = ui.Button(
-                    label=f"{b['emoji']} {b['name']}",
+                    label=b["name"],
+                    emoji=b["emoji"],
                     style=ButtonStyle.primary,
                     row=i // 3,
                 )

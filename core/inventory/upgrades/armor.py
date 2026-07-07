@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.character.passive_formatters import get_armor_passive_description
+from core.emojis import RUNE_SHATTER
 from core.images import (
     SYLAS_AUTHOR,
     UPGRADE_CELESTIAL_ENGRAM,
@@ -610,7 +611,7 @@ class ReinforceView(BaseUpgradeView):
             f"This will perform **{reinforces_done:,}** reinforce(s) using up to **{runes_used}** Shatter Rune(s).\n\n"
             f"**Estimated Resources Consumed:**\n"
             f"💰 Gold: {gold_used:,}\n"
-            f"💥 Shatter Runes: {runes_used}\n"
+            f"{RUNE_SHATTER} Shatter Runes: {runes_used}\n"
             f"📦 Materials:\n{mat_lines}\n\n"
             f"*Stops when: {stop_reason}*\n\n"
             f"Proceed?"

@@ -12,6 +12,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import PARADISE_JEWEL_UNCUT
 from core.images import SKILL_IMAGES, SKILL_UNCUT, TESSARA_PORTRAIT
 from core.npc_voices import get_quip
 from core.paradise import mechanics as M
@@ -95,7 +96,7 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
     consumed = data.get("total_jewels_consumed", 0)
     embed.description = (
         f"*{get_quip('paradise')}*\n\n"
-        f"**Uncut Jewels:** 💎 {jewel_count}\n"
+        f"**Uncut Jewels:** {PARADISE_JEWEL_UNCUT} {jewel_count}\n"
         f"**Cosmic Dust:** ✨ {dust:,}\n"
         f"**Jewels Obtained:** {obtained}  •  **Cut:** {consumed}"
     )

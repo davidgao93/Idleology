@@ -5,7 +5,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
-from core.emojis import MONSTER_CHEEK
+from core.emojis import CONSUME_ICON, MONSTER_CHEEK
 from core.images import (
     CONSUME_EGG,
     CONSUME_HUB,
@@ -62,7 +62,7 @@ def _build_main_embed(player: Player, inventory: list) -> discord.Embed:
         else 0
     )
     embed = discord.Embed(
-        title=f"🫀 {player.name}'s Monster Parts",
+        title=f"{CONSUME_ICON} {player.name}'s Monster Parts",
         description=(
             f"*{get_quip('consume')}*\n\n"
             f"Consume monster body parts to empower your spirit.\n"
@@ -437,10 +437,9 @@ class RecycleConfirmView(BaseView):
         self.consume_view._rebuild_select()
 
         slot_label = _SLOT_LABELS.get(slot, slot)
-        slot_emoji = _SLOT_EMOJI.get(slot, "🫀")
         embed = _build_main_embed(self.consume_view.player, self.consume_view.inventory)
         embed.set_footer(
-            text=f"Recycled into {slot_emoji} {slot_label} — +{self.new_hp:,} Max HP!"
+            text=f"Recycled into {slot_label} — +{self.new_hp:,} Max HP!"
         )
         await interaction.edit_original_response(embed=embed, view=self.consume_view)
         self.stop()

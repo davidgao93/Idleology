@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import random
 
-from core.emojis import SOUL_CORE, VOID_FRAG
+from core.emojis import SOUL_CORE, SPIRIT_STONE, VOID_FRAG
 
 # ---------------------------------------------------------------------------
 # Daily Quest Pool
@@ -294,7 +294,7 @@ HORIZON_PATHS = {
         "goal": 50,
         "token_reward": 3,
         "level_required": 30,
-        "loot_preview": "💎 +1 Spirit Stone",
+        "loot_preview": f"{SPIRIT_STONE} +1 Spirit Stone",
     },
     "glutton": {
         "name": "The Glutton's Crusade",

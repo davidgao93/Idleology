@@ -436,8 +436,8 @@ async def apply_corrupted_monster_drops(
 
     if random.random() < CORRUPTED_PARADISE_JEWEL_CHANCE:
         await bot.database.uber.increment_paradise_jewels(user_id, server_id, 1)
-        reward_data["special"].append("💎 Uncut Paradise Jewel")
+        reward_data["special"].append("Uncut Paradise Jewel")
 
     if random.random() < CORRUPTED_MIRAGE_RUNE_CHANCE:
         await bot.database.users.modify_currency(user_id, "mirage_runes_imperfect", 1)
-        reward_data["special"].append("🪞 Rune of Mirage (Imperfect)")
+        reward_data["special"].append("Rune of Mirage (Imperfect)")

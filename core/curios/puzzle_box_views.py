@@ -12,6 +12,7 @@ from core.curios.puzzle_box_logic import (
     roll_all_slots,
     roll_slot,
 )
+from core.emojis import CURIO, PUZZLE_BOX
 
 
 class PuzzleBoxView(BaseView):
@@ -69,7 +70,7 @@ class PuzzleBoxView(BaseView):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="📦 Curio Puzzle Box",
+            title=f"{PUZZLE_BOX} Curio Puzzle Box",
             description=(
                 "Three reward slots are revealed. Reroll any slot to change its type and quantity. "
                 "What you see is what you get."
@@ -94,7 +95,7 @@ class PuzzleBoxView(BaseView):
 
     def build_claimed_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="📦 Puzzle Box Opened!",
+            title=f"{PUZZLE_BOX} Puzzle Box Opened!",
             description="\n".join(self._reward_lines),
             color=0x2ECC71,
         )
@@ -135,7 +136,7 @@ class PuzzleBoxView(BaseView):
         self.bot.state_manager.clear_active(self.user_id)
         self.clear_items()
         btn_back = ui.Button(
-            label="Back to Curios", style=ButtonStyle.secondary, emoji="🎁", row=0
+            label="Back to Curios", style=ButtonStyle.secondary, emoji=CURIO, row=0
         )
         btn_back.callback = self._back_to_curios
         self.add_item(btn_back)

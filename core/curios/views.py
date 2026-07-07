@@ -4,6 +4,7 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.curios.logic import CurioManager
 from core.curios.puzzle_box_views import PuzzleBoxView
+from core.emojis import CURIO, PUZZLE_BOX
 from core.images import CURIO_BULK, CURIO_UNOPENED
 
 _UNOPENED_IMAGE = CURIO_UNOPENED
@@ -65,7 +66,7 @@ class CurioView(BaseView):
         btn_1 = ui.Button(
             label="Open 1",
             style=ButtonStyle.primary,
-            emoji="🎁",
+            emoji=CURIO,
             row=0,
             disabled=self.curio_count < 1,
         )
@@ -75,7 +76,7 @@ class CurioView(BaseView):
         btn_5 = ui.Button(
             label="Open 5",
             style=ButtonStyle.primary,
-            emoji="🎁",
+            emoji=CURIO,
             row=0,
             disabled=self.curio_count < 5,
         )
@@ -85,7 +86,7 @@ class CurioView(BaseView):
         btn_10 = ui.Button(
             label="Open 10",
             style=ButtonStyle.primary,
-            emoji="🎁",
+            emoji=CURIO,
             row=0,
             disabled=self.curio_count < 10,
         )
@@ -105,7 +106,7 @@ class CurioView(BaseView):
         btn_box = ui.Button(
             label=f"Puzzle Box ({self.puzzle_box_count})",
             style=ButtonStyle.success,
-            emoji="📦",
+            emoji=PUZZLE_BOX,
             row=1,
             disabled=self.puzzle_box_count < 1,
         )
@@ -120,7 +121,7 @@ class CurioView(BaseView):
 
     def build_hub_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="🎁 Curios",
+            title=f"{CURIO} Curios",
             description=(
                 f"You have **{self.curio_count}** Curio{'s' if self.curio_count != 1 else ''}.\n"
                 f"Select an amount to open."

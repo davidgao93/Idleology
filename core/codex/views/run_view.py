@@ -25,6 +25,15 @@ from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
+from core.emojis import (
+    STAT_ATK,
+    STAT_BLOCK,
+    STAT_DEF,
+    STAT_FDR,
+    STAT_HP,
+    STAT_PDR,
+    STAT_WARD,
+)
 from core.images import CODEX_BOON, CODEX_CHAPTERS
 from core.models import Monster, Player
 
@@ -561,21 +570,21 @@ class CodexRunView(BaseView):
         block = p.get_total_block()
         evasion = p.get_total_evasion()
 
-        hp_line = f"❤️ **{p.current_hp:,}/{eff_max_hp:,}**"
+        hp_line = f"{STAT_HP} **{p.current_hp:,}/{eff_max_hp:,}**"
         proj_ward = self._projected_ward()
         if proj_ward > 0:
-            hp_line += f"  🔮 Ward (next wave): **{proj_ward:,}**"
+            hp_line += f"  {STAT_WARD} Ward (next wave): **{proj_ward:,}**"
         stats_block = (
-            f"⚔️ ATK: **{atk:,}**  🛡️ DEF: **{def_:,}**\n"
+            f"{STAT_ATK} ATK: **{atk:,}**  {STAT_DEF} DEF: **{def_:,}**\n"
             f"{hp_line}\n"
             f"🎯 Hit: **{hit_total}%**  Crit: **{crit_chance}%**  ×{crit_multi:.2f}"
         )
         if fdr > 0 or pdr > 0:
-            stats_block += f"\n🔒 FDR: **{fdr}**  🪨 PDR: **{pdr}%**"
+            stats_block += f"\n{STAT_FDR} FDR: **{fdr}**  {STAT_PDR} PDR: **{pdr}%**"
         if block > 0 or evasion > 0:
             be_parts = []
             if block > 0:
-                be_parts.append(f"🛡️ Block: **{block}%**")
+                be_parts.append(f"{STAT_BLOCK} Block: **{block}%**")
             if evasion > 0:
                 be_parts.append(f"💨 Evasion: **{evasion}%**")
             stats_block += "\n" + "  ".join(be_parts)

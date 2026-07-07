@@ -5,6 +5,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
+from core.emojis import DIVINER_ROD, LIFE_ROOT, MAGMA_CORE, SPIRIT_SHARD
 from core.images import (
     CRISIS_MONSTER_IMAGES,
     MAID_AUTHOR,
@@ -100,10 +101,10 @@ _SPRITZ_SCENES = [
         "title": "Rare Materials and Plot Bonuses",
         "text": (
             "A few final details:\n\n"
-            "🔥 **Magma Core** · 🌿 **Life Root** · 👻 **Spirit Shard** — rare construction "
+            f"{MAGMA_CORE} **Magma Core** · {LIFE_ROOT} **Life Root** · {SPIRIT_SHARD} **Spirit Shard** — rare construction "
             "materials obtained from various sources. Certain buildings require them alongside standard resources.\n\n"
             "📋 **Unidentified Blueprints** — also obtained from various sources; required for research.\n\n"
-            "🔮 **Diviner's Rod** — use one from a plot's detail view to reroll that plot's terrain bonus. "
+            f"{DIVINER_ROD} **Diviner's Rod** — use one from a plot's detail view to reroll that plot's terrain bonus. "
             "Bonuses like *Gold Vein* reduce construction gold costs and *Ancient Foundation* discounts "
             "timber and stone.\n\n"
             "Note: advanced buildings such as the **Hatchery** require higher player levels "

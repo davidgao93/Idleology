@@ -15,10 +15,24 @@ from core.emojis import (
     ANGEL_KEY,
     BLESSED_BISMUTH,
     CAPRICIOUS_CARP,
+    CURIO,
     DRAGON_KEY,
+    LIFE_ROOT,
+    MAGMA_CORE,
+    PARADISE_JEWEL_UNCUT,
+    PUZZLE_BOX,
+    RUNE_IMBUE,
+    RUNE_MIRAGE_IMPERFECT,
+    RUNE_MIRAGE_PERFECT,
+    RUNE_PARTNERSHIP,
+    RUNE_POTENTIAL,
+    RUNE_REFINEMENT,
+    RUNE_SHATTER,
     SOUL_CORE,
     SPARKLING_SPRIG,
+    SPIRIT_SHARD,
     VOID_FRAG,
+    VOID_KEY,
 )
 from core.images import COMBAT_VICTORY
 from core.items.models import _PART_SLOT_LABELS
@@ -96,7 +110,7 @@ def create_victory_embed(
     # 1. Curios
     if rewards.get("curios", 0) > 0:
         count = rewards["curios"]
-        loot_lines.append(f"🎁 **{count}** Curious Curio{'s' if count > 1 else ''}")
+        loot_lines.append(f"{CURIO} **{count}** Curious Curio{'s' if count > 1 else ''}")
 
     # 2. Specials (Keys & Runes) - Mapped to emojis
     special_map = {
@@ -104,19 +118,23 @@ def create_victory_embed(
         "Angelic Key": ANGEL_KEY,
         "Soul Core": SOUL_CORE,
         "Void Fragment": VOID_FRAG,
-        "Void Key": "🗝️",
-        "Rune of Potential": "💎",
-        "Rune of Refinement": "🔨",
-        "Rune of Imbuing": "🔅",
-        "Rune of Shattering": "💥",
+        "Void Key": VOID_KEY,
+        "Rune of Potential": RUNE_POTENTIAL,
+        "Rune of Refinement": RUNE_REFINEMENT,
+        "Rune of Imbuing": RUNE_IMBUE,
+        "Rune of Shattering": RUNE_SHATTER,
         "Fragment of Balance": "⚖️",
-        "Magma Core": "🔥",
-        "Life Root": "🌿",
-        "Spirit Shard": "🌟",
+        "Magma Core": MAGMA_CORE,
+        "Life Root": LIFE_ROOT,
+        "Spirit Shard": SPIRIT_SHARD,
         "Blessed Bismuth": BLESSED_BISMUTH,
         "Sparkling Sprig": SPARKLING_SPRIG,
         "Capricious Carp": CAPRICIOUS_CARP,
-        "Rune of Partnership": "🤝",
+        "Rune of Partnership": RUNE_PARTNERSHIP,
+        "Rune of Mirage (Imperfect)": RUNE_MIRAGE_IMPERFECT,
+        "Rune of Mirage (Perfected)": RUNE_MIRAGE_PERFECT,
+        "Uncut Paradise Jewel": PARADISE_JEWEL_UNCUT,
+        "Curio Puzzle Box": PUZZLE_BOX,
         "Celestial Sigil": "🌌",
         "Infernal Sigil": "🔥",
         "Void Sigil": "🟣",

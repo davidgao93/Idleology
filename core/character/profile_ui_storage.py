@@ -15,25 +15,52 @@ from core.emojis import (
     BOOT_SLOT,
     CAPRICIOUS_CARP,
     COAL_ORE,
+    CONSUME_ICON,
+    CURIO,
     DESICCATED_BONES,
+    DIVINER_ROD,
     DRAGON_KEY,
+    ESSENCE_COMMON,
+    ESSENCE_CORRUPT,
+    ESSENCE_RARE,
+    GEODE_CORE,
     GLOVE_SLOT,
     GOLD_ORE,
+    HEARTWOOD_SHARD,
     HELMET_SLOT,
     IDEA_LOGS,
     IDEA_ORE,
     IRON_ORE,
+    LIFE_ROOT,
     MAGIC_LOGS,
+    MAGMA_CORE,
     MAHOGANY_LOGS,
     OAK_LOGS,
+    PARADISE_JEWEL_UNCUT,
+    PINNACLE_KEY,
     PLATINUM_ORE,
+    PUZZLE_BOX,
     REGULAR_BONES,
     REINFORCED_BONES,
+    RUNE_IMBUE,
+    RUNE_MIRAGE_IMPERFECT,
+    RUNE_MIRAGE_PERFECT,
+    RUNE_NATURE,
+    RUNE_PARTNERSHIP,
+    RUNE_POTENTIAL,
+    RUNE_REFINEMENT,
+    RUNE_REGRET,
+    RUNE_SHATTER,
     SOUL_CORE,
     SPARKLING_SPRIG,
+    SPIRIT_SHARD,
+    SPIRIT_STONE,
     STURDY_BONES,
+    TIDE_RELIC,
     TITANIUM_BONES,
     VOID_FRAG,
+    VOID_KEY,
+    WEAPON_SLOT,
     WILLOW_LOGS,
 )
 
@@ -86,9 +113,9 @@ class StorageProfileBuilder:
         embed.set_thumbnail(url=user["appearance"])
 
         embed.add_field(
-            name="⚔️ **Gear**",
+            name=f"{WEAPON_SLOT} **Gear**",
             value=(
-                f"⚔️ Weapons: {w_count}/60\n{ARMOR_SLOT} Armor: {ar_count}/60\n{ACCESSORY_SLOT} Accs: {a_count}/60\n"
+                f"{WEAPON_SLOT} Weapons: {w_count}/60\n{ARMOR_SLOT} Armor: {ar_count}/60\n{ACCESSORY_SLOT} Accs: {a_count}/60\n"
                 f"{GLOVE_SLOT} Gloves: {g_count}/60\n{BOOT_SLOT} Boots: {b_count}/60\n{HELMET_SLOT} Helms: {h_count}/60\n🐾 Pets: {pet_count}/20"
             ),
             inline=True,
@@ -106,10 +133,10 @@ class StorageProfileBuilder:
         embed.add_field(
             name="📦 **Misc Items**",
             value=(
-                f"🎁 Curios: {curios}\n"
-                f"🎁 Puzzle Boxes: {puzzle_boxes}\n"
+                f"{CURIO} Curios: {curios}\n"
+                f"{PUZZLE_BOX} Puzzle Boxes: {puzzle_boxes}\n"
                 f"🎫 Guild Tickets: {guild_tickets}\n"
-                f"📖 Antique Tomes: {antique_tomes}\n🗝️ Pinnacle Keys: {pinnacle_keys}"
+                f"📖 Antique Tomes: {antique_tomes}\n{PINNACLE_KEY} Pinnacle Keys: {pinnacle_keys}"
             ),
             inline=True,
         )
@@ -118,14 +145,14 @@ class StorageProfileBuilder:
             name="⚗️ **Alchemy**",
             value=(
                 f"✨ Cosmic Dust: {cosmic_dust:,}\n"
-                f"🔮 Spirit Stones: {spirit_stones}\n"
-                f"💎 Uncut Jewels: {paradise_jewels}"
+                f"{SPIRIT_STONE} Spirit Stones: {spirit_stones}\n"
+                f"{PARADISE_JEWEL_UNCUT} Uncut Jewels: {paradise_jewels}"
             ),
             inline=True,
         )
 
         embed.add_field(
-            name="🦴 **Consume**",
+            name=f"{CONSUME_ICON} **Consume**",
             value=(
                 f"🦴 Parts: {parts_count}/20\n"
                 f"🥚 Eggs: {egg_count}/20\n"
@@ -159,18 +186,18 @@ class StorageProfileBuilder:
         embed.set_thumbnail(url=user["appearance"])
 
         embed.add_field(
-            name="💎 **Runes**",
+            name=f"{RUNE_REFINEMENT} **Runes**",
             value=(
-                f"🔨 Refinement: {ref_runes}\n✨ Potential: {pot_runes}\n🔮 Imbuing: {imbue_runes}\n"
-                f"💥 Shatter: {shat_runes}\n🤝 Partnership: {r_partner}\n💔 Regret: {r_regret}\n"
-                f"🪞 Mirage (Imperfect): {mirage_imp}\n🪞 Mirage (Perfected): {mirage_perf}"
+                f"{RUNE_REFINEMENT} Refinement: {ref_runes}\n{RUNE_POTENTIAL} Potential: {pot_runes}\n{RUNE_IMBUE} Imbuing: {imbue_runes}\n"
+                f"{RUNE_SHATTER} Shatter: {shat_runes}\n{RUNE_PARTNERSHIP} Partnership: {r_partner}\n{RUNE_REGRET} Regret: {r_regret}\n"
+                f"{RUNE_MIRAGE_IMPERFECT} Mirage (Imperfect): {mirage_imp}\n{RUNE_MIRAGE_PERFECT} Mirage (Perfected): {mirage_perf}"
             ),
             inline=True,
         )
 
         embed.add_field(
-            name="🗝️ **Void Keys**",
-            value=f"🗝️ Void Keys: {void_keys}",
+            name=f"{VOID_KEY} **Void Keys**",
+            value=f"{VOID_KEY} Void Keys: {void_keys}",
             inline=True,
         )
 
@@ -195,17 +222,17 @@ class StorageProfileBuilder:
             )
 
         embed.add_field(
-            name="🧪 **Common Essences**",
+            name=f"{ESSENCE_COMMON} **Common Essences**",
             value=_essence_lines(_COMMON_ESSENCES),
             inline=False,
         )
         embed.add_field(
-            name="💠 **Rare Essences**",
+            name=f"{ESSENCE_RARE} **Rare Essences**",
             value=_essence_lines(_RARE_ESSENCES),
             inline=True,
         )
         embed.add_field(
-            name="☠️ **Corrupted Essences**",
+            name=f"{ESSENCE_CORRUPT} **Corrupted Essences**",
             value=_essence_lines(_CORRUPTED_ESSENCES),
             inline=True,
         )
@@ -303,10 +330,10 @@ class StorageProfileBuilder:
         embed.add_field(name="⛏️ Gathering", value=gathering_value, inline=False)
 
         mastery_value = (
-            f"⛏️ **Geode Cores:** {geode_cores:,}\n"
-            f"🐟 **Tide Relics:** {tide_relics:,}\n"
-            f"🪵 **Heartwood Shards:** {heartwood_shards:,}\n"
-            f"🌿 **Runes of Nature:** {runes_of_nature:,}"
+            f"{GEODE_CORE} **Geode Cores:** {geode_cores:,}\n"
+            f"{TIDE_RELIC} **Tide Relics:** {tide_relics:,}\n"
+            f"{HEARTWOOD_SHARD} **Heartwood Shards:** {heartwood_shards:,}\n"
+            f"{RUNE_NATURE} **Runes of Nature:** {runes_of_nature:,}"
         )
         embed.add_field(
             name="🌿 Artisan Mastery (Remnants)", value=mastery_value, inline=False
@@ -317,8 +344,8 @@ class StorageProfileBuilder:
             f"**{BARS_REFINED} Ingots:** Iron {ingots[0]:,} · Steel {ingots[1]:,} · Gold {ingots[2]:,} · Plat {ingots[3]:,} · Idea {ingots[4]:,}\n"
             f"**Planks:** Oak {planks[0]:,} · Willow {planks[1]:,} · Mahog {planks[2]:,} · Magic {planks[3]:,} · Idea {planks[4]:,}\n"
             f"**Essence:** Desic {essence[0]:,} · Reg {essence[1]:,} · Sturdy {essence[2]:,} · Reinf {essence[3]:,} · Titan {essence[4]:,}\n"
-            f"**Rare Materials:** 🔥 Magma Core: {rares[0]} · 🌿 Life Root: {rares[1]} · 👻 Spirit Shard: {rares[2]}\n"
-            f"📋 Blueprints: {blueprint_count} · 🔮 Diviner's Rods: {mat_all.get('diviners_rod', 0)}"
+            f"**Rare Materials:** {MAGMA_CORE} Magma Core: {rares[0]} · {LIFE_ROOT} Life Root: {rares[1]} · {SPIRIT_SHARD} Spirit Shard: {rares[2]}\n"
+            f"📋 Blueprints: {blueprint_count} · {DIVINER_ROD} Diviner's Rods: {mat_all.get('diviners_rod', 0)}"
         )
         embed.add_field(name="🏭 Settlement", value=settlement_value, inline=False)
 

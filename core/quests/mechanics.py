@@ -7,7 +7,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timedelta
 
-from core.emojis import ANGEL_KEY, DRAGON_KEY, SOUL_CORE, VOID_FRAG
+from core.emojis import ANGEL_KEY, DRAGON_KEY, SOUL_CORE, SPIRIT_STONE, VOID_FRAG
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, get_damage_goals
 
 BOARD_COOLDOWN_HOURS = 20
@@ -437,7 +437,7 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
 
         elif path_id == "alchemist":
             await bot.database.users.modify_currency(user_id, "spirit_stones", 1)
-            msgs.append("💎 +1 Spirit Stone")
+            msgs.append(f"{SPIRIT_STONE} +1 Spirit Stone")
 
         elif path_id == "glutton":
             # Find highest consumed part level

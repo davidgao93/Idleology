@@ -10,7 +10,7 @@ from core.alchemy.mechanics import (
     get_passive_name_emoji,
 )
 from core.base_view import BaseView
-from core.emojis import RESOURCE_EMOJI
+from core.emojis import RESOURCE_EMOJI, SPIRIT_STONE
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.skills.mastery import get_attunement_alchemy_bonus
@@ -78,13 +78,13 @@ class AlchemyHubView(BaseView):
         embed.set_footer(text=get_quip("alchemy"))
         info = [
             f"**Level:** {self.alchemy_level} / {AlchemyMechanics.MAX_LEVEL}",
-            f"**Spirit Stones:** 🔮 {self.spirit_stones}",
+            f"**Spirit Stones:** {SPIRIT_STONE} {self.spirit_stones}",
             f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}",
             f"**Gold:** 💰 {self.player_gold:,}",
             f"**Passive Slots:** {slot_count} unlocked",
         ]
         if level_cost is not None:
-            info.append(f"**Next Level Cost:** 🔮 {level_cost} Spirit Stones")
+            info.append(f"**Next Level Cost:** {SPIRIT_STONE} {level_cost} Spirit Stones")
         else:
             info.append("**Level:** ✨ MAX")
         embed.description = "\n".join(info)
@@ -182,7 +182,7 @@ class AlchemyHubView(BaseView):
             return
         if self.spirit_stones < cost:
             await interaction.response.send_message(
-                f"Not enough Spirit Stones! Need 🔮 **{cost}**, have **{self.spirit_stones}**.",
+                f"Not enough Spirit Stones! Need {SPIRIT_STONE} **{cost}**, have **{self.spirit_stones}**.",
                 ephemeral=True,
             )
             return
@@ -199,7 +199,7 @@ class AlchemyHubView(BaseView):
             description=(
                 f"*You're ready to push this further. Good.*\n\n"
                 f"Upgrade from **Level {self.alchemy_level}** → **Level {new_level}**\n\n"
-                f"Cost: 🔮 **{cost}** Spirit Stones\n"
+                f"Cost: {SPIRIT_STONE} **{cost}** Spirit Stones\n"
                 f"New slot count: **{AlchemyMechanics.get_slot_count(new_level)}**\n"
                 f"New transmutation ratio: **{up_r}:1** upgrade / **1:{dn_r}** downgrade\n\n"
                 f"✨ The new slot will be ready for a free Distillation in the Potion Lab."
@@ -247,7 +247,7 @@ class _LevelUpConfirmView(BaseView):
         )
         if current_stones < self.cost:
             await interaction.followup.send(
-                f"Not enough Spirit Stones! Need 🔮 {self.cost}, have {current_stones}.",
+                f"Not enough Spirit Stones! Need {SPIRIT_STONE} {self.cost}, have {current_stones}.",
                 ephemeral=True,
             )
             return
@@ -1014,8 +1014,8 @@ class AlchemyPotionLabView(BaseView):
         embed.set_footer(text=get_quip("alchemy"))
 
         embed.description = (
-            f"**Level:** {self.alchemy_level} | **Spirit Stones:** 🔮 {self.spirit_stones} | **Cosmic Dust:** ✨ {self.cosmic_dust:,}\n\n"
-            "**Distill Elixir** (🔮 1 Spirit Stone) crafts a powerful passive into the selected slot. "
+            f"**Level:** {self.alchemy_level} | **Spirit Stones:** {SPIRIT_STONE} {self.spirit_stones} | **Cosmic Dust:** ✨ {self.cosmic_dust:,}\n\n"
+            f"**Distill Elixir** ({SPIRIT_STONE} 1 Spirit Stone) crafts a powerful passive into the selected slot. "
             "Click **Guide** for distillation rules, or **Passives** to browse all possible cores.\n"
             "*If the selected slot already has a passive, you'll be offered a choice to keep the old one or take the new one after distillation completes.*"
         )
@@ -1057,7 +1057,7 @@ class AlchemyPotionLabView(BaseView):
             )
             if current_stones < 1:
                 await interaction.response.send_message(
-                    "You need 🔮 **1 Spirit Stone** to begin a Distillation.",
+                    f"You need {SPIRIT_STONE} **1 Spirit Stone** to begin a Distillation.",
                     ephemeral=True,
                 )
                 return

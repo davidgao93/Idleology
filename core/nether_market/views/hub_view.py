@@ -16,6 +16,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import NETHER_MARKET_PLUNDER
 from core.images import VEX_PORTRAIT, VEX_THUMBNAIL
 from core.nether_market.data import WEALTH_TIERS
 from core.nether_market.mechanics import MAX_CHARGES
@@ -234,7 +235,7 @@ class NetherMarketHubView(BaseView):
         self.add_item(holdings_btn)
 
         browse_btn = ui.Button(
-            label="Browse Targets", style=ButtonStyle.blurple, emoji="\U0001f3af", row=1
+            label="Browse Targets", style=ButtonStyle.blurple, emoji=NETHER_MARKET_PLUNDER, row=1
         )
         browse_btn.callback = self.open_browse
         self.add_item(browse_btn)

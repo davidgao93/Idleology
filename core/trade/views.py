@@ -2,7 +2,14 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
-from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
+from core.emojis import (
+    ACCESSORY_SLOT,
+    ARMOR_SLOT,
+    BOOT_SLOT,
+    GLOVE_SLOT,
+    HELMET_SLOT,
+    WEAPON_SLOT,
+)
 from core.images import TRADE_HUB
 from core.trade.logic import TradeManager
 
@@ -243,7 +250,7 @@ class TradeRootView(BaseView):
     async def equipment_menu_callback(self, interaction: Interaction):
         self.clear_items()
         options = [
-            SelectOption(label="Weapon", value="weapon", emoji="⚔️"),
+            SelectOption(label="Weapon", value="weapon", emoji=WEAPON_SLOT),
             SelectOption(label="Armor", value="armor", emoji=ARMOR_SLOT),
             SelectOption(label="Accessory", value="accessory", emoji=ACCESSORY_SLOT),
             SelectOption(label="Gloves", value="glove", emoji=GLOVE_SLOT),

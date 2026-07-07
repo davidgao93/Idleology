@@ -4,6 +4,7 @@ core/maw/ui.py — Stateless embed builders for the Maw of Infinity.
 
 import discord
 
+from core.emojis import INFINITE_MAW
 from core.images import (
     MAW_VICTORY,
     BROTHER_SOLEN_PORTRAIT,
@@ -45,7 +46,7 @@ def build_maw_embed(
     pending_total_damage: int = 0,
     pending_participant_count: int = 0,
 ) -> discord.Embed:
-    embed = discord.Embed(title="🌑 The Maw of Infinity", color=0x1A0033)
+    embed = discord.Embed(title=f"{INFINITE_MAW} The Maw of Infinity", color=0x1A0033)
     embed.set_author(name="Brother Solen", icon_url=BROTHER_SOLEN_PORTRAIT)
     embed.set_footer(text=get_quip("maw"))
 

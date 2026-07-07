@@ -3,7 +3,20 @@ from typing import List, Union
 import discord
 
 from core.combat.calc.calcs import fmt_weapon_passive
-from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
+from core.emojis import (
+    ACCESSORY_SLOT,
+    ARMOR_SLOT,
+    BOOT_SLOT,
+    GLOVE_SLOT,
+    HELMET_SLOT,
+    STAT_ATK,
+    STAT_BLOCK,
+    STAT_DEF,
+    STAT_FDR,
+    STAT_PDR,
+    STAT_WARD,
+    WEAPON_SLOT,
+)
 from core.images import (
     INVENTORY_HUB,
     SLOT_ACCESSORY,
@@ -19,7 +32,7 @@ from core.util import stars
 # Kept in sync with core/inventory/views/_slot_defs.py (can't import it directly —
 # that package's __init__ imports back into this module, which would cycle).
 _SLOT_EMOJIS = {
-    "weapon": "⚔️",
+    "weapon": WEAPON_SLOT,
     "armor": ARMOR_SLOT,
     "helmet": HELMET_SLOT,
     "glove": GLOVE_SLOT,
@@ -497,23 +510,23 @@ class InventoryUI:
         """Compact multi-line stats string for the equipped item panel in the gear embed."""
         parts = []
         if getattr(item, "attack", 0) > 0:
-            parts.append(f"⚔️ ATK: {item.attack}")
+            parts.append(f"{STAT_ATK} ATK: {item.attack}")
         if getattr(item, "defence", 0) > 0:
-            parts.append(f"🛡️ DEF: {item.defence}")
+            parts.append(f"{STAT_DEF} DEF: {item.defence}")
         if getattr(item, "rarity", 0) > 0:
             parts.append(f"✨ Rarity: {item.rarity}%")
         if getattr(item, "ward", 0) > 0:
-            parts.append(f"🔮 Ward: {item.ward}%")
+            parts.append(f"{STAT_WARD} Ward: {item.ward}%")
         if getattr(item, "crit", 0) > 0:
             parts.append(f"🎯 Crit: {item.crit}")
         if getattr(item, "block", 0) > 0:
-            parts.append(f"🛑 Block: {item.block}%")
+            parts.append(f"{STAT_BLOCK} Block: {item.block}%")
         if getattr(item, "evasion", 0) > 0:
             parts.append(f"💨 Eva: {item.evasion}%")
         if getattr(item, "pdr", 0) > 0:
-            parts.append(f"🛡️ PDR: {item.pdr}%")
+            parts.append(f"{STAT_PDR} PDR: {item.pdr}%")
         if getattr(item, "fdr", 0) > 0:
-            parts.append(f"🛡️ FDR: {item.fdr}")
+            parts.append(f"{STAT_FDR} FDR: {item.fdr}")
         if isinstance(item, Weapon) and item.refinement_lvl > 0:
             parts.append(f"🔧 Refine: +{item.refinement_lvl}")
 

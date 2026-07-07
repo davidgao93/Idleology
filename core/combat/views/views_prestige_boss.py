@@ -13,6 +13,7 @@ from discord.ui import Button
 
 from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
+from core.emojis import GEODE_CORE, HEARTWOOD_SHARD, TIDE_RELIC
 from core.images import (
     MERIDIAN_GOLEM_DEFEAT,
     DROWNED_LEVIATHAN_DEFEAT,
@@ -25,6 +26,12 @@ REMNANT_MAP = {
     "golem": ("geode_cores", "Geode Cores"),
     "leviathan": ("tide_relics", "Tide Relics"),
     "colossus": ("heartwood_shards", "Heartwood Shards"),
+}
+
+REMNANT_EMOJI = {
+    "golem": GEODE_CORE,
+    "leviathan": TIDE_RELIC,
+    "colossus": HEARTWOOD_SHARD,
 }
 
 
@@ -69,6 +76,7 @@ class PrestigeBossHarvestView(BaseLayoutView):
         self.remnant_col, self.remnant_name = REMNANT_MAP.get(
             prestige_boss_type, ("geode_cores", "Geode Cores")
         )
+        self.remnant_emoji = REMNANT_EMOJI.get(prestige_boss_type, GEODE_CORE)
         self.row = HarvestRow()
 
     def set_content(self, embed: discord.Embed) -> None:
@@ -136,7 +144,7 @@ class PrestigeBossHarvestView(BaseLayoutView):
             description=(
                 f"You have successfully overcome the ancient guardian.\n\n"
                 f"**Harvest Complete!**\n"
-                f"You obtained **{amount} {self.remnant_name}**.\n"
+                f"You obtained {self.remnant_emoji} **{amount} {self.remnant_name}**.\n"
                 f"Your next **{total_ticks}** passive {skill.title()} ticks "
                 f"will yield **3×** resources{bonus_line}."
             ),
