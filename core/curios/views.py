@@ -112,7 +112,9 @@ class CurioView(BaseView):
         btn_box.callback = self._open_puzzle_box
         self.add_item(btn_box)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
+        btn_close = ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         btn_close.callback = self._close
         self.add_item(btn_close)
 

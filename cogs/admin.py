@@ -148,9 +148,13 @@ class Admin(commands.Cog, name="admin"):
             f"**XP:** {total_xp:,}",
         ]
         if levels_gained:
-            core_lines.append(f"**Level-ups:** {levels_gained} → now Level {player.level}")
+            core_lines.append(
+                f"**Level-ups:** {levels_gained} → now Level {player.level}"
+            )
         if asc_gained:
-            core_lines.append(f"**Ascensions:** {asc_gained} → Ascension {player.ascension}")
+            core_lines.append(
+                f"**Ascensions:** {asc_gained} → Ascension {player.ascension}"
+            )
         embed.add_field(name="Core Rewards", value="\n".join(core_lines), inline=False)
 
         # Gear drops

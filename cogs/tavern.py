@@ -18,7 +18,12 @@ from core.items.factory import load_player
 from core.npc_voices import get_quip
 from core.quests.data import CHECKIN_DAY_LABELS
 from core.tavern.mechanics import TavernMechanics
-from core.tavern.views import CasinoMenuView, RestView, ShopView, build_casino_lobby_embed
+from core.tavern.views import (
+    CasinoMenuView,
+    RestView,
+    ShopView,
+    build_casino_lobby_embed,
+)
 
 
 def _build_checkin_embed(

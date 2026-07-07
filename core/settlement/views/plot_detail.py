@@ -646,8 +646,12 @@ class PlotDetailView(SettlementBaseView):
                         for s in cost["specials"]:
                             cost_str += f" | ✨ {s['name']} ×{s['qty']}"
                     elif "special_name" in cost:
-                        cost_str += f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
-                    embed.add_field(name="Next Upgrade Cost", value=cost_str, inline=False)
+                        cost_str += (
+                            f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
+                        )
+                    embed.add_field(
+                        name="Next Upgrade Cost", value=cost_str, inline=False
+                    )
 
         embed.add_field(
             name="Surrounding Plots",
@@ -777,8 +781,7 @@ class PlotDetailView(SettlementBaseView):
         # Pre-compute whether this building already has an upgrade queued.
         _projects = getattr(self.parent, "projects", []) or []
         _has_upgrade = any(
-            p["project_type"] == "upgrade" and p["target_id"] == b.id
-            for p in _projects
+            p["project_type"] == "upgrade" and p["target_id"] == b.id for p in _projects
         )
 
         # --- Special case: Uber Shrine opens Monument Hall view ---
@@ -1089,7 +1092,9 @@ class PlotDetailView(SettlementBaseView):
     async def _open_meta_construction(self, interaction: Interaction):
         event_effects, researched = await asyncio.gather(
             self._load_event_effects(),
-            self.bot.database.settlement.get_researched(self.user_id, self.parent.server_id),
+            self.bot.database.settlement.get_researched(
+                self.user_id, self.parent.server_id
+            ),
         )
         view = MetaBuildingConstructionView(
             bot=self.bot,
@@ -1141,7 +1146,9 @@ class PlotDetailView(SettlementBaseView):
 
         # Guard: reject if an upgrade project for this building already exists.
         _projects = getattr(self.parent, "projects", []) or []
-        if any(p["project_type"] == "upgrade" and p["target_id"] == b.id for p in _projects):
+        if any(
+            p["project_type"] == "upgrade" and p["target_id"] == b.id for p in _projects
+        ):
             self._processing = False
             return await interaction.response.send_message(
                 "This building already has an upgrade queued.", ephemeral=True
@@ -1195,7 +1202,8 @@ class PlotDetailView(SettlementBaseView):
             if _mats.get(cost["special_key"], 0) < cost["special_qty"]:
                 self._processing = False
                 return await interaction.response.send_message(
-                    f"Need {cost['special_qty']}× {cost['special_name']}!", ephemeral=True
+                    f"Need {cost['special_qty']}× {cost['special_name']}!",
+                    ephemeral=True,
                 )
 
         await interaction.response.defer()
@@ -1304,8 +1312,11 @@ class PlotDetailView(SettlementBaseView):
         await interaction.response.defer()
 
         result = await execute_diviners_rod(
-            self.bot, self.user_id, self.parent.server_id,
-            self.plot.plot_index, self.plot.bonus_type
+            self.bot,
+            self.user_id,
+            self.parent.server_id,
+            self.plot.plot_index,
+            self.plot.bonus_type,
         )
         self.parent.plots = result["plots"]
         self.plot = next(
@@ -1547,7 +1558,10 @@ class MetaBuildingConstructionView(SettlementBaseView):
     # ------------------------------------------------------------------
 
     def build_embed(self) -> discord.Embed:
-        from core.settlement.views.research import RESEARCHABLE_BUILDINGS, RESEARCH_PREREQUISITES
+        from core.settlement.views.research import (
+            RESEARCHABLE_BUILDINGS,
+            RESEARCH_PREREQUISITES,
+        )
 
         cat_data = _META_CATEGORIES[self._category]
         embed = discord.Embed(
@@ -1575,7 +1589,9 @@ class MetaBuildingConstructionView(SettlementBaseView):
                 f"⏱️ {dt} DTs"
             )
             affects = data.get("affects", "")
-            needs_research = key in RESEARCHABLE_BUILDINGS and key not in self.researched
+            needs_research = (
+                key in RESEARCHABLE_BUILDINGS and key not in self.researched
+            )
             if key in existing_types:
                 suffix = " *(already built)*"
             elif key in pending_types:
@@ -1583,10 +1599,14 @@ class MetaBuildingConstructionView(SettlementBaseView):
             elif needs_research:
                 prereq = RESEARCH_PREREQUISITES.get(key)
                 if prereq and prereq not in self.researched:
-                    prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title())
+                    prereq_name = RESEARCHABLE_BUILDINGS.get(
+                        prereq, prereq.replace("_", " ").title()
+                    )
                     suffix = f" *(🔒 Research **{prereq_name}** first)*"
                 else:
-                    own_name = RESEARCHABLE_BUILDINGS.get(key, key.replace("_", " ").title())
+                    own_name = RESEARCHABLE_BUILDINGS.get(
+                        key, key.replace("_", " ").title()
+                    )
                     suffix = f" *(🔒 Research **{own_name}** first)*"
             else:
                 suffix = ""

@@ -25,7 +25,15 @@ async def build_holdings_view(bot, user_id: str, server_id: str) -> "HoldingsVie
 
 
 class HoldingsView(BaseView):
-    def __init__(self, bot, user_id, server_id, holdings: dict, rotation: dict | None, profile: dict):
+    def __init__(
+        self,
+        bot,
+        user_id,
+        server_id,
+        holdings: dict,
+        rotation: dict | None,
+        profile: dict,
+    ):
         super().__init__(bot, user_id, server_id)
         self.holdings = holdings
         self.rotation = rotation
@@ -39,7 +47,9 @@ class HoldingsView(BaseView):
         held_count = sum(self.holdings.values())
         total_value = M.compute_holdings_value(self.holdings, self.rotation)
 
-        embed = discord.Embed(title="\U0001f4e6 Your Holdings", color=discord.Color.dark_purple())
+        embed = discord.Embed(
+            title="\U0001f4e6 Your Holdings", color=discord.Color.dark_purple()
+        )
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if VEX_THUMBNAIL:
             embed.set_thumbnail(url=VEX_THUMBNAIL)
@@ -58,9 +68,13 @@ class HoldingsView(BaseView):
                     f"**{qty}x** {item['name']} *({tier_label})*{tag} — {price:,} each = {subtotal:,}"
                 )
 
-        embed.description = "\n".join(lines) if lines else "You aren't holding anything right now."
+        embed.description = (
+            "\n".join(lines) if lines else "You aren't holding anything right now."
+        )
         embed.add_field(name="Total Slots", value=f"{held_count} / {cap}", inline=True)
-        embed.add_field(name="Total Value", value=f"\U0001f4b0 ~{total_value:,}", inline=True)
+        embed.add_field(
+            name="Total Value", value=f"\U0001f4b0 ~{total_value:,}", inline=True
+        )
         embed.set_footer(
             text=f"{get_quip('nether_market_holdings')}\n"
             "\U0001f504 = currently one of the 6 active offers, sellable at that price"
@@ -81,6 +95,8 @@ class HoldingsView(BaseView):
         from core.nether_market.views.hub_view import build_hub_view
 
         view = await build_hub_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()

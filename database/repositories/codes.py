@@ -43,6 +43,12 @@ class CodesRepository:
         await self.connection.execute(
             "INSERT INTO redeem_codes (code, rewards, max_uses, is_admin_only, expires_at) "
             "VALUES (?, ?, ?, ?, ?)",
-            (code.upper(), json.dumps(rewards), max_uses, int(is_admin_only), expires_at),
+            (
+                code.upper(),
+                json.dumps(rewards),
+                max_uses,
+                int(is_admin_only),
+                expires_at,
+            ),
         )
         await self.connection.commit()

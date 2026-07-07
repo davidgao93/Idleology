@@ -28,7 +28,14 @@ async def _hub_from_db(bot, user_id: str, server_id: str) -> "AlchemyHubView":
     alchemy_level = await bot.database.alchemy.get_level(user_id)
     passives = await bot.database.alchemy.get_potion_passives(user_id)
     return AlchemyHubView(
-        bot, user_id, server_id, alchemy_level, passives, gold, spirit_stones, cosmic_dust
+        bot,
+        user_id,
+        server_id,
+        alchemy_level,
+        passives,
+        gold,
+        spirit_stones,
+        cosmic_dust,
     )
 
 

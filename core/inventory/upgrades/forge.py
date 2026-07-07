@@ -34,7 +34,11 @@ class ForgeView(BaseUpgradeView):
         )
         self.costs = costs
 
-        current_passive = fmt_weapon_passive(self.item.passive) if self.item.passive and self.item.passive != "none" else "None"
+        current_passive = (
+            fmt_weapon_passive(self.item.passive)
+            if self.item.passive and self.item.passive != "none"
+            else "None"
+        )
 
         self.embed = discord.Embed(
             title=f"Forge {self.item.name}",
@@ -43,7 +47,9 @@ class ForgeView(BaseUpgradeView):
         )
         self.embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         self.embed.set_thumbnail(url=UPGRADE_FORGE)
-        self.embed.add_field(name="Current Passive", value=current_passive, inline=False)
+        self.embed.add_field(
+            name="Current Passive", value=current_passive, inline=False
+        )
         self.embed.add_field(
             name=f"Cost (Forges Remaining: {self.item.forges_remaining})",
             value=cost_lines,
@@ -231,16 +237,28 @@ class ForgeView(BaseUpgradeView):
         # Fetch every possible material tier up front
         sim_mats: dict[str, int] = {}
         for ore_col, (table, ref_col) in _ORE_REFINED.items():
-            raw = await self.bot.database.skills.get_single_resource(uid, gid, table, ore_col)
-            ref = await self.bot.database.skills.get_single_resource(uid, gid, table, ref_col)
+            raw = await self.bot.database.skills.get_single_resource(
+                uid, gid, table, ore_col
+            )
+            ref = await self.bot.database.skills.get_single_resource(
+                uid, gid, table, ref_col
+            )
             sim_mats[ore_col] = raw + ref
         for base in _LOG_BASES:
-            raw = await self.bot.database.skills.get_single_resource(uid, gid, "woodcutting", f"{base}_logs")
-            ref = await self.bot.database.skills.get_single_resource(uid, gid, "woodcutting", f"{base}_plank")
+            raw = await self.bot.database.skills.get_single_resource(
+                uid, gid, "woodcutting", f"{base}_logs"
+            )
+            ref = await self.bot.database.skills.get_single_resource(
+                uid, gid, "woodcutting", f"{base}_plank"
+            )
             sim_mats[f"{base}_logs"] = raw + ref
         for base in _BONE_BASES:
-            raw = await self.bot.database.skills.get_single_resource(uid, gid, "fishing", f"{base}_bones")
-            ref = await self.bot.database.skills.get_single_resource(uid, gid, "fishing", f"{base}_essence")
+            raw = await self.bot.database.skills.get_single_resource(
+                uid, gid, "fishing", f"{base}_bones"
+            )
+            ref = await self.bot.database.skills.get_single_resource(
+                uid, gid, "fishing", f"{base}_essence"
+            )
             sim_mats[f"{base}_bones"] = raw + ref
 
         sim_gold = await self.bot.database.users.get_gold(uid)
@@ -261,7 +279,9 @@ class ForgeView(BaseUpgradeView):
             bone_col = f"{c['bone_type']}_bones"
 
             if sim_mats.get(ore_col, 0) < c["ore_qty"]:
-                stop_reason = f"Ran out of {c['ore_type'].removesuffix('_ore').title()}."
+                stop_reason = (
+                    f"Ran out of {c['ore_type'].removesuffix('_ore').title()}."
+                )
                 break
             if sim_mats.get(log_col, 0) < c["log_qty"]:
                 stop_reason = f"Ran out of {c['log_type'].title()} Logs."

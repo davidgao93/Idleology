@@ -476,7 +476,10 @@ async def _complete_project(
             await bot.database.settlement.build_structure(
                 user_id, server_id, building_type, plot_index, is_meta
             )
-        return {"label": f"{building_type.replace('_', ' ').title()}", "is_meta": is_meta}
+        return {
+            "label": f"{building_type.replace('_', ' ').title()}",
+            "is_meta": is_meta,
+        }
 
     elif ptype == "upgrade":
         building_id = proj.get("target_id")
@@ -726,6 +729,24 @@ async def _check_schedule_events(
 # ---------------------------------------------------------------------------
 # Black Market — value calculation + processing turns
 # ---------------------------------------------------------------------------
+
+
+def resolve_bm_event_value_bonus(active_events: list) -> float:
+    """Sums the `bm_value_bonus` effect (e.g. Merchant Caravan) across active ongoing events."""
+    bonus = 0.0
+    for ev in active_events:
+        if ev["event_type"] != "ongoing":
+            continue
+        ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
+        raw_val = ev_def.get("effects", {}).get("bm_value_bonus", 0.0)
+        ev_data = ev.get("data") or {}
+        if raw_val == "band":
+            raw_val = ev_data.get("band", 0.0)
+        elif raw_val == "neg_band":
+            raw_val = -ev_data.get("band", 0.0)
+        if isinstance(raw_val, (int, float)):
+            bonus += raw_val
+    return bonus
 
 
 def calculate_offer_value(

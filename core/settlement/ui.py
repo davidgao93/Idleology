@@ -123,11 +123,17 @@ def build_plot_bonuses_embed() -> discord.Embed:
         ),
         color=discord.Color.green(),
     )
-    embed.set_footer(text="Use a Diviner's Rod on any plot to reroll its terrain bonus.")
+    embed.set_footer(
+        text="Use a Diviner's Rod on any plot to reroll its terrain bonus."
+    )
     return embed
 
 
-_COLLECTION_EMOJI: dict[str, str] = {"timber": "🪵 ", "stone": "🪨 ", "Market Gold": "💰 "}
+_COLLECTION_EMOJI: dict[str, str] = {
+    "timber": "🪵 ",
+    "stone": "🪨 ",
+    "Market Gold": "💰 ",
+}
 
 
 def format_collection_changes(changes: dict) -> str:

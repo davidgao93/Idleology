@@ -604,7 +604,13 @@ class TutorialGateView(BaseView):
         self._processing = True
 
         main_embed, main_view = await self._build_main()
-        await interaction.response.edit_message(embed=main_embed, view=main_view)
+        if isinstance(main_view, discord.ui.LayoutView):
+            # Content lives inside main_view's own components — passing a
+            # classic embed alongside a Components V2 view is rejected by
+            # Discord, so main_embed is unused in this branch.
+            await interaction.response.edit_message(embed=None, view=main_view)
+        else:
+            await interaction.response.edit_message(embed=main_embed, view=main_view)
         # interaction.message is the message we just edited — hand it to the new view.
         main_view.message = interaction.message
         self.stop()

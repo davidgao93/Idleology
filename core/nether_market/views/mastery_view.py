@@ -22,7 +22,9 @@ _BRANCH_ORDER = ("trunk", "cutpurse", "strongbox")
 
 
 def _nodes_for_branch(branch_key: str) -> list[tuple[str, dict]]:
-    return [(nid, n) for nid, n in NETHER_MARKET_NODES.items() if n["branch"] == branch_key]
+    return [
+        (nid, n) for nid, n in NETHER_MARKET_NODES.items() if n["branch"] == branch_key
+    ]
 
 
 async def build_mastery_view(bot, user_id: str, server_id: str) -> "MasteryView":
@@ -31,7 +33,9 @@ async def build_mastery_view(bot, user_id: str, server_id: str) -> "MasteryView"
 
 
 class MasteryView(BaseView):
-    def __init__(self, bot, user_id, server_id, profile: dict, active_branch: str = "trunk"):
+    def __init__(
+        self, bot, user_id, server_id, profile: dict, active_branch: str = "trunk"
+    ):
         super().__init__(bot, user_id, server_id)
         self.profile = profile
         self.active_branch = active_branch
@@ -49,14 +53,18 @@ class MasteryView(BaseView):
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if VEX_THUMBNAIL:
             embed.set_thumbnail(url=VEX_THUMBNAIL)
-        embed.set_footer(text=f"{get_quip('nether_market_mastery')}\nNether Marks: {marks:,}")
+        embed.set_footer(
+            text=f"{get_quip('nether_market_mastery')}\nNether Marks: {marks:,}"
+        )
 
         lines = []
         for node_id, node in _nodes_for_branch(self.active_branch):
             owned = node_id in nodes_owned
             ok, _ = M.can_purchase(node_id, nodes_owned, marks)
             icon = "✅" if owned else ("\U0001f513" if ok else "\U0001f512")
-            lines.append(f"{icon} **{node['name']}** — {node['cost']} Marks\n> {node['desc']}")
+            lines.append(
+                f"{icon} **{node['name']}** — {node['cost']} Marks\n> {node['desc']}"
+            )
         embed.description = "\n\n".join(lines)
         return embed
 
@@ -68,7 +76,9 @@ class MasteryView(BaseView):
         for branch_key in _BRANCH_ORDER:
             btn = ui.Button(
                 label=_BRANCH_LABELS[branch_key].split(" ", 1)[-1],
-                style=ButtonStyle.primary if branch_key == self.active_branch else ButtonStyle.secondary,
+                style=ButtonStyle.primary
+                if branch_key == self.active_branch
+                else ButtonStyle.secondary,
                 row=0,
             )
             btn.callback = self._make_branch_callback(branch_key)
@@ -86,7 +96,9 @@ class MasteryView(BaseView):
                     value=node_id,
                 )
             )
-        select = ui.Select(placeholder="Select a node to view or purchase...", options=options, row=1)
+        select = ui.Select(
+            placeholder="Select a node to view or purchase...", options=options, row=1
+        )
         select.callback = self._on_select
         self.add_item(select)
 
@@ -130,7 +142,9 @@ class MasteryView(BaseView):
         await interaction.response.edit_message(embed=embed, view=confirm_view)
 
     async def refresh(self, interaction: Interaction):
-        self.profile = await self.bot.database.nether_market.get_or_create_profile(self.user_id, self.server_id)
+        self.profile = await self.bot.database.nether_market.get_or_create_profile(
+            self.user_id, self.server_id
+        )
         self._build_items()
         self._processing = False
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
@@ -143,7 +157,9 @@ class MasteryView(BaseView):
         from core.nether_market.views.hub_view import build_hub_view
 
         view = await build_hub_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 
@@ -167,7 +183,9 @@ class _ConfirmPurchaseView(BaseView):
             self.user_id, self.server_id, self.node_id, self.node["cost"]
         )
         if not success:
-            await interaction.followup.send("Purchase failed — not enough Nether Marks.", ephemeral=True)
+            await interaction.followup.send(
+                "Purchase failed — not enough Nether Marks.", ephemeral=True
+            )
         await self.mastery_view.refresh(interaction)
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary)
@@ -177,4 +195,6 @@ class _ConfirmPurchaseView(BaseView):
         self._processing = True
         await interaction.response.defer()
         self.mastery_view._processing = False
-        await interaction.edit_original_response(embed=self.mastery_view.build_embed(), view=self.mastery_view)
+        await interaction.edit_original_response(
+            embed=self.mastery_view.build_embed(), view=self.mastery_view
+        )

@@ -7,7 +7,11 @@ from discord.ui import Button
 from core.base_view import BaseView
 from database.repositories.loadouts import SLOT_COSTS
 
-from ._slot_defs import SLOT_EMOJIS as _SLOT_EMOJIS, SLOT_LABELS as _SLOT_LABELS, SLOT_ORDER as _SLOT_ORDER
+from ._slot_defs import (
+    SLOT_EMOJIS as _SLOT_EMOJIS,
+    SLOT_LABELS as _SLOT_LABELS,
+    SLOT_ORDER as _SLOT_ORDER,
+)
 
 MAX_SLOTS = 10
 
@@ -62,7 +66,9 @@ class LoadoutView(BaseView):
         super().__init__(bot, user_id, server_id=server_id)
         self.loadouts = loadouts
         self.slots_unlocked = slots_unlocked
-        self.item_names_by_slot = item_names_by_slot  # {slot_index: {slot_type: name|None}}
+        self.item_names_by_slot = (
+            item_names_by_slot  # {slot_index: {slot_type: name|None}}
+        )
         self.mode = mode
         self.parent_view = parent_view
         self.selected_slot_index = None
@@ -88,10 +94,18 @@ class LoadoutView(BaseView):
         loadouts = await bot.database.loadouts.get_all(user_id)
         item_names_by_slot = {}
         for row in loadouts:
-            item_names_by_slot[row["slot_index"]] = await bot.database.loadouts.get_item_names(row)
+            item_names_by_slot[
+                row["slot_index"]
+            ] = await bot.database.loadouts.get_item_names(row)
         return cls(
-            bot, user_id, server_id, loadouts, slots_unlocked, item_names_by_slot,
-            mode=mode, parent_view=parent_view,
+            bot,
+            user_id,
+            server_id,
+            loadouts,
+            slots_unlocked,
+            item_names_by_slot,
+            mode=mode,
+            parent_view=parent_view,
         )
 
     # ------------------------------------------------------------------
@@ -110,15 +124,26 @@ class LoadoutView(BaseView):
     def _is_empty(loadout_row) -> bool:
         return all(
             loadout_row[col] is None
-            for col in ("weapon_id", "armor_id", "helmet_id", "glove_id", "boot_id", "accessory_id")
+            for col in (
+                "weapon_id",
+                "armor_id",
+                "helmet_id",
+                "glove_id",
+                "boot_id",
+                "accessory_id",
+            )
         )
 
     async def _reload(self):
-        self.slots_unlocked = await self.bot.database.loadouts.get_slots_unlocked(self.user_id)
+        self.slots_unlocked = await self.bot.database.loadouts.get_slots_unlocked(
+            self.user_id
+        )
         self.loadouts = await self.bot.database.loadouts.get_all(self.user_id)
         self.item_names_by_slot = {}
         for row in self.loadouts:
-            self.item_names_by_slot[row["slot_index"]] = await self.bot.database.loadouts.get_item_names(row)
+            self.item_names_by_slot[
+                row["slot_index"]
+            ] = await self.bot.database.loadouts.get_item_names(row)
 
     # ------------------------------------------------------------------
     # Component builder
@@ -144,8 +169,10 @@ class LoadoutView(BaseView):
                 options=options,
                 row=0,
             )
+
             async def _on_select(interaction: Interaction, s=select):
                 await self._handle_select(interaction, s)
+
             select.callback = _on_select
             self.add_item(select)
 
@@ -186,7 +213,9 @@ class LoadoutView(BaseView):
             if at_max
             else f"🔓 Buy Slot {next_slot} ({_fmt_gold(cost)} gold)"
         )
-        buy_btn = Button(label=buy_label, style=ButtonStyle.secondary, disabled=at_max, row=4)
+        buy_btn = Button(
+            label=buy_label, style=ButtonStyle.secondary, disabled=at_max, row=4
+        )
         buy_btn.callback = self._buy_slot_callback
         self.add_item(buy_btn)
 
@@ -264,7 +293,9 @@ class LoadoutView(BaseView):
             )
             return
 
-        skipped = await self.bot.database.equipment.apply_loadout(self.user_id, selected)
+        skipped = await self.bot.database.equipment.apply_loadout(
+            self.user_id, selected
+        )
 
         await self._reload()
         self.update_components()
@@ -292,9 +323,15 @@ class LoadoutView(BaseView):
             return
 
         rows = await asyncio.gather(
-            *[self.bot.database.equipment.get_equipped(self.user_id, slot) for slot in _SLOT_ORDER]
+            *[
+                self.bot.database.equipment.get_equipped(self.user_id, slot)
+                for slot in _SLOT_ORDER
+            ]
         )
-        equipped = {slot: (row["item_id"] if row else None) for slot, row in zip(_SLOT_ORDER, rows)}
+        equipped = {
+            slot: (row["item_id"] if row else None)
+            for slot, row in zip(_SLOT_ORDER, rows)
+        }
 
         await self.bot.database.loadouts.save(
             self.user_id,
@@ -345,7 +382,8 @@ class LoadoutView(BaseView):
         if not success:
             self._processing = False
             await interaction.followup.send(
-                f"You need **{cost:,}** gold to unlock Slot {next_slot}.", ephemeral=True
+                f"You need **{cost:,}** gold to unlock Slot {next_slot}.",
+                ephemeral=True,
             )
             return
 

@@ -21,9 +21,20 @@ from core.util import stars
 from .detail_view import ItemDetailView
 from .loadout_view import LoadoutView
 from .modals import MassDiscardModal
-from ._slot_defs import SLOT_EMOJIS as _SLOT_EMOJIS, SLOT_LABELS as _SLOT_LABELS, SLOT_ORDER
+from ._slot_defs import (
+    SLOT_EMOJIS as _SLOT_EMOJIS,
+    SLOT_LABELS as _SLOT_LABELS,
+    SLOT_ORDER,
+)
 
-_FACTORIES = [create_weapon, create_armor, create_helmet, create_glove, create_boot, create_accessory]
+_FACTORIES = [
+    create_weapon,
+    create_armor,
+    create_helmet,
+    create_glove,
+    create_boot,
+    create_accessory,
+]
 SLOT_CONFIG = {
     slot: {"emoji": _SLOT_EMOJIS[slot], "label": _SLOT_LABELS[slot], "factory": factory}
     for slot, factory in zip(SLOT_ORDER, _FACTORIES)

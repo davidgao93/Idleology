@@ -751,7 +751,9 @@ class UberShrineView(SettlementBaseView):
                 btn_max.callback = _on_max
                 self.add_item(btn_max)
 
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2)
+        btn_back = ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2
+        )
 
         async def _on_back(interaction: Interaction):
             if hasattr(self.parent_detail, "_processing"):

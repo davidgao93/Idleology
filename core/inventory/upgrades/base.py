@@ -160,7 +160,9 @@ class BaseUpgradeView(BaseView):
         )
         self.stop()
 
-    async def _send_render(self, interaction: Interaction, embed, view=None, render_gen: int | None = None):
+    async def _send_render(
+        self, interaction: Interaction, embed, view=None, render_gen: int | None = None
+    ):
         """Send or edit the upgrade render embed, then cache the message reference.
 
         Pass render_gen=my_gen (captured at the top of render()) to automatically

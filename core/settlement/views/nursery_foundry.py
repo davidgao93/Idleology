@@ -129,8 +129,8 @@ class IdlemFoundryView(SettlementBaseView):
         """Base Idlem per turn, scaled by workers assigned (per 100, flat rate). Variance applied on completion."""
         workers = self.building.workers_assigned
         base = IDLEM_PER_TURN_BASE
-        return (
-            base * (workers / 100)
+        return base * (
+            workers / 100
         )  # stored as base; actual grant has +0/+1 variance on completion
 
     def build_embed(
@@ -260,9 +260,7 @@ class _SanctumWorkerModal(ui.Modal, title="Assign Sanctum Workers"):
             )
 
         dashboard = self.parent.parent_detail.parent
-        total_assigned = sum(
-            b.workers_assigned for b in dashboard.settlement.buildings
-        )
+        total_assigned = sum(b.workers_assigned for b in dashboard.settlement.buildings)
         free = dashboard.follower_count - (
             total_assigned - self.parent.building.workers_assigned
         )
@@ -449,9 +447,7 @@ class SanctumView(SettlementBaseView):
 
         max_w = 100 * self.building.tier
         dashboard = self.parent_detail.parent
-        total_assigned = sum(
-            b.workers_assigned for b in dashboard.settlement.buildings
-        )
+        total_assigned = sum(b.workers_assigned for b in dashboard.settlement.buildings)
         free = dashboard.follower_count - (
             total_assigned - self.building.workers_assigned
         )

@@ -527,7 +527,9 @@ class CardProfileBuilder:
                 nm_profile = await bot.database.nether_market.get_or_create_profile(
                     user_id, server_id
                 )
-                nm_regen_secs = NMM.get_charge_regen_seconds(nm_profile["mastery_nodes"])
+                nm_regen_secs = NMM.get_charge_regen_seconds(
+                    nm_profile["mastery_nodes"]
+                )
                 nm_charges, _ = NMM.calculate_charges(
                     nm_profile["plunder_charges"],
                     nm_profile["last_charge_time"],
@@ -542,7 +544,9 @@ class CardProfileBuilder:
                         nm_regen_secs,
                     )
                     nh, nr = divmod(nm_next, 3600)
-                    nm_str = f"{nm_charges}/{MAX_CHARGES} · next in {nh}h {nr // 60:02d}m"
+                    nm_str = (
+                        f"{nm_charges}/{MAX_CHARGES} · next in {nh}h {nr // 60:02d}m"
+                    )
                 misc_lines.append(f"🕳️ **Plunder Attempts** — {nm_str}")
             except Exception:
                 pass

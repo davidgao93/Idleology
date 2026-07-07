@@ -361,7 +361,9 @@ class QuestBoardView(BaseView):
         self.add_item(shop_btn)
 
         # Close
-        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2)
+        close_btn = discord.ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2
+        )
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 
@@ -410,7 +412,9 @@ class QuestBoardView(BaseView):
         self.add_item(shop_btn)
 
         # Close
-        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3)
+        close_btn = discord.ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3
+        )
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 
@@ -442,7 +446,9 @@ class QuestBoardView(BaseView):
         shop_btn.callback = self._on_open_shop
         self.add_item(shop_btn)
 
-        close_btn = discord.ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
+        close_btn = discord.ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         close_btn.callback = self._on_close
         self.add_item(close_btn)
 
@@ -700,7 +706,9 @@ class QuestBoardView(BaseView):
         self._build_view_components()
         embed = self.build_embed()
         if interaction is not None:
-            await interaction.edit_original_response(content=None, embed=embed, view=self)
+            await interaction.edit_original_response(
+                content=None, embed=embed, view=self
+            )
         else:
             await self.message.edit(content=None, embed=embed, view=self)
 

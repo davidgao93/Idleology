@@ -221,7 +221,9 @@ class HatcheryView(BaseView):
             btn_back.callback = self._back
             self.add_item(btn_back)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
+        btn_close = ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         btn_close.callback = self._close
         self.add_item(btn_close)
 

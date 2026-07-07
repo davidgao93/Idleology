@@ -119,7 +119,9 @@ class SlayerDashboardView(BaseView):
             btn_shop.callback = self.open_shop
             self.add_item(btn_shop)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
+        btn_close = ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         btn_close.callback = self.close_view
         self.add_item(btn_close)
 

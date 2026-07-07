@@ -23,7 +23,8 @@ from core.apex.models import (
     shards_from_db,
     soul_stone_from_db,
 )
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
+from core.combat import ui as combat_ui
 from core.images import APEX_HUB, LUCIEN_PORTRAIT, LUCIEN_THUMBNAIL
 from core.npc_voices import get_quip
 
@@ -140,7 +141,7 @@ def _build_zone_confirm_embed(
     return embed
 
 
-class ApexLobbyView(BaseView):
+class ApexLobbyView(BaseLayoutView):
     """
     Hub view for apex hunt zone selection.
 
@@ -170,15 +171,16 @@ class ApexLobbyView(BaseView):
         self._processing = False
         self._selected_zone: str | None = None
 
-        self._build_zone_buttons()
+        self._show_zone_list()
 
     # ------------------------------------------------------------------
     # Layout helpers
     # ------------------------------------------------------------------
 
-    def _build_zone_buttons(self):
-        """Adds the six zone buttons and a Soul Stone shortcut."""
-        self.clear_items()
+    def _build_zone_list_rows(self) -> list[discord.ui.ActionRow]:
+        """Builds the six zone buttons and a Soul Stone shortcut."""
+        row0 = discord.ui.ActionRow()
+        row1 = discord.ui.ActionRow()
 
         _ORDER = ["ashen", "storm", "citadel", "grove", "vault"]
         for zone_key in _ORDER:
@@ -187,10 +189,9 @@ class ApexLobbyView(BaseView):
                 label=zone.name,
                 style=ButtonStyle.primary,
                 emoji=zone.emoji,
-                row=0,
             )
             btn.callback = self._make_zone_callback(zone_key)
-            self.add_item(btn)
+            row0.add_item(btn)
 
         # Shattered Realm — row 1
         shattered = ZONE_DEFS["shattered"]
@@ -199,7 +200,6 @@ class ApexLobbyView(BaseView):
                 label=shattered.name,
                 style=ButtonStyle.danger,
                 emoji=shattered.emoji,
-                row=1,
             )
             shat_btn.callback = self._make_zone_callback("shattered")
         else:
@@ -208,29 +208,36 @@ class ApexLobbyView(BaseView):
                 style=ButtonStyle.secondary,
                 emoji="🔒",
                 disabled=True,
-                row=1,
             )
-        self.add_item(shat_btn)
+        row1.add_item(shat_btn)
 
         # Soul Stone shortcut
         ss_btn = Button(
             label="Soul Stone",
             style=ButtonStyle.secondary,
             emoji="💎",
-            row=1,
         )
         ss_btn.callback = self._open_soul_stone
-        self.add_item(ss_btn)
+        row1.add_item(ss_btn)
 
         # Close
         close_btn = Button(
             label="Close",
             style=ButtonStyle.secondary,
             emoji="✖️",
-            row=1,
         )
         close_btn.callback = self._close
-        self.add_item(close_btn)
+        row1.add_item(close_btn)
+
+        return [row0, row1]
+
+    def _show_zone_list(self) -> None:
+        secs = ApexMechanics.seconds_until_next_charge(self.profile)
+        embed = _build_lobby_embed(self.player_name, self.profile, self._charges, secs)
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        for row in self._build_zone_list_rows():
+            self.add_item(row)
 
     def _make_zone_callback(self, zone_key: str):
         async def _callback(interaction: Interaction):
@@ -258,7 +265,7 @@ class ApexLobbyView(BaseView):
 
             # Show zone confirmation — always the full zone view, even out of charges
             embed = _build_zone_confirm_embed(zone_key, profile, charges)
-            self.clear_items()
+            row = discord.ui.ActionRow()
 
             if charges < 1:
                 secs = ApexMechanics.seconds_until_next_charge(profile)
@@ -276,17 +283,20 @@ class ApexLobbyView(BaseView):
                     label="Confirm Hunt",
                     style=ButtonStyle.danger,
                     emoji="⚔️",
-                    row=0,
                 )
                 confirm_btn.callback = self._confirm_hunt
-                self.add_item(confirm_btn)
+                row.add_item(confirm_btn)
 
-            back_btn = Button(label="Back", style=ButtonStyle.secondary, row=0)
+            back_btn = Button(label="Back", style=ButtonStyle.secondary)
             back_btn.callback = self._back_to_zones
-            self.add_item(back_btn)
+            row.add_item(back_btn)
+
+            self.clear_items()
+            self.add_item(combat_ui.embed_to_container(embed))
+            self.add_item(row)
 
             self._processing = False
-            await interaction.edit_original_response(embed=embed, view=self)
+            await interaction.edit_original_response(view=self)
 
         return _callback
 
@@ -318,14 +328,16 @@ class ApexLobbyView(BaseView):
 
         if charges < 1:
             secs = ApexMechanics.seconds_until_next_charge(profile)
-            await interaction.edit_original_response(
-                content=(
-                    f"⚠️ No hunt charges remaining. "
-                    f"Next charge in **{_fmt_time(secs)}**."
-                ),
-                embed=None,
-                view=None,
+            self.clear_items()
+            self.add_item(
+                discord.ui.Container(
+                    discord.ui.TextDisplay(
+                        f"⚠️ No hunt charges remaining. "
+                        f"Next charge in **{_fmt_time(secs)}**."
+                    )
+                )
             )
+            await interaction.edit_original_response(view=self)
             self.bot.state_manager.clear_active(self.user_id)
             self.stop()
             return
@@ -384,10 +396,7 @@ class ApexLobbyView(BaseView):
             title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
         )
 
-        # embed=None is required: this message currently carries the classic
-        # lobby embed, and Discord rejects an edit that would leave both an
-        # embed and Components V2 components on the same message.
-        await interaction.edit_original_response(embed=None, view=view)
+        await interaction.edit_original_response(view=view)
         view.message = await interaction.original_response()
 
     # ------------------------------------------------------------------
@@ -398,7 +407,6 @@ class ApexLobbyView(BaseView):
         await interaction.response.defer()
         self._selected_zone = None
         self._processing = False
-        self._build_zone_buttons()
 
         # Re-fetch profile for fresh charge display
         profile_row = await self.bot.database.apex.get_or_create_profile(
@@ -412,10 +420,9 @@ class ApexLobbyView(BaseView):
             )
         self._charges = charges
         self.profile = profile
-        secs = ApexMechanics.seconds_until_next_charge(profile)
 
-        embed = _build_lobby_embed(self.player_name, profile, charges, secs)
-        await interaction.edit_original_response(embed=embed, view=self)
+        self._show_zone_list()
+        await interaction.edit_original_response(view=self)
 
     async def _open_soul_stone(self, interaction: Interaction):
         if self._processing:
@@ -456,10 +463,11 @@ class ApexLobbyView(BaseView):
         shards = shards_from_db(shards_row)
         meta = meta_shards_from_db(meta_row)
 
-        # Replace the lobby message in-place — no separate ephemeral
+        # SoulStoneView stays classic — a genuine scene change out of the
+        # apex hunt loop — so it gets a fresh message rather than reusing
+        # this one.
         embed = _build_soul_stone_embed(soul_stone, shards, meta, player.name)
-        await interaction.edit_original_response(embed=embed, view=view)
-        view.message = await interaction.original_response()
+        await combat_ui.freeze_and_handoff(interaction.message, embed, view)
         self.stop()  # lobby view is superseded; SoulStoneView has the "← Lobby" back button
 
     async def _close(self, interaction: Interaction):

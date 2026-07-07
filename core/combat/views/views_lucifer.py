@@ -36,7 +36,9 @@ class LuciferChoiceRow(discord.ui.ActionRow["LuciferChoiceView"]):
 class LuciferChoiceView(BaseLayoutView):
     """Soul Core selection after defeating Lucifer."""
 
-    def __init__(self, bot, user_id, player, server_id: str = None, rematch_callback=None):
+    def __init__(
+        self, bot, user_id, player, server_id: str = None, rematch_callback=None
+    ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
@@ -175,11 +177,15 @@ class LuciferChoiceView(BaseLayoutView):
 
 
 class InfernalContractRow(discord.ui.ActionRow["InfernalContractView"]):
-    @discord.ui.button(label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸")
+    @discord.ui.button(
+        label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸"
+    )
     async def accept(self, interaction: Interaction, button: discord.ui.Button):
         await self.view._on_accept(interaction)
 
-    @discord.ui.button(label="Reject Contract", style=discord.ButtonStyle.secondary, emoji="🖤")
+    @discord.ui.button(
+        label="Reject Contract", style=discord.ButtonStyle.secondary, emoji="🖤"
+    )
     async def reject(self, interaction: Interaction, button: discord.ui.Button):
         await self.view._on_reject(interaction)
 
@@ -294,9 +300,9 @@ class InfernalContractView(BaseLayoutView):
         return_view = UberReturnView(
             self.bot, self.user_id, self.server_id, self.player
         )
-        # UberReturnView leaves the fight for the uber hub — a genuine scene
-        # change, so it gets a fresh message rather than reusing this one.
-        await combat_ui.freeze_and_handoff(interaction.message, embed, return_view)
+        return_view.set_content(embed)
+        await interaction.edit_original_response(view=return_view)
+        return_view.message = await interaction.original_response()
         self.stop()
 
     async def _on_reject(self, interaction: Interaction):
@@ -311,5 +317,7 @@ class InfernalContractView(BaseLayoutView):
         return_view = UberReturnView(
             self.bot, self.user_id, self.server_id, self.player
         )
-        await combat_ui.freeze_and_handoff(interaction.message, embed, return_view)
+        return_view.set_content(embed)
+        await interaction.edit_original_response(view=return_view)
+        return_view.message = await interaction.original_response()
         self.stop()

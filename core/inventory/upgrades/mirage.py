@@ -407,7 +407,9 @@ class MirageView(BaseUpgradeView):
             btn.callback = self._use_perfected
             self.add_item(btn)
 
-        back_btn = discord.ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2)
+        back_btn = discord.ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2
+        )
         back_btn.callback = self._back_to_stage1
         self.add_item(back_btn)  # intra-mirage stage navigation — do not clear
 
@@ -466,7 +468,9 @@ class MirageView(BaseUpgradeView):
             if destroy_source:
                 if getattr(self.source, "is_equipped", False):
                     await self.bot.database.equipment.unequip(self.user_id, item_type)
-                await self.bot.database.equipment.discard(self.source.item_id, item_type)
+                await self.bot.database.equipment.discard(
+                    self.source.item_id, item_type
+                )
 
         # Refresh self.item so the detail view shows updated stats
         new_row = await self.bot.database.equipment.get_by_id(

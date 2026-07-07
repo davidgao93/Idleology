@@ -156,8 +156,10 @@ def _compact_tier_descriptions(descriptions: list[str]) -> str:
             if len(set(values)) == 1:
                 result.append(values[0])
             else:
+
                 def _clean(s: str) -> str:
                     return s.rstrip("0").rstrip(".") if "." in s else s
+
                 result.append("/".join(_clean(v) for v in values))
     return "".join(result)
 

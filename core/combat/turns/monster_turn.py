@@ -371,8 +371,7 @@ def process_monster_turn(
         pdr_cap = (
             90
             if (
-                player.equipped_armor
-                and player.equipped_armor.passive == "Impregnable"
+                player.equipped_armor and player.equipped_armor.passive == "Impregnable"
             )
             else 80
         )

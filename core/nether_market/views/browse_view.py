@@ -27,11 +27,15 @@ async def build_browse_view(bot, user_id: str, server_id: str) -> "BrowseListVie
     for candidate_id in await bot.database.nether_market.get_all_user_ids(server_id):
         if candidate_id == user_id:
             continue
-        holdings = await bot.database.nether_market.get_holdings(candidate_id, server_id)
+        holdings = await bot.database.nether_market.get_holdings(
+            candidate_id, server_id
+        )
         if not holdings:
             continue  # nothing to plunder — exclude per design doc §15
         value = M.compute_holdings_value(holdings, rotation)
-        profile = await bot.database.nether_market.get_or_create_profile(candidate_id, server_id)
+        profile = await bot.database.nether_market.get_or_create_profile(
+            candidate_id, server_id
+        )
         shielded = await bot.database.nether_market.is_shielded(candidate_id, server_id)
         targets.append(
             {
@@ -47,13 +51,22 @@ async def build_browse_view(bot, user_id: str, server_id: str) -> "BrowseListVie
     for npc in NPC_VENDORS:
         targets.append({"kind": "npc", "npc": npc})
 
-    attacker_profile = await bot.database.nether_market.get_or_create_profile(user_id, server_id)
+    attacker_profile = await bot.database.nether_market.get_or_create_profile(
+        user_id, server_id
+    )
     regen_seconds = M.get_charge_regen_seconds(attacker_profile["mastery_nodes"])
     charges, new_ts = M.calculate_charges(
-        attacker_profile["plunder_charges"], attacker_profile["last_charge_time"], regen_seconds
+        attacker_profile["plunder_charges"],
+        attacker_profile["last_charge_time"],
+        regen_seconds,
     )
-    if (charges, new_ts) != (attacker_profile["plunder_charges"], attacker_profile["last_charge_time"]):
-        await bot.database.nether_market.restore_charges(user_id, server_id, charges, new_ts)
+    if (charges, new_ts) != (
+        attacker_profile["plunder_charges"],
+        attacker_profile["last_charge_time"],
+    ):
+        await bot.database.nether_market.restore_charges(
+            user_id, server_id, charges, new_ts
+        )
         attacker_profile["plunder_charges"] = charges
         attacker_profile["last_charge_time"] = new_ts
 
@@ -63,7 +76,9 @@ async def build_browse_view(bot, user_id: str, server_id: str) -> "BrowseListVie
 
 
 class BrowseListView(BaseView):
-    def __init__(self, bot, user_id, server_id, targets: list[dict], attacker_profile: dict):
+    def __init__(
+        self, bot, user_id, server_id, targets: list[dict], attacker_profile: dict
+    ):
         super().__init__(bot, user_id, server_id)
         self.targets = targets
         self.attacker_profile = attacker_profile
@@ -88,14 +103,20 @@ class BrowseListView(BaseView):
         return self.targets[start : start + _PAGE_SIZE]
 
     async def build_embed(self) -> discord.Embed:
-        embed = discord.Embed(title="\U0001f3af Browse Targets", color=discord.Color.dark_purple())
+        embed = discord.Embed(
+            title="\U0001f3af Browse Targets", color=discord.Color.dark_purple()
+        )
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if VEX_THUMBNAIL:
             embed.set_thumbnail(url=VEX_THUMBNAIL)
         charges = self.attacker_profile["plunder_charges"]
-        embed.add_field(name="Plunder Charges", value=f"{charges} / {MAX_CHARGES}", inline=True)
+        embed.add_field(
+            name="Plunder Charges", value=f"{charges} / {MAX_CHARGES}", inline=True
+        )
         if charges < MAX_CHARGES:
-            regen_seconds = M.get_charge_regen_seconds(self.attacker_profile["mastery_nodes"])
+            regen_seconds = M.get_charge_regen_seconds(
+                self.attacker_profile["mastery_nodes"]
+            )
             seconds_left = M.seconds_until_next_charge(
                 charges, self.attacker_profile["last_charge_time"], regen_seconds
             )
@@ -120,7 +141,9 @@ class BrowseListView(BaseView):
                 lines.append(
                     f"**[{i}]** {name} — Tier: **{tier_name}** — Last plundered: {last_str}{status}"
                 )
-        embed.description = "\n".join(lines) if lines else "No targets available right now."
+        embed.description = (
+            "\n".join(lines) if lines else "No targets available right now."
+        )
         embed.set_footer(
             text=f"{get_quip('nether_market_browse')}\nPage {self.current_page + 1} / {self.total_pages}"
         )
@@ -148,7 +171,9 @@ class BrowseListView(BaseView):
                     description = f"Tier: {tier_name} · {status}"
                 options.append(
                     discord.SelectOption(
-                        label=f"[{i + 1}] {label}"[:100], description=description[:100], value=str(i)
+                        label=f"[{i + 1}] {label}"[:100],
+                        description=description[:100],
+                        value=str(i),
                     )
                 )
             select = ui.Select(placeholder="Select a target...", options=options, row=0)
@@ -181,16 +206,20 @@ class BrowseListView(BaseView):
     async def _attempt_select(self, interaction: Interaction, target: dict):
         if self.attacker_profile["plunder_charges"] <= 0:
             return await interaction.response.send_message(
-                "You're out of plunder charges. They regenerate over time.", ephemeral=True
+                "You're out of plunder charges. They regenerate over time.",
+                ephemeral=True,
             )
         if target["kind"] == "player" and target["shielded"]:
             return await interaction.response.send_message(
-                "That target is currently shielded from plunder attempts.", ephemeral=True
+                "That target is currently shielded from plunder attempts.",
+                ephemeral=True,
             )
 
         self._processing = True
         await interaction.response.defer()
-        confirm_view = ConfirmAttackView(self.bot, self.user_id, self.server_id, target, self)
+        confirm_view = ConfirmAttackView(
+            self.bot, self.user_id, self.server_id, target, self
+        )
         await interaction.edit_original_response(
             embed=await confirm_view.build_embed(), view=confirm_view
         )
@@ -198,12 +227,16 @@ class BrowseListView(BaseView):
     async def prev_page(self, interaction: Interaction):
         self.current_page = max(0, self.current_page - 1)
         await self._build_buttons()
-        await interaction.response.edit_message(embed=await self.build_embed(), view=self)
+        await interaction.response.edit_message(
+            embed=await self.build_embed(), view=self
+        )
 
     async def next_page(self, interaction: Interaction):
         self.current_page = min(self.total_pages - 1, self.current_page + 1)
         await self._build_buttons()
-        await interaction.response.edit_message(embed=await self.build_embed(), view=self)
+        await interaction.response.edit_message(
+            embed=await self.build_embed(), view=self
+        )
 
     async def go_back(self, interaction: Interaction):
         if self._processing:
@@ -213,7 +246,9 @@ class BrowseListView(BaseView):
         from core.nether_market.views.hub_view import build_hub_view
 
         view = await build_hub_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 
@@ -222,14 +257,18 @@ class ConfirmAttackView(BaseView):
     """Confirmation step before a plunder charge is spent — cancel returns to the
     browse list unchanged (nothing has been consumed yet)."""
 
-    def __init__(self, bot, user_id, server_id, target: dict, browse_view: BrowseListView):
+    def __init__(
+        self, bot, user_id, server_id, target: dict, browse_view: BrowseListView
+    ):
         super().__init__(bot, user_id, server_id)
         self.target = target
         self.browse_view = browse_view
         self._processing = False
 
     async def build_embed(self) -> discord.Embed:
-        embed = discord.Embed(title="Confirm Plunder Attempt", color=discord.Color.orange())
+        embed = discord.Embed(
+            title="Confirm Plunder Attempt", color=discord.Color.orange()
+        )
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if self.target["kind"] == "npc":
             name = self.target["npc"]["name"]
@@ -248,15 +287,21 @@ class ConfirmAttackView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        await self.bot.database.nether_market.consume_charge(self.user_id, self.server_id)
+        await self.bot.database.nether_market.consume_charge(
+            self.user_id, self.server_id
+        )
         attacker_profile = await self.bot.database.nether_market.get_or_create_profile(
             self.user_id, self.server_id
         )
 
         from core.nether_market.views.plunder_view import build_plunder_view
 
-        view = await build_plunder_view(self.bot, self.user_id, self.server_id, self.target, attacker_profile)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        view = await build_plunder_view(
+            self.bot, self.user_id, self.server_id, self.target, attacker_profile
+        )
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 

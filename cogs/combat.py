@@ -325,8 +325,8 @@ class Combat(commands.Cog, name="combat"):
         # falls through to a regular fight).  The CombatView owns the
         # clear_active call on combat end; BaseView.on_timeout handles the gate
         # timeout case by clearing state early (10-min fallback).
-        corrupted_enabled = await self.bot.database.users.get_corrupted_encounters_enabled(
-            user_id
+        corrupted_enabled = (
+            await self.bot.database.users.get_corrupted_encounters_enabled(user_id)
         )
         if player.level >= CORRUPTED_MIN_LEVEL and corrupted_enabled:
             corrupted_chance = (

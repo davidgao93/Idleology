@@ -336,7 +336,11 @@ class SettlementMechanics:
 
         total = 0.0
         for b in buildings:
-            if b.building_type != "war_camp" or b.is_disabled or b.workers_assigned <= 0:
+            if (
+                b.building_type != "war_camp"
+                or b.is_disabled
+                or b.workers_assigned <= 0
+            ):
                 continue
             plot = plot_by_idx.get(b.plot_index) if b.plot_index is not None else None
             plot_bonus = plot.bonus_type if plot else None
@@ -523,12 +527,36 @@ _SETTLEMENT_MATERIAL_KEYS: frozenset[str] = frozenset(
 )
 _SKILL_RESOURCE_KEYS: frozenset[str] = frozenset(
     [
-        "iron_ore", "coal_ore", "gold_ore", "platinum_ore", "idea_ore",
-        "iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar",
-        "oak_logs", "willow_logs", "mahogany_logs", "magic_logs", "idea_logs",
-        "oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank",
-        "desiccated_bones", "regular_bones", "sturdy_bones", "reinforced_bones", "titanium_bones",
-        "desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence",
+        "iron_ore",
+        "coal_ore",
+        "gold_ore",
+        "platinum_ore",
+        "idea_ore",
+        "iron_bar",
+        "steel_bar",
+        "gold_bar",
+        "platinum_bar",
+        "idea_bar",
+        "oak_logs",
+        "willow_logs",
+        "mahogany_logs",
+        "magic_logs",
+        "idea_logs",
+        "oak_plank",
+        "willow_plank",
+        "mahogany_plank",
+        "magic_plank",
+        "idea_plank",
+        "desiccated_bones",
+        "regular_bones",
+        "sturdy_bones",
+        "reinforced_bones",
+        "titanium_bones",
+        "desiccated_essence",
+        "regular_essence",
+        "sturdy_essence",
+        "reinforced_essence",
+        "titanium_essence",
     ]
 )
 
@@ -539,7 +567,9 @@ _SKILL_RESOURCE_KEYS: frozenset[str] = frozenset(
 # ---------------------------------------------------------------------------
 
 
-async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plots: list) -> dict:
+async def collect_settlement_resources(
+    bot, uid: str, sid: str, settlement, plots: list
+) -> dict:
     """
     Calculates passive building production, commits it to the database, and
     returns a result dict for the view to render.
@@ -578,14 +608,20 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
             refining_bonus += 0.10
 
     raw_inv: dict = {
-        "iron_ore": mining["iron_ore"], "coal_ore": mining["coal_ore"],
-        "gold_ore": mining["gold_ore"], "platinum_ore": mining["platinum_ore"],
+        "iron_ore": mining["iron_ore"],
+        "coal_ore": mining["coal_ore"],
+        "gold_ore": mining["gold_ore"],
+        "platinum_ore": mining["platinum_ore"],
         "idea_ore": mining["idea_ore"],
-        "oak_logs": wood["oak_logs"], "willow_logs": wood["willow_logs"],
-        "mahogany_logs": wood["mahogany_logs"], "magic_logs": wood["magic_logs"],
+        "oak_logs": wood["oak_logs"],
+        "willow_logs": wood["willow_logs"],
+        "mahogany_logs": wood["mahogany_logs"],
+        "magic_logs": wood["magic_logs"],
         "idea_logs": wood["idea_logs"],
-        "desiccated_bones": fish["desiccated_bones"], "regular_bones": fish["regular_bones"],
-        "sturdy_bones": fish["sturdy_bones"], "reinforced_bones": fish["reinforced_bones"],
+        "desiccated_bones": fish["desiccated_bones"],
+        "regular_bones": fish["regular_bones"],
+        "sturdy_bones": fish["sturdy_bones"],
+        "reinforced_bones": fish["reinforced_bones"],
         "titanium_bones": fish["titanium_bones"],
     }
 
@@ -596,7 +632,9 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
     if hours < 0.1:
         return {"too_early": True, "has_output": False, "hours": hours}
 
-    adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(plots, settlement.buildings)
+    adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(
+        plots, settlement.buildings
+    )
     plot_by_idx = {p.plot_index: p for p in plots}
 
     active_evs = await bot.database.settlement.get_active_events(uid, sid)
@@ -661,7 +699,9 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
     cookie_xp = 0
     if "companion_cookie" in total_changes:
         cookie_xp = int(total_changes.pop("companion_cookie"))
-        display_changes["Companion XP"] = display_changes.pop("companion_cookie", cookie_xp)
+        display_changes["Companion XP"] = display_changes.pop(
+            "companion_cookie", cookie_xp
+        )
 
     market_gold = 0
     if "market_gold" in total_changes:
@@ -691,7 +731,9 @@ async def collect_settlement_resources(bot, uid: str, sid: str, settlement, plot
     }
 
 
-async def collect_war_camp_stamina(bot, uid: str, sid: str, settlement, plots: list) -> dict:
+async def collect_war_camp_stamina(
+    bot, uid: str, sid: str, settlement, plots: list
+) -> dict:
     """
     Calculates and credits accumulated War Camp Combat Stamina, using its own
     dedicated timer (last_war_camp_stamina_time) — independent from the main
@@ -737,7 +779,9 @@ async def collect_war_camp_stamina(bot, uid: str, sid: str, settlement, plots: l
     }
 
 
-async def execute_building_upgrade(bot, uid: str, sid: str, building, cost: dict) -> dict:
+async def execute_building_upgrade(
+    bot, uid: str, sid: str, building, cost: dict
+) -> dict:
     """
     Deducts upgrade costs, queues the upgrade project, and reloads settlement
     state. The caller is responsible for pre-validating resource availability.
@@ -837,11 +881,11 @@ async def execute_bm_offer(
       {"instant": True,  "value": int, "raw_value": int, "turns": 0, "rewards": dict}
       {"instant": False, "value": int, "raw_value": int, "turns": int}
     """
-    from core.settlement.constants import SETTLEMENT_EVENTS
     from core.settlement.turn_engine import (
         calculate_offer_value,
         complete_bm_deal_instant,
         compute_processing_turns,
+        resolve_bm_event_value_bonus,
     )
     from core.settlement.bm_log import BMLogger
 
@@ -867,18 +911,7 @@ async def execute_bm_offer(
     tree_nodes = await bot.database.settlement.get_bm_tree(uid, sid)
 
     active_events = await bot.database.settlement.get_active_events(uid, sid)
-    event_value_bonus = 0.0
-    for ev in active_events:
-        if ev["event_type"] == "ongoing":
-            ev_def = SETTLEMENT_EVENTS.get(ev["event_key"], {})
-            raw_val = ev_def.get("effects", {}).get("bm_value_bonus", 0.0)
-            ev_data = ev.get("data") or {}
-            if raw_val == "band":
-                raw_val = ev_data.get("band", 0.0)
-            elif raw_val == "neg_band":
-                raw_val = -ev_data.get("band", 0.0)
-            if isinstance(raw_val, (int, float)):
-                event_value_bonus += raw_val
+    event_value_bonus = resolve_bm_event_value_bonus(active_events)
 
     raw_value = calculate_offer_value(offer, tree_nodes, building_tier)
     raw_value = int(raw_value * (1 + event_value_bonus))
@@ -910,7 +943,8 @@ async def execute_bm_offer(
     turns_data = await bot.database.settlement.get_turns_data(uid, sid)
     current_turn = turns_data.get("total_development_turns", 0)
     await bot.database.settlement.create_pending_deal(
-        uid, sid,
+        uid,
+        sid,
         offer_data=offer,
         total_value=value,
         turns_required=turns,

@@ -206,7 +206,9 @@ class PotionDistillationView(BaseView):
             if n == 1:
                 mod_lines.append("🌿 **This step** costs no dust")
             else:
-                mod_lines.append(f"🌿 **This step** costs no dust *(+{n - 1} more after)*")
+                mod_lines.append(
+                    f"🌿 **This step** costs no dust *(+{n - 1} more after)*"
+                )
         if mods.get("all_future_free"):
             mod_lines.append("✨ **All remaining steps cost no dust**")
         future_mult = mods.get("future_cost_mult")

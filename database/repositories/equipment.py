@@ -7,11 +7,11 @@ from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 ItemType = Literal["weapon", "armor", "accessory", "glove", "boot", "helmet"]
 
 LOADOUT_SLOT_DEFS = [
-    ("weapon",    "weapon_id",    "items"),
-    ("armor",     "armor_id",     "armor"),
-    ("helmet",    "helmet_id",    "helmets"),
-    ("glove",     "glove_id",     "gloves"),
-    ("boot",      "boot_id",      "boots"),
+    ("weapon", "weapon_id", "items"),
+    ("armor", "armor_id", "armor"),
+    ("helmet", "helmet_id", "helmets"),
+    ("glove", "glove_id", "gloves"),
+    ("boot", "boot_id", "boots"),
     ("accessory", "accessory_id", "accessories"),
 ]
 
@@ -171,7 +171,17 @@ class EquipmentRepository:
             """INSERT INTO accessories (user_id, item_name, item_level, attack, defence,
             rarity, ward, crit, is_equipped, potential_remaining, passive_lvl)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0)""",
-            (a.user, a.name, a.level, a.attack, a.defence, a.rarity, a.ward, a.crit, potential),
+            (
+                a.user,
+                a.name,
+                a.level,
+                a.attack,
+                a.defence,
+                a.rarity,
+                a.ward,
+                a.crit,
+                potential,
+            ),
         )
         await self.connection.commit()
 

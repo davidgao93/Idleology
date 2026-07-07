@@ -175,7 +175,9 @@ async def _apply_sanctum_conversion(
 
         # Sacred Ground plot: +20% to conversion rate
         if sanctum.plot_index is not None:
-            plot = await bot.database.plots.get_plot(user_id, server_id, sanctum.plot_index)
+            plot = await bot.database.plots.get_plot(
+                user_id, server_id, sanctum.plot_index
+            )
             if plot and plot["bonus_type"] == "sacred_ground":
                 chance *= 1.20
 
@@ -372,7 +374,9 @@ async def _apply_slayer_rewards(
             from core.quests.mechanics import tick_quest_progress
 
             slayer_lines.extend(
-                await tick_quest_progress(bot, user_id, server_id, "slayer_task_complete")
+                await tick_quest_progress(
+                    bot, user_id, server_id, "slayer_task_complete"
+                )
             )
         except Exception as _qe:
             print(f"[Quest tick error in slayer regular task]: {_qe}")

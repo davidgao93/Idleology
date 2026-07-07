@@ -64,14 +64,18 @@ async def build_hub_view(bot, user_id: str, server_id: str) -> "NetherMarketHubV
     holdings = await bot.database.nether_market.get_holdings(user_id, server_id)
     profile = await bot.database.nether_market.get_or_create_profile(user_id, server_id)
     gold = await bot.database.users.get_gold(user_id)
-    plunder_notice = await bot.database.nether_market.pop_plunder_notice(user_id, server_id)
+    plunder_notice = await bot.database.nether_market.pop_plunder_notice(
+        user_id, server_id
+    )
 
     regen_seconds = M.get_charge_regen_seconds(profile["mastery_nodes"])
     charges, new_ts = M.calculate_charges(
         profile["plunder_charges"], profile["last_charge_time"], regen_seconds
     )
     if (charges, new_ts) != (profile["plunder_charges"], profile["last_charge_time"]):
-        await bot.database.nether_market.restore_charges(user_id, server_id, charges, new_ts)
+        await bot.database.nether_market.restore_charges(
+            user_id, server_id, charges, new_ts
+        )
         profile["plunder_charges"] = charges
         profile["last_charge_time"] = new_ts
 
@@ -81,7 +85,17 @@ async def build_hub_view(bot, user_id: str, server_id: str) -> "NetherMarketHubV
 
 
 class NetherMarketHubView(BaseView):
-    def __init__(self, bot, user_id, server_id, rotation, holdings, profile, gold, plunder_notice=None):
+    def __init__(
+        self,
+        bot,
+        user_id,
+        server_id,
+        rotation,
+        holdings,
+        profile,
+        gold,
+        plunder_notice=None,
+    ):
         super().__init__(bot, user_id, server_id)
         self.rotation = rotation
         self.holdings = holdings
@@ -89,7 +103,9 @@ class NetherMarketHubView(BaseView):
         self.gold = gold
         self.plunder_notice = plunder_notice
         self._processing = False
-        self.mode = "normal"  # "normal" | "buy" | "sell" — controls which buttons are shown
+        self.mode = (
+            "normal"  # "normal" | "buy" | "sell" — controls which buttons are shown
+        )
         self._build_buttons()
 
     @property
@@ -105,11 +121,15 @@ class NetherMarketHubView(BaseView):
         tier_name = WEALTH_TIERS[M.get_wealth_tier(value)]["name"]
         show_true_value = bool(self.profile["mastery_nodes"].get("trunk_market_sense"))
 
-        embed = discord.Embed(title="\U0001f573️ Nether Market", color=discord.Color.dark_purple())
+        embed = discord.Embed(
+            title="\U0001f573️ Nether Market", color=discord.Color.dark_purple()
+        )
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if VEX_THUMBNAIL:
             embed.set_thumbnail(url=VEX_THUMBNAIL)
-        embed.set_footer(text=f"{get_quip('nether_market')}\n\U0001f4e6×N = quantity you currently hold")
+        embed.set_footer(
+            text=f"{get_quip('nether_market')}\n\U0001f4e6×N = quantity you currently hold"
+        )
 
         offers = _iter_offers(self.rotation, self.holdings)
         for tier_key, tier_label in _TIER_LABELS:
@@ -132,17 +152,27 @@ class NetherMarketHubView(BaseView):
 
         embed.add_field(name="Gold", value=f"\U0001f4b0 {self.gold:,}", inline=True)
         embed.add_field(
-            name="Holdings", value=f"{self.held_count} / {self.cap} slots (worth ~{value:,})", inline=True
+            name="Holdings",
+            value=f"{self.held_count} / {self.cap} slots (worth ~{value:,})",
+            inline=True,
         )
         embed.add_field(name="Wealth Tier", value=f"**{tier_name}**", inline=True)
 
         expires_at = self.profile.get("shield_expires_at")
         shielded = bool(expires_at) and expires_at > time.time()
-        embed.add_field(name="Marks", value=f"\U0001f536 {self.profile['nether_marks']}", inline=True)
         embed.add_field(
-            name="Charges", value=f"{self.profile['plunder_charges']} / {MAX_CHARGES}", inline=True
+            name="Marks",
+            value=f"\U0001f536 {self.profile['nether_marks']}",
+            inline=True,
         )
-        embed.add_field(name="Protected", value="Yes" if shielded else "No", inline=True)
+        embed.add_field(
+            name="Charges",
+            value=f"{self.profile['plunder_charges']} / {MAX_CHARGES}",
+            inline=True,
+        )
+        embed.add_field(
+            name="Protected", value="Yes" if shielded else "No", inline=True
+        )
         if shielded:
             embed.add_field(
                 name="Protection Timer", value=f"<t:{int(expires_at)}:R>", inline=True
@@ -159,7 +189,9 @@ class NetherMarketHubView(BaseView):
             if item_lines:
                 haul_parts.append(", ".join(item_lines))
             if notice.get("overflow_gold"):
-                haul_parts.append(f"\U0001f4b0 {notice['overflow_gold']:,} gold (overflow)")
+                haul_parts.append(
+                    f"\U0001f4b0 {notice['overflow_gold']:,} gold (overflow)"
+                )
             haul = "; ".join(haul_parts) if haul_parts else "nothing of value"
             embed.insert_field_at(
                 0,
@@ -170,7 +202,9 @@ class NetherMarketHubView(BaseView):
                 ),
                 inline=False,
             )
-            self.plunder_notice = None  # only ever shown on the first render of this view
+            self.plunder_notice = (
+                None  # only ever shown on the first render of this view
+            )
         return embed
 
     def _build_buttons(self):
@@ -181,27 +215,42 @@ class NetherMarketHubView(BaseView):
             self._build_select_menu()
 
     def _build_normal_buttons(self):
-        buy_btn = ui.Button(label="Buy", style=ButtonStyle.green, emoji="\U0001f6d2", row=0)
+        buy_btn = ui.Button(
+            label="Buy", style=ButtonStyle.green, emoji="\U0001f6d2", row=0
+        )
         buy_btn.callback = self._make_enter_select_callback("buy")
         self.add_item(buy_btn)
 
-        sell_btn = ui.Button(label="Sell", style=ButtonStyle.red, emoji="\U0001f4b8", row=0)
+        sell_btn = ui.Button(
+            label="Sell", style=ButtonStyle.red, emoji="\U0001f4b8", row=0
+        )
         sell_btn.callback = self._make_enter_select_callback("sell")
         self.add_item(sell_btn)
 
-        holdings_btn = ui.Button(label="Holdings", style=ButtonStyle.blurple, emoji="\U0001f4e6", row=1)
+        holdings_btn = ui.Button(
+            label="Holdings", style=ButtonStyle.blurple, emoji="\U0001f4e6", row=1
+        )
         holdings_btn.callback = self.open_holdings
         self.add_item(holdings_btn)
 
-        browse_btn = ui.Button(label="Browse Targets", style=ButtonStyle.blurple, emoji="\U0001f3af", row=1)
+        browse_btn = ui.Button(
+            label="Browse Targets", style=ButtonStyle.blurple, emoji="\U0001f3af", row=1
+        )
         browse_btn.callback = self.open_browse
         self.add_item(browse_btn)
 
-        mastery_btn = ui.Button(label="Tricks of the Trade", style=ButtonStyle.blurple, emoji="\U0001f3ad", row=1)
+        mastery_btn = ui.Button(
+            label="Tricks of the Trade",
+            style=ButtonStyle.blurple,
+            emoji="\U0001f3ad",
+            row=1,
+        )
         mastery_btn.callback = self.open_mastery
         self.add_item(mastery_btn)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
+        close_btn = ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         close_btn.callback = self.handle_close
         self.add_item(close_btn)
 
@@ -221,12 +270,23 @@ class NetherMarketHubView(BaseView):
         options = []
         for i, offer in enumerate(offers):
             item = offer["item"]
-            label = f"{offer['tier_label']} · {offer['variant_label']}: {item['name']}"[:100]
-            description = f"\U0001f4b0 {offer['price']:,} each · Held: {offer['held']}"[:100]
+            label = f"{offer['tier_label']} · {offer['variant_label']}: {item['name']}"[
+                :100
+            ]
+            description = f"\U0001f4b0 {offer['price']:,} each · Held: {offer['held']}"[
+                :100
+            ]
             options.append(
-                discord.SelectOption(label=label, description=description, value=str(i), emoji=offer["emoji"])
+                discord.SelectOption(
+                    label=label,
+                    description=description,
+                    value=str(i),
+                    emoji=offer["emoji"],
+                )
             )
-        select = ui.Select(placeholder=f"Select an item to {self.mode}...", options=options, row=0)
+        select = ui.Select(
+            placeholder=f"Select an item to {self.mode}...", options=options, row=0
+        )
         select.callback = self._make_select_callback(select, offers)
         self.add_item(select)
 
@@ -242,7 +302,8 @@ class NetherMarketHubView(BaseView):
                 offers = _iter_offers(self.rotation, self.holdings)
                 if not any(o["held"] > 0 for o in offers):
                     return await interaction.response.send_message(
-                        "You don't hold any of the currently active offers.", ephemeral=True
+                        "You don't hold any of the currently active offers.",
+                        ephemeral=True,
                     )
 
             self._processing = True
@@ -267,7 +328,13 @@ class NetherMarketHubView(BaseView):
             offer = offers[int(select.values[0])]
             modal_cls = BuyModal if self.mode == "buy" else SellModal
             await interaction.response.send_modal(
-                modal_cls(offer["item_key"], offer["price"], self.bot, self.user_id, self.server_id)
+                modal_cls(
+                    offer["item_key"],
+                    offer["price"],
+                    self.bot,
+                    self.user_id,
+                    self.server_id,
+                )
             )
 
         return _callback
@@ -280,7 +347,9 @@ class NetherMarketHubView(BaseView):
         from core.nether_market.views.holdings_view import build_holdings_view
 
         view = await build_holdings_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 
@@ -292,7 +361,9 @@ class NetherMarketHubView(BaseView):
         from core.nether_market.views.browse_view import build_browse_view
 
         view = await build_browse_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=await view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=await view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 
@@ -304,7 +375,9 @@ class NetherMarketHubView(BaseView):
         from core.nether_market.views.mastery_view import build_mastery_view
 
         view = await build_mastery_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 
@@ -317,7 +390,11 @@ class NetherMarketHubView(BaseView):
 
 class BuyModal(ui.Modal, title="Buy Curiosity"):
     quantity_input = ui.TextInput(
-        label="Quantity", placeholder="e.g. 5", min_length=1, max_length=4, required=True
+        label="Quantity",
+        placeholder="e.g. 5",
+        min_length=1,
+        max_length=4,
+        required=True,
     )
 
     def __init__(self, item_key: str, price: int, bot, user_id: str, server_id: str):
@@ -342,7 +419,14 @@ class BuyModal(ui.Modal, title="Buy Curiosity"):
 
         current_gold = await self.bot.database.users.get_gold(self.user_id)
         view = ConfirmTransactionView(
-            self.bot, self.user_id, self.server_id, "buy", self.item_key, self.price, qty, current_gold
+            self.bot,
+            self.user_id,
+            self.server_id,
+            "buy",
+            self.item_key,
+            self.price,
+            qty,
+            current_gold,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
@@ -350,7 +434,11 @@ class BuyModal(ui.Modal, title="Buy Curiosity"):
 
 class SellModal(ui.Modal, title="Sell Curiosity"):
     quantity_input = ui.TextInput(
-        label="Quantity", placeholder="e.g. 5", min_length=1, max_length=4, required=True
+        label="Quantity",
+        placeholder="e.g. 5",
+        min_length=1,
+        max_length=4,
+        required=True,
     )
 
     def __init__(self, item_key: str, price: int, bot, user_id: str, server_id: str):
@@ -375,7 +463,14 @@ class SellModal(ui.Modal, title="Sell Curiosity"):
 
         current_gold = await self.bot.database.users.get_gold(self.user_id)
         view = ConfirmTransactionView(
-            self.bot, self.user_id, self.server_id, "sell", self.item_key, self.price, qty, current_gold
+            self.bot,
+            self.user_id,
+            self.server_id,
+            "sell",
+            self.item_key,
+            self.price,
+            qty,
+            current_gold,
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
@@ -386,7 +481,15 @@ class ConfirmTransactionView(BaseView):
     writes, Cancel discards it. Either way we return to a freshly rebuilt hub."""
 
     def __init__(
-        self, bot, user_id, server_id, mode: str, item_key: str, price: int, qty: int, current_gold: int
+        self,
+        bot,
+        user_id,
+        server_id,
+        mode: str,
+        item_key: str,
+        price: int,
+        qty: int,
+        current_gold: int,
     ):
         super().__init__(bot, user_id, server_id)
         self.mode = mode
@@ -401,16 +504,26 @@ class ConfirmTransactionView(BaseView):
         total = self.price * self.qty
         verb = "BUY" if self.mode == "buy" else "SELL"
         preposition = "at" if self.mode == "buy" else "for"
-        expected_gold = self.current_gold - total if self.mode == "buy" else self.current_gold + total
+        expected_gold = (
+            self.current_gold - total
+            if self.mode == "buy"
+            else self.current_gold + total
+        )
 
         embed = discord.Embed(title="Confirm Transaction", color=discord.Color.gold())
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         embed.description = (
-            f"*\"You are about to **{verb}** {self.qty}x **{item['name']}** "
-            f"{preposition} \U0001f4b0 {total:,} gold, are you sure?\"*"
+            f'*"You are about to **{verb}** {self.qty}x **{item["name"]}** '
+            f'{preposition} \U0001f4b0 {total:,} gold, are you sure?"*'
         )
-        embed.add_field(name="Current Gold", value=f"\U0001f4b0 {self.current_gold:,}", inline=True)
-        embed.add_field(name="Gold After Transaction", value=f"\U0001f4b0 {expected_gold:,}", inline=True)
+        embed.add_field(
+            name="Current Gold", value=f"\U0001f4b0 {self.current_gold:,}", inline=True
+        )
+        embed.add_field(
+            name="Gold After Transaction",
+            value=f"\U0001f4b0 {expected_gold:,}",
+            inline=True,
+        )
         return embed
 
     @ui.button(label="Confirm", style=ButtonStyle.success, emoji="✅")
@@ -426,39 +539,56 @@ class ConfirmTransactionView(BaseView):
             await self._execute_sell(interaction)
 
     async def _execute_buy(self, interaction: Interaction):
-        profile = await self.bot.database.nether_market.get_or_create_profile(self.user_id, self.server_id)
+        profile = await self.bot.database.nether_market.get_or_create_profile(
+            self.user_id, self.server_id
+        )
         cap = M.get_holdings_cap(profile["mastery_nodes"])
-        held_count = await self.bot.database.nether_market.get_holdings_count(self.user_id, self.server_id)
+        held_count = await self.bot.database.nether_market.get_holdings_count(
+            self.user_id, self.server_id
+        )
         if held_count + self.qty > cap:
-            return await self._fail(interaction, f"That would exceed your holdings cap ({held_count}/{cap}).")
+            return await self._fail(
+                interaction,
+                f"That would exceed your holdings cap ({held_count}/{cap}).",
+            )
 
         cost = self.price * self.qty
         if not await self.bot.database.users.deduct_gold_atomic(self.user_id, cost):
             return await self._fail(interaction, "You don't have enough gold.")
 
-        await self.bot.database.nether_market.modify_holdings(self.user_id, self.server_id, self.item_key, self.qty)
+        await self.bot.database.nether_market.modify_holdings(
+            self.user_id, self.server_id, self.item_key, self.qty
+        )
         await self._succeed(interaction)
 
     async def _execute_sell(self, interaction: Interaction):
-        holdings = await self.bot.database.nether_market.get_holdings(self.user_id, self.server_id)
+        holdings = await self.bot.database.nether_market.get_holdings(
+            self.user_id, self.server_id
+        )
         held = holdings.get(self.item_key, 0)
         if self.qty > held:
             return await self._fail(interaction, f"You only hold {held} of that.")
 
-        await self.bot.database.nether_market.modify_holdings(self.user_id, self.server_id, self.item_key, -self.qty)
+        await self.bot.database.nether_market.modify_holdings(
+            self.user_id, self.server_id, self.item_key, -self.qty
+        )
         await self.bot.database.users.modify_gold(self.user_id, self.price * self.qty)
         await self._succeed(interaction)
 
     async def _fail(self, interaction: Interaction, message: str):
         await interaction.followup.send(message, ephemeral=True)
         view = await build_hub_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 
     async def _succeed(self, interaction: Interaction):
         view = await build_hub_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 
@@ -469,6 +599,8 @@ class ConfirmTransactionView(BaseView):
         self._processing = True
         await interaction.response.defer()
         view = await build_hub_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()

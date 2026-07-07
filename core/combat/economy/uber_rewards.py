@@ -158,7 +158,9 @@ async def _uber_defeat(
         dmg_frac=dmg_frac,
         killing_blow=view.killing_blow,
     )
-    await combat_ui.freeze_and_handoff(message, embed, view.post_combat_view)
+    view.post_combat_view.set_content(embed)
+    await message.edit(view=view.post_combat_view)
+    view.post_combat_view.message = message
     view.bot.state_manager.clear_active(view.user_id)
     await view.bot.database.users.update_from_player_object(view.player)
     await _je.save_jewel_state(view.bot, view.user_id, view.player)
@@ -271,7 +273,9 @@ async def _uber_complete_standard(view, message, cfg: dict, reward_data: dict) -
     embed = combat_ui.create_victory_embed(view.player, view.monster, reward_data)
     embed.title = cfg["embed_title"]
     getattr(embed, cfg["image_fn"])(url=cfg["victory_image"])
-    await combat_ui.freeze_and_handoff(message, embed, view.post_combat_view)
+    view.post_combat_view.set_content(embed)
+    await message.edit(view=view.post_combat_view)
+    view.post_combat_view.message = message
     view.bot.state_manager.clear_active(view.user_id)
     view.stop()
 

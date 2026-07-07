@@ -226,5 +226,3 @@ def get_soul_stone_passive(player, key: str) -> int | None:
     a standalone function without importing models directly.
     """
     return player.get_soul_stone_passive(key)
-
-

@@ -10,19 +10,19 @@ from core.character.profile_ui import ProfileBuilder
 
 # Row 0: Profile | Cooldowns | Inventory | Crafting | Resources
 _ROW0 = [
-    ("profile",   "Profile",   "👤", 0),
+    ("profile", "Profile", "👤", 0),
     ("cooldowns", "Cooldowns", "⏰", 0),
     ("inventory", "Inventory", "🎒", 0),
-    ("crafting",  "Crafting",  "⚗️", 0),
+    ("crafting", "Crafting", "⚗️", 0),
     ("resources", "Resources", "📦", 0),
 ]
 
 # Row 1: Stats | Gear Passives | Misc Passives | Uber | Close
 _ROW1 = [
-    ("stats",         "Stats",         "📊", 1),
+    ("stats", "Stats", "📊", 1),
     ("gear_passives", "Gear Passives", "⚡", 1),
     ("misc_passives", "Misc Passives", "🔮", 1),
-    ("uber",          "Uber",          "⚔️", 1),
+    ("uber", "Uber", "⚔️", 1),
 ]
 
 

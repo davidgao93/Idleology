@@ -16,17 +16,20 @@ def _load_monster_rows() -> list[tuple]:
     try:
         with open(csv_path, newline="") as f:
             for row in csv.DictReader(f):
-                rows.append((
-                    row["name"],
-                    row["url"],
-                    int(row["level"]) * 10,
-                    row["flavor"],
-                    row.get("species", row["name"]),
-                ))
+                rows.append(
+                    (
+                        row["name"],
+                        row["url"],
+                        int(row["level"]) * 10,
+                        row["flavor"],
+                        row.get("species", row["name"]),
+                    )
+                )
     except Exception as e:
         print(f"Error reading monsters.csv: {e}")
     _MONSTER_ROWS = rows
     return rows
+
 
 from core.combat.mobgen.modifier_data import (
     BOSS_MOD_NAMES,

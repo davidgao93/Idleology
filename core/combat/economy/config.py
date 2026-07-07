@@ -143,6 +143,7 @@ def get_corrupted_base_chance(level: int) -> float:
             return chance
     return 0.0
 
+
 # ---------------------------------------------------------------------------
 # Boss / corruption sigil drops
 # ---------------------------------------------------------------------------

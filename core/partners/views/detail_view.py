@@ -215,8 +215,12 @@ class PartnerSkillsView(PartnerBaseView):
             )
             sig_cost = get_sig_upgrade_cost(sig_lvl)
             if sig_lvl > 0:
-                label = f"SIG: {_sig_display_name(sig_key)} (Lv.{sig_lvl}/{MAX_SIG_LEVEL})"
-                cost_str = f"Upgrade: {sig_cost} char shards" if sig_cost else "MAX level"
+                label = (
+                    f"SIG: {_sig_display_name(sig_key)} (Lv.{sig_lvl}/{MAX_SIG_LEVEL})"
+                )
+                cost_str = (
+                    f"Upgrade: {sig_cost} char shards" if sig_cost else "MAX level"
+                )
             else:
                 label = f"SIG: {_sig_display_name(sig_key)} (Locked)"
                 cost_str = f"Unlock: {sig_cost} char shards"

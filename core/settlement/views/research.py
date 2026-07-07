@@ -298,8 +298,12 @@ class ResearchView(SettlementBaseView):
                 lines.append(f"⏳ {emoji} **{b_name}** — In Progress")
             elif not self._prerequisite_met(b_type):
                 prereq = RESEARCH_PREREQUISITES[b_type]
-                prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title())
-                lines.append(f"🔒 {emoji} **{b_name}** — Requires **{prereq_name}** first")
+                prereq_name = RESEARCHABLE_BUILDINGS.get(
+                    prereq, prereq.replace("_", " ").title()
+                )
+                lines.append(
+                    f"🔒 {emoji} **{b_name}** — Requires **{prereq_name}** first"
+                )
             else:
                 lines.append(f"🔒 {emoji} **{b_name}** — Not Researched")
         embed.add_field(name="📖 Research Status", value="\n".join(lines), inline=False)
@@ -331,7 +335,9 @@ class ResearchView(SettlementBaseView):
         # Guard: prerequisite must be researched
         if not self._prerequisite_met(b_type):
             prereq = RESEARCH_PREREQUISITES[b_type]
-            prereq_name = RESEARCHABLE_BUILDINGS.get(prereq, prereq.replace("_", " ").title())
+            prereq_name = RESEARCHABLE_BUILDINGS.get(
+                prereq, prereq.replace("_", " ").title()
+            )
             self._processing = False
             await interaction.response.send_message(
                 f"You must research **{prereq_name}** before you can research "

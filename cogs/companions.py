@@ -42,7 +42,9 @@ class Companions(commands.Cog):
             pending_cookies = await self.bot.database.users.get_currency(
                 user_id, "companion_pet_xp"
             )
-            last_collect_time = await self.bot.database.users.get_companion_collect_time(user_id)
+            last_collect_time = (
+                await self.bot.database.users.get_companion_collect_time(user_id)
+            )
             view = CompanionListView(
                 self.bot,
                 user_id,

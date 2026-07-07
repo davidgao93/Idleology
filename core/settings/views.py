@@ -106,9 +106,7 @@ class SettingsView(BaseView):
         reload_style = (
             ButtonStyle.danger if self.auto_potion_reload else ButtonStyle.success
         )
-        reload_btn = ui.Button(
-            label=reload_lbl, style=reload_style, emoji="🧪", row=1
-        )
+        reload_btn = ui.Button(label=reload_lbl, style=reload_style, emoji="🧪", row=1)
         reload_btn.callback = self.toggle_auto_potion_reload
         self.add_item(reload_btn)
 

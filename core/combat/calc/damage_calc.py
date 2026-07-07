@@ -351,7 +351,9 @@ def calc_crit_damage(
             deft_min = int(base_max * (_ss_deftness * 0.05))
             base_min = max(base_min, deft_min)
             calc_dmg_notes.append(f"soul_deft_min={base_min}")
-            log.append(f"**Soul Deftness T{_ss_deftness}** steadies your critical strike!")
+            log.append(
+                f"**Soul Deftness T{_ss_deftness}** steadies your critical strike!"
+            )
 
     # crit_mult starts from the additive base stat (weapon + essence + insight +
     # emblem + partner + Hematurgy Chain Reaction/Executioner's Rite — all summed

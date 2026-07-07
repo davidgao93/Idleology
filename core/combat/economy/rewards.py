@@ -113,7 +113,9 @@ def calculate_rewards(
         if mod_difficulty_sum > 0:
             xp_additive += mod_difficulty_sum
             results["difficulty_xp_pct"] = mod_difficulty_sum
-            results["difficulty_drop_pct"] = min(MODIFIER_DIFFICULTY_CAP, mod_difficulty_sum)
+            results["difficulty_drop_pct"] = min(
+                MODIFIER_DIFFICULTY_CAP, mod_difficulty_sum
+            )
 
     xp_find_tiers = player.get_emblem_bonus("xp_find")
     if xp_find_tiers > 0:
@@ -224,7 +226,9 @@ def calculate_rewards(
             equiv_lvl = ss_prosper * 2
             if random.random() < equiv_lvl * PROSPER_CHANCE_PER_LEVEL:
                 gold_additive += 1.0
-                results["msgs"].append(f"**Soul Prosper T{ss_prosper}** grants +100% Gold!")
+                results["msgs"].append(
+                    f"**Soul Prosper T{ss_prosper}** grants +100% Gold!"
+                )
 
     results["gold"] = int(gold_base * (1 + gold_additive))
 

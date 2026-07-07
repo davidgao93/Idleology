@@ -43,8 +43,8 @@ class Uber(commands.Cog, name="uber"):
             gate.message = await interaction.original_response()
             return
 
-        embed, view = await _build()
-        await interaction.response.send_message(embed=embed, view=view)
+        _, view = await _build()
+        await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
 

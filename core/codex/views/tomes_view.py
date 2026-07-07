@@ -126,7 +126,9 @@ class CodexTomsView(BaseView):
                 reroll_type_btn.callback = self._on_reroll_type
                 self.add_item(reroll_type_btn)
 
-        exit_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=3)
+        exit_btn = ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=3
+        )
         exit_btn.callback = self._on_exit
         self.add_item(exit_btn)
 

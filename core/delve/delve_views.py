@@ -10,7 +10,15 @@ from core.skills.mechanics import SkillMechanics
 
 class DelveEntryView(BaseView):
     def __init__(
-        self, bot, user_id, server_id, cost, start_callback, delve_stats, *, parent_gather_view=None
+        self,
+        bot,
+        user_id,
+        server_id,
+        cost,
+        start_callback,
+        delve_stats,
+        *,
+        parent_gather_view=None,
     ):
         super().__init__(bot, user_id, server_id)
         self.cost = cost
@@ -69,10 +77,14 @@ class DelveEntryView(BaseView):
     @ui.button(label="Shop", style=ButtonStyle.secondary, emoji="🛠️")
     async def shop(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
-        fresh_stats = await self.bot.database.delve.get_profile(self.user_id, self.server_id)
+        fresh_stats = await self.bot.database.delve.get_profile(
+            self.user_id, self.server_id
+        )
         self.delve_stats.update(fresh_stats)
 
-        shop_embed = discord.Embed(title="🛠️ Delve Workshop", color=discord.Color.dark_orange())
+        shop_embed = discord.Embed(
+            title="🛠️ Delve Workshop", color=discord.Color.dark_orange()
+        )
         shop_embed.set_thumbnail(url=DELVE_HUB)
         shop_embed.description = f"💎 **Obsidian Shards:** {self.delve_stats['shards']}"
         shop_embed.add_field(
@@ -85,7 +97,11 @@ class DelveEntryView(BaseView):
             await inter.response.edit_message(embed=self.build_embed(), view=self)
 
         shop_view = DelveUpgradeView(
-            self.bot, self.user_id, self.server_id, self.delve_stats, back_callback=back_to_entry
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.delve_stats,
+            back_callback=back_to_entry,
         )
         await interaction.edit_original_response(embed=shop_embed, view=shop_view)
 
@@ -284,7 +300,9 @@ class DelveView(BaseView):
             if self.mastery_row:
                 ore_mult = Mastery.get_vein_intuition_ore_mult(self.mastery_row)
                 if ore_mult > 1.0:
-                    ore_yield = {k: max(1, int(v * ore_mult)) for k, v in ore_yield.items()}
+                    ore_yield = {
+                        k: max(1, int(v * ore_mult)) for k, v in ore_yield.items()
+                    }
             name_map = {
                 col: label
                 for col, label in SkillMechanics.get_skill_info("mining")["resources"]
@@ -570,7 +588,9 @@ class DelveUpgradeView(BaseView):
         else:
             label = "Close"
             emoji = "✖️"
-        nav = discord.ui.Button(label=label, style=ButtonStyle.secondary, emoji=emoji, row=1)
+        nav = discord.ui.Button(
+            label=label, style=ButtonStyle.secondary, emoji=emoji, row=1
+        )
         nav.callback = self._on_nav
         self.add_item(nav)
 

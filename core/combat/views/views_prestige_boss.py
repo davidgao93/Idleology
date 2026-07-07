@@ -29,7 +29,9 @@ REMNANT_MAP = {
 
 
 class HarvestRow(discord.ui.ActionRow["PrestigeBossHarvestView"]):
-    @discord.ui.button(label="Harvest Remnants", style=discord.ButtonStyle.success, emoji="⛏️")
+    @discord.ui.button(
+        label="Harvest Remnants", style=discord.ButtonStyle.success, emoji="⛏️"
+    )
     async def harvest_btn(self, interaction: discord.Interaction, btn: Button):
         await self.view._on_harvest(interaction, btn)
 

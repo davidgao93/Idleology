@@ -258,18 +258,25 @@ def static_layout_view(container: discord.ui.Container) -> discord.ui.LayoutView
 async def freeze_and_handoff(
     message: discord.Message, embed: discord.Embed, next_view=None
 ) -> discord.Message:
-    """Sends `embed` (+ `next_view`, a classic BaseView) as a NEW message and
-    points `next_view.message` at it, leaving `message` untouched.
+    """Sends `embed` (+ `next_view`, a classic BaseView) as a NEW message,
+    points `next_view.message` at it, then deletes `message`.
 
     Discord's IS_COMPONENTS_V2 flag can never be removed once set on a
     message, so once CombatView has rendered a message as a LayoutView, any
-    hand-off to a classic BaseView-based screen (PostCombatView,
-    LuciferChoiceView, PrestigeBossHarvestView, ...) must happen on a fresh
-    message rather than editing the old one.
+    hand-off to a classic BaseView-based screen (UberReturnView,
+    ApexLobbyView, ...) must happen on a fresh message rather than editing
+    the old one. The old message is deleted rather than left behind — it
+    has no further purpose once the new one is up, and leaving it around
+    (still showing its last combat frame, possibly with stale-looking
+    buttons) reads as broken rather than as a deliberate transition.
     """
     new_message = await message.channel.send(embed=embed, view=next_view)
     if next_view is not None:
         next_view.message = new_message
+    try:
+        await message.delete()
+    except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+        pass
     return new_message
 
 
@@ -303,7 +310,9 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
         if header_text:
             children.append(discord.ui.TextDisplay(header_text))
         if thumb_url:
-            children.append(discord.ui.MediaGallery(discord.MediaGalleryItem(media=thumb_url)))
+            children.append(
+                discord.ui.MediaGallery(discord.MediaGalleryItem(media=thumb_url))
+            )
 
     for field in embed.fields:
         value = field.value or ""
@@ -395,7 +404,9 @@ def create_combat_layout(
         children.append(
             discord.ui.Section(
                 player_text,
-                accessory=discord.ui.Thumbnail(player_avatar_url, description=player.name),
+                accessory=discord.ui.Thumbnail(
+                    player_avatar_url, description=player.name
+                ),
             )
         )
     else:

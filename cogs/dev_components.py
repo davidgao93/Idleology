@@ -101,8 +101,7 @@ class PageSelectRow(discord.ui.ActionRow["ComponentsMockupView"]):
     @discord.ui.select(
         placeholder="Choose a mockup page...",
         options=[
-            discord.SelectOption(label=label, value=key)
-            for key, label in PAGES.items()
+            discord.SelectOption(label=label, value=key) for key, label in PAGES.items()
         ],
     )
     async def page_select(

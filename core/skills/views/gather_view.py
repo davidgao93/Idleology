@@ -517,7 +517,9 @@ class GatherView(BaseView):
             delve_stats,
             parent_gather_view=gather_parent,
         )
-        await interaction.edit_original_response(embed=entry_view.build_embed(), view=entry_view)
+        await interaction.edit_original_response(
+            embed=entry_view.build_embed(), view=entry_view
+        )
         entry_view.message = await interaction.original_response()
 
     # ------------------------------------------------------------------

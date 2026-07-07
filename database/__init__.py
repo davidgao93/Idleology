@@ -39,7 +39,9 @@ from .repositories.users import UserRepository
 
 
 class DatabaseManager:
-    def __init__(self, *, connection: "aiosqlite.Connection | GuardedConnection") -> None:
+    def __init__(
+        self, *, connection: "aiosqlite.Connection | GuardedConnection"
+    ) -> None:
         if not isinstance(connection, GuardedConnection):
             connection = GuardedConnection(connection)
         self.connection = connection

@@ -432,7 +432,9 @@ class FishingView(BaseView):
         if mastery_row:
             am_mult = Mastery.get_angling_mastery_yield_mult(mastery_row)
             if am_mult > 1.0:
-                yield_dict = {k: max(1, int(v * am_mult)) for k, v in yield_dict.items()}
+                yield_dict = {
+                    k: max(1, int(v * am_mult)) for k, v in yield_dict.items()
+                }
 
         await self.bot.database.skills.update_batch(
             self.user_id, self.server_id, "fishing", yield_dict
@@ -444,7 +446,9 @@ class FishingView(BaseView):
         )
         # Angling Mastery: +5 extra Momentum minutes on quality sessions
         if mastery_row and self.session_quality != "none":
-            self.session_momentum += Mastery.get_angling_mastery_momentum_bonus(mastery_row)
+            self.session_momentum += Mastery.get_angling_mastery_momentum_bonus(
+                mastery_row
+            )
         if self.session_momentum > 0:
             try:
                 max_mom = SkillMechanics.MAX_MOMENTUM_MINUTES.get("fishing", 300)

@@ -382,7 +382,9 @@ class ImprintView(BaseView):
         cat = PASSIVE_CATEGORY_MAP.get(self._selected_passive, "utility")
 
         # Full item detail — same builder as the gear command's Item Detail View
-        embed = InventoryUI.get_item_details_embed(self._selected_item, is_equipped=False)
+        embed = InventoryUI.get_item_details_embed(
+            self._selected_item, is_equipped=False
+        )
         embed.title = f"🔏 Extract {passive_display} — {embed.title}"
         embed.color = 0x9900CC
         embed.set_thumbnail(url=APEX_IMPRINT)
@@ -589,7 +591,9 @@ class ImprintView(BaseView):
 
         embed = discord.Embed(title=result_title, description=result_desc, color=color)
         embed.set_thumbnail(url=APEX_IMPRINT)
-        embed.set_footer(text=f"1x {shard_type.title()} Shard consumed to begin the imprint.")
+        embed.set_footer(
+            text=f"1x {shard_type.title()} Shard consumed to begin the imprint."
+        )
 
         # Add "Done" button to navigate back to soul stone
         self.clear_items()

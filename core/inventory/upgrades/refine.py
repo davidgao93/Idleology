@@ -229,13 +229,27 @@ class RefineView(BaseUpgradeView):
 
         all_mat_cols = {
             "mining": ["iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"],
-            "woodcutting": ["oak_plank", "willow_plank", "mahogany_plank", "magic_plank", "idea_plank"],
-            "fishing": ["desiccated_essence", "regular_essence", "sturdy_essence", "reinforced_essence", "titanium_essence"],
+            "woodcutting": [
+                "oak_plank",
+                "willow_plank",
+                "mahogany_plank",
+                "magic_plank",
+                "idea_plank",
+            ],
+            "fishing": [
+                "desiccated_essence",
+                "regular_essence",
+                "sturdy_essence",
+                "reinforced_essence",
+                "titanium_essence",
+            ],
         }
         sim_mats = {}
         for table, cols in all_mat_cols.items():
             for col in cols:
-                sim_mats[col] = await self.bot.database.skills.get_single_resource(uid, sid, table, col)
+                sim_mats[col] = await self.bot.database.skills.get_single_resource(
+                    uid, sid, table, col
+                )
 
         total_cycles = 0
         gold_used = 0
@@ -251,7 +265,9 @@ class RefineView(BaseUpgradeView):
                 stop_reason = "Ran out of Gold."
                 break
 
-            short = next((m for m in materials if sim_mats.get(m["column"], 0) < m["qty"]), None)
+            short = next(
+                (m for m in materials if sim_mats.get(m["column"], 0) < m["qty"]), None
+            )
             if short:
                 stop_reason = f"Ran out of {short['name']}."
                 break
@@ -271,11 +287,14 @@ class RefineView(BaseUpgradeView):
                 break
 
         if total_cycles == 0:
-            await interaction.followup.send(f"No refines possible: {stop_reason}", ephemeral=True)
+            await interaction.followup.send(
+                f"No refines possible: {stop_reason}", ephemeral=True
+            )
             return
 
         mat_lines = (
-            "\n".join(f"  {name}: {qty:,}" for name, qty in mat_used.items()) or "  None"
+            "\n".join(f"  {name}: {qty:,}" for name, qty in mat_used.items())
+            or "  None"
         )
 
         embed = discord.Embed(title="⚠️ Confirmation", color=discord.Color.orange())

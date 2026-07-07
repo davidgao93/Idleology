@@ -260,6 +260,7 @@ class CodexRunView(BaseView):
     ) -> "CodexRunView":
         """Rebuild a run from a chapter-boundary snapshot, restarting the
         current chapter at wave 1 (mirrors begin_run's chapter setup)."""
+
         def _mods(pairs):
             return [tuple(p) for p in pairs]
 
@@ -926,7 +927,9 @@ class CodexRunView(BaseView):
             fragments, len(self.page_drops), exp_changes, quest_msgs=quest_msgs
         )
         self.stop()
-        self.bot.state_manager.clear_active(self.user_id)  # session-terminating exit from CodexRunView (set in begin_run)
+        self.bot.state_manager.clear_active(
+            self.user_id
+        )  # session-terminating exit from CodexRunView (set in begin_run)
 
         if message:
             lobby_view = CodexRunCompleteView(
@@ -1156,7 +1159,9 @@ class CodexRunView(BaseView):
         chapter at wave 1 (this chapter's unbanked XP/gold are rolled back)."""
         await self._save_run(at_chapter_start=True)
         await self.bot.database.users.update_from_player_object(self.player)
-        self.bot.state_manager.clear_active(self.user_id)  # session-terminating Save & Exit (top-level for "codex" active)
+        self.bot.state_manager.clear_active(
+            self.user_id
+        )  # session-terminating Save & Exit (top-level for "codex" active)
         self.stop()
 
         embed = discord.Embed(

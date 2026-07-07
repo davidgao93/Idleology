@@ -90,7 +90,9 @@ class Delve(commands.Cog):
             view.message = await inter.original_response()
 
         # 5. Show Entry View
-        view = DelveEntryView(self.bot, user_id, server_id, entry_cost, start_game, delve_stats)
+        view = DelveEntryView(
+            self.bot, user_id, server_id, entry_cost, start_game, delve_stats
+        )
         await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
 

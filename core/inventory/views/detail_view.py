@@ -153,7 +153,9 @@ class ItemDetailView(BaseView):
 
         back_btn = Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
         back_btn.callback = self.go_back
-        self.add_item(back_btn)  # intra-inventory navigation (detail -> list) — do not clear_active
+        self.add_item(
+            back_btn
+        )  # intra-inventory navigation (detail -> list) — do not clear_active
 
     def add_upgrade_button(self, label, style, action_type):
         btn = Button(label=label, style=style)

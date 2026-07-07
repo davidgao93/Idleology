@@ -7,12 +7,30 @@ from discord.ext import commands
 
 # player_currencies columns that can be granted via codes
 _CURRENCY_COLUMNS = {
-    "curios", "curio_puzzle_boxes", "refinement_runes", "potential_runes",
-    "imbue_runes", "shatter_runes", "partnership_runes", "rune_of_regret",
-    "runes_of_nature", "dragon_key", "angel_key", "void_keys", "pinnacle_key",
-    "soul_cores", "void_frags", "balance_fragment", "spirit_stones",
-    "antique_tome", "codex_fragments", "codex_pages", "codex_rerolls",
-    "mirage_runes_imperfect", "mirage_runes_perfected", "companion_pet_xp",
+    "curios",
+    "curio_puzzle_boxes",
+    "refinement_runes",
+    "potential_runes",
+    "imbue_runes",
+    "shatter_runes",
+    "partnership_runes",
+    "rune_of_regret",
+    "runes_of_nature",
+    "dragon_key",
+    "angel_key",
+    "void_keys",
+    "pinnacle_key",
+    "soul_cores",
+    "void_frags",
+    "balance_fragment",
+    "spirit_stones",
+    "antique_tome",
+    "codex_fragments",
+    "codex_pages",
+    "codex_rerolls",
+    "mirage_runes_imperfect",
+    "mirage_runes_perfected",
+    "companion_pet_xp",
     "passive_points",
 }
 
@@ -95,16 +113,23 @@ class Codes(commands.Cog, name="codes"):
 
         # Expiry check
         if record["expires_at"]:
-            expires = datetime.fromisoformat(record["expires_at"]).replace(tzinfo=timezone.utc)
+            expires = datetime.fromisoformat(record["expires_at"]).replace(
+                tzinfo=timezone.utc
+            )
             if datetime.now(timezone.utc) > expires:
-                return await interaction.response.send_message(invalid_msg, ephemeral=True)
+                return await interaction.response.send_message(
+                    invalid_msg, ephemeral=True
+                )
 
         # Admin-only check — same generic message so the code isn't revealed
         if record["is_admin_only"] and not self._is_admin(user_id):
             return await interaction.response.send_message(invalid_msg, ephemeral=True)
 
         # Global use cap
-        if record["max_uses"] is not None and record["total_uses"] >= record["max_uses"]:
+        if (
+            record["max_uses"] is not None
+            and record["total_uses"] >= record["max_uses"]
+        ):
             return await interaction.response.send_message(
                 "This code is no longer available.", ephemeral=True
             )
@@ -144,11 +169,17 @@ class Codes(commands.Cog, name="codes"):
         json_start = rest.find("{")
         json_end = rest.rfind("}") + 1
         if json_start == -1 or json_end == 0:
-            return await ctx.send("Usage: `&create_code CODE {json} [--admin] [--max N]`")
+            return await ctx.send(
+                "Usage: `&create_code CODE {json} [--admin] [--max N]`"
+            )
 
-        code = rest[:json_start].strip().split()[0] if rest[:json_start].strip() else None
+        code = (
+            rest[:json_start].strip().split()[0] if rest[:json_start].strip() else None
+        )
         if not code:
-            return await ctx.send("Usage: `&create_code CODE {json} [--admin] [--max N]`")
+            return await ctx.send(
+                "Usage: `&create_code CODE {json} [--admin] [--max N]`"
+            )
 
         rewards_json = rest[json_start:json_end]
         flags = rest[json_end:].split()
@@ -158,7 +189,9 @@ class Codes(commands.Cog, name="codes"):
         except json.JSONDecodeError:
             return await ctx.send("Invalid JSON for rewards.")
 
-        unknown_keys = set(rewards) - _CURRENCY_COLUMNS - {"gold", "guild_tickets", "quest_tokens"}
+        unknown_keys = (
+            set(rewards) - _CURRENCY_COLUMNS - {"gold", "guild_tickets", "quest_tokens"}
+        )
         if unknown_keys:
             return await ctx.send(f"Unknown reward keys: {unknown_keys}")
 

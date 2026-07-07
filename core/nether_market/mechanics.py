@@ -48,13 +48,17 @@ class NetherMarketMechanics:
     def roll_price_below(true_value: int) -> int:
         """Listed price = true_value * a multiplier in [0.10, 0.95], rounded to
         the nearest 5% step so the displayed deviation is always a clean number."""
-        return NetherMarketMechanics._roll_price(true_value, ROTATION_LOW_MIN, ROTATION_LOW_MAX)
+        return NetherMarketMechanics._roll_price(
+            true_value, ROTATION_LOW_MIN, ROTATION_LOW_MAX
+        )
 
     @staticmethod
     def roll_price_above(true_value: int) -> int:
         """Listed price = true_value * a multiplier in [1.05, 3.00], rounded to
         the nearest 5% step so the displayed deviation is always a clean number."""
-        return NetherMarketMechanics._roll_price(true_value, ROTATION_HIGH_MIN, ROTATION_HIGH_MAX)
+        return NetherMarketMechanics._roll_price(
+            true_value, ROTATION_HIGH_MIN, ROTATION_HIGH_MAX
+        )
 
     @staticmethod
     def roll_rotation() -> dict:
@@ -64,9 +68,13 @@ class NetherMarketMechanics:
         for tier in ("cheap", "med", "expensive"):
             item_lo, item_hi = random.sample(ITEM_POOL[tier], 2)
             result[f"{tier}_lo_item"] = item_lo["key"]
-            result[f"{tier}_lo_price"] = NetherMarketMechanics.roll_price_below(item_lo["true_value"])
+            result[f"{tier}_lo_price"] = NetherMarketMechanics.roll_price_below(
+                item_lo["true_value"]
+            )
             result[f"{tier}_hi_item"] = item_hi["key"]
-            result[f"{tier}_hi_price"] = NetherMarketMechanics.roll_price_above(item_hi["true_value"])
+            result[f"{tier}_hi_price"] = NetherMarketMechanics.roll_price_above(
+                item_hi["true_value"]
+            )
         return result
 
     @staticmethod
@@ -101,7 +109,9 @@ class NetherMarketMechanics:
     def compute_holdings_value(holdings: dict, rotation: dict | None) -> int:
         """holdings: {item_key: qty}. Uses the rotation's listed price when the
         item is currently offered, otherwise falls back to true value."""
-        listed_lookup = NetherMarketMechanics.active_offers(rotation) if rotation else {}
+        listed_lookup = (
+            NetherMarketMechanics.active_offers(rotation) if rotation else {}
+        )
         total = 0
         for item_key, qty in holdings.items():
             item = NetherMarketMechanics.get_item(item_key)
@@ -189,9 +199,13 @@ class NetherMarketMechanics:
 
     @staticmethod
     def seconds_until_next_charge(
-        charges: int, last_charge_time: float | None, regen_seconds: float = CHARGE_REGEN_SECONDS
+        charges: int,
+        last_charge_time: float | None,
+        regen_seconds: float = CHARGE_REGEN_SECONDS,
     ) -> int:
-        charges, _ = NetherMarketMechanics.calculate_charges(charges, last_charge_time, regen_seconds)
+        charges, _ = NetherMarketMechanics.calculate_charges(
+            charges, last_charge_time, regen_seconds
+        )
         if charges >= MAX_CHARGES or last_charge_time is None:
             return 0
         elapsed = time.time() - last_charge_time
@@ -296,7 +310,9 @@ class NetherMarketMechanics:
 
     @staticmethod
     def roll_plunder_pct(defender_nodes: dict) -> float:
-        ceiling = TIGHT_GRIP_MAX_PCT if defender_nodes.get("sb_grip") else MAX_PLUNDER_PCT
+        ceiling = (
+            TIGHT_GRIP_MAX_PCT if defender_nodes.get("sb_grip") else MAX_PLUNDER_PCT
+        )
         pct = random.uniform(MIN_PLUNDER_PCT, max(MIN_PLUNDER_PCT, ceiling))
         return max(PLUNDER_PCT_FLOOR, pct)
 

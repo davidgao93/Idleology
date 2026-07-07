@@ -36,7 +36,6 @@ from core.images import (
     VICTORY_LUCIFER,
     VICTORY_NEET,
 )
-from core.items.factory import load_player
 from core.models import Monster, Player
 from core.tavern.mechanics import TavernMechanics
 
@@ -469,7 +468,11 @@ class CombatView(BaseLayoutView):
             self.logs[self.monster.name] = m_log
 
         self._turn_count += 1
-        if self._turn_count >= 600 and self.player.current_hp > 0 and self.monster.hp > 0:
+        if (
+            self._turn_count >= 600
+            and self.player.current_hp > 0
+            and self.monster.hp > 0
+        ):
             await self._handle_exhaustion(interaction.message, interaction)
             return
 
@@ -503,7 +506,11 @@ class CombatView(BaseLayoutView):
             self.logs[self.monster.name] = m_log
 
         self._turn_count += 1
-        if self._turn_count >= 600 and self.player.current_hp > 0 and self.monster.hp > 0:
+        if (
+            self._turn_count >= 600
+            and self.player.current_hp > 0
+            and self.monster.hp > 0
+        ):
             await self._handle_exhaustion(interaction.message, interaction)
             return
 
@@ -605,7 +612,11 @@ class CombatView(BaseLayoutView):
                 return
 
             # Exhaustion cap — 600 turns elapsed with both sides still alive.
-            if self._turn_count >= 600 and self.player.current_hp > 0 and self.monster.hp > 0:
+            if (
+                self._turn_count >= 600
+                and self.player.current_hp > 0
+                and self.monster.hp > 0
+            ):
                 await self._handle_exhaustion(message)
                 return
 
@@ -709,10 +720,18 @@ class CombatView(BaseLayoutView):
             self._turn_count += 1
             turns_processed += 1
 
-            if self._turn_count >= 600 and self.monster.hp > 0 and self.player.current_hp > 0:
+            if (
+                self._turn_count >= 600
+                and self.monster.hp > 0
+                and self.player.current_hp > 0
+            ):
                 break
 
-        if self._turn_count >= 600 and self.player.current_hp > 0 and self.monster.hp > 0:
+        if (
+            self._turn_count >= 600
+            and self.player.current_hp > 0
+            and self.monster.hp > 0
+        ):
             await self._handle_exhaustion(interaction.message, interaction)
             return
 
@@ -860,7 +879,9 @@ class CombatView(BaseLayoutView):
                 color=discord.Color.orange(),
             )
             trans_embed.set_thumbnail(url=self.monster.image)
-            self._sync_items(combat_ui.embed_to_container(trans_embed), interactive=False)
+            self._sync_items(
+                combat_ui.embed_to_container(trans_embed), interactive=False
+            )
             await message.edit(view=self)
             await asyncio.sleep(2)
 
@@ -1000,7 +1021,9 @@ class CombatView(BaseLayoutView):
             )
             await ping_msg.delete(delay=45)
             contract_choice_view = LuciferChoiceView(
-                self.bot, self.user_id, self.player,
+                self.bot,
+                self.user_id,
+                self.player,
                 server_id=self.server_id,
                 rematch_callback=self.rematch_callback,
             )

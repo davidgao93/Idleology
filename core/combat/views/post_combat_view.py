@@ -8,7 +8,9 @@ from core.items.factory import load_player
 
 class PostCombatRow(discord.ui.ActionRow["PostCombatView"]):
     @discord.ui.button(label="Fight Again", style=discord.ButtonStyle.green)
-    async def fight_again_btn(self, interaction: Interaction, button: discord.ui.Button):
+    async def fight_again_btn(
+        self, interaction: Interaction, button: discord.ui.Button
+    ):
         await self.view._fight_again(interaction)
 
 

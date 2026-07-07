@@ -7,7 +7,6 @@ from core.base_view import BaseView
 from core.companions.mastery import (
     MASTERY_BRANCHES,
     can_purchase,
-    get_all_nodes,
     get_node_by_id,
 )
 
@@ -42,14 +41,18 @@ class CompanionMasteryView(BaseView):
         for branch_key, branch in MASTERY_BRANCHES.items():
             btn = ui.Button(
                 label=branch["label"],
-                style=ButtonStyle.primary if branch_key == self.active_branch else ButtonStyle.secondary,
+                style=ButtonStyle.primary
+                if branch_key == self.active_branch
+                else ButtonStyle.secondary,
                 row=0,
             )
 
             async def _branch_cb(interaction: Interaction, b=branch_key):
                 self.active_branch = b
                 self._build_select()
-                await interaction.response.edit_message(embed=self.get_embed(), view=self)
+                await interaction.response.edit_message(
+                    embed=self.get_embed(), view=self
+                )
 
             btn.callback = _branch_cb
             self.add_item(btn)

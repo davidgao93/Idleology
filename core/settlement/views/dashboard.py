@@ -140,7 +140,9 @@ class _MaidTutorialView(BaseView):
         last = len(_SPRITZ_SCENES) - 1
 
         if self.index > 0:
-            prev = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=0)
+            prev = ui.Button(
+                label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=0
+            )
             prev.callback = self._on_prev
             self.add_item(prev)
 
@@ -149,7 +151,9 @@ class _MaidTutorialView(BaseView):
             nxt.callback = self._on_next
             self.add_item(nxt)
         else:
-            close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=0)
+            close = ui.Button(
+                label="Close", style=ButtonStyle.secondary, emoji="✖️", row=0
+            )
             close.callback = self._on_close
             self.add_item(close)
 
@@ -589,14 +593,18 @@ class SettlementDashboardView(SettlementBaseView):
             return False
 
         has_staffed_building = any(
-            not b.is_disabled and b.building_type != "war_camp" and b.workers_assigned > 0
+            not b.is_disabled
+            and b.building_type != "war_camp"
+            and b.workers_assigned > 0
             for b in self.settlement.buildings
         )
         if has_staffed_building:
             return True
 
         expedition_count = sum(
-            1 for p in self.plots if p.is_developed and p.bonus_type == "expedition_camp"
+            1
+            for p in self.plots
+            if p.is_developed and p.bonus_type == "expedition_camp"
         )
         dc_earned = int(hours / 48) * expedition_count
         return dc_earned > 0
@@ -1446,16 +1454,14 @@ class SettlementDashboardView(SettlementBaseView):
                 if crisis_quest_msgs:
                     crisis_result["quest_msgs"] = crisis_quest_msgs
                 crisis_summary = {"crisis_result": crisis_result}
+                # The dashboard message was never touched by CombatView (the
+                # fight ran on its own separate message), so it's still
+                # plain classic content — just edit it in place as usual.
                 if self.message:
-                    # CombatView rendered the fight with Components V2, which
-                    # permanently flags that message — it can never be edited
-                    # back to a classic embed, so the dashboard returns on a
-                    # fresh message instead of reusing the old one.
-                    new_message = await self.message.channel.send(
+                    await self.message.edit(
                         embed=self.build_embed(turn_summary=crisis_summary),
                         view=self,
                     )
-                    self.message = new_message
                 self.bot.state_manager.set_active(uid, "settlement")
 
             # Switch active state: settlement → combat
@@ -1473,12 +1479,12 @@ class SettlementDashboardView(SettlementBaseView):
                 player_avatar_url=user_row["appearance"],
             )
 
-            # Transition the settlement message into the combat view (same message).
-            # embed=None is required: the message currently carries the classic
-            # dashboard embed, and Discord rejects an edit that would leave both
-            # an embed and Components V2 components on the same message.
-            await interaction.edit_original_response(embed=None, view=view)
-            view.message = self.message
+            # CombatView renders with Components V2, which permanently flags
+            # whatever message it's sent on — so the fight runs on its own
+            # new message instead of taking over the dashboard's. The
+            # dashboard message is left untouched until the fight resolves.
+            battle_message = await interaction.followup.send(view=view)
+            view.message = battle_message
 
         except Exception:
             self._processing = False

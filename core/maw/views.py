@@ -99,7 +99,9 @@ class MawView(BaseView):
             btn_fight.callback = self.fight
             self.add_item(btn_fight)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
+        btn_close = ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         btn_close.callback = self.close_view
         self.add_item(btn_close)
 

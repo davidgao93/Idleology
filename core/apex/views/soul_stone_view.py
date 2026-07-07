@@ -54,7 +54,9 @@ def add_shard_inventory_field(embed: discord.Embed, shards: ShardInventory) -> N
         count = shards.get(key)
         shard_parts.append(f"{emoji} {key.title()}: **{count}**")
     shard_parts.append(f"🔘 Soul Fragments: **{shards.soul_fragments}**")
-    embed.add_field(name="💠 Shard Inventory", value="\n".join(shard_parts), inline=True)
+    embed.add_field(
+        name="💠 Shard Inventory", value="\n".join(shard_parts), inline=True
+    )
 
 
 def add_meta_shards_field(embed: discord.Embed, meta: MetaShardInventory) -> None:

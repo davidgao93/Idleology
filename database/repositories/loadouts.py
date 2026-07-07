@@ -78,7 +78,16 @@ class LoadoutRepository:
                  glove_id     = excluded.glove_id,
                  boot_id      = excluded.boot_id,
                  accessory_id = excluded.accessory_id""",
-            (user_id, slot_index, weapon_id, armor_id, helmet_id, glove_id, boot_id, accessory_id),
+            (
+                user_id,
+                slot_index,
+                weapon_id,
+                armor_id,
+                helmet_id,
+                glove_id,
+                boot_id,
+                accessory_id,
+            ),
         )
         await self.connection.commit()
 

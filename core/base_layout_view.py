@@ -49,7 +49,9 @@ class BaseLayoutView(ui.LayoutView):
             self.server_id = parent.server_id
         else:
             if user_id is None:
-                raise ValueError("BaseLayoutView requires either `user_id` or `parent=...`")
+                raise ValueError(
+                    "BaseLayoutView requires either `user_id` or `parent=...`"
+                )
             self.user_id = str(user_id)
             self.server_id = str(server_id) if server_id is not None else None
 

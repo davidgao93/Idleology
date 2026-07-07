@@ -149,7 +149,9 @@ class CompanionListView(BaseView):
         ready_cycles = 0
         if self._last_collect_time and active_comps:
             try:
-                diff = (datetime.now() - datetime.fromisoformat(self._last_collect_time)).total_seconds()
+                diff = (
+                    datetime.now() - datetime.fromisoformat(self._last_collect_time)
+                ).total_seconds()
                 ready_cycles = min(
                     int(diff // CompanionMechanics.COLLECTION_INTERVAL_SECONDS),
                     CompanionMechanics.MAX_COLLECTION_CYCLES,
@@ -157,7 +159,9 @@ class CompanionListView(BaseView):
             except ValueError:
                 pass
 
-        collect_label = f"Collect ({ready_cycles} ready)" if ready_cycles > 0 else "Collect"
+        collect_label = (
+            f"Collect ({ready_cycles} ready)" if ready_cycles > 0 else "Collect"
+        )
         collect_btn = ui.Button(
             label=collect_label, style=ButtonStyle.success, emoji="💰", row=1
         )
@@ -186,7 +190,9 @@ class CompanionListView(BaseView):
         mastery_btn.callback = self.open_mastery
         self.add_item(mastery_btn)
 
-        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
+        close_btn = ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+        )
         close_btn.callback = self.close_view
         self.add_item(close_btn)
 
@@ -409,16 +415,22 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        total_xp = await self.bot.database.users.get_currency(self.user_id, "companion_pet_xp")
+        total_xp = await self.bot.database.users.get_currency(
+            self.user_id, "companion_pet_xp"
+        )
         if total_xp <= 0:
             self._processing = False
             await interaction.followup.send("No XP to distribute.", ephemeral=True)
             return
-        await self.bot.database.users.modify_currency(self.user_id, "companion_pet_xp", -total_xp)
+        await self.bot.database.users.modify_currency(
+            self.user_id, "companion_pet_xp", -total_xp
+        )
 
         active = [c for c in self.companions if c.is_active]
         if not active:
-            await self.bot.database.users.modify_currency(self.user_id, "companion_pet_xp", total_xp)
+            await self.bot.database.users.modify_currency(
+                self.user_id, "companion_pet_xp", total_xp
+            )
             self._processing = False
             await interaction.followup.send(
                 "No active companions. Set one active first.", ephemeral=True
@@ -482,7 +494,9 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        pending = await self.bot.database.users.get_currency(self.user_id, "companion_pet_xp")
+        pending = await self.bot.database.users.get_currency(
+            self.user_id, "companion_pet_xp"
+        )
         kp_to_gain = pending // self.XP_PER_KP
         xp_to_spend = kp_to_gain * self.XP_PER_KP
 
@@ -493,10 +507,14 @@ class XPDistributeView(BaseView):
             )
             return
 
-        await self.bot.database.users.modify_currency(self.user_id, "companion_pet_xp", -pending)
+        await self.bot.database.users.modify_currency(
+            self.user_id, "companion_pet_xp", -pending
+        )
         remainder = pending - xp_to_spend
         if remainder > 0:
-            await self.bot.database.users.modify_currency(self.user_id, "companion_pet_xp", remainder)
+            await self.bot.database.users.modify_currency(
+                self.user_id, "companion_pet_xp", remainder
+            )
         await self.bot.database.companions.add_kinship_points(
             self.user_id, self.server_id, kp_to_gain
         )
@@ -520,7 +538,9 @@ class XPDistributeView(BaseView):
         self._processing = True
         await interaction.response.defer()
 
-        pending = await self.bot.database.users.get_currency(self.user_id, "companion_pet_xp")
+        pending = await self.bot.database.users.get_currency(
+            self.user_id, "companion_pet_xp"
+        )
         runes_to_gain = pending // self.XP_PER_RUNE
         xp_to_spend = runes_to_gain * self.XP_PER_RUNE
 
@@ -531,10 +551,14 @@ class XPDistributeView(BaseView):
             )
             return
 
-        await self.bot.database.users.modify_currency(self.user_id, "companion_pet_xp", -pending)
+        await self.bot.database.users.modify_currency(
+            self.user_id, "companion_pet_xp", -pending
+        )
         remainder = pending - xp_to_spend
         if remainder > 0:
-            await self.bot.database.users.modify_currency(self.user_id, "companion_pet_xp", remainder)
+            await self.bot.database.users.modify_currency(
+                self.user_id, "companion_pet_xp", remainder
+            )
         await self.bot.database.users.modify_currency(
             self.user_id, "partnership_runes", runes_to_gain
         )

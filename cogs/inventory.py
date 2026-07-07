@@ -151,7 +151,9 @@ class Inventory(commands.Cog, name="inventory"):
         self.bot.state_manager.set_active(user_id, "inventory")
 
         try:
-            view = await LoadoutView.create(self.bot, user_id, server_id, mode="standalone")
+            view = await LoadoutView.create(
+                self.bot, user_id, server_id, mode="standalone"
+            )
         except Exception:
             self.bot.state_manager.clear_active(user_id)
             raise

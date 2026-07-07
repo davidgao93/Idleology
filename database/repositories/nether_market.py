@@ -255,7 +255,9 @@ class NetherMarketRepository(BaseRepository):
     # Pending plunder notice — shown once, the next time the victim opens /nether
     # ------------------------------------------------------------------
 
-    async def set_plunder_notice(self, user_id: str, server_id: str, notice: dict) -> None:
+    async def set_plunder_notice(
+        self, user_id: str, server_id: str, notice: dict
+    ) -> None:
         await self.get_or_create_profile(user_id, server_id)
         await self.connection.execute(
             "UPDATE nether_market_profile SET pending_plunder_notice = ? WHERE user_id = ? AND server_id = ?",

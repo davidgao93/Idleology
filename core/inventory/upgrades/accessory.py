@@ -182,7 +182,9 @@ class PotentialView(BaseUpgradeView):
                 msg = f"Upgraded to Level **{self.item.passive_lvl}**!"
 
             result_embed.color = discord.Color.gold()
-            result_embed.description = f"{get_quip('enchant')}\n\n✨ **Success!**\n{msg}"
+            result_embed.description = (
+                f"{get_quip('enchant')}\n\n✨ **Success!**\n{msg}"
+            )
         else:
             result_embed.color = discord.Color.dark_grey()
             result_embed.description = "💔 **Failed.**\nThe magic failed to take hold."

@@ -20,13 +20,12 @@ from core.npc_voices import get_quip
 from core.settlement.constants import (
     BM_ITEM_VALUES,
     BM_TREE_NODES,
-    SETTLEMENT_EVENTS,
 )
 from core.settlement.mechanics import SettlementMechanics, execute_bm_offer
 from core.settlement.turn_engine import (
     calculate_offer_value,
-    complete_bm_deal_instant,
     compute_processing_turns,
+    resolve_bm_event_value_bonus,
     upgrade_dt_cost,
 )
 
@@ -472,6 +471,10 @@ class BlackMarketView(SettlementBaseView):
             self.user_id, self.server_id
         )
         inventory = await _load_player_inventory(self.bot, self.user_id, self.server_id)
+        active_events = await self.bot.database.settlement.get_active_events(
+            self.user_id, self.server_id
+        )
+        event_value_bonus = resolve_bm_event_value_bonus(active_events)
         view = OfferBuilderView(
             self.bot,
             self.user_id,
@@ -480,6 +483,7 @@ class BlackMarketView(SettlementBaseView):
             self,
             tree_nodes=tree_nodes,
             inventory=inventory,
+            event_value_bonus=event_value_bonus,
         )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
@@ -664,6 +668,7 @@ class OfferBuilderView(SettlementBaseView):
         parent_market: "BlackMarketView",
         tree_nodes: dict | None = None,
         inventory: dict | None = None,
+        event_value_bonus: float = 0.0,
     ):
         super().__init__(bot, user_id)
         self.server_id = server_id
@@ -671,6 +676,7 @@ class OfferBuilderView(SettlementBaseView):
         self.parent_market = parent_market
         self.tree_nodes = tree_nodes or {}
         self._inventory: dict[str, int] = inventory or {}
+        self._event_value_bonus = event_value_bonus
         self._current_category: str = _BM_CATEGORIES[0][0]
         self._offer: dict[str, int] = {}
         self._active_biases: list[str] = []
@@ -818,12 +824,16 @@ class OfferBuilderView(SettlementBaseView):
             estimated = calculate_offer_value(
                 self._offer, self.tree_nodes, self.building.tier
             )
+            estimated = int(estimated * (1 + self._event_value_bonus))
             for key, qty in self._offer.items():
                 label = _BM_ALL_LABELS.get(key, key)
                 val = BM_ITEM_VALUES.get(key, 0) * qty
                 offer_lines.append(f"• {label}: **{qty:,}** (≈ {val:,} value)")
+            value_label = f"🧾 Current Offer (Value ≈ {estimated:,})"
+            if self._event_value_bonus:
+                value_label += f" [🐪 +{int(self._event_value_bonus * 100)}%]"
             embed.add_field(
-                name=f"🧾 Current Offer (Value ≈ {estimated:,})",
+                name=value_label,
                 value="\n".join(offer_lines),
                 inline=False,
             )
@@ -885,7 +895,9 @@ class OfferBuilderView(SettlementBaseView):
 
         try:
             if not self._offer:
-                await interaction.followup.send("Nothing in your offer.", ephemeral=True)
+                await interaction.followup.send(
+                    "Nothing in your offer.", ephemeral=True
+                )
                 return
 
             uid, sid = self.user_id, self.server_id
@@ -902,7 +914,9 @@ class OfferBuilderView(SettlementBaseView):
                     return
 
             result = await execute_bm_offer(
-                self.bot, uid, sid,
+                self.bot,
+                uid,
+                sid,
                 offer=self._offer,
                 active_biases=self._active_biases,
                 building_tier=self.building.tier,
@@ -921,7 +935,11 @@ class OfferBuilderView(SettlementBaseView):
 
             if result.get("instant"):
                 rewards = result["rewards"]
-                summary_text = rewards["summary_lines"][0] if rewards["summary_lines"] else "Nothing"
+                summary_text = (
+                    rewards["summary_lines"][0]
+                    if rewards["summary_lines"]
+                    else "Nothing"
+                )
                 embed = discord.Embed(
                     title="⚡ Instant Deal Complete!",
                     description=(
@@ -931,9 +949,13 @@ class OfferBuilderView(SettlementBaseView):
                     ),
                     color=discord.Color.gold(),
                 )
-                embed.set_author(name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR)
+                embed.set_author(
+                    name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
+                )
                 embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
-                confirm_view = _InstantDealConfirmView(self.bot, uid, sid, self.parent_market)
+                confirm_view = _InstantDealConfirmView(
+                    self.bot, uid, sid, self.parent_market
+                )
                 await interaction.edit_original_response(embed=embed, view=confirm_view)
                 self.stop()
                 return
@@ -948,9 +970,13 @@ class OfferBuilderView(SettlementBaseView):
                 ),
                 color=discord.Color.green(),
             )
-            embed.set_author(name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR)
+            embed.set_author(
+                name="Mysterious Merchant Max", icon_url=BLACK_MARKET_AUTHOR
+            )
             embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["black_market"])
-            await interaction.edit_original_response(embed=embed, view=discord.ui.View())
+            await interaction.edit_original_response(
+                embed=embed, view=discord.ui.View()
+            )
             await asyncio.sleep(2)
 
             # Return to main market view
@@ -959,7 +985,9 @@ class OfferBuilderView(SettlementBaseView):
             self.parent_market.has_pending_deal = bool(pending)
             self.parent_market._setup_ui()
             await interaction.edit_original_response(
-                embed=self.parent_market.build_embed(pending_deal=pending, zeal_data=zeal_data),
+                embed=self.parent_market.build_embed(
+                    pending_deal=pending, zeal_data=zeal_data
+                ),
                 view=self.parent_market,
             )
             self.stop()

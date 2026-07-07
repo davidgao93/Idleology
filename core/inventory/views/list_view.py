@@ -108,7 +108,11 @@ class InventoryListView(BaseView):
         self.add_item(mass_btn)
 
         close_btn = Button(
-            label="Close", style=ButtonStyle.secondary, emoji="✖️", custom_id="close", row=2
+            label="Close",
+            style=ButtonStyle.secondary,
+            emoji="✖️",
+            custom_id="close",
+            row=2,
         )
         close_btn.callback = self.close_view
         self.add_item(close_btn)

@@ -1,21 +1,33 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
+from core.combat import ui as combat_ui
 from core.images import ARBITER_PORTRAIT, ARBITER_THUMBNAIL
 from core.npc_voices import get_quip
 from core.models import Player
 
 
-class UberReturnView(BaseView):
+class UberReturnRow(discord.ui.ActionRow["UberReturnView"]):
+    @discord.ui.button(label="↩ Return to Lobby", style=ButtonStyle.secondary)
+    async def return_to_lobby(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_return_to_lobby(interaction)
+
+
+class UberReturnView(BaseLayoutView):
     """Minimal post-combat view that lets the player return to the Uber Hub."""
 
     def __init__(self, bot, user_id: str, server_id: str, player):
         super().__init__(bot, user_id, server_id)
         self.player = player
+        self.row = UberReturnRow()
 
-    @ui.button(label="↩ Return to Lobby", style=ButtonStyle.secondary)
-    async def return_to_lobby(self, interaction: Interaction, button: ui.Button):
+    def set_content(self, embed: discord.Embed) -> None:
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(self.row)
+
+    async def _on_return_to_lobby(self, interaction: Interaction):
         await interaction.response.defer()
         uber_data = await self.bot.database.uber.get_uber_progress(
             self.user_id, self.server_id
@@ -23,13 +35,12 @@ class UberReturnView(BaseView):
         hub = UberHubView(
             self.bot, self.user_id, self.server_id, self.player, uber_data
         )
-        embed = hub.build_embed()
-        await interaction.edit_original_response(embed=embed, view=hub)
+        await interaction.edit_original_response(view=hub)
         hub.message = await interaction.original_response()
         self.stop()
 
 
-class UberHubView(BaseView):
+class UberHubView(BaseLayoutView):
     def __init__(
         self, bot, user_id: str, server_id: str, player: Player, uber_data: dict
     ):
@@ -39,9 +50,8 @@ class UberHubView(BaseView):
         self.server_id = server_id
         self.player = player
         self.uber_data = uber_data
-        self.message = None
         self._processing = False
-        self._build_buttons()
+        self._sync_items()
 
     # Minimum level required per boss
     _BOSS_LEVELS = {
@@ -52,63 +62,68 @@ class UberHubView(BaseView):
         "evelynn": 100,
     }
 
-    def _build_buttons(self):
-        self.clear_items()
+    def _build_rows(self) -> list[discord.ui.ActionRow]:
         lvl = self.player.level
+        row0 = discord.ui.ActionRow()
+        row1 = discord.ui.ActionRow()
+        row2 = discord.ui.ActionRow()
 
         btn_aphro = ui.Button(
             label="Aphrodite",
             style=ButtonStyle.blurple,
             emoji="🌌",
             disabled=lvl < self._BOSS_LEVELS["aphrodite"],
-            row=0,
         )
         btn_aphro.callback = self.open_aphrodite
-        self.add_item(btn_aphro)
+        row0.add_item(btn_aphro)
 
         btn_lucifer = ui.Button(
             label="Lucifer",
             style=ButtonStyle.danger,
             emoji="🔥",
             disabled=lvl < self._BOSS_LEVELS["lucifer"],
-            row=0,
         )
         btn_lucifer.callback = self.open_lucifer
-        self.add_item(btn_lucifer)
+        row0.add_item(btn_lucifer)
 
         btn_gemini = ui.Button(
             label="Gemini",
             style=ButtonStyle.blurple,
             emoji="♊",
             disabled=lvl < self._BOSS_LEVELS["gemini"],
-            row=0,
         )
         btn_gemini.callback = self.open_gemini
-        self.add_item(btn_gemini)
+        row0.add_item(btn_gemini)
 
         btn_neet = ui.Button(
             label="NEET",
             style=ButtonStyle.secondary,
             emoji="⬛",
             disabled=lvl < self._BOSS_LEVELS["neet"],
-            row=0,
         )
         btn_neet.callback = self.open_neet
-        self.add_item(btn_neet)
+        row0.add_item(btn_neet)
 
         btn_evelynn = ui.Button(
             label="Evelynn",
             style=ButtonStyle.danger,
             emoji="☠️",
             disabled=lvl < self._BOSS_LEVELS["evelynn"],
-            row=1,
         )
         btn_evelynn.callback = self.open_evelynn
-        self.add_item(btn_evelynn)
+        row1.add_item(btn_evelynn)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2)
+        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
         btn_close.callback = self.close_view
-        self.add_item(btn_close)
+        row2.add_item(btn_close)
+
+        return [row0, row1, row2]
+
+    def _sync_items(self):
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(self.build_embed()))
+        for row in self._build_rows():
+            self.add_item(row)
 
     def build_embed(self) -> discord.Embed:
         lvl = self.player.level
@@ -209,8 +224,10 @@ class UberHubView(BaseView):
             readiness_text,
         )
         embed = lobby.build_embed()
-        await interaction.edit_original_response(embed=embed, view=lobby)
-        lobby.message = await interaction.original_response()
+        # UberAphroditeLobbyView stays classic — this is a genuine scene
+        # change (boss-specific lobby, not part of the combat thread), so it
+        # gets a fresh message rather than reusing this one.
+        await combat_ui.freeze_and_handoff(interaction.message, embed, lobby)
         self.stop()
 
     async def open_lucifer(self, interaction: Interaction):
@@ -234,8 +251,7 @@ class UberHubView(BaseView):
             readiness_text,
         )
         embed = lobby.build_embed()
-        await interaction.edit_original_response(embed=embed, view=lobby)
-        lobby.message = await interaction.original_response()
+        await combat_ui.freeze_and_handoff(interaction.message, embed, lobby)
         self.stop()
 
     async def open_neet(self, interaction: Interaction):
@@ -257,8 +273,7 @@ class UberHubView(BaseView):
             readiness_text,
         )
         embed = lobby.build_embed()
-        await interaction.edit_original_response(embed=embed, view=lobby)
-        lobby.message = await interaction.original_response()
+        await combat_ui.freeze_and_handoff(interaction.message, embed, lobby)
         self.stop()
 
     async def open_gemini(self, interaction: Interaction):
@@ -280,8 +295,7 @@ class UberHubView(BaseView):
             readiness_text,
         )
         embed = lobby.build_embed()
-        await interaction.edit_original_response(embed=embed, view=lobby)
-        lobby.message = await interaction.original_response()
+        await combat_ui.freeze_and_handoff(interaction.message, embed, lobby)
         self.stop()
 
     async def open_evelynn(self, interaction: Interaction):
@@ -305,6 +319,5 @@ class UberHubView(BaseView):
             readiness_text,
         )
         embed = lobby.build_embed()
-        await interaction.edit_original_response(embed=embed, view=lobby)
-        lobby.message = await interaction.original_response()
+        await combat_ui.freeze_and_handoff(interaction.message, embed, lobby)
         self.stop()

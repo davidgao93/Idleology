@@ -81,7 +81,9 @@ def generate_player_ward_on_hit(
             ward = int(_ss_wt * 25)
             if ward > 0:
                 added = add_ward(player, ward, log)
-                log.append(f"**Soul Ward-Touched T{_ss_wt}** generates 🔮 **{added}** ward!")
+                log.append(
+                    f"**Soul Ward-Touched T{_ss_wt}** generates 🔮 **{added}** ward!"
+                )
                 _je.process_jewel_trigger(player, None, "ward", added, log)
 
     if is_crit and glove_passive == "ward-fused" and glove_lvl > 0:
@@ -97,7 +99,9 @@ def generate_player_ward_on_hit(
             ward = int(_ss_wf * 50)
             if ward > 0:
                 added = add_ward(player, ward, log)
-                log.append(f"**Soul Ward-Fused T{_ss_wf}** generates 🔮 **{added}** ward!")
+                log.append(
+                    f"**Soul Ward-Fused T{_ss_wf}** generates 🔮 **{added}** ward!"
+                )
                 _je.process_jewel_trigger(player, None, "ward", added, log)
 
     if is_hit or is_crit:

@@ -347,7 +347,7 @@ class _PostApexView(BaseLayoutView):
         self._processing = True
         await interaction.response.defer()
 
-        from core.apex.views.lobby_view import ApexLobbyView, _build_lobby_embed
+        from core.apex.views.lobby_view import ApexLobbyView
 
         profile_row = await self.bot.database.apex.get_or_create_profile(
             self.user_id, self.server_id
@@ -361,7 +361,7 @@ class _PostApexView(BaseLayoutView):
             profile.hunt_charges = charges
             profile.last_charge_time = new_ts
 
-        secs = ApexMechanics.seconds_until_next_charge(profile)
+        # ApexLobbyView is Components V2 too — same message, no hand-off needed.
         lobby_view = ApexLobbyView(
             self.bot,
             self.user_id,
@@ -370,8 +370,6 @@ class _PostApexView(BaseLayoutView):
             profile,
             charges,
         )
-        lobby_embed = _build_lobby_embed(self.player_name, profile, charges, secs)
-        # ApexLobbyView leaves the fight thread for the lobby — a genuine scene
-        # change, so it gets a fresh message rather than reusing this one.
-        await combat_ui.freeze_and_handoff(interaction.message, lobby_embed, lobby_view)
+        await interaction.edit_original_response(view=lobby_view)
+        lobby_view.message = await interaction.original_response()
         self.stop()

@@ -488,7 +488,10 @@ class ApexMechanics:
         _boot_1to1 = ("hearty", "thrill-seeker", "cleric", "treasure-tracker")
         if passive_key in _boot_1to1 and passive_key in _BOOT_PASSIVE_FUNCS:
             return _BOOT_PASSIVE_FUNCS[passive_key](tier)
-        if passive_key in ("speedster", "skiller") and passive_key in _BOOT_PASSIVE_FUNCS:
+        if (
+            passive_key in ("speedster", "skiller")
+            and passive_key in _BOOT_PASSIVE_FUNCS
+        ):
             return _BOOT_PASSIVE_FUNCS[passive_key](tier * 6 / 5)
 
         # Helmet-family — 1:1 tier match.
@@ -519,7 +522,13 @@ class ApexMechanics:
             return _GLOVE_PASSIVE_FUNCS[passive_key](tier)
 
         # Accessory-family — 2:1 tier mapping (soul stone tier x2 = equivalent lvl).
-        _accessory_2to1 = ("absorb", "obliterate", "lucky strikes", "prosper", "infinite wisdom")
+        _accessory_2to1 = (
+            "absorb",
+            "obliterate",
+            "lucky strikes",
+            "prosper",
+            "infinite wisdom",
+        )
         if passive_key in _accessory_2to1 and passive_key in _ACCESSORY_PASSIVE_FUNCS:
             return _ACCESSORY_PASSIVE_FUNCS[passive_key](tier * 2)
 

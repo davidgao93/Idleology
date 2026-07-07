@@ -278,8 +278,12 @@ class DiscordBot(commands.Bot):
         even while our aiosqlite connection holds it open under WAL mode.
         """
         try:
-            db_path = f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
-            backup_dir = f"{os.path.realpath(os.path.dirname(__file__))}/database/backups"
+            db_path = (
+                f"{os.path.realpath(os.path.dirname(__file__))}/database/database.db"
+            )
+            backup_dir = (
+                f"{os.path.realpath(os.path.dirname(__file__))}/database/backups"
+            )
             path = await asyncio.to_thread(
                 create_backup, db_path, backup_dir, BACKUP_RETENTION_COUNT
             )

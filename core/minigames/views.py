@@ -276,7 +276,9 @@ class BlackjackView(BaseView):
 
     def __init__(self, bot, user_id, bet_amount, parent_interaction):
         super().__init__(bot, user_id)
-        self.bet_amount = bet_amount  # original table stake; used for insurance math + rebets
+        self.bet_amount = (
+            bet_amount  # original table stake; used for insurance math + rebets
+        )
         self.original_interaction = parent_interaction
         self.guild_id = (
             str(parent_interaction.guild_id) if parent_interaction.guild_id else ""
@@ -453,7 +455,9 @@ class BlackjackView(BaseView):
             marker = (
                 " 👈" if multi and idx == self.active_hand and not hand["done"] else ""
             )
-            label = f"Hand {idx + 1} ({score}){marker}" if multi else f"Your Hand ({score})"
+            label = (
+                f"Hand {idx + 1} ({score}){marker}" if multi else f"Your Hand ({score})"
+            )
             embed.add_field(
                 name=label, value=self.deck.format_hand(hand["cards"]), inline=multi
             )
@@ -665,7 +669,9 @@ class BlackjackView(BaseView):
             score = self.deck.calculate_score(hand["cards"])
             label = f"Hand {idx + 1} ({score})" if multi else f"Your Hand ({score})"
             tag = self.RESULT_LABELS.get(hand["result"], "")
-            value = f"{self.deck.format_hand(hand['cards'])}\n{tag} — bet {hand['bet']:,}"
+            value = (
+                f"{self.deck.format_hand(hand['cards'])}\n{tag} — bet {hand['bet']:,}"
+            )
             embed.add_field(name=label, value=value, inline=multi)
 
         if self.insurance_bet:
@@ -727,9 +733,7 @@ class BlackjackView(BaseView):
             casino_lobby_button(self.bot, self.user_id, self.bet_amount, row=1)
         )
 
-        quit_btn = Button(
-            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
-        )
+        quit_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1)
         quit_btn.callback = self.quit_game
         self.add_item(quit_btn)
 
@@ -879,7 +883,9 @@ class CrashLaunchView(BaseView):
         )
         return embed
 
-    @discord.ui.button(label="Set Auto Cash-Out", style=ButtonStyle.secondary, emoji="🎯")
+    @discord.ui.button(
+        label="Set Auto Cash-Out", style=ButtonStyle.secondary, emoji="🎯"
+    )
     async def set_auto(self, interaction: Interaction, button: Button):
         await interaction.response.send_modal(PreLaunchAutoCashOutModal(self))
 
@@ -888,7 +894,9 @@ class CrashLaunchView(BaseView):
         if not await check_funds(self.bot, self.user_id, self.bet_amount, interaction):
             return
 
-        view = CrashView(self.bot, self.user_id, self.bet_amount, self.original_interaction)
+        view = CrashView(
+            self.bot, self.user_id, self.bet_amount, self.original_interaction
+        )
         view.auto_cashout = self.auto_cashout
         embed = discord.Embed(
             title="🚀 Preparing Launch...",
@@ -1080,7 +1088,11 @@ class CrashView(BaseView):
                 from core.quests.mechanics import tick_quest_progress
 
                 quest_msgs = await tick_quest_progress(
-                    self.bot, self.user_id, self.guild_id, "casino_win", value=net_result
+                    self.bot,
+                    self.user_id,
+                    self.guild_id,
+                    "casino_win",
+                    value=net_result,
                 )
             except Exception:
                 pass
@@ -1200,7 +1212,9 @@ class CrashView(BaseView):
             return await interaction.response.defer()
         self._restarting = True
 
-        if not await check_funds(self.bot, self.user_id, self.original_bet, interaction):
+        if not await check_funds(
+            self.bot, self.user_id, self.original_bet, interaction
+        ):
             self._restarting = False
             return
 
@@ -1265,7 +1279,9 @@ class HorseRaceView(BaseView):
         # Animation Loop
         while not self.race_logic.advance_race():
             await asyncio.sleep(1.5)  # Update delay
-            embed.description = self.race_logic.get_race_string(self.selected_horse_index)
+            embed.description = self.race_logic.get_race_string(
+                self.selected_horse_index
+            )
             try:
                 await self.original_interaction.edit_original_response(embed=embed)
             except Exception:
@@ -1496,9 +1512,7 @@ class OneVOneView(BaseView):
             self.player_hp = min(100, self.player_hp + heal)
             healed = self.player_hp - old_hp
             eats_left = self.MAX_EATS - self.eats_used
-            logs.append(
-                f"🍗 You eat, healing **{healed}** HP. ({eats_left} eats left)"
-            )
+            logs.append(f"🍗 You eat, healing **{healed}** HP. ({eats_left} eats left)")
 
         if self.opponent_hp <= 0:
             await self._end_game(interaction, won=True, logs=logs)

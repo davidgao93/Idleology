@@ -21,9 +21,13 @@ async def build_plunder_view(
     rotation = None
     if target["kind"] == "player":
         defender_id = target["user_id"]
-        defender_profile = await bot.database.nether_market.get_or_create_profile(defender_id, server_id)
+        defender_profile = await bot.database.nether_market.get_or_create_profile(
+            defender_id, server_id
+        )
         attempts, shield_seconds = M.get_session_params(
-            target["tier_index"], defender_profile["mastery_nodes"], attacker_profile["mastery_nodes"]
+            target["tier_index"],
+            defender_profile["mastery_nodes"],
+            attacker_profile["mastery_nodes"],
         )
         try:
             user = await bot.fetch_user(int(defender_id))
@@ -32,7 +36,9 @@ async def build_plunder_view(
             target_name = f"Unknown ({defender_id})"
     else:
         defender_profile = None
-        attempts, shield_seconds = M.get_npc_session_params(target["npc"], attacker_profile["mastery_nodes"])
+        attempts, shield_seconds = M.get_npc_session_params(
+            target["npc"], attacker_profile["mastery_nodes"]
+        )
         target_name = target["npc"]["name"]
         rotation = await bot.database.nether_market.get_rotation(server_id)
 
@@ -83,7 +89,9 @@ class PlunderView(BaseView):
         self._build_buttons()
 
     def build_embed(self) -> discord.Embed:
-        embed = discord.Embed(title="\U0001f5dd️ Crack the Code", color=discord.Color.dark_gold())
+        embed = discord.Embed(
+            title="\U0001f5dd️ Crack the Code", color=discord.Color.dark_gold()
+        )
         embed.description = (
             f"Target: **{self.target_display_name}**\n"
             f"Attempts remaining: **{self.attempts_remaining} / {self.max_attempts}**"
@@ -94,7 +102,11 @@ class PlunderView(BaseView):
                 embed.set_thumbnail(url=thumbnail)
         if self.guess_history:
             lines = [f"`{g}` — ⚫{b} ⚪{w}" for g, b, w in self.guess_history]
-            embed.add_field(name="Guess History (black = right digit+spot, white = right digit)", value="\n".join(lines), inline=False)
+            embed.add_field(
+                name="Guess History (black = right digit+spot, white = right digit)",
+                value="\n".join(lines),
+                inline=False,
+            )
         else:
             embed.add_field(name="Guess History", value="No guesses yet.", inline=False)
 
@@ -105,7 +117,9 @@ class PlunderView(BaseView):
     def _build_buttons(self):
         self.clear_items()
         if not self.resolved:
-            guess_btn = ui.Button(label="Guess", style=ButtonStyle.primary, emoji="\U0001f3b2")
+            guess_btn = ui.Button(
+                label="Guess", style=ButtonStyle.primary, emoji="\U0001f3b2"
+            )
             guess_btn.callback = self.open_guess_modal
             self.add_item(guess_btn)
 
@@ -140,7 +154,9 @@ class PlunderView(BaseView):
             await self._resolve(interaction, success=False)
         else:
             self._build_buttons()
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
             self._processing = False
 
     async def _resolve(self, interaction: Interaction, success: bool):
@@ -169,7 +185,9 @@ class PlunderView(BaseView):
                             f"No room for the rest — \U0001f4b0 {overflow_gold:,} of that fenced instantly for gold."
                         )
                 else:
-                    result_lines.append(f"{self.target_display_name} had nothing worth taking this time.")
+                    result_lines.append(
+                        f"{self.target_display_name} had nothing worth taking this time."
+                    )
                 result_lines.append("You also pocket \U0001f536 1 Mark.")
             else:
                 npc = self.target["npc"]
@@ -180,16 +198,26 @@ class PlunderView(BaseView):
                         item = M.get_item(item_key)
                         name = item["name"] if item else item_key
                         item_lines.append(f"{qty}x {name}")
-                    result_lines.append(f"You lift from {npc['name']}'s stash: " + ", ".join(item_lines) + ".")
+                    result_lines.append(
+                        f"You lift from {npc['name']}'s stash: "
+                        + ", ".join(item_lines)
+                        + "."
+                    )
                 if overflow_gold:
                     result_lines.append(
                         f"No room for the rest — it fences instantly for \U0001f4b0 {overflow_gold:,} gold."
                     )
                 if not moved and not overflow_gold:
-                    result_lines.append(f"{npc['name']}'s stash held nothing of value this time.")
-                result_lines.append(f"You also pocket \U0001f536 {npc['reward_marks']} Mark(s).")
+                    result_lines.append(
+                        f"{npc['name']}'s stash held nothing of value this time."
+                    )
+                result_lines.append(
+                    f"You also pocket \U0001f536 {npc['reward_marks']} Mark(s)."
+                )
         else:
-            result_lines.append("❌ **Out of attempts.** No penalty, no shield — just an empty haul.")
+            result_lines.append(
+                "❌ **Out of attempts.** No penalty, no shield — just an empty haul."
+            )
 
         self._build_buttons()
         embed = self.build_embed()
@@ -203,26 +231,36 @@ class PlunderView(BaseView):
         pct = M.roll_plunder_pct({})
 
         attacker_cap = M.get_holdings_cap(self.attacker_profile["mastery_nodes"])
-        attacker_held = await self.bot.database.nether_market.get_holdings_count(self.user_id, self.server_id)
+        attacker_held = await self.bot.database.nether_market.get_holdings_count(
+            self.user_id, self.server_id
+        )
         free_slots = max(0, attacker_cap - attacker_held)
 
         moved, overflow_gold, _total_taken = M.apply_plunder(holdings, pct, free_slots)
         async with self.bot.database.transaction():
             for item_key, qty in moved.items():
-                await self.bot.database.nether_market.modify_holdings(self.user_id, self.server_id, item_key, qty)
+                await self.bot.database.nether_market.modify_holdings(
+                    self.user_id, self.server_id, item_key, qty
+                )
             if overflow_gold:
                 await self.bot.database.users.modify_gold(self.user_id, overflow_gold)
 
-            await self.bot.database.nether_market.add_marks(self.user_id, self.server_id, npc["reward_marks"])
+            await self.bot.database.nether_market.add_marks(
+                self.user_id, self.server_id, npc["reward_marks"]
+            )
         return moved, overflow_gold
 
     async def _resolve_player_success(self) -> tuple[dict, int]:
         defender_id = self.target["user_id"]
-        holdings = await self.bot.database.nether_market.get_holdings(defender_id, self.server_id)
+        holdings = await self.bot.database.nether_market.get_holdings(
+            defender_id, self.server_id
+        )
         pct = M.roll_plunder_pct(self.defender_profile["mastery_nodes"])
 
         attacker_cap = M.get_holdings_cap(self.attacker_profile["mastery_nodes"])
-        attacker_held = await self.bot.database.nether_market.get_holdings_count(self.user_id, self.server_id)
+        attacker_held = await self.bot.database.nether_market.get_holdings_count(
+            self.user_id, self.server_id
+        )
         free_slots = max(0, attacker_cap - attacker_held)
 
         moved, overflow_gold, total_taken = M.apply_plunder(holdings, pct, free_slots)
@@ -237,15 +275,25 @@ class PlunderView(BaseView):
 
         async with self.bot.database.transaction():
             for item_key, qty in total_taken.items():
-                await self.bot.database.nether_market.modify_holdings(defender_id, self.server_id, item_key, -qty)
+                await self.bot.database.nether_market.modify_holdings(
+                    defender_id, self.server_id, item_key, -qty
+                )
             for item_key, qty in moved.items():
-                await self.bot.database.nether_market.modify_holdings(self.user_id, self.server_id, item_key, qty)
+                await self.bot.database.nether_market.modify_holdings(
+                    self.user_id, self.server_id, item_key, qty
+                )
             if overflow_gold:
                 await self.bot.database.users.modify_gold(self.user_id, overflow_gold)
 
-            await self.bot.database.nether_market.add_marks(self.user_id, self.server_id, 1)
-            await self.bot.database.nether_market.set_shield(defender_id, self.server_id, time.time() + self.shield_seconds)
-            await self.bot.database.nether_market.record_plunder_time(defender_id, self.server_id)
+            await self.bot.database.nether_market.add_marks(
+                self.user_id, self.server_id, 1
+            )
+            await self.bot.database.nether_market.set_shield(
+                defender_id, self.server_id, time.time() + self.shield_seconds
+            )
+            await self.bot.database.nether_market.record_plunder_time(
+                defender_id, self.server_id
+            )
 
             await self.bot.database.nether_market.set_plunder_notice(
                 defender_id,
@@ -268,7 +316,9 @@ class PlunderView(BaseView):
         from core.nether_market.views.hub_view import build_hub_view
 
         view = await build_hub_view(self.bot, self.user_id, self.server_id)
-        msg = await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        msg = await interaction.edit_original_response(
+            embed=view.build_embed(), view=view
+        )
         view.message = msg
         self.stop()
 

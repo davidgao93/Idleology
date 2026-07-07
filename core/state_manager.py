@@ -62,9 +62,7 @@ class StateManager:
             return False
         operation, started_at = entry
         if time.monotonic() - started_at > self.STALE_LOCK_SECONDS:
-            self.logger.info(
-                f"Stale {operation} lock for {user_id} — force-clearing"
-            )
+            self.logger.info(f"Stale {operation} lock for {user_id} — force-clearing")
             self.force_clear(user_id)
             return False
         return True
