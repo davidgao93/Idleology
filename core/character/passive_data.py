@@ -3,6 +3,7 @@ core/character/passive_data.py
 Lookup tables for all passive/essence descriptions used in the profile hub.
 """
 
+from core.emojis import QUENCH
 from core.hematurgy.mechanics import tier_val as _htv
 
 _WEAPON_PASSIVE_DESC: dict[str, str] = {
@@ -355,7 +356,7 @@ _POTION_PASSIVE_DESCS: dict[str, tuple[str, callable]] = {
         lambda v, d: f"On potion use: +{v:.0f}% Hit Chance for {d:.0f} turns",
     ),
     "quench": (
-        "🍺 Quench",
+        f"{QUENCH} Quench",
         lambda v, d: (
             f"On potion use: heal +{v:.0f}% max HP then 5% max HP/turn for {d:.0f} turns"
         ),

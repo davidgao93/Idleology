@@ -6,6 +6,8 @@ tabs of the Profile Hub.
 
 import discord
 
+from core.emojis import GOLD_ORE, PLATINUM_ORE
+
 
 class StorageProfileBuilder:
     """Embed builders for inventory, crafting, resources, uber, and essences tabs."""
@@ -259,7 +261,8 @@ class StorageProfileBuilder:
         )
 
         gathering_value = (
-            f"**Ores:** Iron {ores[0]:,} · Coal {ores[1]:,} · Gold {ores[2]:,} · Plat {ores[3]:,} · Idea {ores[4]:,}\n"
+            f"**Ores:** Iron {ores[0]:,} · Coal {ores[1]:,} · {GOLD_ORE} Gold {ores[2]:,} · "
+            f"{PLATINUM_ORE} Plat {ores[3]:,} · Idea {ores[4]:,}\n"
             f"**Logs:** Oak {logs[0]:,} · Willow {logs[1]:,} · Mahog {logs[2]:,} · Magic {logs[3]:,} · Idea {logs[4]:,}\n"
             f"**Bones:** Desic {bones[0]:,} · Reg {bones[1]:,} · Sturdy {bones[2]:,} · Reinf {bones[3]:,} · Titan {bones[4]:,}\n"
             f"**Elemental Keys:** 💎 Bismuth: {blessed_bismuth} · 🌿 Sprig: {sparkling_sprig} · 🐟 Carp: {capricious_carp}"

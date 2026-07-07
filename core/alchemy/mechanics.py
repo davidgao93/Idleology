@@ -2,6 +2,8 @@ import math
 import random
 from typing import Optional
 
+from core.emojis import QUENCH
+
 
 class AlchemyMechanics:
     MAX_LEVEL = 5
@@ -410,7 +412,7 @@ class DistillationMechanics:
         },
         "quench": {
             "name": "Quench",
-            "emoji": "🍺",
+            "emoji": QUENCH,
             "desc": "On potion use: Heal an additional {value:.0f}% of max HP, then restore 5% max HP at the start of each of your next {duration:.0f} turns.",
             "value_min": 20.0,
             "value_max": 50.0,

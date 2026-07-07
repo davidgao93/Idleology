@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
+from core.emojis import MONSTER_CHEEK
 from core.images import (
     CONSUME_EGG,
     CONSUME_HUB,
@@ -49,7 +50,7 @@ _SLOT_EMOJI = {
     "left_arm": "🤜",
     "right_leg": "🦵",
     "left_leg": "🦿",
-    "cheeks": "🍑",
+    "cheeks": MONSTER_CHEEK,
     "organs": "🫀",
 }
 

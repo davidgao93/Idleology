@@ -6,12 +6,18 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.combat.views.views_elemental import ElementalEncounterView
+from core.emojis import GOLD_ORE, PLATINUM_ORE
 from core.images import MASTERY_FISHING, MASTERY_MINING, MASTERY_WOODCUTTING
 from core.items.factory import load_player
 from core.skills import mastery as Mastery
 from core.skills.mastery import get_tool_cost_reduction
 from core.skills.mechanics import SkillMechanics
 from core.skills.views.mastery_view import ArtisanMasteryHubView
+
+_RESOURCE_EMOJI = {
+    "Gold Ore": GOLD_ORE,
+    "Platinum Ore": PLATINUM_ORE,
+}
 
 
 class GatherView(BaseView):
@@ -253,12 +259,13 @@ class GatherView(BaseView):
         for i, (raw_name, raw_amt) in enumerate(resources):
             ref_amt = ref[i] if i < len(ref) else 0
             ref_name = refined_names[i] if i < len(refined_names) else ""
+            prefix = f"{_RESOURCE_EMOJI[raw_name]} " if raw_name in _RESOURCE_EMOJI else ""
             if raw_amt > 0 and ref_amt > 0:
                 res_lines.append(
-                    f"**{raw_name}:** {raw_amt:,}  ·  **{ref_name}:** {ref_amt:,}"
+                    f"{prefix}**{raw_name}:** {raw_amt:,}  ·  **{ref_name}:** {ref_amt:,}"
                 )
             elif raw_amt > 0:
-                res_lines.append(f"**{raw_name}:** {raw_amt:,}")
+                res_lines.append(f"{prefix}**{raw_name}:** {raw_amt:,}")
             elif ref_amt > 0:
                 res_lines.append(f"**{ref_name}:** {ref_amt:,}")
         res_text = "\n".join(res_lines) or "No resources gathered."

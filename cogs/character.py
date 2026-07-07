@@ -6,6 +6,7 @@ from core.character.leaderboard_views import LeaderboardHubView
 from core.character.profile_hub import ProfileHubView
 from core.character.profile_ui import ProfileBuilder
 from core.character.views import StatInvestView
+from core.combat import ui as combat_ui
 from core.combat.views.views import StatPackagePicker
 from core.items.factory import load_player
 
@@ -125,7 +126,8 @@ class Character(commands.Cog, name="character"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "profile")
         embed = await ProfileBuilder.build_card(self.bot, user_id, server_id)
-        await interaction.response.send_message(embed=embed, view=view)
+        view.set_content(embed)
+        await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(name="sheet", description="Detailed character sheet.")
@@ -138,7 +140,8 @@ class Character(commands.Cog, name="character"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "stats")
         embed = await ProfileBuilder.build_stats(self.bot, user_id, server_id)
-        await interaction.response.send_message(embed=embed, view=view)
+        view.set_content(embed)
+        await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(name="stats", description="View your character stats.")
@@ -152,7 +155,8 @@ class Character(commands.Cog, name="character"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "stats")
         embed = await ProfileBuilder.build_stats(self.bot, user_id, server_id)
-        await interaction.response.send_message(embed=embed, view=view)
+        view.set_content(embed)
+        await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
     @app_commands.command(
@@ -181,6 +185,9 @@ class Character(commands.Cog, name="character"):
             async def _on_packages_done(msg):
                 # After packages are spent, check for passive points and flow
                 # directly into StatInvestView rather than making the user re-run.
+                # StatPackagePicker renders with Components V2, which permanently
+                # flags msg — so handing off to the classic StatInvestView (or the
+                # plain "done" screen) needs a fresh message rather than reusing it.
                 fresh_data = await self.bot.database.users.get(user_id, server_id)
                 all_currencies = await self.bot.database.users.get_all_currencies(
                     user_id
@@ -194,8 +201,9 @@ class Character(commands.Cog, name="character"):
                     invest_view = StatInvestView(
                         self.bot, user_id, server_id, fresh_data, currencies
                     )
-                    invest_view.message = msg
-                    await msg.edit(embed=invest_view.build_embed(), view=invest_view)
+                    await combat_ui.freeze_and_handoff(
+                        msg, invest_view.build_embed(), invest_view
+                    )
                 else:
                     done_embed = discord.Embed(
                         title="✅ Stat Packages Applied!",
@@ -203,7 +211,7 @@ class Character(commands.Cog, name="character"):
                         color=discord.Color.green(),
                     )
                     self.bot.state_manager.clear_active(user_id)
-                    await msg.edit(embed=done_embed, view=None)
+                    await combat_ui.freeze_and_handoff(msg, done_embed, None)
 
             picker = StatPackagePicker(
                 self.bot,
@@ -213,9 +221,7 @@ class Character(commands.Cog, name="character"):
                 pending_packages,
                 on_done=_on_packages_done,
             )
-            await interaction.response.send_message(
-                embed=picker.build_embed(), view=picker
-            )
+            await interaction.response.send_message(view=picker)
             picker.message = await interaction.original_response()
             return
 
@@ -253,7 +259,8 @@ class Character(commands.Cog, name="character"):
 
         view = ProfileHubView(self.bot, user_id, server_id, "gear_passives")
         embed = await ProfileBuilder.build_gear_passives(self.bot, user_id, server_id)
-        await interaction.response.send_message(embed=embed, view=view)
+        view.set_content(embed)
+        await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
 

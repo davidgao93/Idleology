@@ -22,6 +22,7 @@ from core.combat.calc.damage_calc import (
 from core.combat.calc.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
 from core.combat.calc.ward_system import _add_ward, generate_player_ward_on_hit
 from core.combat.turns.helpers import PlayerTurnResult, capture_compact_events
+from core.emojis import QUENCH
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -225,7 +226,7 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_linger_hp = regen_per_turn
         player.alchemy_linger_turns = max(player.alchemy_linger_turns, dur)
         msg += (
-            f"\n🍺 **Quench** — healed extra {quench:.0f}% of max HP, "
+            f"\n{QUENCH} **Quench** — healed extra {quench:.0f}% of max HP, "
             f"then +{regen_per_turn:,} HP/turn for **{dur}** turns!"
         )
 
@@ -553,7 +554,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             player.total_max_hp, player.current_hp + player.alchemy_linger_hp
         )
         log.append(
-            f"🍺 **Quench** restores **{player.alchemy_linger_hp}** HP! "
+            f"{QUENCH} **Quench** restores **{player.alchemy_linger_hp}** HP! "
             f"({player.alchemy_linger_turns - 1} turn{'s' if player.alchemy_linger_turns - 1 != 1 else ''} left)"
         )
         player.alchemy_linger_turns -= 1

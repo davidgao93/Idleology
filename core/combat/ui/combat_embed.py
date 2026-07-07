@@ -11,6 +11,7 @@ from typing import Dict
 
 import discord
 
+from core.emojis import QUENCH
 from core.models import Monster, Player
 
 
@@ -124,7 +125,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         )
     if player.alchemy_linger_turns > 0:
         lines.append(
-            f"🍺 Quench  {player.alchemy_linger_hp:,}/turn"
+            f"{QUENCH} Quench  {player.alchemy_linger_hp:,}/turn"
             f"  · {player.alchemy_linger_turns}t"
         )
     if player.alchemy_viper_dot_turns > 0:
@@ -280,6 +281,14 @@ async def freeze_and_handoff(
     return new_message
 
 
+# Discord caps combined TextDisplay content at 4000 characters across the
+# *whole* Components V2 message (not per-component). Classic embeds had far
+# more headroom (6000 across title/description/fields), so content built for
+# the old format can exceed this when re-rendered — leave some margin below
+# the true cap for the header/footer overhead this adapter always adds.
+_V2_TEXT_BUDGET = 3800
+
+
 def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
     """Wraps a classic discord.Embed's content into a single Components V2
     Container, preserving title/description/fields/thumbnail/image/footer/color.
@@ -293,6 +302,18 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
     touch those builders.
     """
     children: list = []
+    budget = _V2_TEXT_BUDGET
+
+    def _take(text: str) -> str | None:
+        """Returns `text`, truncated to fit the remaining budget, or None if
+        the budget is already exhausted (caller should stop adding content)."""
+        nonlocal budget
+        if budget <= 0:
+            return None
+        if len(text) > budget:
+            text = text[: max(0, budget - 1)].rstrip() + "…"
+        budget -= len(text)
+        return text
 
     header_lines = []
     if embed.title:
@@ -300,54 +321,101 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
     if embed.description:
         header_lines.append(embed.description)
     header_text = "\n".join(header_lines) if header_lines else None
+    if header_text:
+        header_text = _take(header_text)
 
-    thumb_url = embed.thumbnail.url if embed.thumbnail else None
-    if header_text and thumb_url:
-        children.append(
-            discord.ui.Section(header_text, accessory=discord.ui.Thumbnail(thumb_url))
-        )
-    else:
-        if header_text:
-            children.append(discord.ui.TextDisplay(header_text))
-        if thumb_url:
-            children.append(
-                discord.ui.MediaGallery(discord.MediaGalleryItem(media=thumb_url))
-            )
+    def _bold(name: str) -> str:
+        # Some callers already wrap all or part of the field name in
+        # markdown bold themselves (e.g. "**Aphrodite**" or the emoji-
+        # prefixed "⚔️ **Gear**") — re-wrapping produces broken nested "**"
+        # markup, so only add it when the name has no bold markers at all.
+        if "**" in name:
+            return name
+        return f"**{name}**"
 
     def _field_line(f) -> str:
         value = f.value or ""
+        label = _bold(f.name)
         # Single-line values read better packed as "Name: value"; multi-line
         # values (lists, multi-stat blocks) keep the header on its own line.
         if "\n" in value:
-            return f"**{f.name}**\n{value}"
-        return f"**{f.name}:** {value}"
+            return f"{label}\n{value}"
+        return f"{label}: {value}"
 
-    # Group consecutive inline fields (mirrors Discord's own inline-field
-    # packing, e.g. Experience/Gold side by side) so short stats share one
-    # component instead of each claiming a full paragraph — classic embeds
-    # render inline fields in a row; Components V2 has no such layout, so
-    # this is the closest equivalent.
+    # Group consecutive *single-line* inline fields (mirrors Discord's own
+    # inline-field packing, e.g. Experience/Gold side by side) so short
+    # stats share one component instead of each claiming a full paragraph.
+    # Fields with multi-line values (stat blocks, item lists) are never
+    # grouped — joining multi-line blocks with a text separator has no way
+    # to keep them visually apart, so the last line of one field and the
+    # first line of the next would run together on the same row.
     fields = embed.fields
+    raw_field_texts: list[str] = []
     i = 0
     while i < len(fields):
         field = fields[i]
-        if field.inline:
+        if field.inline and "\n" not in (field.value or ""):
             group = [field]
             i += 1
-            while i < len(fields) and fields[i].inline and len(group) < 3:
+            while (
+                i < len(fields)
+                and fields[i].inline
+                and "\n" not in (fields[i].value or "")
+                and len(group) < 3
+            ):
                 group.append(fields[i])
                 i += 1
-            if len(group) > 1:
-                children.append(
-                    discord.ui.TextDisplay(
-                        "   ".join(_field_line(f) for f in group)
-                    )
-                )
-            else:
-                children.append(discord.ui.TextDisplay(_field_line(group[0])))
+            raw_field_texts.append("   ".join(_field_line(f) for f in group))
         else:
-            children.append(discord.ui.TextDisplay(_field_line(field)))
+            raw_field_texts.append(_field_line(field))
             i += 1
+
+    # Apply the character budget up front, in field order, before deciding
+    # which pieces get packed into the thumbnail Section below — otherwise
+    # section-packed text would bypass the budget check entirely.
+    field_texts: list[str] = []
+    ran_out = False
+    for text in raw_field_texts:
+        text = _take(text)
+        if text is None:
+            ran_out = True
+            break
+        field_texts.append(text)
+
+    thumb_url = embed.thumbnail.url if embed.thumbnail else None
+    if thumb_url:
+        # Pack the header together with the next few field blocks into the
+        # same Section as the thumbnail — a bare one-line title next to a
+        # full-height portrait leaves a large dead gap below it, so keep
+        # pulling in leading content until the section has enough text to
+        # roughly match the thumbnail's height (capped so long headers
+        # don't hoover up the whole tab).
+        # Discord caps a Section at 3 text children total.
+        section_parts = [p for p in (header_text,) if p]
+        section_chars = len(header_text or "")
+        while field_texts and section_chars < 220 and len(section_parts) < 3:
+            section_parts.append(field_texts.pop(0))
+            section_chars += len(section_parts[-1])
+        if section_parts:
+            children.append(
+                discord.ui.Section(
+                    *section_parts, accessory=discord.ui.Thumbnail(thumb_url)
+                )
+            )
+        else:
+            children.append(
+                discord.ui.Section("​", accessory=discord.ui.Thumbnail(thumb_url))
+            )
+    elif header_text:
+        children.append(discord.ui.TextDisplay(header_text))
+
+    for text in field_texts:
+        children.append(discord.ui.TextDisplay(text))
+
+    if ran_out:
+        children.append(
+            discord.ui.TextDisplay("-# …additional content omitted (message length limit)")
+        )
 
     if embed.image and embed.image.url:
         children.append(
@@ -355,7 +423,9 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
         )
 
     if embed.footer and embed.footer.text:
-        children.append(discord.ui.TextDisplay(f"-# {embed.footer.text}"))
+        footer_text = _take(f"-# {embed.footer.text}")
+        if footer_text:
+            children.append(discord.ui.TextDisplay(footer_text))
 
     if not children:
         children.append(discord.ui.TextDisplay("​"))
