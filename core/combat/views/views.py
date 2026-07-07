@@ -1,7 +1,8 @@
 """Main CombatView and post-combat / phase / auto-battle orchestration.
 
-Extends BaseView. Delegates embeds to core.combat.ui, victory rewards to economy.victory,
-and turn processing to core.combat.turns.engine + player_turn/monster_turn.
+Extends BaseLayoutView (Components V2). Delegates embeds to core.combat.ui,
+victory rewards to economy.victory, and turn processing to
+core.combat.turns.engine + player_turn/monster_turn.
 """
 
 import asyncio
@@ -12,7 +13,6 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
-from core.base_view import BaseView
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
@@ -82,7 +82,7 @@ _COMBAT_COOLDOWN = timedelta(minutes=10)
 from core.combat.views.post_combat_view import PostCombatView  # noqa: E402
 
 
-class StatPackagePicker(BaseView):
+class StatPackagePicker(BaseLayoutView):
     """Post-combat view that presents 3 stat-package options for the player to pick.
 
     One instance handles all pending level-up packages for a single fight: after
@@ -109,10 +109,10 @@ class StatPackagePicker(BaseView):
         self.pending = pending_packages  # list of package-sets (list of 3 dicts each)
         self.on_done = on_done
         self._processing = False
-        self._build_buttons()
+        self._sync_items()
 
-    def _build_buttons(self):
-        self.clear_items()
+    def _build_row(self) -> discord.ui.ActionRow:
+        row = discord.ui.ActionRow()
         current_set = self.pending[0]  # 3 packages for the current level-up
         styles = [
             discord.ButtonStyle.blurple,
@@ -121,9 +121,15 @@ class StatPackagePicker(BaseView):
         ]
         for i, pkg in enumerate(current_set):
             label = f"⚔️ +{pkg['atk']}  🛡️ +{pkg['def']}  ❤️ +{pkg['hp']}"
-            btn = discord.ui.Button(label=label, style=styles[i % len(styles)], row=0)
+            btn = discord.ui.Button(label=label, style=styles[i % len(styles)])
             btn.callback = self._make_callback(pkg)
-            self.add_item(btn)
+            row.add_item(btn)
+        return row
+
+    def _sync_items(self):
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(self.build_embed()))
+        self.add_item(self._build_row())
 
     def _make_callback(self, pkg):
         async def callback(interaction: Interaction):
@@ -160,10 +166,8 @@ class StatPackagePicker(BaseView):
             if self.pending:
                 # Another level-up package remains — show it
                 self._processing = False
-                self._build_buttons()
-                await interaction.edit_original_response(
-                    embed=self.build_embed(), view=self
-                )
+                self._sync_items()
+                await interaction.edit_original_response(view=self)
             else:
                 self.stop()
                 await self.on_done(interaction.message)
@@ -1000,7 +1004,9 @@ class CombatView(BaseLayoutView):
                 server_id=self.server_id,
                 rematch_callback=self.rematch_callback,
             )
-            await combat_ui.freeze_and_handoff(message, embed, contract_choice_view)
+            contract_choice_view.set_content(embed)
+            await message.edit(view=contract_choice_view)
+            contract_choice_view.message = message
             self.stop()
             return  # LuciferChoiceView takes over
 
@@ -1019,7 +1025,9 @@ class CombatView(BaseLayoutView):
                 prestige_type,
                 self.rematch_callback,
             )
-            await combat_ui.freeze_and_handoff(message, embed, harvest_view)
+            harvest_view.set_content(embed)
+            await message.edit(view=harvest_view)
+            harvest_view.message = message
             self.stop()
             return  # Harvest view takes over the interaction
 
@@ -1119,9 +1127,16 @@ class CombatView(BaseLayoutView):
                     if _rematch
                     else None
                 )
-                await msg.edit(embed=_victory_embed, view=post_view)
-                if post_view:
+                if post_view is not None:
+                    post_view.set_content(_victory_embed)
+                    await msg.edit(view=post_view)
                     post_view.message = msg
+                else:
+                    await msg.edit(
+                        view=combat_ui.static_layout_view(
+                            combat_ui.embed_to_container(_victory_embed)
+                        )
+                    )
 
             picker = StatPackagePicker(
                 self.bot,
@@ -1131,7 +1146,8 @@ class CombatView(BaseLayoutView):
                 pending_packages,
                 on_done=_after_packages,
             )
-            await combat_ui.freeze_and_handoff(message, picker.build_embed(), picker)
+            await message.edit(view=picker)
+            picker.message = message
             self.stop()
             return
 
@@ -1149,7 +1165,9 @@ class CombatView(BaseLayoutView):
         )
 
         if post_view is not None:
-            await combat_ui.freeze_and_handoff(message, embed, post_view)
+            post_view.set_content(embed)
+            await message.edit(view=post_view)
+            post_view.message = message
         else:
             self._sync_items(combat_ui.embed_to_container(embed), interactive=False)
             await message.edit(view=self)

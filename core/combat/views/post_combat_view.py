@@ -1,13 +1,23 @@
 import discord
 from discord import Interaction
 
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
+from core.combat import ui as combat_ui
 from core.items.factory import load_player
 
 
-class PostCombatView(BaseView):
+class PostCombatRow(discord.ui.ActionRow["PostCombatView"]):
+    @discord.ui.button(label="Fight Again", style=discord.ButtonStyle.green)
+    async def fight_again_btn(self, interaction: Interaction, button: discord.ui.Button):
+        await self.view._fight_again(interaction)
+
+
+class PostCombatView(BaseLayoutView):
     """Shown after a regular victory. Has a Fight Again button when stamina > 0,
-    or no buttons when stamina is empty (the embed field carries the cooldown info)."""
+    or no buttons when stamina is empty (the content carries the cooldown info).
+
+    Callers must build the victory embed themselves and pass it to set_content()
+    before displaying this view — PostCombatView only owns the button row."""
 
     def __init__(
         self, bot, user_id: str, server_id: str, player, stamina: int, rematch_callback
@@ -18,13 +28,19 @@ class PostCombatView(BaseView):
         self._stamina = stamina
         self._launching = False  # Re-entry guard
 
+        self.row = PostCombatRow()
         if stamina > 0:
-            btn = discord.ui.Button(
-                label=f"Fight Again  ⚡{stamina:g}",
-                style=discord.ButtonStyle.green,
-            )
-            btn.callback = self._fight_again
-            self.add_item(btn)
+            self.row.fight_again_btn.label = f"Fight Again  ⚡{stamina:g}"
+        else:
+            self.row.remove_item(self.row.fight_again_btn)
+
+    def set_content(self, embed: discord.Embed) -> None:
+        """Renders `embed` as this view's Components V2 content, followed by
+        the button row (if any)."""
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        if self.row.children:
+            self.add_item(self.row)
 
     async def on_timeout(self) -> None:
         """Expire the Fight Again button without touching active state.
@@ -32,7 +48,10 @@ class PostCombatView(BaseView):
         would incorrectly interrupt any new fight they started within this window."""
         if self.message:
             try:
-                await self.message.edit(view=None)
+                for item in list(self.children):
+                    if isinstance(item, discord.ui.ActionRow):
+                        self.remove_item(item)
+                await self.message.edit(view=self)
             except (discord.NotFound, discord.HTTPException):
                 pass
         self.stop()
@@ -48,8 +67,7 @@ class PostCombatView(BaseView):
         await interaction.response.defer()
 
         # Disable the button right away so Discord shows it as locked.
-        for item in self.children:
-            item.disabled = True
+        self.row.fight_again_btn.disabled = True
         await interaction.edit_original_response(view=self)
 
         if self.bot.state_manager.is_active(self.user_id):

@@ -2,15 +2,38 @@
 import random
 
 import discord
-from discord import ButtonStyle, Interaction, ui
+from discord import ButtonStyle, Interaction
 
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
+from core.combat import ui as combat_ui
 from core.combat.views.post_combat_view import PostCombatView
 from core.images import BOSS_LUCIFER
 from core.combat.views.views_uber_hub import UberReturnView
 
 
-class LuciferChoiceView(BaseView):
+class LuciferChoiceRow(discord.ui.ActionRow["LuciferChoiceView"]):
+    @discord.ui.button(label="Enraged", emoji="❤️‍🔥", style=ButtonStyle.danger)
+    async def enraged(self, interaction: Interaction, button: discord.ui.Button):
+        await self.view._on_enraged(interaction)
+
+    @discord.ui.button(label="Solidified", emoji="💙", style=ButtonStyle.primary)
+    async def solidified(self, interaction: Interaction, button: discord.ui.Button):
+        await self.view._on_solidified(interaction)
+
+    @discord.ui.button(label="Unstable", emoji="💔", style=ButtonStyle.secondary)
+    async def unstable(self, interaction: Interaction, button: discord.ui.Button):
+        await self.view._on_unstable(interaction)
+
+    @discord.ui.button(label="Inverse", emoji="💞", style=ButtonStyle.secondary)
+    async def inverse(self, interaction: Interaction, button: discord.ui.Button):
+        await self.view._on_inverse(interaction)
+
+    @discord.ui.button(label="Original", emoji="🖤", style=ButtonStyle.success)
+    async def original(self, interaction: Interaction, button: discord.ui.Button):
+        await self.view._on_original(interaction)
+
+
+class LuciferChoiceView(BaseLayoutView):
     """Soul Core selection after defeating Lucifer."""
 
     def __init__(self, bot, user_id, player, server_id: str = None, rematch_callback=None):
@@ -22,6 +45,16 @@ class LuciferChoiceView(BaseView):
         self.rematch_callback = rematch_callback
         self.message = None  # Set by caller after send
         self._processing = False  # Re-entry guard (fix 1)
+        self._embed: discord.Embed | None = None
+        self.row = LuciferChoiceRow()
+
+    def set_content(self, embed: discord.Embed) -> None:
+        """Renders `embed` (the victory embed + Soul Core prompt) as this
+        view's Components V2 content, followed by the choice buttons."""
+        self._embed = embed
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(self.row)
 
     async def on_timeout(self):
         if self.message:
@@ -31,7 +64,9 @@ class LuciferChoiceView(BaseView):
                     description="*You hesitated too long. The Soul Core crumbles to ash.*",
                     color=discord.Color.dark_grey(),
                 )
-                await self.message.edit(embed=embed, view=None)
+                self.clear_items()
+                self.add_item(combat_ui.embed_to_container(embed))
+                await self.message.edit(view=self)
             except Exception:
                 pass
         await super().on_timeout()
@@ -44,7 +79,7 @@ class LuciferChoiceView(BaseView):
         self._processing = True
 
         await interaction.response.defer()
-        embed = interaction.message.embeds[0]
+        embed = self._embed
         embed.add_field(name="Choice", value=msg, inline=False)
 
         stamina_data = await self.bot.database.users.get_stamina(self.user_id)
@@ -63,14 +98,18 @@ class LuciferChoiceView(BaseView):
             else None
         )
 
-        msg_obj = await interaction.edit_original_response(embed=embed, view=post_view)
-        if post_view:
+        if post_view is not None:
+            post_view.set_content(embed)
+            msg_obj = await interaction.edit_original_response(view=post_view)
             post_view.message = msg_obj
+        else:
+            self.clear_items()
+            self.add_item(combat_ui.embed_to_container(embed))
+            await interaction.edit_original_response(view=self)
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
 
-    @ui.button(label="Enraged", emoji="❤️‍🔥", style=ButtonStyle.danger)
-    async def enraged(self, interaction: Interaction, button: ui.Button):
+    async def _on_enraged(self, interaction: Interaction):
         adj = random.randint(-1, 2)
         await self.bot.database.users.modify_stat(self.user_id, "attack", adj)
 
@@ -89,8 +128,7 @@ class LuciferChoiceView(BaseView):
 
         await self._conclude(interaction, msg)
 
-    @ui.button(label="Solidified", emoji="💙", style=ButtonStyle.primary)
-    async def solidified(self, interaction: Interaction, button: ui.Button):
+    async def _on_solidified(self, interaction: Interaction):
         adj = random.randint(-1, 2)
         await self.bot.database.users.modify_stat(self.user_id, "defence", adj)
 
@@ -109,8 +147,7 @@ class LuciferChoiceView(BaseView):
 
         await self._conclude(interaction, msg)
 
-    @ui.button(label="Unstable", emoji="💔", style=ButtonStyle.secondary)
-    async def unstable(self, interaction: Interaction, button: ui.Button):
+    async def _on_unstable(self, interaction: Interaction):
         total = self.player.base_attack + self.player.base_defence
         # Randomize towards equilibrium (49-51% split)
         new_atk = int(total * random.uniform(0.49, 0.51))
@@ -123,8 +160,7 @@ class LuciferChoiceView(BaseView):
             interaction, f"Chaos ensues! (Atk: {new_atk}, Def: {new_def})"
         )
 
-    @ui.button(label="Inverse", emoji="💞", style=ButtonStyle.secondary)
-    async def inverse(self, interaction: Interaction, button: ui.Button):
+    async def _on_inverse(self, interaction: Interaction):
         diff = self.player.base_defence - self.player.base_attack
         await self.bot.database.users.modify_stat(self.user_id, "attack", diff)
         await self.bot.database.users.modify_stat(self.user_id, "defence", -diff)
@@ -133,27 +169,44 @@ class LuciferChoiceView(BaseView):
             f"Stats Swapped! (Atk: {self.player.base_defence}, Def: {self.player.base_attack})",
         )
 
-    @ui.button(label="Original", emoji="🖤", style=ButtonStyle.success)
-    async def original(self, interaction: Interaction, button: ui.Button):
+    async def _on_original(self, interaction: Interaction):
         await self.bot.database.users.modify_currency(self.user_id, "soul_cores", 1)
         await self._conclude(interaction, "You pocket a Soul Core.")
 
 
-class InfernalContractView(BaseView):
+class InfernalContractRow(discord.ui.ActionRow["InfernalContractView"]):
+    @discord.ui.button(label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸")
+    async def accept(self, interaction: Interaction, button: discord.ui.Button):
+        await self.view._on_accept(interaction)
+
+    @discord.ui.button(label="Reject Contract", style=discord.ButtonStyle.secondary, emoji="🖤")
+    async def reject(self, interaction: Interaction, button: discord.ui.Button):
+        await self.view._on_reject(interaction)
+
+
+class InfernalContractView(BaseLayoutView):
     """Randomly-generated stat contract presented after killing Uber Lucifer."""
 
     STAT_LABELS = {"attack": "⚔️ ATK", "defence": "🛡️ DEF", "hp": "❤️ HP"}
 
     def __init__(self, bot, user_id: str, player, server_id: str, message):
-        super().__init__(bot, user_id)
+        super().__init__(bot, user_id, server_id)
         self.bot = bot
         self.user_id = user_id
         self.player = player
         self.server_id = server_id
         self.message = message
         self._processing = False  # Re-entry guard (fix 2)
+        self.row = InfernalContractRow()
 
         self.contract = self._roll_contract()
+
+    def set_content(self, embed: discord.Embed) -> None:
+        """Renders `embed` (the victory embed + contract offer) as this
+        view's Components V2 content, followed by the accept/reject row."""
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(self.row)
 
     def _roll_contract(self) -> dict:
         roll = random.random()
@@ -180,8 +233,7 @@ class InfernalContractView(BaseView):
             + "\n\n*Lucifer offers a deal. Most deals are poor. This may be too.*"
         )
 
-    @ui.button(label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸")
-    async def accept(self, interaction: Interaction, button: ui.Button):
+    async def _on_accept(self, interaction: Interaction):
         # Fix 2: guard against double-click before the first await.
         if self._processing:
             await interaction.response.defer()
@@ -242,11 +294,12 @@ class InfernalContractView(BaseView):
         return_view = UberReturnView(
             self.bot, self.user_id, self.server_id, self.player
         )
-        await interaction.edit_original_response(embed=embed, view=return_view)
+        # UberReturnView leaves the fight for the uber hub — a genuine scene
+        # change, so it gets a fresh message rather than reusing this one.
+        await combat_ui.freeze_and_handoff(interaction.message, embed, return_view)
         self.stop()
 
-    @ui.button(label="Reject Contract", style=discord.ButtonStyle.secondary, emoji="🖤")
-    async def reject(self, interaction: Interaction, button: ui.Button):
+    async def _on_reject(self, interaction: Interaction):
         await interaction.response.defer()
         embed = discord.Embed(
             title="🖤 Contract Rejected",
@@ -258,5 +311,5 @@ class InfernalContractView(BaseView):
         return_view = UberReturnView(
             self.bot, self.user_id, self.server_id, self.player
         )
-        await interaction.edit_original_response(embed=embed, view=return_view)
+        await combat_ui.freeze_and_handoff(interaction.message, embed, return_view)
         self.stop()

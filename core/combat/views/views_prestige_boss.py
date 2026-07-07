@@ -9,9 +9,10 @@ After harvesting, a Fight Again button is added inline (the Harvested! button st
 import random
 
 import discord
-from discord.ui import Button, button
+from discord.ui import Button
 
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
+from core.combat import ui as combat_ui
 from core.images import (
     MERIDIAN_GOLEM_DEFEAT,
     DROWNED_LEVIATHAN_DEFEAT,
@@ -27,7 +28,13 @@ REMNANT_MAP = {
 }
 
 
-class PrestigeBossHarvestView(BaseView):
+class HarvestRow(discord.ui.ActionRow["PrestigeBossHarvestView"]):
+    @discord.ui.button(label="Harvest Remnants", style=discord.ButtonStyle.success, emoji="⛏️")
+    async def harvest_btn(self, interaction: discord.Interaction, btn: Button):
+        await self.view._on_harvest(interaction, btn)
+
+
+class PrestigeBossHarvestView(BaseLayoutView):
     """Custom post-combat view for prestige gathering bosses with a one-time harvest action.
 
     State contract:
@@ -60,13 +67,20 @@ class PrestigeBossHarvestView(BaseView):
         self.remnant_col, self.remnant_name = REMNANT_MAP.get(
             prestige_boss_type, ("geode_cores", "Geode Cores")
         )
+        self.row = HarvestRow()
+
+    def set_content(self, embed: discord.Embed) -> None:
+        """Renders `embed` (the victory embed) as this view's Components V2
+        content, followed by the harvest/fight-again row."""
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(self.row)
 
     # ------------------------------------------------------------------
     # Harvest
     # ------------------------------------------------------------------
 
-    @button(label="Harvest Remnants", style=discord.ButtonStyle.success, emoji="⛏️")
-    async def harvest_btn(self, interaction: discord.Interaction, btn: Button):
+    async def _on_harvest(self, interaction: discord.Interaction, btn: Button):
         if self._harvested:
             await interaction.response.defer()
             return
@@ -108,7 +122,7 @@ class PrestigeBossHarvestView(BaseView):
                     style=discord.ButtonStyle.green,
                 )
                 fight_btn.callback = self._fight_again
-                self.add_item(fight_btn)
+                self.row.add_item(fight_btn)
 
         # Build result embed (single edit — Harvested! button stays visible)
         extra_ticks = total_ticks - base_ticks
@@ -136,7 +150,10 @@ class PrestigeBossHarvestView(BaseView):
         embed.set_thumbnail(url=defeat_image)
         embed.set_footer(text="Normal combat rewards have already been granted.")
 
-        await interaction.edit_original_response(embed=embed, view=self)
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(self.row)
+        await interaction.edit_original_response(view=self)
 
     # ------------------------------------------------------------------
     # Fight Again
@@ -151,7 +168,7 @@ class PrestigeBossHarvestView(BaseView):
         await interaction.response.defer()
 
         # Lock all buttons immediately
-        for item in self.children:
+        for item in self.row.children:
             item.disabled = True
         await interaction.edit_original_response(view=self)
 

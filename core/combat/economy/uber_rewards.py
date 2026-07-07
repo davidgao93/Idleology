@@ -309,7 +309,9 @@ async def _handle_lucifer(view, message) -> None:
         value=contract_view.contract_summary(),
         inline=False,
     )
-    await combat_ui.freeze_and_handoff(message, embed, contract_view)
+    contract_view.set_content(embed)
+    await message.edit(view=contract_view)
+    contract_view.message = message
     view.stop()
 
 

@@ -18,7 +18,7 @@ from core.apex.models import (
     profile_from_db,
     soul_stone_from_db,
 )
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.economy.config import XP_LOSS_ON_DEFEAT
@@ -191,6 +191,7 @@ class ApexCombatView(CombatView):
 
         # Post-victory view lets the player challenge again or return to lobby.
         # State is NOT cleared here — _PostApexView owns cleanup on action/timeout.
+        # Same message: _PostApexView is Components V2 too, so no hand-off needed.
         post_view = _PostApexView(
             self.bot,
             self.user_id,
@@ -198,7 +199,9 @@ class ApexCombatView(CombatView):
             self.player.name,
             self.zone_key,
         )
-        await combat_ui.freeze_and_handoff(message, embed, post_view)
+        post_view.set_content(embed)
+        await message.edit(view=post_view)
+        post_view.message = message
         self.stop()  # release this view without clearing active state
 
     # ------------------------------------------------------------------
@@ -215,13 +218,31 @@ class ApexCombatView(CombatView):
 # ---------------------------------------------------------------------------
 
 
-class _PostApexView(BaseView):
+class PostApexRow(discord.ui.ActionRow["_PostApexView"]):
+    @discord.ui.button(
+        label="Challenge Again", style=discord.ButtonStyle.danger, emoji="⚔️"
+    )
+    async def challenge_again(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await self.view._on_challenge_again(interaction)
+
+    @discord.ui.button(
+        label="Return to Lobby", style=discord.ButtonStyle.secondary, emoji="🏹"
+    )
+    async def return_to_lobby(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await self.view._on_return_to_lobby(interaction)
+
+
+class _PostApexView(BaseLayoutView):
     """
     Shown after an Apex victory.  Gives the player two choices:
       • Challenge Again — same zone, fresh monster, consumes 1 charge
       • Return to Lobby — rebuild the ApexLobbyView in-place
     State is cleared when an action is taken or when this view times out.
-    BaseView.on_timeout handles clear_active + button removal automatically.
+    BaseLayoutView.on_timeout handles clear_active + button removal automatically.
     """
 
     def __init__(
@@ -231,13 +252,14 @@ class _PostApexView(BaseView):
         self.player_name = player_name
         self.zone_key = zone_key
         self._processing = False
+        self.row = PostApexRow()
 
-    @discord.ui.button(
-        label="Challenge Again", style=discord.ButtonStyle.danger, emoji="⚔️", row=0
-    )
-    async def challenge_again(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
+    def set_content(self, embed: discord.Embed) -> None:
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(self.row)
+
+    async def _on_challenge_again(self, interaction: discord.Interaction):
         if self._processing:
             await interaction.response.defer()
             return
@@ -260,11 +282,15 @@ class _PostApexView(BaseView):
             h, rem = divmod(secs, 3600)
             m = rem // 60
             time_str = f"{h}h {m}m" if h > 0 else f"{m}m"
-            await interaction.edit_original_response(
-                content=f"⚠️ No hunt charges remaining. Next charge in **{time_str}**.",
-                embed=None,
-                view=None,
+            self.clear_items()
+            self.add_item(
+                discord.ui.Container(
+                    discord.ui.TextDisplay(
+                        f"⚠️ No hunt charges remaining. Next charge in **{time_str}**."
+                    )
+                )
             )
+            await interaction.edit_original_response(view=self)
             self.bot.state_manager.clear_active(self.user_id)
             self.stop()
             return
@@ -310,19 +336,11 @@ class _PostApexView(BaseView):
             title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
         )
 
-        # embed=None is required: this message currently carries the classic
-        # post-victory embed, and Discord rejects an edit that would leave
-        # both an embed and Components V2 components on the same message.
-        await interaction.edit_original_response(embed=None, view=view)
+        await interaction.edit_original_response(view=view)
         view.message = await interaction.original_response()
         self.stop()
 
-    @discord.ui.button(
-        label="Return to Lobby", style=discord.ButtonStyle.secondary, emoji="🏹", row=0
-    )
-    async def return_to_lobby(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
+    async def _on_return_to_lobby(self, interaction: discord.Interaction):
         if self._processing:
             await interaction.response.defer()
             return
@@ -353,6 +371,7 @@ class _PostApexView(BaseView):
             charges,
         )
         lobby_embed = _build_lobby_embed(self.player_name, profile, charges, secs)
-        await interaction.edit_original_response(embed=lobby_embed, view=lobby_view)
-        lobby_view.message = await interaction.original_response()
+        # ApexLobbyView leaves the fight thread for the lobby — a genuine scene
+        # change, so it gets a fresh message rather than reusing this one.
+        await combat_ui.freeze_and_handoff(interaction.message, lobby_embed, lobby_view)
         self.stop()
