@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import random
 
+from core.emojis import SOUL_CORE, VOID_FRAG
+
 # ---------------------------------------------------------------------------
 # Daily Quest Pool
 # ---------------------------------------------------------------------------
@@ -238,7 +240,7 @@ HORIZON_PATHS = {
         "goal": 16,
         "token_reward": 1,
         "level_required": 30,
-        "loot_preview": "💀 +1 Soul Core",
+        "loot_preview": f"{SOUL_CORE} +1 Soul Core",
     },
     "twin_accord": {
         "name": "The Twin Accord",
@@ -256,7 +258,7 @@ HORIZON_PATHS = {
         "goal": 26,
         "token_reward": 2,
         "level_required": 50,
-        "loot_preview": "🌀 +1 Void Fragment",
+        "loot_preview": f"{VOID_FRAG} +1 Void Fragment",
     },
     "slayer": {
         "name": "The Slayer's Reckoning",

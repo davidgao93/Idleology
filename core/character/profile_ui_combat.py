@@ -30,6 +30,7 @@ from core.character.passive_formatters import (
     _get_piercing_crit_bonus,
     _normalize,
 )
+from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
 from core.items.factory import load_player
 
 
@@ -378,7 +379,7 @@ class CombatProfileBuilder:
                 lines.append(
                     f"• **Celestial:** {a.celestial_passive.replace('_', ' ').title()} — {_desc_fixed(_CELESTIAL_PASSIVE_DESC, a.celestial_passive)}"
                 )
-            _add("🛡️ Armor", lines)
+            _add(f"{ARMOR_SLOT} Armor", lines)
 
         # ── Accessory ─────────────────────────────────────────────────────────
         if p.equipped_accessory:
@@ -395,13 +396,13 @@ class CombatProfileBuilder:
                 lines.append(
                     f"• **Void:** {acc.void_passive.replace('_', ' ').title()} — {_desc_fixed(_VOID_PASSIVE_DESC, acc.void_passive)}"
                 )
-            _add("📿 Accessory", lines)
+            _add(f"{ACCESSORY_SLOT} Accessory", lines)
 
         # ── Glove / Boot / Helmet ─────────────────────────────────────────────
         for icon, slot_label, slot_name, item, pfuncs in (
-            ("🧤", "Glove", "glove", p.equipped_glove, _GLOVE_PASSIVE_FUNCS),
-            ("👢", "Boot", "boot", p.equipped_boot, _BOOT_PASSIVE_FUNCS),
-            ("🪖", "Helmet", "helmet", p.equipped_helmet, _HELMET_PASSIVE_FUNCS),
+            (GLOVE_SLOT, "Glove", "glove", p.equipped_glove, _GLOVE_PASSIVE_FUNCS),
+            (BOOT_SLOT, "Boot", "boot", p.equipped_boot, _BOOT_PASSIVE_FUNCS),
+            (HELMET_SLOT, "Helmet", "helmet", p.equipped_helmet, _HELMET_PASSIVE_FUNCS),
         ):
             if not item:
                 continue

@@ -6,7 +6,36 @@ tabs of the Profile Hub.
 
 import discord
 
-from core.emojis import GOLD_ORE, PLATINUM_ORE
+from core.emojis import (
+    ACCESSORY_SLOT,
+    ANGEL_KEY,
+    ARMOR_SLOT,
+    BARS_REFINED,
+    BLESSED_BISMUTH,
+    BOOT_SLOT,
+    CAPRICIOUS_CARP,
+    COAL_ORE,
+    DESICCATED_BONES,
+    DRAGON_KEY,
+    GLOVE_SLOT,
+    GOLD_ORE,
+    HELMET_SLOT,
+    IDEA_LOGS,
+    IDEA_ORE,
+    IRON_ORE,
+    MAGIC_LOGS,
+    MAHOGANY_LOGS,
+    OAK_LOGS,
+    PLATINUM_ORE,
+    REGULAR_BONES,
+    REINFORCED_BONES,
+    SOUL_CORE,
+    SPARKLING_SPRIG,
+    STURDY_BONES,
+    TITANIUM_BONES,
+    VOID_FRAG,
+    WILLOW_LOGS,
+)
 
 
 class StorageProfileBuilder:
@@ -59,8 +88,8 @@ class StorageProfileBuilder:
         embed.add_field(
             name="⚔️ **Gear**",
             value=(
-                f"⚔️ Weapons: {w_count}/60\n🛡️ Armor: {ar_count}/60\n📿 Accs: {a_count}/60\n"
-                f"🧤 Gloves: {g_count}/60\n👢 Boots: {b_count}/60\n🪖 Helms: {h_count}/60\n🐾 Pets: {pet_count}/20"
+                f"⚔️ Weapons: {w_count}/60\n{ARMOR_SLOT} Armor: {ar_count}/60\n{ACCESSORY_SLOT} Accs: {a_count}/60\n"
+                f"{GLOVE_SLOT} Gloves: {g_count}/60\n{BOOT_SLOT} Boots: {b_count}/60\n{HELMET_SLOT} Helms: {h_count}/60\n🐾 Pets: {pet_count}/20"
             ),
             inline=True,
         )
@@ -68,8 +97,8 @@ class StorageProfileBuilder:
         embed.add_field(
             name="🔑 **Boss Items**",
             value=(
-                f"🐉 Draconic Keys: {dragon_keys}\n🪽 Angelic Keys: {angel_keys}\n🟣 Void Frags: {void_frags}\n"
-                f"⚖️ Balance Frags: {k_balance}\n❤️‍🔥 Soul Cores: {soul_cores}"
+                f"{DRAGON_KEY} Draconic Keys: {dragon_keys}\n{ANGEL_KEY} Angelic Keys: {angel_keys}\n{VOID_FRAG} Void Frags: {void_frags}\n"
+                f"⚖️ Balance Frags: {k_balance}\n{SOUL_CORE} Soul Cores: {soul_cores}"
             ),
             inline=True,
         )
@@ -263,11 +292,13 @@ class StorageProfileBuilder:
         embed.set_thumbnail(url=user["appearance"])
 
         gathering_value = (
-            f"**Ores:** Iron {ores[0]:,} · Coal {ores[1]:,} · {GOLD_ORE} Gold {ores[2]:,} · "
-            f"{PLATINUM_ORE} Plat {ores[3]:,} · Idea {ores[4]:,}\n"
-            f"**Logs:** Oak {logs[0]:,} · Willow {logs[1]:,} · Mahog {logs[2]:,} · Magic {logs[3]:,} · Idea {logs[4]:,}\n"
-            f"**Bones:** Desic {bones[0]:,} · Reg {bones[1]:,} · Sturdy {bones[2]:,} · Reinf {bones[3]:,} · Titan {bones[4]:,}\n"
-            f"**Elemental Keys:** 💎 Bismuth: {blessed_bismuth} · 🌿 Sprig: {sparkling_sprig} · 🐟 Carp: {capricious_carp}"
+            f"**Ores:** {IRON_ORE} Iron {ores[0]:,} · {COAL_ORE} Coal {ores[1]:,} · {GOLD_ORE} Gold {ores[2]:,} · "
+            f"{PLATINUM_ORE} Plat {ores[3]:,} · {IDEA_ORE} Idea {ores[4]:,}\n"
+            f"**Logs:** {OAK_LOGS} Oak {logs[0]:,} · {WILLOW_LOGS} Willow {logs[1]:,} · {MAHOGANY_LOGS} Mahog {logs[2]:,} · "
+            f"{MAGIC_LOGS} Magic {logs[3]:,} · {IDEA_LOGS} Idea {logs[4]:,}\n"
+            f"**Bones:** {DESICCATED_BONES} Desic {bones[0]:,} · {REGULAR_BONES} Reg {bones[1]:,} · {STURDY_BONES} Sturdy {bones[2]:,} · "
+            f"{REINFORCED_BONES} Reinf {bones[3]:,} · {TITANIUM_BONES} Titan {bones[4]:,}\n"
+            f"**Elemental Keys:** {BLESSED_BISMUTH} Bismuth: {blessed_bismuth} · {SPARKLING_SPRIG} Sprig: {sparkling_sprig} · {CAPRICIOUS_CARP} Carp: {capricious_carp}"
         )
         embed.add_field(name="⛏️ Gathering", value=gathering_value, inline=False)
 
@@ -283,7 +314,7 @@ class StorageProfileBuilder:
 
         settlement_value = (
             f"🪵 Timber: {settlement.timber:,} · 🪨 Stone: {settlement.stone:,}\n"
-            f"**Ingots:** Iron {ingots[0]:,} · Steel {ingots[1]:,} · Gold {ingots[2]:,} · Plat {ingots[3]:,} · Idea {ingots[4]:,}\n"
+            f"**{BARS_REFINED} Ingots:** Iron {ingots[0]:,} · Steel {ingots[1]:,} · Gold {ingots[2]:,} · Plat {ingots[3]:,} · Idea {ingots[4]:,}\n"
             f"**Planks:** Oak {planks[0]:,} · Willow {planks[1]:,} · Mahog {planks[2]:,} · Magic {planks[3]:,} · Idea {planks[4]:,}\n"
             f"**Essence:** Desic {essence[0]:,} · Reg {essence[1]:,} · Sturdy {essence[2]:,} · Reinf {essence[3]:,} · Titan {essence[4]:,}\n"
             f"**Rare Materials:** 🔥 Magma Core: {rares[0]} · 🌿 Life Root: {rares[1]} · 👻 Spirit Shard: {rares[2]}\n"

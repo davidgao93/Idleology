@@ -29,6 +29,7 @@ from core.character.passive_data import (
     _VOID_PASSIVE_DESC,
     _WEAPON_PASSIVE_DESC,
 )
+from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
 from core.images import AMARA_AUTHOR, AMARA_PORTRAIT
 from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
 
@@ -338,7 +339,7 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == "accessory":
-            embed.title = "📿 Accessory Passive Scaling (Max Lvl 10)"
+            embed.title = f"{ACCESSORY_SLOT} Accessory Passive Scaling (Max Lvl 10)"
             passives = {k.title(): v for k, v in _ACCESSORY_PASSIVE_FUNCS.items()}
             void_text = (
                 "\n**⬛ Void Passives (Engram):**\n"
@@ -348,19 +349,19 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == "glove":
-            embed.title = "🧤 Glove Passive Scaling (Max Lvl 5)"
+            embed.title = f"{GLOVE_SLOT} Glove Passive Scaling (Max Lvl 5)"
             passives = {k.title(): v for k, v in _GLOVE_PASSIVE_FUNCS.items()}
             embed.description = self._generate_scaling_details(passives, 5)
             content_added = True
 
         elif category == "boot":
-            embed.title = "👢 Boot Passive Scaling (Max Lvl 6)"
+            embed.title = f"{BOOT_SLOT} Boot Passive Scaling (Max Lvl 6)"
             passives = {k.title(): v for k, v in _BOOT_PASSIVE_FUNCS.items()}
             embed.description = self._generate_scaling_details(passives, 6)
             content_added = True
 
         elif category == "armor":
-            embed.title = "🛡️ Armor Passives"
+            embed.title = f"{ARMOR_SLOT} Armor Passives"
             armor_text = (
                 "**Standard Passives:**\n"
                 + self._format_passive_descs(_ARMOR_PASSIVE_DESC)
@@ -371,7 +372,7 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == "helmet":
-            embed.title = "🪖 Helmet Passive Scaling (Max Lvl 5)"
+            embed.title = f"{HELMET_SLOT} Helmet Passive Scaling (Max Lvl 5)"
             passives = {k.title(): v for k, v in _HELMET_PASSIVE_FUNCS.items()}
             embed.description = self._generate_scaling_details(passives, 5)
             content_added = True

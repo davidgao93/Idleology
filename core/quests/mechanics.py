@@ -7,6 +7,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timedelta
 
+from core.emojis import ANGEL_KEY, DRAGON_KEY, SOUL_CORE, VOID_FRAG
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, get_damage_goals
 
 BOARD_COOLDOWN_HOURS = 20
@@ -419,11 +420,12 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
             key = random.choice(["dragon_key", "angel_key"])
             await bot.database.users.modify_currency(user_id, key, 1)
             label = "Draconic Key" if key == "dragon_key" else "Angelic Key"
-            msgs.append(f"🗝️ +1 {label}")
+            key_emoji = DRAGON_KEY if key == "dragon_key" else ANGEL_KEY
+            msgs.append(f"{key_emoji} +1 {label}")
 
         elif path_id == "infernal_pact":
             await bot.database.users.modify_currency(user_id, "soul_cores", 1)
-            msgs.append("💀 +1 Soul Core")
+            msgs.append(f"{SOUL_CORE} +1 Soul Core")
 
         elif path_id == "twin_accord":
             await bot.database.users.modify_currency(user_id, "balance_fragment", 1)
@@ -431,7 +433,7 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
 
         elif path_id == "void_threshold":
             await bot.database.users.modify_currency(user_id, "void_frags", 1)
-            msgs.append("🌀 +1 Void Fragment")
+            msgs.append(f"{VOID_FRAG} +1 Void Fragment")
 
         elif path_id == "alchemist":
             await bot.database.users.modify_currency(user_id, "spirit_stones", 1)

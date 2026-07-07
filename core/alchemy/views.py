@@ -10,6 +10,7 @@ from core.alchemy.mechanics import (
     get_passive_name_emoji,
 )
 from core.base_view import BaseView
+from core.emojis import RESOURCE_EMOJI
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.skills.mastery import get_attunement_alchemy_bonus
@@ -425,6 +426,7 @@ class _TransmuteSelect(ui.Select):
                 label=opt["label"][:100],
                 description=opt["desc"][:100],
                 value=str(i),
+                emoji=RESOURCE_EMOJI.get(opt["src_col"]),
             )
             for i, opt in enumerate(options_data[:25])
         ]

@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
+from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
 from core.images import TRADE_HUB
 from core.trade.logic import TradeManager
 
@@ -243,11 +244,11 @@ class TradeRootView(BaseView):
         self.clear_items()
         options = [
             SelectOption(label="Weapon", value="weapon", emoji="⚔️"),
-            SelectOption(label="Armor", value="armor", emoji="🛡️"),
-            SelectOption(label="Accessory", value="accessory", emoji="📿"),
-            SelectOption(label="Gloves", value="glove", emoji="🧤"),
-            SelectOption(label="Boots", value="boot", emoji="👢"),
-            SelectOption(label="Helmet", value="helmet", emoji="🪖"),
+            SelectOption(label="Armor", value="armor", emoji=ARMOR_SLOT),
+            SelectOption(label="Accessory", value="accessory", emoji=ACCESSORY_SLOT),
+            SelectOption(label="Gloves", value="glove", emoji=GLOVE_SLOT),
+            SelectOption(label="Boots", value="boot", emoji=BOOT_SLOT),
+            SelectOption(label="Helmet", value="helmet", emoji=HELMET_SLOT),
         ]
         select = ui.Select(placeholder="Select Slot...", options=options)
         select.callback = self.equip_type_select

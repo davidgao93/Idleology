@@ -2,7 +2,16 @@ import math
 import random
 from typing import Optional
 
-from core.emojis import QUENCH
+from core.emojis import (
+    ANGEL_KEY,
+    BLESSED_BISMUTH,
+    CAPRICIOUS_CARP,
+    DRAGON_KEY,
+    QUENCH,
+    SOUL_CORE,
+    SPARKLING_SPRIG,
+    VOID_FRAG,
+)
 
 
 class AlchemyMechanics:
@@ -145,10 +154,10 @@ class AlchemyMechanics:
     }
 
     KEY_EMOJIS: dict[str, str] = {
-        "dragon_key": "🐉",
-        "angel_key": "👼",
-        "soul_cores": "💀",
-        "void_frags": "🌀",
+        "dragon_key": DRAGON_KEY,
+        "angel_key": ANGEL_KEY,
+        "soul_cores": SOUL_CORE,
+        "void_frags": VOID_FRAG,
         "balance_fragment": "⚖️",
     }
 
@@ -172,9 +181,9 @@ class AlchemyMechanics:
     }
 
     ELEMENTAL_EMOJIS: dict[str, str] = {
-        "capricious_carp": "🐟",
-        "blessed_bismuth": "💎",
-        "sparkling_sprig": "🌿",
+        "capricious_carp": CAPRICIOUS_CARP,
+        "blessed_bismuth": BLESSED_BISMUTH,
+        "sparkling_sprig": SPARKLING_SPRIG,
     }
 
     ELEMENTAL_DUST_YIELD: dict[str, int] = {

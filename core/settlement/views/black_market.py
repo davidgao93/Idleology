@@ -15,6 +15,7 @@ from __future__ import annotations
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.emojis import RESOURCE_EMOJI
 from core.images import BLACK_MARKET_AUTHOR, SETTLEMENT_BUILDINGS
 from core.npc_voices import get_quip
 from core.settlement.constants import (
@@ -31,69 +32,75 @@ from core.settlement.turn_engine import (
 
 from .base import SettlementBaseView
 
-# Resources grouped by category for the offering UI (up to 25 per select page)
-_BM_RESOURCE_PAGES: list[list[tuple[str, str]]] = [
+# Resource (key, plain name) grouped by category, up to 25 per select page.
+# Emoji are looked up centrally from RESOURCE_EMOJI, never hardcoded here.
+_BM_RESOURCE_NAMES: list[list[tuple[str, str]]] = [
     [  # Page 1: Settlement basics + ores
-        ("timber", "🪵 Timber"),
-        ("stone", "🪨 Stone"),
-        ("iron_ore", "⛏️ Iron Ore"),
-        ("coal_ore", "🪨 Coal"),
-        ("gold_ore", "🏅 Gold Ore"),
-        ("platinum_ore", "💿 Platinum Ore"),
-        ("idea_ore", "💡 Idea Ore"),
-        ("iron_bar", "🔧 Iron Bars"),
-        ("steel_bar", "🔧 Steel Bars"),
-        ("gold_bar", "🔧 Gold Bars"),
-        ("platinum_bar", "🔧 Platinum Bars"),
-        ("idea_bar", "🔧 Idea Bars"),
-        ("oak_logs", "🌲 Oak Logs"),
-        ("willow_logs", "🌲 Willow Logs"),
-        ("mahogany_logs", "🌲 Mahogany Logs"),
-        ("magic_logs", "🌲 Magic Logs"),
-        ("idea_logs", "🌲 Idea Logs"),
-        ("oak_plank", "🪵 Oak Planks"),
-        ("willow_plank", "🪵 Willow Planks"),
-        ("mahogany_plank", "🪵 Mahogany Planks"),
-        ("magic_plank", "🪵 Magic Planks"),
-        ("idea_plank", "🪵 Idea Planks"),
-        ("desiccated_bones", "🦴 Desiccated Bones"),
-        ("regular_bones", "🦴 Regular Bones"),
-        ("sturdy_bones", "🦴 Sturdy Bones"),
+        ("timber", "Timber"),
+        ("stone", "Stone"),
+        ("iron_ore", "Iron Ore"),
+        ("coal_ore", "Coal"),
+        ("gold_ore", "Gold Ore"),
+        ("platinum_ore", "Platinum Ore"),
+        ("idea_ore", "Idea Ore"),
+        ("iron_bar", "Iron Bars"),
+        ("steel_bar", "Steel Bars"),
+        ("gold_bar", "Gold Bars"),
+        ("platinum_bar", "Platinum Bars"),
+        ("idea_bar", "Idea Bars"),
+        ("oak_logs", "Oak Logs"),
+        ("willow_logs", "Willow Logs"),
+        ("mahogany_logs", "Mahogany Logs"),
+        ("magic_logs", "Magic Logs"),
+        ("idea_logs", "Idea Logs"),
+        ("oak_plank", "Oak Planks"),
+        ("willow_plank", "Willow Planks"),
+        ("mahogany_plank", "Mahogany Planks"),
+        ("magic_plank", "Magic Planks"),
+        ("idea_plank", "Idea Planks"),
+        ("desiccated_bones", "Desiccated Bones"),
+        ("regular_bones", "Regular Bones"),
+        ("sturdy_bones", "Sturdy Bones"),
     ],
     [  # Page 2: High-value + runes + keys
-        ("reinforced_bones", "🦴 Reinforced Bones"),
-        ("titanium_bones", "🦴 Titanium Bones"),
-        ("refinement_runes", "🔮 Refinement Runes"),
-        ("potential_runes", "🔮 Potential Runes"),
-        ("shatter_runes", "🔮 Shatter Runes"),
-        ("imbue_runes", "🔮 Imbuing Runes"),
-        ("dragon_key", "🗝️ Draconic Keys"),
-        ("angel_key", "🗝️ Angelic Keys"),
-        ("soul_cores", "💠 Soul Cores"),
-        ("balance_fragment", "⚖️ Fragments of Balance"),
-        ("void_frags", "🌑 Void Fragments"),
-        ("magma_core", "🔥 Magma Cores"),
-        ("life_root", "🌿 Life Roots"),
-        ("spirit_shard", "🌟 Spirit Shards"),
-        ("curios", "📦 Curios"),
-        ("unidentified_blueprint", "📋 Blueprints"),
-        ("spirit_stones", "🔮 Spirit Stones"),
-        ("celestial_stone", "⭐ Celestial Stone"),
-        ("infernal_cinder", "🔥 Infernal Cinder"),
-        ("void_crystal", "💜 Void Crystal"),
-        ("bound_crystal", "🔗 Bound Crystal"),
-        ("corrupted_crystal", "🌑 Corrupted Crystal"),
-        ("blessed_bismuth", "🔑 Blessed Bismuth"),
-        ("sparkling_sprig", "🌿 Sparkling Sprig"),
-        ("capricious_carp", "🐟 Capricious Carp"),
+        ("reinforced_bones", "Reinforced Bones"),
+        ("titanium_bones", "Titanium Bones"),
+        ("refinement_runes", "Refinement Runes"),
+        ("potential_runes", "Potential Runes"),
+        ("shatter_runes", "Shatter Runes"),
+        ("imbue_runes", "Imbuing Runes"),
+        ("dragon_key", "Draconic Keys"),
+        ("angel_key", "Angelic Keys"),
+        ("soul_cores", "Soul Cores"),
+        ("balance_fragment", "Fragments of Balance"),
+        ("void_frags", "Void Fragments"),
+        ("magma_core", "Magma Cores"),
+        ("life_root", "Life Roots"),
+        ("spirit_shard", "Spirit Shards"),
+        ("curios", "Curios"),
+        ("unidentified_blueprint", "Blueprints"),
+        ("spirit_stones", "Spirit Stones"),
+        ("celestial_stone", "Celestial Stone"),
+        ("infernal_cinder", "Infernal Cinder"),
+        ("void_crystal", "Void Crystal"),
+        ("bound_crystal", "Bound Crystal"),
+        ("corrupted_crystal", "Corrupted Crystal"),
+        ("blessed_bismuth", "Blessed Bismuth"),
+        ("sparkling_sprig", "Sparkling Sprig"),
+        ("capricious_carp", "Capricious Carp"),
     ],
     [  # Page 3: Refined essences (produced by Reliquary; stored in fishing skill table)
-        ("desiccated_essence", "⚗️ Desiccated Essence"),
-        ("regular_essence", "⚗️ Regular Essence"),
-        ("sturdy_essence", "⚗️ Sturdy Essence"),
-        ("reinforced_essence", "⚗️ Reinforced Essence"),
-        ("titanium_essence", "⚗️ Titanium Essence"),
+        ("desiccated_essence", "Desiccated Essence"),
+        ("regular_essence", "Regular Essence"),
+        ("sturdy_essence", "Sturdy Essence"),
+        ("reinforced_essence", "Reinforced Essence"),
+        ("titanium_essence", "Titanium Essence"),
     ],
+]
+
+_BM_RESOURCE_PAGES: list[list[tuple[str, str]]] = [
+    [(key, f"{RESOURCE_EMOJI[key]} {name}") for key, name in page]
+    for page in _BM_RESOURCE_NAMES
 ]
 
 # Flat key→label lookup built from all pages

@@ -19,6 +19,7 @@ from core.combat.economy.loot import (
     generate_helmet,
     generate_weapon,
 )
+from core.emojis import BOOT_SLOT
 from core.models import Player
 from core.skills.mastery import get_skiller_bonus
 from core.skills.mechanics import SkillMechanics
@@ -148,7 +149,7 @@ class DropManager:
             )
             neet_suffix = " (**Void Echo** doubled the yield!)"
         msg_map = {"mining": "ores", "woodcutting": "logs", "fishing": "fish"}
-        return f"👢 **Skiller** found extra {msg_map[skill_type]}!{neet_suffix}"
+        return f"{BOOT_SLOT} **Skiller** found extra {msg_map[skill_type]}!{neet_suffix}"
 
     @staticmethod
     async def process_drops(

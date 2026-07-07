@@ -6,18 +6,13 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.combat.views.views_elemental import ElementalEncounterView
-from core.emojis import GOLD_ORE, PLATINUM_ORE
+from core.emojis import RESOURCE_EMOJI
 from core.images import MASTERY_FISHING, MASTERY_MINING, MASTERY_WOODCUTTING
 from core.items.factory import load_player
 from core.skills import mastery as Mastery
 from core.skills.mastery import get_tool_cost_reduction
 from core.skills.mechanics import SkillMechanics
 from core.skills.views.mastery_view import ArtisanMasteryHubView
-
-_RESOURCE_EMOJI = {
-    "Gold Ore": GOLD_ORE,
-    "Platinum Ore": PLATINUM_ORE,
-}
 
 
 class GatherView(BaseView):
@@ -253,13 +248,16 @@ class GatherView(BaseView):
         resources = SkillMechanics.map_db_row_to_resources(
             self.current_skill, self.skill_data
         )
+        resource_keys = [key for key, _ in info["resources"]]
         refined_names = SkillMechanics.get_refined_names(self.current_skill)
         ref = self.refined_data or ()
         res_lines = []
         for i, (raw_name, raw_amt) in enumerate(resources):
             ref_amt = ref[i] if i < len(ref) else 0
             ref_name = refined_names[i] if i < len(refined_names) else ""
-            prefix = f"{_RESOURCE_EMOJI[raw_name]} " if raw_name in _RESOURCE_EMOJI else ""
+            res_key = resource_keys[i] if i < len(resource_keys) else None
+            emoji = RESOURCE_EMOJI.get(res_key) if res_key else None
+            prefix = f"{emoji} " if emoji else ""
             if raw_amt > 0 and ref_amt > 0:
                 res_lines.append(
                     f"{prefix}**{raw_name}:** {raw_amt:,}  ·  **{ref_name}:** {ref_amt:,}"
@@ -287,11 +285,13 @@ class GatherView(BaseView):
             for i in range(1, 5):
                 qty = costs.get(f"res_{i}", 0)
                 if qty > 0:
-                    raw_name = info["resources"][i - 1][1]
+                    res_key, raw_name = info["resources"][i - 1]
+                    res_emoji = RESOURCE_EMOJI.get(res_key)
+                    label = f"{res_emoji} {raw_name}" if res_emoji else raw_name
                     raw_held = self.skill_data[i + 2] if self.skill_data else 0
                     ref_held = ref[i - 1] if i - 1 < len(ref) else 0
                     total_held = raw_held + ref_held
-                    cost_parts.append(f"{qty:,} {raw_name} (have: {total_held:,})")
+                    cost_parts.append(f"{qty:,} {label} (have: {total_held:,})")
             if costs["gold"] > 0:
                 cost_parts.append(f"{costs['gold']:,} GP")
             desc += f"\n\n**Next Upgrade:** {next_tier.title()}\n**Costs:** {', '.join(cost_parts)}\n*Raw and refined materials are both accepted.*"

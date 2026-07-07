@@ -1,5 +1,6 @@
 import random
 
+from core.emojis import BLESSED_BISMUTH, CAPRICIOUS_CARP, SPARKLING_SPRIG
 from core.images import (
     ALCHEMY_HUB,
     APEX_HUB,
@@ -97,9 +98,9 @@ async def _grant_level_60(bot, user_id: str, server_id: str) -> list:
     await bot.database.skills.increment_sparkling_sprig(user_id, server_id, 1)
     await bot.database.skills.increment_blessed_bismuth(user_id, server_id, 1)
     return [
-        "🐟 **+1 Capricious Carp**",
-        "🌿 **+1 Sparkling Sprig**",
-        "💎 **+1 Blessed Bismuth**",
+        f"{CAPRICIOUS_CARP} **+1 Capricious Carp**",
+        f"{SPARKLING_SPRIG} **+1 Sparkling Sprig**",
+        f"{BLESSED_BISMUTH} **+1 Blessed Bismuth**",
     ]
 
 

@@ -3,6 +3,7 @@ from typing import List, Union
 import discord
 
 from core.combat.calc.calcs import fmt_weapon_passive
+from core.emojis import ACCESSORY_SLOT, ARMOR_SLOT, BOOT_SLOT, GLOVE_SLOT, HELMET_SLOT
 from core.images import (
     INVENTORY_HUB,
     SLOT_ACCESSORY,
@@ -15,13 +16,15 @@ from core.images import (
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
 from core.util import stars
 
+# Kept in sync with core/inventory/views/_slot_defs.py (can't import it directly —
+# that package's __init__ imports back into this module, which would cycle).
 _SLOT_EMOJIS = {
     "weapon": "⚔️",
-    "armor": "🛡️",
-    "helmet": "🎩",
-    "glove": "🧤",
-    "boot": "👢",
-    "accessory": "📿",
+    "armor": ARMOR_SLOT,
+    "helmet": HELMET_SLOT,
+    "glove": GLOVE_SLOT,
+    "boot": BOOT_SLOT,
+    "accessory": ACCESSORY_SLOT,
 }
 _SLOT_LABELS = {
     "weapon": "Weapon",

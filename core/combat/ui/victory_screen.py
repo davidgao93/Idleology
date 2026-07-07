@@ -11,6 +11,15 @@ from typing import Any, Dict, Optional
 
 import discord
 
+from core.emojis import (
+    ANGEL_KEY,
+    BLESSED_BISMUTH,
+    CAPRICIOUS_CARP,
+    DRAGON_KEY,
+    SOUL_CORE,
+    SPARKLING_SPRIG,
+    VOID_FRAG,
+)
 from core.images import COMBAT_VICTORY
 from core.items.models import _PART_SLOT_LABELS
 from core.models import Monster, Player
@@ -91,10 +100,10 @@ def create_victory_embed(
 
     # 2. Specials (Keys & Runes) - Mapped to emojis
     special_map = {
-        "Draconic Key": "🐉",
-        "Angelic Key": "🪽",
-        "Soul Core": "❤️‍🔥",
-        "Void Fragment": "🟣",
+        "Draconic Key": DRAGON_KEY,
+        "Angelic Key": ANGEL_KEY,
+        "Soul Core": SOUL_CORE,
+        "Void Fragment": VOID_FRAG,
         "Void Key": "🗝️",
         "Rune of Potential": "💎",
         "Rune of Refinement": "🔨",
@@ -103,7 +112,10 @@ def create_victory_embed(
         "Fragment of Balance": "⚖️",
         "Magma Core": "🔥",
         "Life Root": "🌿",
-        "Spirit Shard": "👻",
+        "Spirit Shard": "🌟",
+        "Blessed Bismuth": BLESSED_BISMUTH,
+        "Sparkling Sprig": SPARKLING_SPRIG,
+        "Capricious Carp": CAPRICIOUS_CARP,
         "Rune of Partnership": "🤝",
         "Celestial Sigil": "🌌",
         "Infernal Sigil": "🔥",

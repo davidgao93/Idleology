@@ -6,6 +6,7 @@ from discord.ui import Button
 
 from core.combat.calc.calcs import fmt_weapon_passive
 from core.character.passive_formatters import get_weapon_passive_description
+from core.emojis import RESOURCE_EMOJI
 from core.images import HARLAN_AUTHOR, UPGRADE_FORGE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.npc_voices import get_quip
@@ -216,22 +217,25 @@ class ForgeView(BaseUpgradeView):
         }
         _LOG_BASES = ["oak", "willow", "mahogany", "magic", "idea"]
         _BONE_BASES = ["desiccated", "regular", "sturdy", "reinforced", "titanium"]
+        _MAT_NAME = {
+            "iron_ore": "Iron Ore",
+            "coal_ore": "Coal",
+            "gold_ore": "Gold Ore",
+            "platinum_ore": "Platinum Ore",
+            "idea_ore": "Idea Ore",
+            "oak_logs": "Oak Logs",
+            "willow_logs": "Willow Logs",
+            "mahogany_logs": "Mahogany Logs",
+            "magic_logs": "Magic Logs",
+            "idea_logs": "Idea Logs",
+            "desiccated_bones": "Desiccated Bones",
+            "regular_bones": "Regular Bones",
+            "sturdy_bones": "Sturdy Bones",
+            "reinforced_bones": "Reinforced Bones",
+            "titanium_bones": "Titanium Bones",
+        }
         _MAT_LABEL = {
-            "iron_ore": "⛏️ Iron Ore",
-            "coal_ore": "⛏️ Coal",
-            "gold_ore": "⛏️ Gold Ore",
-            "platinum_ore": "⛏️ Platinum Ore",
-            "idea_ore": "⛏️ Idea Ore",
-            "oak_logs": "🪓 Oak Logs",
-            "willow_logs": "🪓 Willow Logs",
-            "mahogany_logs": "🪓 Mahogany Logs",
-            "magic_logs": "🪓 Magic Logs",
-            "idea_logs": "🪓 Idea Logs",
-            "desiccated_bones": "🎣 Desiccated Bones",
-            "regular_bones": "🎣 Regular Bones",
-            "sturdy_bones": "🎣 Sturdy Bones",
-            "reinforced_bones": "🎣 Reinforced Bones",
-            "titanium_bones": "🎣 Titanium Bones",
+            key: f"{RESOURCE_EMOJI[key]} {name}" for key, name in _MAT_NAME.items()
         }
 
         # Fetch every possible material tier up front
