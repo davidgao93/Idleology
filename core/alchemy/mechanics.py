@@ -284,16 +284,6 @@ class AlchemyMechanics:
         discount = level * 0.01  # 0.01 … 0.05
         return math.ceil(base * (1.0 - discount))
 
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def format_passive_range(passive_type: str) -> str:
-        """Returns a display name for the possible list (legacy removed)."""
-        info = DistillationMechanics.POWERFUL_PASSIVES.get(passive_type)
-        if info:
-            return f"{info['emoji']} **{info['name']}** (powerful distilled)"
-        return passive_type.replace("_", " ").title()
-
 
 # =============================================================================
 # POTION DISTILLATION (new multi-step Sage Elixir style system)
@@ -694,31 +684,6 @@ class DistillationMechanics:
         return DistillationMechanics.prepare_core_choices(session)
 
     @staticmethod
-    def get_reagent_choices(session: dict, step: int) -> list[dict]:
-        """Return the 3 reagent options for the given step (with current effective cost)."""
-        base_cost = 6 + step * 2  # gentle ramp; events override
-        options = []
-        for r in DistillationMechanics.REAGENTS:
-            cost = int(
-                base_cost * r.get("base_cost", 10) / 10
-            )  # use the per-reagent base as relative
-            # Apply active modifiers (free steps, etc.)
-            mult = 1.0
-            if session.get("active_modifiers", {}).get("free_next_steps", 0) > 0:
-                mult = 0.0
-            if session.get("active_modifiers", {}).get("future_free_but_unlucky"):
-                mult = 0.0
-            effective_cost = max(0, int(cost * mult))
-            options.append(
-                {
-                    **r,
-                    "effective_cost": effective_cost,
-                    "step": step,
-                }
-            )
-        return options
-
-    @staticmethod
     def get_reagent_options_for_step(session: dict, step: int) -> list[dict]:
         """Generate the 3 reagent options for this specific step, each with a pre-selected property/event from the pool.
         This allows showing the special properties in the UI before the user chooses.
@@ -939,7 +904,7 @@ class DistillationMechanics:
         if eff.get("next_lucky"):
             mods["lucky"] = True
 
-        # Debug string (shown in embed temporarily to help isolate issues)
+        # Build a diagnostic string captured in session state for debugging distillation rolls.
         def _sign(s):
             return "+" if s > 0 else ("-" if s < 0 else "0")
 

@@ -7,7 +7,7 @@ from discord.ext import commands
 from core.character.profile_hub import ProfileHubView
 from core.character.profile_ui import ProfileBuilder
 from core.first_use import TutorialGateView
-from core.inventory.views import SLOT_ORDER, GearView, InventoryListView, LoadoutView
+from core.inventory.views import SLOT_ORDER, GearView, LoadoutView
 
 # Core
 from core.items.factory import (
@@ -74,43 +74,6 @@ class Inventory(commands.Cog, name="inventory"):
             return
 
         embed, view = await _build()
-        await interaction.response.send_message(embed=embed, view=view)
-        view.message = await interaction.original_response()
-
-    async def _generic_inventory_command(
-        self, interaction: Interaction, item_type: str, factory_func, emoji: str
-    ):
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-
-        existing_user = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, existing_user):
-            return
-        if not await self.bot.check_is_active(interaction, user_id):
-            return
-
-        self.bot.state_manager.set_active(user_id, "inventory")
-
-        raw_items = await self.bot.database.equipment.get_all(user_id, item_type)
-        if not raw_items:
-            self.bot.state_manager.clear_active(user_id)
-            return await interaction.response.send_message(
-                f"You search your bags for {item_type}s, but find nothing."
-            )
-
-        items = [factory_func(item) for item in raw_items]
-
-        equipped_raw = await self.bot.database.equipment.get_equipped(
-            user_id, item_type
-        )
-        equipped_id = equipped_raw["item_id"] if equipped_raw else None
-
-        items.sort(key=lambda x: (x.item_id == equipped_id, x.level), reverse=True)
-
-        view = InventoryListView(self.bot, user_id, items, emoji)
-        # Note: We need to pass the user name for the embed title
-        embed = await view.get_current_embed(interaction.user.display_name)
-
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

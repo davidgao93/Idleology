@@ -118,19 +118,6 @@ UBER_BUILDINGS = {
     "uber_shrine",
 }
 
-# Black Market bulk trade configuration
-BLACK_MARKET_TRADES = {
-    "equip": {
-        "label": "Equipment Caches (2.5M Gold each)",
-        "key": "equip",
-    },
-    "rune": {
-        "label": "Rune Caches (1 each: Refine/Potential/Shatter)",
-        "key": "rune",
-    },
-    "key": {"label": "Boss Key Caches (1 Void Key each)", "key": "key"},
-}
-
 # ---------------------------------------------------------------------------
 # New Buildings — Nursery + Idlem Foundry + Uber Shrine
 # ---------------------------------------------------------------------------
@@ -287,8 +274,7 @@ PROJECT_CONSTRUCTION_DT = {
     "uber_shrine": 40,
 }
 
-# Legacy reference — upgrade DT costs are now a lookup table in turn_engine.py:
-# T1→T2 = 5 DTs, T2→T3 = 10, T3→T4 = 25, T4→T5 = 50
+# Upgrade DT scaling (per-tier) is computed in turn_engine.py; kept for reference/compat.
 PROJECT_UPGRADE_DT_PER_TIER = {
     "default": 5,
 }

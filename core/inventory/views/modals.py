@@ -74,7 +74,7 @@ class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
 
         self.parent_view.update_buttons()
 
-        # Show temporary popup
+        # Replace the view with a summary embed of the bulk discard result.
         temp_embed = discord.Embed(
             title="Mass Discard Complete", color=discord.Color.red()
         )

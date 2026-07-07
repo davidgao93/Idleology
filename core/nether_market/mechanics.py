@@ -25,10 +25,10 @@ NPC_HOLDINGS_TIER_WEIGHTS = (("cheap", 0.5), ("med", 0.3), ("expensive", 0.2))
 
 # Below-value ("lo") and above-value ("hi") multiplier bands — split around 1.0
 # so every tier always has one guaranteed bargain and one guaranteed markup.
-ROTATION_LOW_MIN = 0.55
+ROTATION_LOW_MIN = 0.10
 ROTATION_LOW_MAX = 0.95
 ROTATION_HIGH_MIN = 1.05
-ROTATION_HIGH_MAX = 1.55
+ROTATION_HIGH_MAX = 3.00
 
 BASE_HOLDINGS_CAP = 200
 
@@ -46,13 +46,13 @@ class NetherMarketMechanics:
 
     @staticmethod
     def roll_price_below(true_value: int) -> int:
-        """Listed price = true_value * a multiplier in [0.55, 0.95], rounded to
+        """Listed price = true_value * a multiplier in [0.10, 0.95], rounded to
         the nearest 5% step so the displayed deviation is always a clean number."""
         return NetherMarketMechanics._roll_price(true_value, ROTATION_LOW_MIN, ROTATION_LOW_MAX)
 
     @staticmethod
     def roll_price_above(true_value: int) -> int:
-        """Listed price = true_value * a multiplier in [1.05, 1.55], rounded to
+        """Listed price = true_value * a multiplier in [1.05, 3.00], rounded to
         the nearest 5% step so the displayed deviation is always a clean number."""
         return NetherMarketMechanics._roll_price(true_value, ROTATION_HIGH_MIN, ROTATION_HIGH_MAX)
 
@@ -123,11 +123,6 @@ class NetherMarketMechanics:
     # ------------------------------------------------------------------
     # Mastery tree
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def get_tree_bonuses(nodes_owned: dict) -> dict:
-        """Converts raw nodes_owned dict into a structured bool map for UI use."""
-        return {node_id: bool(nodes_owned.get(node_id)) for node_id in NETHER_MARKET_NODES}
 
     @staticmethod
     def can_purchase(node_id: str, nodes_owned: dict, marks: int) -> tuple[bool, str]:

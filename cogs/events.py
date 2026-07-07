@@ -31,8 +31,8 @@ class Events(commands.Cog, name="events"):
         }
 
     async def cog_load(self):
+        # Event loop start is intentionally disabled (see random_event_loop).
         pass
-        # self.random_event_loop.start()
 
     async def cog_unload(self):
         self.random_event_loop.cancel()

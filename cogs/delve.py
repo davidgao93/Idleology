@@ -75,8 +75,7 @@ class Delve(commands.Cog):
             gate.message = await interaction.original_response()
             return
 
-        # 4. Define Start Callback
-        # This function is passed to the Entry View to run AFTER gold is paid
+        # Callback invoked by entry view after permit cost is paid.
         async def start_game(inter: Interaction):
             state = DelveState(
                 max_fuel=DelveMechanics.get_max_fuel(delve_stats["fuel_lvl"]),

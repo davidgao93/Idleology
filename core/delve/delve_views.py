@@ -517,7 +517,7 @@ class DelveView(BaseView):
         await self.bot.database.users.modify_gold(self.user_id, -cost)
 
         # 3. Create New View & Replace Message
-        # We reuse self.stats because levels haven't changed (shop is separate)
+        # Reuse stats snapshot (shop upgrades do not affect level/fuel).
         stats = await self.bot.database.delve.get_profile(self.user_id, self.server_id)
         max_fuel = DelveMechanics.get_max_fuel(stats["fuel_lvl"])
 

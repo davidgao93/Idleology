@@ -76,7 +76,6 @@ Index	Attribute Description
 class Character(commands.Cog, name="character"):
     def __init__(self, bot) -> None:
         self.bot = bot
-        self.active_users = {}  # Dictionary to track active users
 
     @commands.Cog.listener()
     async def on_ready(self):

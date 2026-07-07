@@ -77,7 +77,7 @@ class QuestsRepository(BaseRepository):
             )
             """
         )
-        # Migrations for existing databases
+        # Idempotent ALTERs for columns added to quest_meta after initial creation
         for col, defval in (
             ("enrichment_unlocked", "0"),
             ("prospector_unlocked", "0"),

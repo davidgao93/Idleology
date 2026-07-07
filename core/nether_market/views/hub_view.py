@@ -109,7 +109,7 @@ class NetherMarketHubView(BaseView):
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if VEX_THUMBNAIL:
             embed.set_thumbnail(url=VEX_THUMBNAIL)
-        embed.set_footer(text=get_quip("nether_market"))
+        embed.set_footer(text=f"{get_quip('nether_market')}\n\U0001f4e6×N = quantity you currently hold")
 
         offers = _iter_offers(self.rotation, self.holdings)
         for tier_key, tier_label in _TIER_LABELS:
@@ -120,9 +120,10 @@ class NetherMarketHubView(BaseView):
                 item = offer["item"]
                 dev = M.deviation_pct(offer["price"], item["true_value"])
                 sign = "+" if dev >= 0 else ""
+                held_tag = f" \U0001f4e6×{offer['held']}" if offer["held"] > 0 else ""
                 line = (
-                    f"{offer['emoji']} **{item['name']}** — \U0001f4b0 {offer['price']:,} "
-                    f"({sign}{dev:.0f}%) *(Held: {offer['held']})*"
+                    f"{offer['emoji']} **{item['name']}**{held_tag} — \U0001f4b0 {offer['price']:,} "
+                    f"({sign}{dev:.0f}%)"
                 )
                 if show_true_value:
                     line += f" *(true: {item['true_value']:,})*"

@@ -160,24 +160,6 @@ SLAYER_TREE_NODES: dict[str, dict] = {
 }
 
 
-def get_tree_bonuses(nodes_owned: dict) -> dict:
-    """Converts raw nodes_owned dict into structured bonus values for combat/UI use."""
-    return {
-        "tm_1": bool(nodes_owned.get("tm_1")),
-        "tm_2": bool(nodes_owned.get("tm_2")),
-        "tm_3": bool(nodes_owned.get("tm_3")),
-        "tm_4": bool(nodes_owned.get("tm_4")),
-        "hu_1": nodes_owned.get("hu_1") or None,  # "accuracy", "crit", or "atk"
-        "hu_2": nodes_owned.get("hu_2") or None,  # "pdr", "fdr", or "def"
-        "hu_3": nodes_owned.get("hu_3") or None,  # "dmg" or "tank"
-        "hu_4": nodes_owned.get("hu_4") or None,  # "slay" or "zenith"
-        "pu_1": bool(nodes_owned.get("pu_1")),
-        "pu_2": bool(nodes_owned.get("pu_2")),
-        "pu_3": bool(nodes_owned.get("pu_3")),
-        "pu_4": bool(nodes_owned.get("pu_4")),
-    }
-
-
 # Level-gated boss hunt targets.  ``key`` is appended to BOSS_TASK_PREFIX and
 # used to match monsters in combat; ``name`` is the display name shown to the player.
 BOSS_TASK_CATALOG = [

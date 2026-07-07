@@ -187,7 +187,7 @@ class DiscordBot(commands.Bot):
             ) as file:
                 await db.executescript(file.read())
             await db.commit()
-            # Migrations for columns added after initial schema
+            # Idempotent ALTERs to add columns introduced after the base schema.sql
             for stmt in [
                 "ALTER TABLE users ADD COLUMN combat_stamina INTEGER NOT NULL DEFAULT 10",
                 "ALTER TABLE users ADD COLUMN last_stamina_regen TIMESTAMP DEFAULT NULL",
@@ -413,7 +413,7 @@ class DiscordBot(commands.Bot):
         elif isinstance(error, commands.MissingRequiredArgument):
             embed = discord.Embed(
                 title="Error!",
-                # We need to capitalize because the command arguments have no capital letter in the code and they are the first word in the error message.
+                # Capitalize first word of the error (args lack caps in source).
                 description=str(error).capitalize(),
                 color=0xE02B2B,
             )
@@ -502,18 +502,6 @@ class DiscordBot(commands.Bot):
             operation = self.state_manager.get_operation(user_id) or "current"
             await interaction.response.send_message(
                 f"Please wrap up your {operation.title()} interaction first.",
-                ephemeral=True,
-            )
-            return False
-        return True
-
-    async def is_maintenance(self, interaction: Interaction, user_id: str) -> bool:
-        """
-        Check if a user has an active operation.
-        """
-        if user_id != str(866408616873820180):
-            await interaction.response.send_message(
-                "This command is under maintenance, please try again later.",
                 ephemeral=True,
             )
             return False

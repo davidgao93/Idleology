@@ -165,14 +165,6 @@ def _cs_void_echo(player, monster):
         return f"⬛ **Void Echo** resonates! ⚔️ +**{bonus}** ATK (15% of weapon ATK)"
 
 
-def _cs_unravelling(player, monster):
-    if monster.effective_defence <= 0:
-        return
-    strip = int(monster.effective_defence * 0.20)
-    monster.flat_defence_reduction += strip
-    return f"⬛ **Unravelling** strips {monster.name}'s 🛡️ DEF by **{strip}** (20%)"
-
-
 _ARMOR_START_HANDLERS: dict[str, callable] = {
     "Transcendence": _cs_transcendence,
     "Unlimited Wealth": _cs_unlimited_wealth,

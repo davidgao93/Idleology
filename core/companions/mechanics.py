@@ -304,7 +304,7 @@ class CompanionMechanics:
         else:
             p_type = random.choice(CompanionMechanics.PASSIVE_TYPES)
 
-        # Fixed Tier 3
+        # Boss pets always receive Tier 3 passives.
         return p_type, 3
 
     @staticmethod

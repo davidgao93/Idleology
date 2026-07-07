@@ -9,7 +9,6 @@ Pure calculation functions have been extracted to focused modules:
 The re-exports below keep all existing callers working unchanged.
 """
 
-import random
 from dataclasses import dataclass
 from typing import Callable
 
@@ -229,41 +228,3 @@ def get_soul_stone_passive(player, key: str) -> int | None:
     return player.get_soul_stone_passive(key)
 
 
-def get_player_passive_indices(player, target_passives: list[str]) -> list[int]:
-    """
-    Returns indices into target_passives for each weapon-slot passive the player has.
-    Checks weapon main, pinnacle, and utmost slots.
-    Retained for dummy_engine.py compatibility.
-    """
-    active = [
-        player.get_weapon_passive(),
-        player.get_weapon_pinnacle(),
-        player.get_weapon_utmost(),
-    ]
-    return [target_passives.index(p) for p in active if p in target_passives]
-
-
-# ---------------------------------------------------------------------------
-# Legacy wrappers — retained for dummy_engine.py compatibility
-# ---------------------------------------------------------------------------
-
-
-def check_for_echo_bonus(player, actual_hit: int) -> tuple[int, bool, int]:
-    """Echo weapon passive: bonus damage on hit that mirrors the strike."""
-    idx, _ = get_weapon_tier(player, "echo")
-    if idx < 0:
-        return actual_hit, False, 0
-    echo_damage = int(actual_hit * (idx + 1) * 0.10)
-    return actual_hit + echo_damage, True, echo_damage
-
-
-def check_for_poison_bonus(player, attack_multiplier: float) -> int:
-    """Poison weapon passive: guaranteed damage on miss."""
-    idx, _ = get_weapon_tier(player, "poison")
-    if idx < 0:
-        return 0
-    poison_pct = (idx + 1) * 0.08
-    return int(
-        random.randint(1, int(player.get_total_attack() * poison_pct))
-        * attack_multiplier
-    )
