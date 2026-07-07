@@ -21,7 +21,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Empowered",
         "common",
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: +{int(v * 100)}% ATK",
     ),
@@ -29,7 +29,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Fortified",
         "common",
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: +{int(v * 100)}% DEF",
     ),
@@ -37,7 +37,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Titanic",
         "common",
         tiers=[1.50, 1.75, 2.00, 2.25, 2.50],
-        difficulties=[0.001, 0.003, 0.005, 0.007, 0.009],
+        difficulties=[0.0056, 0.0168, 0.028, 0.0392, 0.0504],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: +{int((v - 1) * 100)}% Max HP",
     ),
@@ -45,7 +45,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Savage",
         "common",
         tiers=[0.20, 0.25, 0.30, 0.35, 0.40],
-        difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
+        difficulties=[0.0168, 0.028, 0.0392, 0.0504, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: +{int(v * 100)}% damage",
     ),
@@ -53,7 +53,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Lethal",
         "common",
         tiers=[0.05, 0.10, 0.15, 0.20, 0.25],
-        difficulties=[0.001, 0.002, 0.004, 0.006, 0.007],
+        difficulties=[0.0056, 0.0112, 0.0224, 0.0336, 0.0392],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: +{int(v * 100)}% Crit Chance",
     ),
@@ -61,7 +61,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Devastating",
         "common",
         tiers=[0.5, 0.6, 0.7, 0.8, 1.0],  # added to 2.0 base crit mult
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: Crits deal {round(1.5 + v, 1)}× damage",
     ),
@@ -69,7 +69,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Keen",
         "common",
         tiers=[5, 7, 10, 13, 15],
-        difficulties=[0.002, 0.004, 0.005, 0.007, 0.009],
+        difficulties=[0.0112, 0.0224, 0.028, 0.0392, 0.0504],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: +{int(v)} to its hit rolls",
     ),
@@ -77,7 +77,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Blinding",
         "common",
         tiers=[5, 8, 10, 12, 15],  # flat penalty subtracted from player acc_bonus
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: −{int(v)} to your hit rolls",
     ),
@@ -85,7 +85,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Jinxed",
         "common",
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"Combat start: {int(v * 100)}% chance your hit rolls are unlucky"
@@ -95,7 +95,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Crushing",
         "common",
         tiers=[0.05, 0.06, 0.07, 0.08, 0.10],  # fraction of PDR ignored
-        difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
+        difficulties=[0.0168, 0.028, 0.0392, 0.0504, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: Ignores {int(v * 100)}% of your PDR",
     ),
@@ -103,7 +103,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Searing",
         "common",
         tiers=[0.15, 0.20, 0.25, 0.30, 0.35],  # fraction of FDR ignored
-        difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
+        difficulties=[0.0168, 0.028, 0.0392, 0.0504, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: Ignores {int(v * 100)}% of your FDR",
     ),
@@ -117,7 +117,7 @@ MODIFIER_DEFINITIONS: dict = {
             0.20,
             0.25,
         ],  # chance to nullify ALL player damage that turn
-        difficulties=[0.001, 0.003, 0.005, 0.007, 0.008],
+        difficulties=[0.0056, 0.0168, 0.028, 0.0392, 0.0448],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"During combat: {int(v * 100)}% chance to nullify all incoming damage"
@@ -127,7 +127,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Ironclad",
         "common",
         tiers=[0.10, 0.15, 0.20, 0.25, 0.30],
-        difficulties=[0.002, 0.005, 0.007, 0.009, 0.012],
+        difficulties=[0.0112, 0.028, 0.0392, 0.0504, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"During combat: {int(v * 100)}% less damage taken",
     ),
@@ -141,7 +141,7 @@ MODIFIER_DEFINITIONS: dict = {
             0.016,
             0.02,
         ],  # fraction of monster max_hp healed per hit
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"On hit: Heals {v * 100:.1f}% of its Max HP",
     ),
@@ -155,7 +155,7 @@ MODIFIER_DEFINITIONS: dict = {
             0.01,
             0.0125,
         ],  # fraction of monster max_hp per every other turn
-        difficulties=[0.004, 0.008, 0.009, 0.01, 0.0012],
+        difficulties=[0.0224, 0.0448, 0.0504, 0.056, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Every other turn: Heals {v * 100:.2f}% of its Max HP",
     ),
@@ -169,7 +169,7 @@ MODIFIER_DEFINITIONS: dict = {
             0.04,
             0.05,
         ],  # fraction of player max_hp dealt to player per hit; applies PDR/FDR, bypasses ward
-        difficulties=[0.003, 0.006, 0.009, 0.012, 0.015],
+        difficulties=[0.0168, 0.0336, 0.0504, 0.0672, 0.084],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"On hit: You take {int(v * 100)}% of your Max HP as damage (after PDR/FDR; bypasses Ward)"
@@ -185,7 +185,7 @@ MODIFIER_DEFINITIONS: dict = {
             0.016,
             0.020,
         ],  # fraction of player max_hp as true damage on each miss; bypasses all defences
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"On miss: {v * 100:.1f}% of your Max HP as true damage (bypasses all defences)"
@@ -201,7 +201,7 @@ MODIFIER_DEFINITIONS: dict = {
             0.20,
             0.25,
         ],  # attack % per stack (1 stack per 25% HP lost, capped at 3 stacks / 75% HP lost)
-        difficulties=[0.002, 0.004, 0.006, 0.009, 0.012],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0504, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"During combat: +{int(v * 100)}% DMG per 25% HP lost (max 3 stacks)"
@@ -211,7 +211,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Parching",
         "common",
         tiers=[0.10, 0.20, 0.30, 0.40, 0.50],  # fraction of base healing removed
-        difficulties=[0.001, 0.002, 0.004, 0.006, 0.008],
+        difficulties=[0.0056, 0.0112, 0.0224, 0.0336, 0.0448],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"During combat: Your potions heal {int(v * 100)}% less",
     ),
@@ -225,7 +225,7 @@ MODIFIER_DEFINITIONS: dict = {
             0.40,
             0.50,
         ],  # fraction of monster max_hp as starting ward
-        difficulties=[0.001, 0.002, 0.004, 0.006, 0.008],
+        difficulties=[0.0056, 0.0112, 0.0224, 0.0336, 0.0448],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"Combat start: Starts with {int(v * 100)}% Max HP as Ward"
@@ -236,7 +236,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Flashfire",
         "common",
         tiers=[0.02, 0.04, 0.06, 0.08, 0.10],
-        difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
+        difficulties=[0.0168, 0.028, 0.0392, 0.0504, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"During combat: Gains +1 charge per turn; at 8 charges: deals {int(v * 100)}% of your Max HP as true damage"
@@ -246,7 +246,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Hemorrhage",
         "common",
         tiers=[0.0015, 0.0020, 0.0028, 0.0036, 0.0045],
-        difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
+        difficulties=[0.0168, 0.028, 0.0392, 0.0504, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"On hit: 30% chance to apply 1 Bleed stack; each stack deals {v * 100:.2f}% of your Max HP as true damage per turn"
@@ -256,7 +256,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Volatile Spikes",
         "common",
         tiers=[0.02, 0.03, 0.04, 0.05, 0.06],
-        difficulties=[0.003, 0.005, 0.007, 0.009, 0.012],
+        difficulties=[0.0168, 0.028, 0.0392, 0.0504, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"On hit: 30% chance to apply 1 Spike (max 10, +{int(v * 100)}% monster Crit Chance per stack); evade or block resets stacks"
@@ -266,7 +266,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Onslaught",
         "common",
         tiers=[0.015, 0.020, 0.030, 0.040, 0.050],
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"During combat: +{int(v * 100)}% ATK per consecutive hit; resets on evade or block"
@@ -276,7 +276,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Pressure Surge",
         "common",
         tiers=[0.10, 0.125, 0.15, 0.175, 0.20],
-        difficulties=[0.004, 0.006, 0.008, 0.010, 0.013],
+        difficulties=[0.0224, 0.0336, 0.0448, 0.056, 0.0728],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"During combat: Builds when you don't crit; at 10 stacks: deals {int(v * 100)}% of your Max HP as true damage"
@@ -286,7 +286,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Soul Siphon",
         "common",
         tiers=[0.05, 0.08, 0.12, 0.16, 0.20],
-        difficulties=[0.003, 0.005, 0.007, 0.009, 0.011],
+        difficulties=[0.0168, 0.028, 0.0392, 0.0504, 0.0616],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"Every 2 turns: Drains {int(v * 100)}% of your Ward and heals 50% of the amount drained"
@@ -296,7 +296,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Frenzied Hunger",
         "common",
         tiers=[0.05, 0.08, 0.12, 0.16, 0.20],
-        difficulties=[0.002, 0.004, 0.006, 0.008, 0.010],
+        difficulties=[0.0112, 0.0224, 0.0336, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"On potion use: +{int(v * 100)}% ATK (stacking)",
     ),
@@ -306,7 +306,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Commanding",
         "rare_tiered",
         tiers=[0.075],  # Fixed 7.5%
-        difficulties=[0.005],
+        difficulties=[0.028],
         level_gates=[1],  # Single tier
         description=lambda v: (
             "On hit: Minions deal 7.5% of damage applied to you as true damage (bypasses all layers)"
@@ -326,7 +326,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Dampening",
         "rare_tiered",
         tiers=[5, 10, 15, 20, 25],  # subtracted from effective crit_chance
-        difficulties=[0.003, 0.005, 0.008, 0.010, 0.013],
+        difficulties=[0.0168, 0.028, 0.0448, 0.056, 0.0728],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: Your Crit Chance −{int(v)}",
     ),
@@ -334,7 +334,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Nullifying",
         "rare_tiered",
         tiers=[0.30, 0.40, 0.50, 0.60, 0.70],  # fraction of crit damage removed
-        difficulties=[0.005, 0.008, 0.010, 0.013, 0.015],
+        difficulties=[0.028, 0.0448, 0.056, 0.0728, 0.084],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"Combat start: Your crits deal {int(v * 100)}% less damage"
@@ -345,7 +345,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Unblockable",
         "rare_tiered",
         tiers=[0.36, 0.28, 0.24, 0.20, 0.16],
-        difficulties=[0.004, 0.006, 0.008, 0.008, 0.010],
+        difficulties=[0.0224, 0.0336, 0.0448, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"Combat start: Block Chance is {int((1 - v) * 100)}% less effective"
@@ -355,7 +355,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Unavoidable",
         "rare_tiered",
         tiers=[0.36, 0.28, 0.24, 0.20, 0.16],
-        difficulties=[0.004, 0.006, 0.008, 0.008, 0.010],
+        difficulties=[0.0224, 0.0336, 0.0448, 0.0448, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"Combat start: Evasion Chance is {int((1 - v) * 100)}% less effective"
@@ -365,7 +365,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Dispelling",
         "rare_tiered",
         tiers=[0.50, 0.60, 0.70, 0.80, 0.90],
-        difficulties=[0.005, 0.007, 0.008, 0.010, 0.012],
+        difficulties=[0.028, 0.0392, 0.0448, 0.056, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: f"Combat start: Your starting Ward is reduced by {int(v * 100)}%",
     ),
@@ -373,7 +373,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Multistrike",
         "rare_tiered",
         tiers=[0.20, 0.30, 0.40, 0.50, 0.60],
-        difficulties=[0.006, 0.008, 0.010, 0.012, 0.014],
+        difficulties=[0.0336, 0.0448, 0.056, 0.0672, 0.0784],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"On hit: {int(v * 100)}% chance to strike twice (second hit at 50% damage, after PDR/FDR)"
@@ -383,7 +383,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Spectral",
         "rare_tiered",
         tiers=[0.50, 0.75, 1.00, 1.25, 1.50],
-        difficulties=[0.005, 0.007, 0.009, 0.010, 0.012],
+        difficulties=[0.028, 0.0392, 0.0504, 0.056, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"On hit: 20% chance to deal {int(v * 100)}% increased damage"
@@ -393,7 +393,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Executioner",
         "rare_tiered",
         tiers=[0.70, 0.75, 0.80, 0.85, 0.90],
-        difficulties=[0.007, 0.009, 0.011, 0.013, 0.015],
+        difficulties=[0.0392, 0.0504, 0.0616, 0.0728, 0.084],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"On hit: 1% chance to deal {int(v * 100)}% of your current HP as true damage (can be evaded or blocked)"
@@ -403,7 +403,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Time Lord",
         "rare_tiered",
         tiers=[0.96, 0.92, 0.88, 0.84, 0.80],
-        difficulties=[0.007, 0.009, 0.011, 0.013, 0.015],
+        difficulties=[0.0392, 0.0504, 0.0616, 0.0728, 0.084],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"On lethal hit: {int(v * 100)}% chance to survive at 1 HP"
@@ -413,7 +413,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Corrosion",
         "rare_tiered",
         tiers=[7.0, 6.0, 5.0, 4.0, 3.0],
-        difficulties=[0.005, 0.007, 0.008, 0.009, 0.010],
+        difficulties=[0.028, 0.0392, 0.0448, 0.0504, 0.056],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"Every {int(v)} turns: Gains a Corrode stack (max 5; each stack −3 your PDR)"
@@ -423,7 +423,7 @@ MODIFIER_DEFINITIONS: dict = {
         "Death Rattle",
         "rare_tiered",
         tiers=[0.10, 0.15, 0.20, 0.25, 0.30],
-        difficulties=[0.006, 0.008, 0.010, 0.011, 0.012],
+        difficulties=[0.0336, 0.0448, 0.056, 0.0616, 0.0672],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
             f"Below 25% HP: Starts a 5-turn countdown; if it survives, heals to {int(v * 100)}% HP"
@@ -639,9 +639,13 @@ BOSS_MOD_NAMES = [k for k, v in MODIFIER_DEFINITIONS.items() if v.pool == "boss"
 def roll_tier(monster_level: int, mod_def: ModifierDef) -> int:
     """Returns a 1-based tier index for a tiered modifier given monster.level.
 
-    Only tiers whose level gate is met are eligible. Among eligible tiers,
-    weight is linearly biased toward higher tiers based on how far
-    monster.level exceeds the gate.
+    Only tiers whose level gate is met are eligible. The highest eligible tier
+    is weighted to grow further past the pack the deeper monster.level exceeds
+    its own gate, so it comes to dominate at high levels; every other eligible
+    tier keeps a flat baseline weight so lower rolls stay possible but don't
+    scale up. (Weighting excess off each tier's own gate — the previous
+    approach — always favored T1 the furthest, since its gate is the lowest
+    and therefore accumulates the largest excess as monster.level grows.)
     """
     gates = mod_def.level_gates
     if not gates:
@@ -650,10 +654,10 @@ def roll_tier(monster_level: int, mod_def: ModifierDef) -> int:
     if not eligible:
         eligible = [0]  # fallback to T1
 
-    weights = []
-    for i in eligible:
-        excess = max(0, monster_level - gates[i])
-        weights.append(1 + excess // 10)  # +1 weight per 10 levels above gate
+    top = eligible[-1]
+    top_excess = max(0, monster_level - gates[top])
+
+    weights = [3 + top_excess // 10 if i == top else 1 for i in eligible]
 
     chosen_idx = _random.choices(eligible, weights=weights, k=1)[0]
     return chosen_idx + 1  # 1-based tier

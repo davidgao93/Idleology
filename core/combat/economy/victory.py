@@ -420,7 +420,7 @@ async def apply_victory_rewards(
     The caller is responsible for persisting player state (update_from_player_object,
     save_jewel_state) and clearing active status.
     """
-    reward_data = calculate_rewards(player, monster)
+    reward_data = calculate_rewards(player, monster, apply_modifier_xp_bonus=True)
     special_flags = check_special_drops(player, monster)
     reward_data["special"] = []
     # Total damage dealt to the monster (used by damage quest tracking)

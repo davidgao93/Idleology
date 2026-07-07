@@ -30,7 +30,9 @@ from core.combat.economy.config import (
 from core.models import Monster, Player
 
 
-def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
+def calculate_rewards(
+    player: Player, monster: Monster, *, apply_modifier_xp_bonus: bool = False
+) -> Dict[str, Any]:
     """
     Calculates XP and Gold rewards for a combat victory.
 
@@ -38,9 +40,17 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     -------
     1. Base XP from monster.
     2. Single additive pool: xp_find emblem, Affluence tome, co_xp_boost partner
-       skill, Midas soul-stone, Infinite Wisdom proc (+100 %), Apex Vault (+100 %).
+       skill, Midas soul-stone, Infinite Wisdom proc (+100 %), Apex Vault (+100 %),
+       modifier difficulty (uncapped — normal combat only, see apply_modifier_xp_bonus).
     3. final_xp = base_xp × (1 + additive_pool).
     4. Flat bonus: Equilibrium glove pending XP added AFTER pool — unscaled.
+
+    apply_modifier_xp_bonus — when True, adds the monster's uncapped modifier
+    difficulty sum (same per-modifier values that drive the capped special-drop
+    bonus, see MODIFIER_DIFFICULTY_CAP) straight into the XP pool. Only normal
+    (non-uber) combat opts in via apply_victory_rewards; Apex/Uber/Codex call
+    this function directly and leave it off. Also populates
+    results['difficulty_xp_pct'] / results['difficulty_drop_pct'] for display.
 
     Gold flow
     ---------
@@ -95,6 +105,15 @@ def calculate_rewards(player: Player, monster: Monster) -> Dict[str, Any]:
     # ── XP ──────────────────────────────────────────────────────────────────
     base_xp = monster.xp
     xp_additive = 0.0
+
+    results["difficulty_xp_pct"] = 0.0
+    results["difficulty_drop_pct"] = 0.0
+    if apply_modifier_xp_bonus and monster.modifiers:
+        mod_difficulty_sum = sum(m.difficulty for m in monster.modifiers)
+        if mod_difficulty_sum > 0:
+            xp_additive += mod_difficulty_sum
+            results["difficulty_xp_pct"] = mod_difficulty_sum
+            results["difficulty_drop_pct"] = min(MODIFIER_DIFFICULTY_CAP, mod_difficulty_sum)
 
     xp_find_tiers = player.get_emblem_bonus("xp_find")
     if xp_find_tiers > 0:

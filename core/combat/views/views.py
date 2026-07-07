@@ -886,8 +886,10 @@ class CombatView(BaseView):
             cfg=_boss_victory_cfg(self.monster.name),
         )
 
-        # Streak / hard mode bonus field (shown when any bonus applied this fight)
-        if total_bonus_pct > 0:
+        # Streak / hard mode / modifier-difficulty bonus field (shown when any applied this fight)
+        difficulty_xp_pct = reward_data.get("difficulty_xp_pct", 0.0)
+        difficulty_drop_pct = reward_data.get("difficulty_drop_pct", 0.0)
+        if total_bonus_pct > 0 or difficulty_xp_pct > 0:
             bonus_parts = []
             if hard_mode_pct > 0:
                 diff_emoji = _DIFFICULTY_EMOJIS_V[self.hard_mode]
@@ -895,12 +897,22 @@ class CombatView(BaseView):
                 bonus_parts.append(f"{diff_emoji} {diff_name} Mode +{hard_mode_pct}%")
             if streak_pct > 0:
                 bonus_parts.append(f"🔥 Streak +{streak_pct}%")
+            if difficulty_xp_pct > 0:
+                bonus_parts.append(
+                    f"⚔️ Difficulty +{difficulty_xp_pct * 100:.1f}% XP, "
+                    f"+{difficulty_drop_pct * 100:.1f}% Drops"
+                )
+            value_lines = [" | ".join(bonus_parts)]
+            if total_bonus_pct > 0:
+                value_lines.append(f"+{bonus_xp:,} XP  •  +{bonus_gold:,} Gold")
+            field_name = (
+                f"🎯 Bonus Rewards (+{total_bonus_pct}%)"
+                if total_bonus_pct > 0
+                else "🎯 Bonus Rewards"
+            )
             embed.add_field(
-                name=f"🎯 Bonus Rewards (+{total_bonus_pct}%)",
-                value=(
-                    f"{' | '.join(bonus_parts)}\n"
-                    f"+{bonus_xp:,} XP  •  +{bonus_gold:,} Gold"
-                ),
+                name=field_name,
+                value="\n".join(value_lines),
                 inline=False,
             )
 
