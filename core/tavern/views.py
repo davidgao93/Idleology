@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import GOLD_COIN, POTION
 from core.images import CASINO_AUTHOR, TAVERN_CASINO
 from core.npc_voices import get_quip
 
@@ -86,15 +87,15 @@ class ShopView(BaseView):
             self.gold < self.potion_cost * 5 or self.potions > 15
         )
         self.children[2].disabled = topup_qty == 0 or self.gold < topup_cost
-        self.children[2].label = f"🧪 Top Up ({topup_qty})"
+        self.children[2].label = f"Top Up ({topup_qty})"
 
     async def refresh_ui(self, interaction: Interaction, msg: str):
         embed = interaction.message.embeds[0]
-        embed.set_field_at(0, name="Your Gold 💰", value=f"{self.gold:,}", inline=False)
+        embed.set_field_at(0, name=f"Your Gold {GOLD_COIN}", value=f"{self.gold:,}", inline=False)
         topup_qty = self._topup_qty()
         embed.set_field_at(
             1,
-            name="Potion 🧪",
+            name=f"Potion {POTION}",
             value=(
                 f"x1: **{self.potion_cost:,}** gold\n"
                 f"x5: **{self.potion_cost * 5:,}** gold\n"
@@ -126,15 +127,15 @@ class ShopView(BaseView):
         self._processing = False
         await self.refresh_ui(interaction, msg)
 
-    @ui.button(label="🧪 x1", style=ButtonStyle.primary)
+    @ui.button(label="x1", emoji=POTION, style=ButtonStyle.primary)
     async def buy_one(self, interaction: Interaction, button: ui.Button):
         await self.process_potion_buy(interaction, 1)
 
-    @ui.button(label="🧪 x5", style=ButtonStyle.primary)
+    @ui.button(label="x5", emoji=POTION, style=ButtonStyle.primary)
     async def buy_five(self, interaction: Interaction, button: ui.Button):
         await self.process_potion_buy(interaction, 5)
 
-    @ui.button(label="🧪 Top Up", style=ButtonStyle.primary)
+    @ui.button(label="Top Up", emoji=POTION, style=ButtonStyle.primary)
     async def top_up(self, interaction: Interaction, button: ui.Button):
         qty = self._topup_qty()
         if qty == 0:
@@ -269,9 +270,7 @@ class CasinoMenuView(BaseView):
             return
 
         view = BlackjackView(self.bot, self.user_id, self.bet_amount, interaction)
-        await interaction.response.edit_message(
-            content="Starting **Blackjack**...", embed=None, view=None
-        )
+        await interaction.response.defer()
         await view.start_game()
 
     @ui.button(label="Roulette", emoji="🎡", style=ButtonStyle.danger, row=0)
@@ -326,9 +325,7 @@ class CasinoMenuView(BaseView):
             return
 
         view = OneVOneView(self.bot, self.user_id, self.bet_amount, interaction)
-        await interaction.response.edit_message(
-            content="Vespera rolls up her sleeves...", embed=None, view=None
-        )
+        await interaction.response.defer()
         await view.start_game()
 
     @ui.button(label="Adjust Bet", emoji="✏️", style=ButtonStyle.secondary, row=2)

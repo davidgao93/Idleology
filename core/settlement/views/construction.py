@@ -2,6 +2,7 @@
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.emojis import GOLD_COIN
 from core.images import SETTLEMENT_CONSTRUCTION
 from core.settlement.constants import (
     BUILDING_INFO,
@@ -99,7 +100,7 @@ class BuildConstructionView(SettlementBaseView):
             raw_cost = CONSTRUCTION_COSTS[b_type]
             cost = self._apply_discounts(raw_cost)
 
-            cost_str = f"💰 {cost.get('gold', 0):,}"
+            cost_str = f"{GOLD_COIN} {cost.get('gold', 0):,}"
             if cost.get("timber"):
                 cost_str += f" | 🪵 {cost['timber']:,}"
             if cost.get("stone"):

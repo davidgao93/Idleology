@@ -37,6 +37,8 @@ from core.images import (
     BROTHER_SOLEN_THUMBNAIL,
     COMBAT_VICTORY,
     DELVE_HUB,
+    ELIZA_PORTRAIT,
+    ELIZA_THUMBNAIL,
     ELYNDRA_PORTRAIT,
     ELYNDRA_THUMBNAIL,
     HARLAN_AUTHOR,
@@ -556,6 +558,30 @@ TUTORIALS: dict[str, dict] = {
         ],
         "image": VEX_THUMBNAIL,
         "color": discord.Color.dark_purple(),
+    },
+    "prestige": {
+        "title": "👑 Prestige",
+        "author": "Eliza",
+        "author_icon": ELIZA_PORTRAIT,
+        "description": (
+            "*Ah, another adventurer with more gold than they know what to do with. "
+            "Let's fix that, shall we?*\n\n"
+            "I deal exclusively in legacy — the things that make you unmistakably **you** "
+            "the moment you walk into a room. Five things, to be precise:\n\n"
+            "**Avatars** — animated portraits, browsed by gallery. Own one outright and swap freely after.\n"
+            "**Titles** — a custom tag of your own choosing, shown right beside your name.\n"
+            "**Emblem** — pick any emoji from the bot's own collection to display beside you.\n"
+            "**Monument** — etch a quote into the settlement's Hall of Fame, for as long as you're remembered.\n"
+            "**Rename** — tired of the name you registered with? I can fix that too.\n\n"
+            "None of it is cheap. All of it is worth it."
+        ),
+        "tips": [
+            "Titles and Emblems show up beside your name in combat and on your Adventurer License — pick something you'll want to see often.",
+            "Avatars and Emblems are owned once and freely swappable after — Titles and Renames charge again every time you change them.",
+            "Check the **Prices** tab before you buy — everything here is gold well spent, but it adds up fast.",
+        ],
+        "image": ELIZA_THUMBNAIL,
+        "color": discord.Color(0xBEBEFE),
     },
 }
 

@@ -15,6 +15,7 @@ import asyncio
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.emojis import GOLD_COIN
 from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_CONSTRUCTION
 from core.settlement.constants import (
     BUILDING_INFO,
@@ -50,7 +51,7 @@ from .base import SettlementBaseView
 _OUTPUT_DISPLAY: dict[str, tuple[str, str]] = {
     "timber": ("🪵", "Timber"),
     "stone": ("🪨", "Stone"),
-    "market_gold": ("💰", "Gold"),
+    "market_gold": (GOLD_COIN, "Gold"),
     "companion_cookie": ("🐾", "Companion XP"),
     "war_camp_stamina": ("⚔️", "Combat Stamina"),
 }
@@ -637,7 +638,7 @@ class PlotDetailView(SettlementBaseView):
                     cost_str = (
                         f"🪵 {cost.get('timber', 0):,} | "
                         f"🪨 {cost.get('stone', 0):,} | "
-                        f"💰 {cost.get('gold', 0):,} | "
+                        f"{GOLD_COIN} {cost.get('gold', 0):,} | "
                         f"⏱️ {dt_display} DTs"
                     )
                     if self.event_effects.get("construction_dt_halved"):
@@ -1583,7 +1584,7 @@ class MetaBuildingConstructionView(SettlementBaseView):
             cost = data["cost"]
             dt = meta_construction_dt_cost(key, self.event_effects)
             cost_str = (
-                f"💰 {cost.get('gold', 0):,} | "
+                f"{GOLD_COIN} {cost.get('gold', 0):,} | "
                 f"🪵 {cost.get('timber', 0):,} | "
                 f"🪨 {cost.get('stone', 0):,} | "
                 f"⏱️ {dt} DTs"

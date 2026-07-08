@@ -4,6 +4,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.emojis import GOLD_COIN, POTION
 from core.first_use import TutorialGateView
 from core.images import (
     BAR_MAID,
@@ -126,9 +127,9 @@ class Tavern(commands.Cog, name="tavern"):
             )
             embed.set_author(name="Elara", icon_url=POTION_SHOP_AUTHOR)
             embed.set_thumbnail(url=POTION_SHOP)
-            embed.add_field(name="Your Gold 💰", value=f"{gold:,}", inline=False)
+            embed.add_field(name=f"Your Gold {GOLD_COIN}", value=f"{gold:,}", inline=False)
             embed.add_field(
-                name="Potion 🧪",
+                name=f"Potion {POTION}",
                 value=(
                     f"x1: **{potion_cost:,}** gold\n"
                     f"x5: **{potion_cost * 5:,}** gold\n"

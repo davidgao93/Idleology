@@ -2,7 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import MONSTER_CHEEK
+from core.emojis import HEMATURGY_ICON, MONSTER_CHEEK
 from core.images import (
     CONSUME_SLOT_IMAGES,
     HEMATURGY,
@@ -70,7 +70,7 @@ def _tier_badge(tier: int) -> str:
 
 def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
     embed = discord.Embed(
-        title="🩸 Hematurgy",
+        title=f"{HEMATURGY_ICON} Hematurgy",
         description=(
             f"*{get_quip('hematurgy')}*\n\n"
             "Imbue your body slots with permanent passives through the power of monster blood.\n\n"

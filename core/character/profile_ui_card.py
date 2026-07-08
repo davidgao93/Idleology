@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 import discord
 
 from core.character.prestige_display import format_prestige_name
+from core.emojis import DEVELOPMENT_CONTRACT, GOLD_COIN, INFINITE_MAW, NETHER_MARKET_PLUNDER
 from core.items.factory import load_player
 
 
@@ -64,7 +65,7 @@ class CardProfileBuilder:
 
         embed.add_field(name="Ideology", value=f"{user['ideology']}", inline=True)
         embed.add_field(name="Followers", value=f"{followers:,}", inline=True)
-        embed.add_field(name="Gold", value=f"{user['gold']:,} 💰", inline=True)
+        embed.add_field(name="Gold", value=f"{user['gold']:,} {GOLD_COIN}", inline=True)
 
         return embed
 
@@ -194,7 +195,7 @@ class CardProfileBuilder:
                         maw_str = f"Not participated · {MAX_FIGHTS_PER_CYCLE} fights available"
                 else:
                     maw_str = "No active cycle"
-                combat_lines.append(f"🌑 **Maw** — {maw_str}")
+                combat_lines.append(f"{INFINITE_MAW} **Maw** — {maw_str}")
         except Exception:
             pass
 
@@ -213,11 +214,11 @@ class CardProfileBuilder:
                     rm = r // 60
                     pct = int(min(100, elapsed_secs / max(duration, 1) * 100))
                     combat_lines.append(
-                        f"🥚 **Hatchery** — {incubation['monster_name']}: {rh}h {rm:02d}m ({pct}%)"
+                        f"🐣 **Hatchery** — {incubation['monster_name']}: {rh}h {rm:02d}m ({pct}%)"
                     )
                 else:
                     combat_lines.append(
-                        f"🥚 **Hatchery** — {incubation['monster_name']}: Ready to hatch!"
+                        f"🐣 **Hatchery** — {incubation['monster_name']}: Ready to hatch!"
                     )
         except Exception:
             pass
@@ -259,7 +260,7 @@ class CardProfileBuilder:
 
         if player_level >= 10:
             daily_lines.append(
-                f"🛖 **Check-in** — {_fmt_hms(checkin_last, timedelta(hours=18))}"
+                f"📅 **Check-in** — {_fmt_hms(checkin_last, timedelta(hours=18))}"
             )
 
         # Quest Board
@@ -369,7 +370,7 @@ class CardProfileBuilder:
                         _dcm = _dcr // 60
                         _dc_remaining = max(0, 10 - dc_crafted_today)
                         settlement_lines.append(
-                            f"📜 **DCs** — {_dc_remaining}/10 remaining · resets in {_dch}h {_dcm:02d}m"
+                            f"{DEVELOPMENT_CONTRACT} **DCs** — {_dc_remaining}/10 remaining · resets in {_dch}h {_dcm:02d}m"
                         )
                     except Exception:
                         pass
@@ -563,7 +564,7 @@ class CardProfileBuilder:
                     nm_str = (
                         f"{nm_charges}/{MAX_CHARGES} · next in {nh}h {nr // 60:02d}m"
                     )
-                misc_lines.append(f"🕳️ **Plunder Attempts** — {nm_str}")
+                misc_lines.append(f"{NETHER_MARKET_PLUNDER} **Plunder Attempts** — {nm_str}")
             except Exception:
                 pass
 

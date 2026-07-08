@@ -1,7 +1,7 @@
 # core/settlement/constants.py
 """All static configuration for the settlement system."""
 
-from core.emojis import RESOURCE_EMOJI
+from core.emojis import GOLD_COIN, RESOURCE_EMOJI
 
 RESOURCE_DISPLAY_NAMES = {
     "timber": "Timber",
@@ -615,7 +615,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "recurring_interval": 65,
     },
     "trade_boom": {
-        "name": "💰 Trade Boom",
+        "name": f"{GOLD_COIN} Trade Boom",
         "type": "ongoing",
         "description": "Demand is high — Market gold output is {band_pct}% higher. Staff your Market fully to maximize returns.",
         "duration_bands": [3, 4, 5],

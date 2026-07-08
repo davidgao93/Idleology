@@ -14,6 +14,7 @@ import math
 import random
 from typing import TYPE_CHECKING
 
+from core.emojis import GOLD_COIN
 from core.settlement.constants import (
     BM_BASE_LOOT_WEIGHTS,
     BM_GOLD_MAX,
@@ -1088,7 +1089,7 @@ def roll_bm_rewards(
     # Build compact summary — one segment per reward type, joined for single-line display
     parts: list[str] = []
     if result["gold"] > 0:
-        parts.append(f"💰 {result['gold']:,}g")
+        parts.append(f"{GOLD_COIN} {result['gold']:,}g")
     for cur, qty in result["currencies"].items():
         if cur.startswith("essence_"):
             ess = cur[len("essence_") :].replace("_", " ").title()

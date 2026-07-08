@@ -12,7 +12,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import PARADISE_JEWEL_UNCUT
+from core.emojis import COSMIC_DUST, PARADISE_JEWEL_UNCUT
 from core.images import SKILL_IMAGES, SKILL_UNCUT, TESSARA_PORTRAIT
 from core.npc_voices import get_quip
 from core.paradise import mechanics as M
@@ -97,7 +97,7 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
     embed.description = (
         f"*{get_quip('paradise')}*\n\n"
         f"**Uncut Jewels:** {PARADISE_JEWEL_UNCUT} {jewel_count}\n"
-        f"**Cosmic Dust:** ✨ {dust:,}\n"
+        f"**Cosmic Dust:** {COSMIC_DUST} {dust:,}\n"
         f"**Jewels Obtained:** {obtained}  •  **Cut:** {consumed}"
     )
 
@@ -223,7 +223,7 @@ def _build_manage_passives_embed(data: dict, dust: int) -> discord.Embed:
     passive_slots = data.get("passive_slots", [])
 
     lines = [
-        f"**Cosmic Dust:** ✨ {dust:,}",
+        f"**Cosmic Dust:** {COSMIC_DUST} {dust:,}",
         f"**Reroll Type** — {DUST_REROLL_TYPE:,} dust (new passive type + new value)",
         f"**Reroll Value** — {DUST_REROLL_VALUE:,} dust (same type, new value)",
         "",
@@ -262,7 +262,7 @@ def _build_reroll_embed(
         title=f"🎲 Reroll Slot {slot_idx + 1}", color=discord.Color.blurple()
     )
 
-    lines = [f"**Cosmic Dust:** ✨ {dust:,}", ""]
+    lines = [f"**Cosmic Dust:** {COSMIC_DUST} {dust:,}", ""]
 
     if slot:
         lines.append(f"**Current:** {M.format_passive_description(slot)}")

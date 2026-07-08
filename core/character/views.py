@@ -7,6 +7,7 @@ from discord.ui import Button, Modal, Select, TextInput
 
 from core.base_view import BaseView
 from core.character.tutorial import TutorialView
+from core.emojis import GOLD_COIN
 from core.images import DEFAULT_SILHOUETTE
 
 _CLASS_DESCRIPTIONS = {
@@ -265,7 +266,7 @@ class StatInvestView(BaseView):
         ("atk", "⚔️ Attack", "atk"),
         ("def", "🛡️ Defence", "def"),
         ("hp", "❤️ Max HP", "hp"),
-        ("gold", "💰 Gold Find", "gold"),
+        ("gold", f"{GOLD_COIN} Gold Find", "gold"),
     ]
 
     def __init__(
@@ -331,8 +332,10 @@ class StatInvestView(BaseView):
 
         # ── Normal invest mode ─────────────────────────────────────────
         for db_key, label, _ in self._STAT_MAP:
+            emoji_part, _, text_part = label.partition(" ")
             btn = discord.ui.Button(
-                label=label,
+                label=text_part,
+                emoji=emoji_part,
                 style=discord.ButtonStyle.blurple,
                 disabled=points <= 0,
                 row=0,

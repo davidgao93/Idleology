@@ -26,6 +26,8 @@ from core.combat.economy.rewards import calculate_rewards
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
 from core.emojis import (
+    DODGE_EVASION,
+    GOLD_COIN,
     STAT_ATK,
     STAT_BLOCK,
     STAT_DEF,
@@ -586,7 +588,7 @@ class CodexRunView(BaseView):
             if block > 0:
                 be_parts.append(f"{STAT_BLOCK} Block: **{block}%**")
             if evasion > 0:
-                be_parts.append(f"💨 Evasion: **{evasion}%**")
+                be_parts.append(f"{DODGE_EVASION} Evasion: **{evasion}%**")
             stats_block += "\n" + "  ".join(be_parts)
 
         reroll_hint = (
@@ -626,7 +628,7 @@ class CodexRunView(BaseView):
             color=discord.Color.green(),
         )
         embed.add_field(name="📚 XP", value=f"{xp:,}", inline=True)
-        embed.add_field(name="💰 Gold", value=f"{gold:,}", inline=True)
+        embed.add_field(name=f"{GOLD_COIN} Gold", value=f"{gold:,}", inline=True)
         if page_dropped:
             embed.add_field(
                 name="📄 Codex Page", value="A Codex Page dropped!", inline=False
@@ -675,7 +677,7 @@ class CodexRunView(BaseView):
             name="📚 Total XP", value=f"{self.cumulative_xp:,}", inline=True
         )
         embed.add_field(
-            name="💰 Total Gold", value=f"{self.cumulative_gold:,}", inline=True
+            name=f"{GOLD_COIN} Total Gold", value=f"{self.cumulative_gold:,}", inline=True
         )
         if exp_changes["ascensions_gained"]:
             embed.add_field(
@@ -990,7 +992,7 @@ class CodexRunView(BaseView):
             name="📚 XP Forfeited", value=f"{chapter_xp_lost:,}", inline=True
         )
         embed.add_field(
-            name="💰 Gold Forfeited", value=f"{chapter_gold_lost:,}", inline=True
+            name=f"{GOLD_COIN} Gold Forfeited", value=f"{chapter_gold_lost:,}", inline=True
         )
         embed.add_field(name="💀 Deaths", value=str(self.deaths), inline=True)
 
@@ -1187,7 +1189,7 @@ class CodexRunView(BaseView):
             name="📚 XP Banked", value=f"{self.chapter_start_xp:,}", inline=True
         )
         embed.add_field(
-            name="💰 Gold Banked", value=f"{self.chapter_start_gold:,}", inline=True
+            name=f"{GOLD_COIN} Gold Banked", value=f"{self.chapter_start_gold:,}", inline=True
         )
         lobby_view = CodexRunCompleteView(
             self.bot, self.user_id, self.player, server_id=self.server_id
@@ -1241,7 +1243,7 @@ class CodexAbandonConfirmView(BaseView):
             inline=True,
         )
         embed.add_field(
-            name="💰 Gold Accumulated (lost)",
+            name=f"{GOLD_COIN} Gold Accumulated (lost)",
             value=f"{rv.cumulative_gold:,}",
             inline=True,
         )

@@ -7,7 +7,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timedelta
 
-from core.emojis import ANGEL_KEY, DRAGON_KEY, SOUL_CORE, SPIRIT_STONE, VOID_FRAG
+from core.emojis import ANGEL_KEY, DRAGON_KEY, GOLD_COIN, SOUL_CORE, SPIRIT_STONE, VOID_FRAG
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, get_damage_goals
 
 BOARD_COOLDOWN_HOURS = 20
@@ -309,7 +309,7 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
     if quality_bonus_msg:
         msgs.append(f"  *({quality_bonus_msg})*")
     gold_note = " *(+50% Enrichment)*" if meta.get("enrichment_unlocked") else ""
-    msgs.append(f"💰 +{gold:,} Gold{gold_note}")
+    msgs.append(f"{GOLD_COIN} +{gold:,} Gold{gold_note}")
 
     # Prospector perk: grant a small gathering cache on every turn-in
     if meta.get("prospector_unlocked"):

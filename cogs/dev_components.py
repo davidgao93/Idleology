@@ -8,6 +8,7 @@ against the bot's existing embeds. Not a player-facing feature.
 import discord
 from discord.ext import commands
 
+from core.emojis import GOLD_COIN
 from core.images import (
     COMBAT_VICTORY,
     MONSTER_APHRODITE,
@@ -37,7 +38,7 @@ def _profile_container() -> discord.ui.Container:
             "**Experience**  182,340 / 210,000  *(86.8% to Lv.88)*\n"
             "**Ideology**  The Ashen Vow\n"
             "**Followers**  1,204\n"
-            "**Gold**  4,820,150 💰"
+            f"**Gold**  4,820,150 {GOLD_COIN}"
         ),
         accent_color=discord.Color.gold(),
     )

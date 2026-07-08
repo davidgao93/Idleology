@@ -5,7 +5,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
-from core.emojis import DIVINER_ROD, LIFE_ROOT, MAGMA_CORE, SPIRIT_SHARD
+from core.emojis import DIVINER_ROD, GOLD_COIN, LIFE_ROOT, MAGMA_CORE, SPIRIT_SHARD
 from core.images import (
     CRISIS_MONSTER_IMAGES,
     MAID_AUTHOR,
@@ -488,7 +488,7 @@ class SettlementDashboardView(SettlementBaseView):
                 _ICONS = {
                     "timber": "🪵",
                     "stone": "🪨",
-                    "market_gold": "💰",
+                    "market_gold": GOLD_COIN,
                     "iron_ore": "⛏️",
                     "coal_ore": "⛏️",
                     "gold_ore": "⛏️",

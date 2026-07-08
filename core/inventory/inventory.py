@@ -7,9 +7,11 @@ from core.emojis import (
     ACCESSORY_SLOT,
     ARMOR_SLOT,
     BOOT_SLOT,
+    DODGE_EVASION,
     GEAR_BACKPACK,
     GLOVE_SLOT,
     HELMET_SLOT,
+    RARITY,
     STAT_ATK,
     STAT_BLOCK,
     STAT_DEF,
@@ -89,7 +91,7 @@ def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     if getattr(item, "defence", 0):
         embed.add_field(name="🛡️ Defence", value=f"{item.defence:,}", inline=True)
     if getattr(item, "rarity", 0):
-        embed.add_field(name="✨ Rarity", value=f"{item.rarity:,}%", inline=True)
+        embed.add_field(name=f"{RARITY} Rarity", value=f"{item.rarity:,}%", inline=True)
     embed.add_field(name="🔧 Refinement", value=f"+{item.refinement_lvl}", inline=True)
 
     # Weapon template stats
@@ -159,7 +161,7 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
     if getattr(item, "block", 0):
         embed.add_field(name="🛑 Block", value=f"{item.block:,}%", inline=True)
     if getattr(item, "evasion", 0):
-        embed.add_field(name="💨 Evasion", value=f"{item.evasion:,}%", inline=True)
+        embed.add_field(name=f"{DODGE_EVASION} Evasion", value=f"{item.evasion:,}%", inline=True)
     if getattr(item, "ward", 0):
         embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
 
@@ -290,7 +292,7 @@ def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
     if getattr(item, "defence", 0):
         embed.add_field(name="🛡️ Defence", value=f"{item.defence:,}", inline=True)
     if getattr(item, "rarity", 0):
-        embed.add_field(name="✨ Rarity", value=f"{item.rarity:,}%", inline=True)
+        embed.add_field(name=f"{RARITY} Rarity", value=f"{item.rarity:,}%", inline=True)
     if getattr(item, "ward", 0):
         embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
     if getattr(item, "crit", 0):
@@ -410,7 +412,7 @@ class InventoryUI:
                 if item.block > 0:
                     details.append(f"{item.block}% 🛑Block")
                 if item.evasion > 0:
-                    details.append(f"{item.evasion}% 💨Evasion")
+                    details.append(f"{item.evasion}% {DODGE_EVASION}Evasion")
 
             # Base stats
             if hasattr(item, "attack") and item.attack > 0:
@@ -418,7 +420,7 @@ class InventoryUI:
             if hasattr(item, "defence") and item.defence > 0:
                 details.append(f"{item.defence} 🛡️DEF")
             if hasattr(item, "rarity") and item.rarity > 0:
-                details.append(f"{item.rarity}% ✨Rarity")
+                details.append(f"{item.rarity}% {RARITY}Rarity")
             # 2. Defensive Stats (PDR/FDR/Ward) - Applies to Armor, Gloves, Boots, Helmets
             if hasattr(item, "ward") and item.ward > 0:
                 details.append(f"{item.ward}% HP as 🔮Ward")
@@ -515,7 +517,7 @@ class InventoryUI:
         if getattr(item, "defence", 0) > 0:
             parts.append(f"{STAT_DEF} DEF: {item.defence}")
         if getattr(item, "rarity", 0) > 0:
-            parts.append(f"✨ Rarity: {item.rarity}%")
+            parts.append(f"{RARITY} Rarity: {item.rarity}%")
         if getattr(item, "ward", 0) > 0:
             parts.append(f"{STAT_WARD} Ward: {item.ward}%")
         if getattr(item, "crit", 0) > 0:
@@ -523,7 +525,7 @@ class InventoryUI:
         if getattr(item, "block", 0) > 0:
             parts.append(f"{STAT_BLOCK} Block: {item.block}%")
         if getattr(item, "evasion", 0) > 0:
-            parts.append(f"💨 Eva: {item.evasion}%")
+            parts.append(f"{DODGE_EVASION} Eva: {item.evasion}%")
         if getattr(item, "pdr", 0) > 0:
             parts.append(f"{STAT_PDR} PDR: {item.pdr}%")
         if getattr(item, "fdr", 0) > 0:

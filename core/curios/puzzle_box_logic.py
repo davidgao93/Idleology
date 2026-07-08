@@ -2,7 +2,7 @@ import random
 from collections import defaultdict
 
 from core.combat.economy.drops import roll_essence_drop
-from core.emojis import PINNACLE_KEY, RUNE_POTENTIAL, RUNE_REFINEMENT, RUNE_SHATTER
+from core.emojis import GOLD_COIN, PINNACLE_KEY, RUNE_POTENTIAL, RUNE_REFINEMENT, RUNE_SHATTER
 from core.images import CURIO_PUZZLE_BOX
 
 PUZZLE_BOX_IMAGE = CURIO_PUZZLE_BOX
@@ -25,7 +25,7 @@ REWARD_EMOJIS = {
     "Refinement Runes": RUNE_REFINEMENT,
     "Shattering Runes": RUNE_SHATTER,
     "Guild Tickets": "🎫",
-    "Gold": "💰",
+    "Gold": GOLD_COIN,
     "Essences": "🧪",
     "Elemental Keys": "🗝️",
     "Pinnacle Keys": PINNACLE_KEY,

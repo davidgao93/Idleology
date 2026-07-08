@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import GOLD_COIN, POTION
 
 # ---------------------------------------------------------------------------
 # Difficulty tier definitions
@@ -94,7 +95,7 @@ class SettingsView(BaseView):
             "Disable Auto-Pay Rest" if self.auto_rest_pay else "Enable Auto-Pay Rest"
         )
         rest_style = ButtonStyle.danger if self.auto_rest_pay else ButtonStyle.success
-        rest_btn = ui.Button(label=rest_lbl, style=rest_style, emoji="💰", row=1)
+        rest_btn = ui.Button(label=rest_lbl, style=rest_style, emoji=GOLD_COIN, row=1)
         rest_btn.callback = self.toggle_auto_rest_pay
         self.add_item(rest_btn)
 
@@ -187,17 +188,19 @@ class SettingsView(BaseView):
             "**🛡️ EXP Protection** — {exp}\n"
             "When enabled, you will no longer gain any experience. "
             "Useful for staying at your current level.\n\n"
-            "**💰 Auto-Pay for Rest** — {rest}\n"
+            "**{gold} Auto-Pay for Rest** — {rest}\n"
             "When enabled, using `/rest` while on cooldown will automatically pay the gold cost "
             "to instantly rest (if you have enough gold), skipping the confirmation prompt.\n\n"
-            "**🧪 Auto-Reload Potions** — {reload}\n"
+            "**{potion} Auto-Reload Potions** — {reload}\n"
             "When enabled, winning a normal `/combat` fight will automatically buy enough potions "
             "to top off your stock (if you have enough gold)."
         ).format(
             doors=doors_str,
             corrupted=("🟢 ENABLED" if self.corrupted_status else "🔴 DISABLED"),
             exp=exp_str,
+            gold=GOLD_COIN,
             rest=("🟢 ENABLED" if self.auto_rest_pay else "🔴 DISABLED"),
+            potion=POTION,
             reload=("🟢 ENABLED" if self.auto_potion_reload else "🔴 DISABLED"),
         )
 

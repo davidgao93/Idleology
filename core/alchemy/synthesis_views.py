@@ -21,6 +21,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
 from core.base_view import BaseView
+from core.emojis import COSMIC_DUST, GOLD_COIN
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.paradise.mechanics import dust_from_jewel
@@ -134,7 +135,7 @@ class AlchemySynthesisHubView(BaseView):
         collect_btn = ui.Button(
             label="Collect Dust",
             style=ButtonStyle.green if any_ready else ButtonStyle.secondary,
-            emoji="✨",
+            emoji=COSMIC_DUST,
             row=0,
             disabled=not any_ready,
         )
@@ -173,8 +174,8 @@ class AlchemySynthesisHubView(BaseView):
         embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
         embed.set_footer(text=get_quip("alchemy"))
         embed.description = (
-            f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}\n"
-            f"**Gold:** 💰 {self.player_gold:,}\n"
+            f"**Cosmic Dust:** {COSMIC_DUST} {self.cosmic_dust:,}\n"
+            f"**Gold:** {GOLD_COIN} {self.player_gold:,}\n"
             f"**Alchemy Lv {level}** — {discount}% dust discount · {slot_count} queue slot(s)"
         )
 
@@ -204,7 +205,7 @@ class AlchemySynthesisHubView(BaseView):
                         name=f"🔨 Queue {slot} — ✅ READY",
                         value=(
                             f"{emoji} **{qty}× {name}**\n"
-                            f"Yield: ✨ **{total_dust:,} Cosmic Dust** — click **Collect Dust** to claim!"
+                            f"Yield: {COSMIC_DUST} **{total_dust:,} Cosmic Dust** — click **Collect Dust** to claim!"
                         ),
                         inline=False,
                     )
@@ -214,7 +215,7 @@ class AlchemySynthesisHubView(BaseView):
                         name=f"🔨 Queue {slot} — ⏳ In Progress",
                         value=(
                             f"{emoji} **{qty}× {name}**\n"
-                            f"Yield: ✨ {total_dust:,} Cosmic Dust\n"
+                            f"Yield: {COSMIC_DUST} {total_dust:,} Cosmic Dust\n"
                             f"Ready in: **{_fmt_duration(remaining)}**"
                         ),
                         inline=False,
@@ -227,11 +228,11 @@ class AlchemySynthesisHubView(BaseView):
             de_yield = AlchemyMechanics.DUST_YIELD[col]
             synth_dust = AlchemyMechanics.get_synthesis_dust_cost(level, col)
             synth_lines.append(
-                f"{emoji} **{name}** — DE: {de_yield} ✨ · Synth: {synth_dust:,} ✨ + 💰 100k"
+                f"{emoji} **{name}** — DE: {de_yield} {COSMIC_DUST} · Synth: {synth_dust:,} {COSMIC_DUST} + {GOLD_COIN} 100k"
             )
         jewel_yield = dust_from_jewel(level)
         synth_lines.append(
-            f"💎 **Jewel of Paradise** — DE: {jewel_yield:,} ✨ · Synth: {_JEWEL_SYNTH_DUST:,} ✨ + 💰 10M"
+            f"💎 **Jewel of Paradise** — DE: {jewel_yield:,} {COSMIC_DUST} · Synth: {_JEWEL_SYNTH_DUST:,} {COSMIC_DUST} + {GOLD_COIN} 10M"
         )
         embed.add_field(
             name="⚗️ Synthesizable (Disenchant · Synthesis)",
@@ -296,7 +297,7 @@ class AlchemySynthesisHubView(BaseView):
                 yield_val = dust_from_jewel(level)
             dust = yield_val * qty
             collected_total += dust
-            collected_lines.append(f"{emoji} {qty}× {name} → ✨ {dust:,}")
+            collected_lines.append(f"{emoji} {qty}× {name} → {COSMIC_DUST} {dust:,}")
             await self.bot.database.alchemy.clear_synthesis_queue(self.user_id, slot)
 
         if collected_total == 0:
@@ -312,7 +313,7 @@ class AlchemySynthesisHubView(BaseView):
         view = await _build_synthesis_hub(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()
         embed.colour = discord.Color.gold()
-        embed.title = f"✨ Collected {collected_total:,} Cosmic Dust!"
+        embed.title = f"{COSMIC_DUST} Collected {collected_total:,} Cosmic Dust!"
         embed.description = (
             "\n".join(collected_lines) + "\n\n" + (embed.description or "")
         )
@@ -533,7 +534,7 @@ class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
         embed.title = f"🔨 Queued: {qty}× {name} (Slot {self._parent.target_slot})"
         embed.description = (
             f"{emoji} **{qty}× {name}** sent to queue slot {self._parent.target_slot}.\n"
-            f"⏳ Ready in **{time_str}** · Yield: ✨ **{total_dust:,} Cosmic Dust**\n\n"
+            f"⏳ Ready in **{time_str}** · Yield: {COSMIC_DUST} **{total_dust:,} Cosmic Dust**\n\n"
         ) + (embed.description or "")
         msg = await interaction.edit_original_response(embed=embed, view=view)
         view.message = msg
@@ -634,7 +635,7 @@ class _DisenchantSelectView(BaseView):
                     "emoji": "💎",
                     "owned": owned,
                     "yield": jewel_yield,
-                    "select_desc": f"Own: {owned}  ·  {jewel_yield:,} ✨/jewel  ·  4h/jewel",
+                    "select_desc": f"Own: {owned}  ·  {jewel_yield:,} {COSMIC_DUST}/jewel  ·  4h/jewel",
                 }
             ]
         else:
@@ -663,7 +664,7 @@ class _DisenchantSelectView(BaseView):
                         "emoji": emojis_map[col],
                         "owned": owned,
                         "yield": yield_map[col],
-                        "select_desc": f"Own: {owned}  ·  {yield_map[col]} ✨/item  ·  {mins}min/item",
+                        "select_desc": f"Own: {owned}  ·  {yield_map[col]} {COSMIC_DUST}/item  ·  {mins}min/item",
                     }
                 )
 
@@ -765,14 +766,14 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
 
         if cosmic_dust < total_dust:
             await interaction.response.send_message(
-                f"Not enough Cosmic Dust! Need ✨ **{total_dust:,}** for {qty}×, "
+                f"Not enough Cosmic Dust! Need {COSMIC_DUST} **{total_dust:,}** for {qty}×, "
                 f"have **{cosmic_dust:,}**.",
                 ephemeral=True,
             )
             return
         if gold < total_gold:
             await interaction.response.send_message(
-                f"Not enough gold! Need 💰 **{total_gold:,}** for {qty}×, "
+                f"Not enough gold! Need {GOLD_COIN} **{total_gold:,}** for {qty}×, "
                 f"have **{gold:,}**.",
                 ephemeral=True,
             )
@@ -806,7 +807,7 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
         embed.colour = discord.Color.gold()
         embed.title = f"⚗️ Synthesized: {qty}× {emoji} {name}!"
         embed.description = (
-            f"You spent ✨ **{total_dust:,} Cosmic Dust** + 💰 **{total_gold:,} Gold** "
+            f"You spent {COSMIC_DUST} **{total_dust:,} Cosmic Dust** + {GOLD_COIN} **{total_gold:,} Gold** "
             f"and received **{qty}× {emoji} {name}**.\n\n"
         ) + (embed.description or "")
         msg = await interaction.edit_original_response(embed=embed, view=view)
@@ -839,7 +840,7 @@ class _SynthesizeSelectView(BaseView):
                     "emoji": AlchemyMechanics.KEY_EMOJIS[col],
                     "dust_cost": dust_cost,
                     "gold_cost": AlchemyMechanics.SYNTHESIS_GOLD_COST,
-                    "select_desc": f"{dust_cost:,} ✨ + 100k 💰 → 1× {name}",
+                    "select_desc": f"{dust_cost:,} {COSMIC_DUST} + 100k {GOLD_COIN} → 1× {name}",
                 }
             )
         options_data.append(
@@ -849,7 +850,7 @@ class _SynthesizeSelectView(BaseView):
                 "emoji": "💎",
                 "dust_cost": _JEWEL_SYNTH_DUST,
                 "gold_cost": _JEWEL_SYNTH_GOLD,
-                "select_desc": f"{_JEWEL_SYNTH_DUST:,} ✨ + 10M 💰 → 1× Jewel of Paradise",
+                "select_desc": f"{_JEWEL_SYNTH_DUST:,} {COSMIC_DUST} + 10M {GOLD_COIN} → 1× Jewel of Paradise",
             }
         )
         self._options_data = options_data
@@ -872,7 +873,7 @@ class _SynthesizeSelectView(BaseView):
         embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
         embed.set_footer(text=get_quip("alchemy"))
         embed.description = (
-            f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}  |  **Gold:** 💰 {self.player_gold:,}\n"
+            f"**Cosmic Dust:** {COSMIC_DUST} {self.cosmic_dust:,}  |  **Gold:** {GOLD_COIN} {self.player_gold:,}\n"
             f"**Synthesis Discount:** {discount}% (Alchemy Level {level})\n\n"
             "*Dust in, item out. Select what you want synthesized.*"
         )
@@ -888,7 +889,7 @@ class _SynthesizeSelectView(BaseView):
             can_afford = self.cosmic_dust >= dust_cost and self.player_gold >= gold_cost
             status = "✅" if can_afford else "❌"
             lines.append(
-                f"{status} {d['emoji']} **{d['name']}** — ✨ {dust_cost:,}  +  💰 {gold_cost:,}"
+                f"{status} {d['emoji']} **{d['name']}** — {COSMIC_DUST} {dust_cost:,}  +  {GOLD_COIN} {gold_cost:,}"
             )
         embed.add_field(
             name="Available Syntheses", value="\n".join(lines), inline=False

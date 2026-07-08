@@ -19,6 +19,7 @@ from core.alchemy.mechanics import (
     get_passive_name_emoji,
 )
 from core.base_view import BaseView
+from core.emojis import COSMIC_DUST
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 
@@ -167,7 +168,7 @@ class PotionDistillationView(BaseView):
             else "Pick a reagent — each carries a different property this step."
         )
         embed.description = (
-            f"**Step {display_step} / {DistillationMechanics.STEPS}** · ✨ {safe_dust:,} dust\n"
+            f"**Step {display_step} / {DistillationMechanics.STEPS}** · {COSMIC_DUST} {safe_dust:,} dust\n"
             f"**Core:** {base_info.get('emoji', '⚗️')} **{base_info.get('name', base)}**\n\n"
             f"{passive_preview}\n\n"
             f"`Power   ` {_pct_bar(val_frac)} {val_pct}%\n"
@@ -210,7 +211,7 @@ class PotionDistillationView(BaseView):
                     f"🌿 **This step** costs no dust *(+{n - 1} more after)*"
                 )
         if mods.get("all_future_free"):
-            mod_lines.append("✨ **All remaining steps cost no dust**")
+            mod_lines.append(f"{COSMIC_DUST} **All remaining steps cost no dust**")
         future_mult = mods.get("future_cost_mult")
         if future_mult and future_mult < 1.0:
             pct_off = int((1.0 - future_mult) * 100)
@@ -265,7 +266,7 @@ class PotionDistillationView(BaseView):
             current = max(0, self.cosmic_dust)
             for i, ch in enumerate(choices):
                 cost = ch.get("effective_cost", 0)
-                cost_part = f" (-{cost}✨)" if cost > 0 else " (free)"
+                cost_part = f" (-{cost}{COSMIC_DUST})" if cost > 0 else " (free)"
                 label = f"{ch['emoji']} {ch['name']}{cost_part}"
                 style = (
                     ButtonStyle.secondary

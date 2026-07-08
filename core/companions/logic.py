@@ -5,6 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from core.companions.mechanics import CompanionMechanics
+from core.emojis import GOLD_COIN
 from core.items.factory import create_companion
 
 
@@ -95,7 +96,7 @@ class CompanionLogic:
 
         # Gold
         if summary["Gold"] > 0:
-            msg += f"💰 **{summary['Gold']:,}** Gold\n"
+            msg += f"{GOLD_COIN} **{summary['Gold']:,}** Gold\n"
             del summary["Gold"]
 
         # Items

@@ -9,6 +9,7 @@ from discord.ext import commands
 from core.base_view import BaseView
 from core.character.prestige_display import format_prestige_name
 from core.emojis import EMBLEM_CATALOG
+from core.first_use import TutorialGateView
 from core.images import (
     ELIZA_PORTRAIT,
     ELIZA_THUMBNAIL,
@@ -961,9 +962,23 @@ class Prestige(commands.Cog, name="prestige"):
         if not await self.bot.check_user_registered(interaction, user):
             return
         self.bot.state_manager.set_active(user_id, "prestige")
-        view = PrestigeHubView(self.bot, user_id, server_id)
-        await view.refresh()
-        embed = await PrestigeBuilder.build_overview(self.bot, user_id, server_id)
+
+        async def _build():
+            view = PrestigeHubView(self.bot, user_id, server_id)
+            await view.refresh()
+            embed = await PrestigeBuilder.build_overview(self.bot, user_id, server_id)
+            return embed, view
+
+        if not await self.bot.database.tutorials.has_seen(user_id, "prestige"):
+            await self.bot.database.tutorials.mark_seen(user_id, "prestige")
+            gate = TutorialGateView(
+                self.bot, user_id, server_id, "prestige", build_main=_build
+            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
+            gate.message = await interaction.original_response()
+            return
+
+        embed, view = await _build()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

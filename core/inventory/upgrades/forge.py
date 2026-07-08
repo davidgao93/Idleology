@@ -6,7 +6,7 @@ from discord.ui import Button
 
 from core.combat.calc.calcs import fmt_weapon_passive
 from core.character.passive_formatters import get_weapon_passive_description
-from core.emojis import RESOURCE_EMOJI
+from core.emojis import GOLD_COIN, RESOURCE_EMOJI
 from core.images import HARLAN_AUTHOR, UPGRADE_FORGE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.npc_voices import get_quip
@@ -332,7 +332,7 @@ class ForgeView(BaseUpgradeView):
             f"This will attempt **{forges_possible}** forge(s).\n\n"
             f"**Estimated Resources Consumed:**\n"
             f"{mat_lines}\n"
-            f"💰 Gold: {total_gold:,}\n\n"
+            f"{GOLD_COIN} Gold: {total_gold:,}\n\n"
             f"*Estimate assumes all forges succeed — actual cost is lower if any fail.*\n"
             f"*Stops when: {stop_reason}*\n\n"
             f"Proceed?"

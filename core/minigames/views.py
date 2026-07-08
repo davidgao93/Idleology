@@ -6,6 +6,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button, Modal, TextInput
 
 from core.base_view import BaseView
+from core.emojis import GOLD_COIN
 from core.images import CASINO_AUTHOR, TAVERN_CASINO
 from core.npc_voices import get_quip
 from core.pvp.engine import PvPEngine
@@ -183,6 +184,11 @@ class RouletteView(BaseView):
                 value=f"You bet on **{target_display}**. Better luck next time.",
                 inline=False,
             )
+        embed.add_field(
+            name="Vespera",
+            value=get_quip("casino_roulette_win" if won else "casino_roulette_loss"),
+            inline=False,
+        )
         if quest_msgs:
             embed.add_field(
                 name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
@@ -300,7 +306,7 @@ class BlackjackView(BaseView):
         )
         self.stand_button.callback = self._on_stand
         self.double_button = Button(
-            label="Double Down", style=ButtonStyle.success, emoji="💰"
+            label="Double Down", style=ButtonStyle.success, emoji=GOLD_COIN
         )
         self.double_button.callback = self._on_double
         self.split_button = Button(label="Split", style=ButtonStyle.success, emoji="✂️")
@@ -695,6 +701,15 @@ class BlackjackView(BaseView):
         )
         embed.add_field(name="Result", value=summary, inline=False)
 
+        if net_win != 0:
+            embed.add_field(
+                name="Vespera",
+                value=get_quip(
+                    "casino_blackjack_win" if net_win > 0 else "casino_blackjack_loss"
+                ),
+                inline=False,
+            )
+
         if quest_msgs:
             embed.add_field(
                 name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
@@ -745,9 +760,7 @@ class BlackjackView(BaseView):
         new_view = BlackjackView(
             self.bot, self.user_id, amount, self.original_interaction
         )
-        await interaction.response.edit_message(
-            content="Shuffling deck...", embed=None, view=None
-        )
+        await interaction.response.defer()
         await new_view.start_game()
         self.stop()
 
@@ -1109,6 +1122,9 @@ class CrashView(BaseView):
             )
             lines.append(f"**Net Result:** {net_result:+,} gold")
         embed.description = "\n".join(lines)
+        embed.add_field(
+            name="Vespera", value=get_quip("casino_crash_loss"), inline=False
+        )
         if quest_msgs:
             embed.add_field(
                 name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
@@ -1161,6 +1177,9 @@ class CrashView(BaseView):
             name="Rocket Status",
             value=f"It would have crashed at **{self.crash_point:.2f}x**",
         )
+        embed.add_field(
+            name="Vespera", value=get_quip("casino_crash_win"), inline=False
+        )
         if quest_msgs:
             embed.add_field(
                 name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
@@ -1175,7 +1194,7 @@ class CrashView(BaseView):
             )
         await self._add_restart_buttons()
 
-    @discord.ui.button(label="Cash Out", style=ButtonStyle.success, emoji="💰")
+    @discord.ui.button(label="Cash Out", style=ButtonStyle.success, emoji=GOLD_COIN)
     async def cash_out_button(self, interaction: Interaction, button: Button):
         if not self.is_running or self.cashed_out:
             return await interaction.response.defer()
@@ -1336,6 +1355,14 @@ class HorseRaceView(BaseView):
                 value=f"You bet on **{picked_horse['name']}**. Better luck next time.",
                 inline=False,
             )
+
+        embed.add_field(
+            name="Vespera",
+            value=get_quip(
+                "casino_horse_win" if winner == picked_horse else "casino_horse_loss"
+            ),
+            inline=False,
+        )
 
         if quest_msgs:
             embed.add_field(
@@ -1545,6 +1572,7 @@ class OneVOneView(BaseView):
             logs.append(
                 f"🏆 **{self.OPPONENT_NAME} falls!** You win **{payout:,} gold**!"
             )
+            logs.append(get_quip("casino_1v1_win"))
             if net_win > 0:
                 try:
                     from core.quests.mechanics import tick_quest_progress
@@ -1561,6 +1589,7 @@ class OneVOneView(BaseView):
             logs.append(
                 f"💀 **You fall!** You lose your **{self.bet_amount:,} gold** bet."
             )
+            logs.append(get_quip("casino_1v1_loss"))
 
         self.log = "\n".join(logs)
         embed = self._build_embed()
@@ -1602,9 +1631,7 @@ class OneVOneView(BaseView):
         new_view = OneVOneView(
             self.bot, self.user_id, self.bet_amount, self.original_interaction
         )
-        await interaction.response.edit_message(
-            content="A new challenger steps up...", embed=None, view=None
-        )
+        await interaction.response.defer()
         await new_view.start_game()
         self.stop()
 

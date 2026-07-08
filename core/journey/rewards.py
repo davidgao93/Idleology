@@ -1,6 +1,6 @@
 import random
 
-from core.emojis import BLESSED_BISMUTH, CAPRICIOUS_CARP, SPARKLING_SPRIG
+from core.emojis import BLESSED_BISMUTH, CAPRICIOUS_CARP, GOLD_COIN, SPARKLING_SPRIG
 from core.images import (
     ALCHEMY_HUB,
     APEX_HUB,
@@ -50,7 +50,7 @@ async def _grant_level_1(bot, user_id: str, server_id: str) -> list:
 async def _grant_level_5(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_currency(user_id, "curios", 2)
     await bot.database.users.modify_gold(user_id, 10_000)
-    return ["📦 **+2 Curios**", "💰 **+10,000 Gold**"]
+    return ["📦 **+2 Curios**", f"{GOLD_COIN} **+10,000 Gold**"]
 
 
 async def _grant_level_10(bot, user_id: str, server_id: str) -> list:
@@ -62,14 +62,14 @@ async def _grant_level_10(bot, user_id: str, server_id: str) -> list:
 async def _grant_level_20(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_currency(user_id, "curios", 3)
     await bot.database.users.modify_gold(user_id, 50_000)
-    return ["📦 **+3 Curios**", "💰 **+50,000 Gold**"]
+    return ["📦 **+3 Curios**", f"{GOLD_COIN} **+50,000 Gold**"]
 
 
 async def _grant_level_30(bot, user_id: str, server_id: str) -> list:
     for _ in range(3):
         await bot.database.essences.add(user_id, "power")
     await bot.database.users.modify_gold(user_id, 100_000)
-    return ["🔆 **+3 Essences of Power**", "💰 **+100,000 Gold**"]
+    return ["🔆 **+3 Essences of Power**", f"{GOLD_COIN} **+100,000 Gold**"]
 
 
 async def _grant_level_40(bot, user_id: str, server_id: str) -> list:
@@ -84,13 +84,13 @@ async def _grant_level_40(bot, user_id: str, server_id: str) -> list:
         f"🗝️ **+{count} {'Dragon' if k == 'dragon_key' else 'Angel'} Key{'s' if count > 1 else ''}**"
         for k, count in keys_granted.items()
     ]
-    return key_lines + ["💰 **+150,000 Gold**"]
+    return key_lines + [f"{GOLD_COIN} **+150,000 Gold**"]
 
 
 async def _grant_level_50(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_currency(user_id, "void_keys", 1)
     await bot.database.users.modify_gold(user_id, 200_000)
-    return ["🔑 **+1 Void Key**", "💰 **+200,000 Gold**"]
+    return ["🔑 **+1 Void Key**", f"{GOLD_COIN} **+200,000 Gold**"]
 
 
 async def _grant_level_60(bot, user_id: str, server_id: str) -> list:
@@ -146,7 +146,7 @@ async def _grant_level_70(bot, user_id: str, server_id: str) -> list:
     await bot.database.uber.get_uber_progress(user_id, server_id)
     sigil_key, sigil_label = random.choice(_SIGIL_POOL)
     await _SIGIL_INCREMENT[sigil_key](bot, user_id, server_id)
-    return rune_lines + ["💰 **+500,000 Gold**", f"🔱 **+1 {sigil_label}**"]
+    return rune_lines + [f"{GOLD_COIN} **+500,000 Gold**", f"🔱 **+1 {sigil_label}**"]
 
 
 async def _grant_level_80(bot, user_id: str, server_id: str) -> list:
@@ -156,7 +156,7 @@ async def _grant_level_80(bot, user_id: str, server_id: str) -> list:
 
 async def _grant_level_90(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_gold(user_id, 500_000)
-    return ["💰 **+500,000 Gold**"]
+    return [f"{GOLD_COIN} **+500,000 Gold**"]
 
 
 async def _grant_level_100(bot, user_id: str, server_id: str) -> list:
@@ -370,7 +370,7 @@ MILESTONES = [
         "reward_desc": "1 Pinnacle Key",
         "systems": [
             "Ascent Mode — climb numbered floors for permanent stat bonuses",
-            "Prestige Hall — spend your fortune on titles, flairs, custom avatars, and a monument in the Hall of Fame",
+            "Prestige Hall — available since Level 1, but its titles, emblems, avatars, renames, and monument quotes cost hundreds of millions of gold, so most players can only afford to start spending here",
         ],
         "commands": ["/ascent", "/prestige"],
         "image": CORRUPTION_GATE,

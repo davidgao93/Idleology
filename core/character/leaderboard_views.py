@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import GOLD_COIN
 from core.images import LEADERBOARD_HUB
 
 
@@ -18,7 +19,7 @@ class LeaderboardHubView(BaseView):
         tabs = [
             ("levels", "Highest Levels", "🏆"),
             ("ascensions", "Top Ascensions", "🌟"),
-            ("wealth", "Wealthiest", "💰"),
+            ("wealth", "Wealthiest", GOLD_COIN),
             ("slayer", "Top Slayers", "💀"),
             ("ideologies", "Ideologies", "💡"),
             ("duels", "Top Duelists", "⚔️"),
@@ -70,7 +71,7 @@ class LeaderboardHubView(BaseView):
 
         elif self.active_tab == "wealth":
             data = await self.bot.database.users.get_wealth_leaderboard(10)
-            embed = discord.Embed(title="Hiscores: Wealthiest 💰", color=0xFFD700)
+            embed = discord.Embed(title=f"Hiscores: Wealthiest {GOLD_COIN}", color=0xFFD700)
             lines = [
                 f"**{i + 1}. {row['name']}** - {row['gold']:,} GP"
                 for i, row in enumerate(data)

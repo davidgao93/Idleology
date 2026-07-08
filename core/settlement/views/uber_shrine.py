@@ -15,6 +15,7 @@ import asyncio
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.emojis import GOLD_COIN
 from core.settlement.constants import (
     STATUE_UPGRADE_DT,
     STATUE_UPGRADE_GOLD,
@@ -380,7 +381,7 @@ class StatueSlotView(SettlementBaseView):
             embed.add_field(
                 name=f"⬆️ Upgrade to T{next_tier} Cost",
                 value=(
-                    f"💰 {gold_cost:,} | "
+                    f"{GOLD_COIN} {gold_cost:,} | "
                     f"{defn['material_name']} ×{mat_qty} | "
                     f"⏱️ {dt_cost} DTs"
                 ),

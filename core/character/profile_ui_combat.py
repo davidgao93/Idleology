@@ -34,8 +34,12 @@ from core.emojis import (
     ACCESSORY_SLOT,
     ARMOR_SLOT,
     BOOT_SLOT,
+    CRIT_MULTI,
+    DODGE_EVASION,
     GLOVE_SLOT,
     HELMET_SLOT,
+    HEMATURGY_ICON,
+    RARITY,
     STAT_ATK,
     STAT_BLOCK,
     STAT_DEF,
@@ -215,7 +219,7 @@ class CombatProfileBuilder:
         crit_multi_bonus = round(crit_multi_total - weapon_base_multi, 4)
         if crit_multi_bonus > 0:
             cm_val += f"\n↳ Bonuses: +{crit_multi_bonus:.2f}×"
-        embed.add_field(name="✨ Crit Multiplier", value=cm_val, inline=True)
+        embed.add_field(name=f"{CRIT_MULTI} Crit Multiplier", value=cm_val, inline=True)
 
         # ── PDR ──────────────────────────────────────────────────────────────
         pdr_equip = 0
@@ -278,7 +282,7 @@ class CombatProfileBuilder:
             eva_val = f"**{total_evasion}%**\n↳ Armor: {evasion_armor}%"
             if evasion_essence:
                 eva_val += f"\n↳ Essences: +{evasion_essence}%"
-            embed.add_field(name="💨 Evasion", value=eva_val, inline=True)
+            embed.add_field(name=f"{DODGE_EVASION} Evasion", value=eva_val, inline=True)
 
         # ── Block ─────────────────────────────────────────────────────────────
         block_armor = p.equipped_armor.block if p.equipped_armor else 0
@@ -314,7 +318,7 @@ class CombatProfileBuilder:
             codex_bonus = total_rarity - after_more
             if codex_bonus:
                 rar_val += f"\n↳ Codex: +{codex_bonus}"
-            embed.add_field(name="✨ Rarity", value=rar_val, inline=True)
+            embed.add_field(name=f"{RARITY} Rarity", value=rar_val, inline=True)
 
         # ── Special Rarity ────────────────────────────────────────────────────
         sr_boot = 0.0
@@ -498,7 +502,7 @@ class CombatProfileBuilder:
                 lines.append(f"• **{h_name}** (T{tier}) — {h_desc}")
             chunk = 10
             for i in range(0, len(lines), chunk):
-                field_name = "💉 Hematurgy" if i == 0 else "​"
+                field_name = f"{HEMATURGY_ICON} Hematurgy" if i == 0 else "​"
                 _add(field_name, lines[i : i + chunk])
 
         # ── Alchemy Potion Passives ───────────────────────────────────────────

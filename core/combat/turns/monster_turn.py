@@ -7,6 +7,7 @@ from core.combat.calc.damage_calc import roll_monster_damage as _roll_monster_da
 from core.combat.calc.hit_calc import calculate_monster_hit_chance
 from core.combat.calc.ward_system import _add_ward
 from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
+from core.emojis import GOLD_COIN
 from core.models import Monster, Player
 
 
@@ -257,7 +258,7 @@ def process_monster_turn(
         if drained > 0:
             player.combat_ward = 0
             log.append(
-                f"💰 **Tempted Fate** — fortune's price is paid! All **{drained}** 🔮 Ward drained!"
+                f"{GOLD_COIN} **Tempted Fate** — fortune's price is paid! All **{drained}** 🔮 Ward drained!"
             )
     capture_compact_events(log, clog, start)
 

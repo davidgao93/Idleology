@@ -3,6 +3,7 @@ import discord
 from datetime import datetime, timedelta
 from discord import ButtonStyle, Interaction, ui
 
+from core.emojis import GOLD_COIN
 from core.images import SETTLEMENT_BUILDINGS
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.plots import get_meta_slots
@@ -76,8 +77,8 @@ class DCCraftModal(ui.Modal, title="Craft Development Contracts"):
         if gold < cost_gold or stl.timber < cost_timber or stl.stone < cost_stone:
             return await interaction.response.send_message(
                 f"Insufficient resources!\n"
-                f"Need: 💰 {cost_gold:,}g | 🪵 {cost_timber:,} | 🪨 {cost_stone:,}\n"
-                f"Have: 💰 {gold:,}g | 🪵 {stl.timber:,} | 🪨 {stl.stone:,}",
+                f"Need: {GOLD_COIN} {cost_gold:,}g | 🪵 {cost_timber:,} | 🪨 {cost_stone:,}\n"
+                f"Have: {GOLD_COIN} {gold:,}g | 🪵 {stl.timber:,} | 🪨 {stl.stone:,}",
                 ephemeral=True,
             )
 
@@ -167,7 +168,7 @@ class TownHallView(SettlementBaseView):
         embed.add_field(
             name="📜 Craft Development Contracts",
             value=(
-                f"Cost per DC: 💰 {_DC_GOLD:,}g | "
+                f"Cost per DC: {GOLD_COIN} {_DC_GOLD:,}g | "
                 f"🪵 {_DC_TIMBER:,} Timber | "
                 f"🪨 {_DC_STONE:,} Stone\n"
                 f"Daily crafts remaining: **{remaining_today}/{_DC_DAILY_CAP}** "
@@ -196,7 +197,7 @@ class TownHallView(SettlementBaseView):
                 dt = _th_upgrade_dt(tier + 1)
                 cost_str = (
                     f"🪵 {costs['timber']:,} | 🪨 {costs['stone']:,} | "
-                    f"💰 {costs['gold']:,} | ⏱️ {dt} DTs"
+                    f"{GOLD_COIN} {costs['gold']:,} | ⏱️ {dt} DTs"
                 )
                 if "specials" in costs:
                     reqs = [f"{s['name']} ×{s['qty']}" for s in costs["specials"]]

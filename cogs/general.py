@@ -33,6 +33,7 @@ from core.emojis import (
     ACCESSORY_SLOT,
     ARMOR_SLOT,
     BOOT_SLOT,
+    DODGE_EVASION,
     GLOVE_SLOT,
     HELMET_SLOT,
     WEAPON_SLOT,
@@ -479,7 +480,7 @@ class General(commands.Cog, name="general"):
                 "**👁️ Essence of Insight**\n"
                 "Grants a flat crit chance increase. "
                 "Rolls **+1–8%** Crit Chance.\n\n"
-                "**💨 Essence of Evasion**\n"
+                f"**{DODGE_EVASION} Essence of Evasion**\n"
                 "Grants a flat evasion chance bonus. "
                 "Rolls **+1–8%** Evasion.\n\n"
                 "**🧱 Essence of Unyielding**\n"

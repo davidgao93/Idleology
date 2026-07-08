@@ -11,13 +11,17 @@ from typing import Any, Dict, Optional
 
 import discord
 
+from core.character.prestige_display import format_prestige_name
 from core.emojis import (
     ANGEL_KEY,
     BLESSED_BISMUTH,
     CAPRICIOUS_CARP,
+    COSMIC_DUST,
     CURIO,
     DIVINER_ROD,
+    DODGE_EVASION,
     DRAGON_KEY,
+    GOLD_COIN,
     LIFE_ROOT,
     MAGMA_CORE,
     PARADISE_JEWEL_UNCUT,
@@ -39,7 +43,6 @@ from core.emojis import (
     VOID_FRAG,
     VOID_KEY,
 )
-from core.character.prestige_display import format_prestige_name
 from core.images import COMBAT_VICTORY
 from core.items.models import _PART_SLOT_LABELS
 from core.models import Monster, Player
@@ -119,7 +122,9 @@ def create_victory_embed(
     # 1. Curios
     if rewards.get("curios", 0) > 0:
         count = rewards["curios"]
-        loot_lines.append(f"{CURIO} **{count}** Curious Curio{'s' if count > 1 else ''}")
+        loot_lines.append(
+            f"{CURIO} **{count}** Curious Curio{'s' if count > 1 else ''}"
+        )
 
     # 2. Specials (Keys & Runes) - Mapped to emojis
     special_map = {
@@ -167,7 +172,7 @@ def create_victory_embed(
         "power": ("✦ Essence of Power", "🔆"),
         "protection": ("✦ Essence of Protection", "🛡️"),
         "insight": ("✦ Essence of Insight", "👁️"),
-        "evasion": ("✦ Essence of Evasion", "💨"),
+        "evasion": ("✦ Essence of Evasion", DODGE_EVASION),
         "blocking": ("✦ Essence of Blocking", "🧱"),
         "deftness": ("✦ Essence of Deftness", "⚡"),
         "precision": ("✦ Essence of Precision", "🎯"),
@@ -240,14 +245,14 @@ def create_victory_embed(
 
     # 8. Consolation cosmic dust
     if rewards.get("consolation_dust"):
-        loot_lines.append(f"✨ {rewards['consolation_dust']} Cosmic Dust")
+        loot_lines.append(f"{COSMIC_DUST} {rewards['consolation_dust']} Cosmic Dust")
 
     embed.add_field(
         name="✨__Loot__✨",
-        value="\n".join(loot_lines) if loot_lines else "None",
+        value="\n" + ("\n".join(loot_lines) if loot_lines else "None"),
         inline=False,
     )
-    embed.add_field(name="💰 Gold", value=f"{rewards.get('gold', 0):,} GP", inline=True)
+    embed.add_field(name=f"{GOLD_COIN} Gold", value=f"{rewards.get('gold', 0):,} GP", inline=True)
 
     # Extra fields from cfg (e.g. Lucifer's Soul Core prompt)
     for field in cfg.get("extra_fields", []):

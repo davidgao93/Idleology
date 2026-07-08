@@ -2,6 +2,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView  # note: views.base_view
+from core.emojis import GOLD_COIN
 
 
 class BaseUpgradeView(BaseView):
@@ -92,7 +93,7 @@ class BaseUpgradeView(BaseView):
             f"⛏️ {costs['ore_qty']} {costs['ore_type'].removesuffix('_ore').title()} (Have: {total_ore})\n"
             f"🪓 {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
             f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
-            f"💰 {costs['gold']:,} Gold"
+            f"{GOLD_COIN} {costs['gold']:,} Gold"
         )
         if total_ore >= costs["ore_qty"] and mining_res[0] < costs["ore_qty"]:
             cost_lines += "\n*Using Refined Ingots to substitute missing Ore.*"

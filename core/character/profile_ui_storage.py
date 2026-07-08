@@ -25,6 +25,7 @@ from core.emojis import (
     CORRUPTION_CORE,
     CORRUPTION_ENGRAM,
     CORRUPTION_SIGIL,
+    COSMIC_DUST,
     CURIO,
     DESICCATED_BONES,
     DEVELOPMENT_CONTRACT,
@@ -33,8 +34,10 @@ from core.emojis import (
     ESSENCE_COMMON,
     ESSENCE_CORRUPT,
     ESSENCE_RARE,
+    GEAR_BACKPACK,
     GEODE_CORE,
     GLOVE_SLOT,
+    GOLD_COIN,
     GOLD_ORE,
     HEARTWOOD_SHARD,
     HELMET_SLOT,
@@ -52,6 +55,7 @@ from core.emojis import (
     PARADISE_JEWEL_UNCUT,
     PINNACLE_KEY,
     PLATINUM_ORE,
+    POTION,
     PUZZLE_BOX,
     REGULAR_BONES,
     REINFORCED_BONES,
@@ -125,13 +129,13 @@ class StorageProfileBuilder:
 
         embed = discord.Embed(
             title="Inventory Summary",
-            description=f"💰 **Gold:** {user['gold']:,}\n🧪 **Potions:** {user['potions']:,}",
+            description=f"{GOLD_COIN} **Gold:** {user['gold']:,}\n{POTION} **Potions:** {user['potions']:,}",
             color=0x00FF00,
         )
         embed.set_thumbnail(url=user["appearance"])
 
         embed.add_field(
-            name=f"{WEAPON_SLOT} **Gear**",
+            name=f"{GEAR_BACKPACK} **Gear**",
             value=(
                 f"{WEAPON_SLOT} Weapons: {w_count}/60\n{ARMOR_SLOT} Armor: {ar_count}/60\n{ACCESSORY_SLOT} Accs: {a_count}/60\n"
                 f"{GLOVE_SLOT} Gloves: {g_count}/60\n{BOOT_SLOT} Boots: {b_count}/60\n{HELMET_SLOT} Helms: {h_count}/60\n🐾 Pets: {pet_count}/20"
@@ -162,7 +166,7 @@ class StorageProfileBuilder:
         embed.add_field(
             name="⚗️ **Alchemy**",
             value=(
-                f"✨ Cosmic Dust: {cosmic_dust:,}\n"
+                f"{COSMIC_DUST} Cosmic Dust: {cosmic_dust:,}\n"
                 f"{SPIRIT_STONE} Spirit Stones: {spirit_stones}\n"
                 f"{PARADISE_JEWEL_UNCUT} Uncut Jewels: {paradise_jewels}"
             ),
@@ -339,37 +343,104 @@ class StorageProfileBuilder:
         )
         embed.set_thumbnail(url=user["appearance"])
 
-        gathering_value = (
-            f"**Ores:** {IRON_ORE} Iron {ores[0]:,} · {COAL_ORE} Coal {ores[1]:,} · {GOLD_ORE} Gold {ores[2]:,} · "
-            f"{PLATINUM_ORE} Plat {ores[3]:,} · {IDEA_ORE} Idea {ores[4]:,}\n\n"
-            f"**Logs:** {OAK_LOGS} Oak {logs[0]:,} · {WILLOW_LOGS} Willow {logs[1]:,} · {MAHOGANY_LOGS} Mahog {logs[2]:,} · "
-            f"{MAGIC_LOGS} Magic {logs[3]:,} · {IDEA_LOGS} Idea {logs[4]:,}\n\n"
-            f"**Bones:** {DESICCATED_BONES} Desic {bones[0]:,} · {REGULAR_BONES} Reg {bones[1]:,} · {STURDY_BONES} Sturdy {bones[2]:,} · "
-            f"{REINFORCED_BONES} Reinf {bones[3]:,} · {TITANIUM_BONES} Titan {bones[4]:,}\n\n"
-            f"**Elemental Keys:** {BLESSED_BISMUTH} Bismuth: {blessed_bismuth} · {SPARKLING_SPRIG} Sprig: {sparkling_sprig} · {CAPRICIOUS_CARP} Carp: {capricious_carp}"
-        )
-        embed.add_field(name="⛏️ Gathering", value=gathering_value, inline=False)
+        # ── Gathering ── Row 1: Ore | Logs | Bones — Row 2: Elemental Keys | Artisan Remnants
+        embed.add_field(name="⛏️ **Gathering**", value="​", inline=False)
 
-        mastery_value = (
-            f"{GEODE_CORE} **Geode Cores:** {geode_cores:,}\n"
-            f"{TIDE_RELIC} **Tide Relics:** {tide_relics:,}\n"
-            f"{HEARTWOOD_SHARD} **Heartwood Shards:** {heartwood_shards:,}\n"
-            f"{RUNE_NATURE} **Runes of Nature:** {runes_of_nature:,}"
+        embed.add_field(
+            name="⛏️ Ore",
+            value=(
+                f"{IRON_ORE} Iron: {ores[0]:,}\n{COAL_ORE} Coal: {ores[1]:,}\n{GOLD_ORE} Gold: {ores[2]:,}\n"
+                f"{PLATINUM_ORE} Plat: {ores[3]:,}\n{IDEA_ORE} Idea: {ores[4]:,}"
+            ),
+            inline=True,
         )
         embed.add_field(
-            name="🌿 Artisan Mastery (Remnants)", value=mastery_value, inline=False
+            name="🪓 Logs",
+            value=(
+                f"{OAK_LOGS} Oak: {logs[0]:,}\n{WILLOW_LOGS} Willow: {logs[1]:,}\n{MAHOGANY_LOGS} Mahog: {logs[2]:,}\n"
+                f"{MAGIC_LOGS} Magic: {logs[3]:,}\n{IDEA_LOGS} Idea: {logs[4]:,}"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name="🎣 Bones",
+            value=(
+                f"{DESICCATED_BONES} Desic: {bones[0]:,}\n{REGULAR_BONES} Reg: {bones[1]:,}\n{STURDY_BONES} Sturdy: {bones[2]:,}\n"
+                f"{REINFORCED_BONES} Reinf: {bones[3]:,}\n{TITANIUM_BONES} Titan: {bones[4]:,}"
+            ),
+            inline=True,
         )
 
-        settlement_value = (
-            f"🪵 Timber: {settlement.timber:,} · 🪨 Stone: {settlement.stone:,}\n\n"
-            f"**{BARS_REFINED} Ingots:** Iron {ingots[0]:,} · Steel {ingots[1]:,} · Gold {ingots[2]:,} · Plat {ingots[3]:,} · Idea {ingots[4]:,}\n\n"
-            f"**{WOODEN_PLANKS} Planks:** Oak {planks[0]:,} · Willow {planks[1]:,} · Mahog {planks[2]:,} · Magic {planks[3]:,} · Idea {planks[4]:,}\n\n"
-            f"**Essence:** Desic {essence[0]:,} · Reg {essence[1]:,} · Sturdy {essence[2]:,} · Reinf {essence[3]:,} · Titan {essence[4]:,}\n\n"
-            f"**Rare Materials:** {MAGMA_CORE} Magma Core: {rares[0]} · {LIFE_ROOT} Life Root: {rares[1]} · {SPIRIT_SHARD} Spirit Shard: {rares[2]}\n\n"
-            f"📋 Blueprints: {blueprint_count} · {DIVINER_ROD} Diviner's Rods: {mat_all.get('diviners_rod', 0)} · "
-            f"{DEVELOPMENT_CONTRACT} Development Contracts: {dev_contracts:,}"
+        embed.add_field(
+            name="🗝️ Elemental Keys",
+            value=(
+                f"{BLESSED_BISMUTH} Bismuth: {blessed_bismuth}\n"
+                f"{SPARKLING_SPRIG} Sprig: {sparkling_sprig}\n"
+                f"{CAPRICIOUS_CARP} Carp: {capricious_carp}"
+            ),
+            inline=True,
         )
-        embed.add_field(name="🏭 Settlement", value=settlement_value, inline=False)
+        embed.add_field(
+            name="🌿 Artisan Remnants",
+            value=(
+                f"{GEODE_CORE} Geode Cores: {geode_cores:,}\n"
+                f"{TIDE_RELIC} Tide Relics: {tide_relics:,}\n"
+                f"{HEARTWOOD_SHARD} Heartwood Shards: {heartwood_shards:,}\n"
+                f"{RUNE_NATURE} Runes of Nature: {runes_of_nature:,}"
+            ),
+            inline=True,
+        )
+
+        # ── Settlement ── Row 1: Building | Rare — Row 2: Ingots | Planks | Essence
+        embed.add_field(name="🏭 **Settlement**", value="​", inline=False)
+
+        embed.add_field(
+            name="🏗️ Building",
+            value=(
+                f"🪵 Timber: {settlement.timber:,}\n"
+                f"🪨 Stone: {settlement.stone:,}\n"
+                f"📋 Blueprints: {blueprint_count}\n"
+                f"{DIVINER_ROD} Diviner's Rods: {mat_all.get('diviners_rod', 0)}\n"
+                f"{DEVELOPMENT_CONTRACT} Dev Contracts: {dev_contracts:,}"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name="💎 Rare",
+            value=(
+                f"{MAGMA_CORE} Magma Core: {rares[0]}\n"
+                f"{LIFE_ROOT} Life Root: {rares[1]}\n"
+                f"{SPIRIT_SHARD} Spirit Shard: {rares[2]}"
+            ),
+            inline=True,
+        )
+
+        embed.add_field(name="​", value="​", inline=False)
+
+        embed.add_field(
+            name=f"{BARS_REFINED} Ingots",
+            value=(
+                f"Iron: {ingots[0]:,}\nSteel: {ingots[1]:,}\nGold: {ingots[2]:,}\n"
+                f"Plat: {ingots[3]:,}\nIdea: {ingots[4]:,}"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name=f"{WOODEN_PLANKS} Planks",
+            value=(
+                f"Oak: {planks[0]:,}\nWillow: {planks[1]:,}\nMahog: {planks[2]:,}\n"
+                f"Magic: {planks[3]:,}\nIdea: {planks[4]:,}"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name="🧪 Essence",
+            value=(
+                f"Desic: {essence[0]:,}\nReg: {essence[1]:,}\nSturdy: {essence[2]:,}\n"
+                f"Reinf: {essence[3]:,}\nTitan: {essence[4]:,}"
+            ),
+            inline=True,
+        )
 
         return embed
 
@@ -382,77 +453,61 @@ class StorageProfileBuilder:
         embed = discord.Embed(title="Uber Encounters", color=discord.Color.dark_gold())
         embed.set_thumbnail(url=user["appearance"])
 
-        bp_status = (
-            "✅ Unlocked" if uber_data["celestial_blueprint_unlocked"] else "🔒 Locked"
-        )
+        def _bp_emoji(unlocked) -> str:
+            return "✅" if unlocked else "🔒"
+
+        # Row 1: Aphrodite | Lucifer | NEET — Row 2: Gemini | Evelynn
         embed.add_field(
-            name="**Aphrodite**",
+            name="**Aphrodite (Celestial)**",
             value=(
-                f"{CELESTIAL_SIGIL} Celestial Sigils: {uber_data['celestial_sigils']}\n"
-                f"{CELESTIAL_ENGRAM} Celestial Engrams: {uber_data['celestial_engrams']}\n"
-                f"{CELESTIAL_STONE} Celestial Stone: {specials[0]}\n"
-                f"📜 Celestial Statue Blueprint: {bp_status}"
+                f"{CELESTIAL_SIGIL} Sigil: {uber_data['celestial_sigils']}\n"
+                f"{CELESTIAL_ENGRAM} Engram: {uber_data['celestial_engrams']}\n"
+                f"{CELESTIAL_STONE} Stone: {specials[0]}\n"
+                f"📜 Blueprint: {_bp_emoji(uber_data['celestial_blueprint_unlocked'])}"
             ),
             inline=True,
         )
 
-        infernal_bp_status = (
-            "✅ Unlocked" if uber_data["infernal_blueprint_unlocked"] else "🔒 Locked"
-        )
         embed.add_field(
-            name="**Lucifer**",
+            name="**Lucifer (Infernal)**",
             value=(
-                f"{INFERNAL_SIGIL} Infernal Sigils: {uber_data['infernal_sigils']}\n"
-                f"{INFERNAL_ENGRAM} Infernal Engrams: {uber_data['infernal_engrams']}\n"
-                f"{INFERNAL_CINDER} Infernal Cinder: {specials[1]}\n"
-                f"📜 Infernal Statue Blueprint: {infernal_bp_status}"
+                f"{INFERNAL_SIGIL} Sigil: {uber_data['infernal_sigils']}\n"
+                f"{INFERNAL_ENGRAM} Engram: {uber_data['infernal_engrams']}\n"
+                f"{INFERNAL_CINDER} Cinder: {specials[1]}\n"
+                f"📜 Blueprint: {_bp_emoji(uber_data['infernal_blueprint_unlocked'])}"
             ),
             inline=True,
         )
 
-        void_bp_status = (
-            "✅ Unlocked"
-            if uber_data.get("void_blueprint_unlocked", 0)
-            else "🔒 Locked"
-        )
         embed.add_field(
-            name="**NEET**",
+            name="**NEET (Void)**",
             value=(
-                f"{VOID_SIGIL} Void Sigils: {uber_data.get('void_shards', 0)}\n"
-                f"{VOID_ENGRAM} Void Engrams: {uber_data.get('void_engrams', 0)}\n"
-                f"{VOID_CRYSTAL} Void Crystal: {specials[2]}\n"
-                f"📜 Void Statue Blueprint: {void_bp_status}"
+                f"{VOID_SIGIL} Sigil: {uber_data.get('void_shards', 0)}\n"
+                f"{VOID_ENGRAM} Engram: {uber_data.get('void_engrams', 0)}\n"
+                f"{VOID_CRYSTAL} Crystal: {specials[2]}\n"
+                f"📜 Blueprint: {_bp_emoji(uber_data.get('void_blueprint_unlocked', 0))}"
             ),
             inline=True,
         )
 
-        gemini_bp_status = (
-            "✅ Unlocked"
-            if uber_data.get("gemini_blueprint_unlocked", 0)
-            else "🔒 Locked"
-        )
         embed.add_field(
-            name="**Gemini**",
+            name="**Gemini (Bound)**",
             value=(
-                f"{BOUND_SIGIL} Bound Sigils: {uber_data.get('gemini_sigils', 0)}\n"
-                f"{BOUND_ENGRAM} Bound Engrams: {uber_data.get('gemini_engrams', 0)}\n"
-                f"{BOUND_CRYSTAL} Bound Crystal: {specials[3]}\n"
-                f"📜 Twin Statue Blueprint: {gemini_bp_status}"
+                f"{BOUND_SIGIL} Sigil: {uber_data.get('gemini_sigils', 0)}\n"
+                f"{BOUND_ENGRAM} Engram: {uber_data.get('gemini_engrams', 0)}\n"
+                f"{BOUND_CRYSTAL} Crystal: {specials[3]}\n"
+                f"📜 Blueprint: {_bp_emoji(uber_data.get('gemini_blueprint_unlocked', 0))}"
             ),
             inline=True,
         )
-        corrupted_bp_status = (
-            "✅ Unlocked"
-            if uber_data.get("corruption_blueprint_unlocked", 0)
-            else "🔒 Locked"
-        )
+
         embed.add_field(
-            name="**Evelynn**",
+            name="**Evelynn (Corruption)**",
             value=(
-                f"{CORRUPTION_SIGIL} Corruption Sigils: {uber_data.get('corruption_sigils', 0)}\n"
-                f"{CORRUPTION_ENGRAM} Corruption Engrams: {uber_data.get('corruption_engrams', 0)}\n"
-                f"{CORRUPTION_CORE} Corrupted Core: {specials[4]}\n"
-                f"📜 Corrupted Statue Blueprint: {corrupted_bp_status}"
+                f"{CORRUPTION_SIGIL} Sigil: {uber_data.get('corruption_sigils', 0)}\n"
+                f"{CORRUPTION_ENGRAM} Engram: {uber_data.get('corruption_engrams', 0)}\n"
+                f"{CORRUPTION_CORE} Core: {specials[4]}\n"
+                f"📜 Blueprint: {_bp_emoji(uber_data.get('corruption_blueprint_unlocked', 0))}"
             ),
             inline=True,
         )

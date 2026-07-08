@@ -6,6 +6,7 @@ from core.emojis import (
     ANGEL_KEY,
     BLESSED_BISMUTH,
     CAPRICIOUS_CARP,
+    COSMIC_DUST,
     DRAGON_KEY,
     QUENCH,
     SOUL_CORE,
@@ -940,7 +941,7 @@ class DistillationMechanics:
             "event": event,
             "debug": debug_str,
             "messages": [
-                f"Used **{reagent['emoji']} {reagent['name']}** (-✨ {final_cost} Cosmic Dust)",
+                f"Used **{reagent['emoji']} {reagent['name']}** (-{COSMIC_DUST} {final_cost} Cosmic Dust)",
             ],
         }
         if parts:

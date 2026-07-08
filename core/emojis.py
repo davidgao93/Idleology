@@ -20,7 +20,9 @@ IRON_ORE = "<:iron_ore:1524443400382840842>"
 COAL_ORE = "<:coal:1524443395194491071>"
 IDEA_ORE = "<:idea_ore:1524443399195857016>"
 BARS_REFINED = "<:refined_bars:1524443432167411722>"  # shared icon for all bar tiers
-WOODEN_PLANKS = "<:wooden_planks:1524443361698644109>"  # shared icon for all plank tiers
+WOODEN_PLANKS = (
+    "<:wooden_planks:1524443361698644109>"  # shared icon for all plank tiers
+)
 OAK_LOGS = "<:oak_logs:1524443403264462949>"
 WILLOW_LOGS = "<:willow_logs:1524443407655633087>"
 MAHOGANY_LOGS = "<:mahogany_logs:1524443402236592318>"
@@ -107,7 +109,16 @@ GEODE_CORE = "<:geode_core:1524443428111388743>"
 # ── Feature / hub branding icons ─────────────────────────────────────────────
 CONSUME_ICON = "<:consume:1524443382795993209>"
 NETHER_MARKET_PLUNDER = "<:nether_plunder:1524443417638076516>"
-INFINITE_MAW = "<:infinite_maw:1524443415943840016>"
+INFINITE_MAW = "<:maw:1524474466770620571>"
+HEMATURGY_ICON = "<:hematurgy:1524465821743710281>"
+
+# ── Combat / loot stats (previously generic Unicode, now dedicated art) ────
+GOLD_COIN = "<:coins_gold:1524465818681868428>"
+CRIT_MULTI = "<:crit_multi:1524465817868046436>"
+RARITY = "<:rarity:1524465819290046475>"
+DODGE_EVASION = "<:dodge_evasion:1524465821139603608>"
+POTION = "<:potion:1524465820363919490>"
+COSMIC_DUST = "<:cosmic_dust:1524465822309945464>"
 
 # ── Uber boss materials (sigils / engrams / statue specials) ───────────────
 CELESTIAL_SIGIL = "<:celestial_sigil:1524443385950376088>"
@@ -298,4 +309,11 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "corruption_sigil": ("Corruption Sigil", CORRUPTION_SIGIL),
     "corruption_core": ("Corruption Core", CORRUPTION_CORE),
     "corruption_engram": ("Corruption Engram", CORRUPTION_ENGRAM),
+    "hematurgy": ("Hematurgy", HEMATURGY_ICON),
+    "coins_gold": ("Gold", GOLD_COIN),
+    "crit_multi": ("Crit Multiplier", CRIT_MULTI),
+    "rarity": ("Rarity", RARITY),
+    "dodge_evasion": ("Evasion", DODGE_EVASION),
+    "potion": ("Potion", POTION),
+    "cosmic_dust": ("Cosmic Dust", COSMIC_DUST),
 }

@@ -3,6 +3,7 @@ import asyncio
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.emojis import GOLD_COIN
 from core.images import SETTLEMENT_BUILDINGS
 from core.settlement.constants import (
     BUILDING_INFO,
@@ -184,7 +185,7 @@ class BuildingDetailView(SettlementBaseView):
             else:
                 next_cost = self._get_upgrade_cost(next_tier)
                 dt = upgrade_dt_cost(self.building.building_type, next_tier)
-                cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | 💰 {next_cost.get('gold'):,} | ⏱️ {dt} DT(s)"
+                cost_str = f"🪵 {next_cost.get('timber'):,} | 🪨 {next_cost.get('stone'):,} | {GOLD_COIN} {next_cost.get('gold'):,} | ⏱️ {dt} DT(s)"
                 if "special_name" in next_cost:
                     cost_str += (
                         f" | ✨ {next_cost['special_name']} x{next_cost['special_qty']}"

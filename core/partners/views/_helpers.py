@@ -4,6 +4,7 @@ import random
 from datetime import datetime, timezone
 
 from core.base_view import BaseView
+from core.emojis import GOLD_COIN
 from core.models import Partner
 from core.partners.dispatch import calculate_rewards, calculate_sigmund_rewards
 from core.partners.mechanics import grant_xp as _grant_xp
@@ -220,7 +221,7 @@ async def _apply_dispatch_rewards(
 
     lines = []
     if gold:
-        lines.append(f"💰 **{gold:,}** gold")
+        lines.append(f"{GOLD_COIN} **{gold:,}** gold")
     if exp:
         lines.append(f"📚 **{exp:,}** Partner EXP")
     for item_key, qty in items_got.items():

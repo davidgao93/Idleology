@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import discord
 
+from core.emojis import GOLD_COIN
 from core.settlement.constants import RESOURCE_DISPLAY_NAMES
 from core.settlement.plots import PLOT_BONUS_TABLE
 
@@ -16,7 +17,7 @@ def build_building_list_embed() -> discord.Embed:
     _GENERATORS = [
         ("🪵 Logging Camp", "Hybrid · Timber · Produces passively and each turn"),
         ("🪨 Quarry", "Hybrid · Stone · Produces passively and each turn"),
-        ("💰 Market", "Hybrid · Gold · Produces passively and each turn"),
+        (f"{GOLD_COIN} Market", "Hybrid · Gold · Produces passively and each turn"),
         (
             "🐾 Companion Ranch",
             "Hybrid · Companion cookies (XP) · Produces passively and each turn",
@@ -132,7 +133,7 @@ def build_plot_bonuses_embed() -> discord.Embed:
 _COLLECTION_EMOJI: dict[str, str] = {
     "timber": "🪵 ",
     "stone": "🪨 ",
-    "Market Gold": "💰 ",
+    "Market Gold": f"{GOLD_COIN} ",
 }
 
 

@@ -20,6 +20,7 @@ from core.apex.data import (
     UPGRADE_OUTCOMES,
     ZONE_DEFS,
 )
+from core.emojis import GOLD_COIN
 from core.apex.models import ApexHuntProfile
 
 if TYPE_CHECKING:
@@ -190,7 +191,7 @@ class ApexMechanics:
 
         elif zone.modifier_key == "tempted_fate":
             return (
-                "💰 **Tempted Fate** — All XP and Gold doubled! "
+                f"{GOLD_COIN} **Tempted Fate** — All XP and Gold doubled! "
                 "Every 3rd monster turn, your ward is fully drained!"
             )
 

@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
+from core.emojis import GOLD_COIN
 from core.images import BLUEPRINT_RESEARCH
 
 from .base import SettlementBaseView
@@ -81,7 +82,7 @@ _BUILDING_EMOJIS: dict[str, str] = {
     "temple": "⛪",
     "barracks": "⚔️",
     "black_market": "🕵️",
-    "market": "💰",
+    "market": GOLD_COIN,
     "hatchery": "🐣",
     "war_camp": "⚔️",
     "idlem_foundry": "🏭",

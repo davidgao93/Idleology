@@ -10,7 +10,7 @@ from core.alchemy.mechanics import (
     get_passive_name_emoji,
 )
 from core.base_view import BaseView
-from core.emojis import RESOURCE_EMOJI, SPIRIT_STONE
+from core.emojis import COSMIC_DUST, GOLD_COIN, RESOURCE_EMOJI, SPIRIT_STONE
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.skills.mastery import get_attunement_alchemy_bonus
@@ -79,8 +79,8 @@ class AlchemyHubView(BaseView):
         info = [
             f"**Level:** {self.alchemy_level} / {AlchemyMechanics.MAX_LEVEL}",
             f"**Spirit Stones:** {SPIRIT_STONE} {self.spirit_stones}",
-            f"**Cosmic Dust:** ✨ {self.cosmic_dust:,}",
-            f"**Gold:** 💰 {self.player_gold:,}",
+            f"**Cosmic Dust:** {COSMIC_DUST} {self.cosmic_dust:,}",
+            f"**Gold:** {GOLD_COIN} {self.player_gold:,}",
             f"**Passive Slots:** {slot_count} unlocked",
         ]
         if level_cost is not None:
@@ -332,7 +332,7 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
         if current_gold < total_gold:
             max_by_gold = current_gold // gold_cost_each
             await interaction.response.send_message(
-                f"Not enough gold for **{qty}** operations (need 💰 {total_gold:,}). "
+                f"Not enough gold for **{qty}** operations (need {GOLD_COIN} {total_gold:,}). "
                 f"You can afford up to **{max_by_gold}**.",
                 ephemeral=True,
             )
@@ -384,7 +384,7 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
             )
             await interaction.response.send_message(
                 f"✅ Transmuted **{ratio * qty}×** {opt['src_name']} → **{dst_delta}×** {opt['dst_name']}!{bonus_text} "
-                f"(-💰 {total_gold:,})",
+                f"(-{GOLD_COIN} {total_gold:,})",
                 ephemeral=True,
             )
 
@@ -414,7 +414,7 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
             self._view.player_gold = max(0, self._view.player_gold - total_gold)
             await interaction.response.send_message(
                 f"✅ Broke down **{qty}×** {opt['src_name']} → **{ratio * qty}×** {opt['dst_name']}! "
-                f"(-💰 {total_gold:,})",
+                f"(-{GOLD_COIN} {total_gold:,})",
                 ephemeral=True,
             )
 
@@ -636,13 +636,13 @@ class AlchemyTransmuteView(BaseView):
         if self._raw_direction == "upgrade":
             embed.description = (
                 f"Upgrade raw gathering resources to the next tier.\n"
-                f"**Ratio:** {up_ratio}:1 | **Gold:** 💰 {self.player_gold:,}\n\n"
+                f"**Ratio:** {up_ratio}:1 | **Gold:** {GOLD_COIN} {self.player_gold:,}\n\n"
                 "Select a conversion, then press **Transmute** to enter a quantity."
             )
         else:
             embed.description = (
                 f"Break down raw gathering resources into a lower tier.\n"
-                f"**Ratio:** 1:{dn_ratio} | **Gold:** 💰 {self.player_gold:,}\n\n"
+                f"**Ratio:** 1:{dn_ratio} | **Gold:** {GOLD_COIN} {self.player_gold:,}\n\n"
                 "Select a conversion, then press **Transmute** to enter a quantity."
             )
         return embed
@@ -758,13 +758,13 @@ class AlchemyTransmuteView(BaseView):
         if going_up:
             embed.description = (
                 f"Upgrade processed resources to a higher tier (e.g. Iron Bar → Steel Bar).\n"
-                f"**Ratio:** {up_ratio}:1 | **Gold:** 💰 {self.player_gold:,}\n\n"
+                f"**Ratio:** {up_ratio}:1 | **Gold:** {GOLD_COIN} {self.player_gold:,}\n\n"
                 "Select a conversion, then press **Transmute** to enter a quantity."
             )
         else:
             embed.description = (
                 f"Break down processed resources to a lower tier (e.g. Steel Bar → Iron Bar).\n"
-                f"**Ratio:** 1:{dn_ratio} | **Gold:** 💰 {self.player_gold:,}\n\n"
+                f"**Ratio:** 1:{dn_ratio} | **Gold:** {GOLD_COIN} {self.player_gold:,}\n\n"
                 "Select a conversion, then press **Transmute** to enter a quantity."
             )
         return embed
@@ -1014,7 +1014,7 @@ class AlchemyPotionLabView(BaseView):
         embed.set_footer(text=get_quip("alchemy"))
 
         embed.description = (
-            f"**Level:** {self.alchemy_level} | **Spirit Stones:** {SPIRIT_STONE} {self.spirit_stones} | **Cosmic Dust:** ✨ {self.cosmic_dust:,}\n\n"
+            f"**Level:** {self.alchemy_level} | **Spirit Stones:** {SPIRIT_STONE} {self.spirit_stones} | **Cosmic Dust:** {COSMIC_DUST} {self.cosmic_dust:,}\n\n"
             f"**Distill Elixir** ({SPIRIT_STONE} 1 Spirit Stone) crafts a powerful passive into the selected slot. "
             "Click **Guide** for distillation rules, or **Passives** to browse all possible cores.\n"
             "*If the selected slot already has a passive, you'll be offered a choice to keep the old one or take the new one after distillation completes.*"

@@ -11,6 +11,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button, Select
 
 from core.base_view import BaseView
+from core.emojis import DODGE_EVASION
 from core.images import ESSENCE_HUB
 from core.items.essence_mechanics import (
     CORRUPTED_ESSENCE_TYPES,
@@ -33,7 +34,7 @@ ESSENCE_DISPLAY = {
     "power": ("✦ Essence of Power", "🔆"),
     "protection": ("✦ Essence of Protection", "🛡️"),
     "insight": ("✦ Essence of Insight", "👁️"),
-    "evasion": ("✦ Essence of Evasion", "💨"),
+    "evasion": ("✦ Essence of Evasion", DODGE_EVASION),
     "blocking": ("✦ Essence of Blocking", "🧱"),
     "deftness": ("✦ Essence of Deftness", "⚡"),
     "precision": ("✦ Essence of Precision", "🎯"),

@@ -7,6 +7,7 @@ from core.emojis import (
     ARMOR_SLOT,
     BOOT_SLOT,
     GLOVE_SLOT,
+    GOLD_COIN,
     HELMET_SLOT,
     WEAPON_SLOT,
 )
@@ -102,7 +103,7 @@ class TradeRootView(BaseView):
     def show_main_menu(self):
         self.clear_items()
 
-        btn_gold = ui.Button(label="Gold", emoji="💰", style=ButtonStyle.primary)
+        btn_gold = ui.Button(label="Gold", emoji=GOLD_COIN, style=ButtonStyle.primary)
         btn_gold.callback = self.gold_callback
 
         btn_items = ui.Button(
@@ -342,7 +343,7 @@ class TradeRootView(BaseView):
 
         desc = f"Sending to: {self.receiver.mention}\n\n"
         if tx_type == "gold":
-            desc += f"💰 **{amount:,} Gold**"
+            desc += f"{GOLD_COIN} **{amount:,} Gold**"
         elif tx_type == "resource":
             desc += f"📦 **{amount:,} x {item_name}**"
         elif tx_type == "equipment":

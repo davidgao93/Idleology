@@ -22,6 +22,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import GOLD_COIN
 from core.images import PARTNERS_BOSS_PARTY, VICTORY_APHRODITE_GEMINI
 from core.models import Partner
 from core.partners.dispatch import (
@@ -619,7 +620,7 @@ class BossPartyProgressView(BaseView):
         # Build result embed
         sigil_label = sigil_type.replace("_", " ").title()
         lines = [
-            f"💰 **{rewards['gold']:,}** gold",
+            f"{GOLD_COIN} **{rewards['gold']:,}** gold",
             f"🔮 **{sigil_count}×** {sigil_label}",
         ]
         if rewards["guild_ticket"]:

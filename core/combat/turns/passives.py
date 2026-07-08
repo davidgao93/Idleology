@@ -2,6 +2,7 @@ import random
 from typing import Dict
 
 from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
+from core.emojis import GOLD_COIN
 from core.models import Monster, Player
 
 
@@ -89,7 +90,7 @@ def _cs_unlimited_wealth(player, monster):
         return
     mult = 2 if monster.is_boss else 5
     player.bonus_rarity += base * (mult - 1)
-    return f"💰 **Unlimited Wealth** strikes gold! Rarity ×{mult} ({base:,} → {base * mult:,})"
+    return f"{GOLD_COIN} **Unlimited Wealth** strikes gold! Rarity ×{mult} ({base:,} → {base * mult:,})"
 
 
 def _cs_absorb(player, monster):
@@ -435,7 +436,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
                 bonus = int(base * bonus_pct / 100)
                 player.bonus_rarity += bonus
                 log.append(
-                    f"💰 **Soul Unlimited Wealth T{ss_unlimited}** — "
+                    f"{GOLD_COIN} **Soul Unlimited Wealth T{ss_unlimited}** — "
                     f"+{bonus_pct}% Rarity! (+{bonus})"
                 )
 
