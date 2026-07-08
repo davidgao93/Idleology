@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `prestige_flair`              TEXT NOT NULL DEFAULT 'none',
   `prestige_death_message`      TEXT DEFAULT NULL,
   `prestige_monument`           TEXT DEFAULT NULL,
+  `prestige_emblem`             TEXT DEFAULT NULL,
 
   -- Timestamps
   `last_combat`                 TIMESTAMP DEFAULT NULL,

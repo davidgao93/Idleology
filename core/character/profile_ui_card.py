@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
+from core.character.prestige_display import format_prestige_name
 from core.items.factory import load_player
 
 
@@ -19,11 +20,26 @@ class CardProfileBuilder:
     async def build_card(bot, user_id: str, server_id: str) -> discord.Embed:
         user = await bot.database.users.get(user_id, server_id)
         followers = await bot.database.social.get_follower_count(user["ideology"])
+        active = await bot.database.prestige.get_active(user_id)
 
         embed = discord.Embed(title="Adventurer License", color=discord.Color.gold())
         embed.set_thumbnail(url=user["appearance"])
 
-        embed.add_field(name="Name", value=f"**{user['name']}**", inline=True)
+        display_name = active.get("display_name") or user["name"]
+        title_text = active.get("title") or ""
+        if title_text == "none":
+            title_text = ""
+        emblem_emoji = ""
+        emblem_key = active.get("emblem") or ""
+        if emblem_key:
+            from core.emojis import EMBLEM_CATALOG
+
+            entry = EMBLEM_CATALOG.get(emblem_key)
+            if entry:
+                emblem_emoji = entry[1]
+        name_str = format_prestige_name(display_name, title_text, emblem_emoji)
+
+        embed.add_field(name="Name", value=f"**{name_str}**", inline=True)
         embed.add_field(
             name="Level",
             value=f"{user['level']} (Ascension {user['ascension']})",

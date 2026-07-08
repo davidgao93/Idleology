@@ -34,6 +34,7 @@ from core.emojis import (
     VOID_FRAG,
     VOID_KEY,
 )
+from core.character.prestige_display import format_prestige_name
 from core.images import COMBAT_VICTORY
 from core.items.models import _PART_SLOT_LABELS
 from core.models import Monster, Player
@@ -84,9 +85,12 @@ def create_victory_embed(
     """
     cfg = cfg or {}
 
+    prestige_name = format_prestige_name(
+        player.name, player.prestige_title, player.prestige_emblem
+    )
     embed = discord.Embed(
         title=cfg.get("title", "Victory! 🎉"),
-        description=f"{player.name} has slain the {monster.name} with {player.current_hp:,} ❤️ remaining in {monster.combat_round} turn{'s' if monster.combat_round != 1 else ''}!",
+        description=f"{prestige_name} has slain the {monster.name} with {player.current_hp:,} ❤️ remaining in {monster.combat_round} turn{'s' if monster.combat_round != 1 else ''}!",
         color=0x00FF00,
     )
     embed.set_thumbnail(url=cfg.get("thumbnail_url") or COMBAT_VICTORY)

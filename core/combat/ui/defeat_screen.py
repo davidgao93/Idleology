@@ -7,6 +7,7 @@ Provides:
 
 import discord
 
+from core.character.prestige_display import format_prestige_name
 from core.images import COMBAT_REDEMPTION
 from core.models import Monster, Player
 
@@ -35,9 +36,12 @@ def create_defeat_embed(
     killing_blow_str = (
         f" (**{killing_blow:,}** killing blow)" if killing_blow > 0 else ""
     )
+    prestige_name = format_prestige_name(
+        player.name, player.prestige_title, player.prestige_emblem
+    )
     description = (
         f"The {monster.name} deals a fatal blow{killing_blow_str}!\n"
-        f"{player.name} has been defeated after dealing {total_damage_dealt:,} damage.\n"
+        f"{prestige_name} has been defeated after dealing {total_damage_dealt:,} damage.\n"
         f"The {monster.name} leaves with {monster.hp:,} health remaining.\n"
         f"Death 💀 takes away {lost_xp:,} XP from your essence..." + description_extra
     )
@@ -64,7 +68,7 @@ def create_defeat_embed(
 
     embed.add_field(
         name="🪽 Redemption 🪽",
-        value=f"({player.name} revives with 1 HP.)",
+        value=f"({prestige_name} revives with 1 HP.)",
         inline=False,
     )
     embed.set_thumbnail(url=COMBAT_REDEMPTION)

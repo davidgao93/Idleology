@@ -242,9 +242,10 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     # so user_data supports both named access and integer indexing. Named access
     # is used here so column insertions/reorderings in schema.sql never silently
     # corrupt stats.
+    display_name = _gcol(user_data, "prestige_display_name") or user_data["name"]
     player = Player(
         id=user_id,
-        name=user_data["name"],
+        name=display_name,
         level=user_data["level"],
         ascension=user_data["ascension"],
         exp=user_data["experience"],
@@ -254,6 +255,17 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         base_defence=user_data["defence"],
         potions=user_data["potions"],
     )
+
+    prestige_title = _gcol(user_data, "prestige_title")
+    if prestige_title and prestige_title != "none":
+        player.prestige_title = prestige_title
+    emblem_key = _gcol(user_data, "prestige_emblem")
+    if emblem_key:
+        from core.emojis import EMBLEM_CATALOG
+
+        entry = EMBLEM_CATALOG.get(emblem_key)
+        if entry:
+            player.prestige_emblem = entry[1]
 
     server_id = user_data["server_id"]
 

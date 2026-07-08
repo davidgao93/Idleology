@@ -213,6 +213,17 @@ _VOICES: dict[str, list[str]] = {
         "Progress requires boldness. It also requires not drinking unlabeled substances. Keep both in mind.",
         "I see you've survived long enough to return. Encouraging.",
     ],
+    # ── Prestige ──────────────────────────────────────────────────────────────
+    "prestige": [
+        "Hello, Adventurer. All that gold weighing down your pockets — let's find it a better home, shall we?",
+        "You've clearly got more gold than sense. Come, let Eliza help you spend some of it in style.",
+        "Ah, a wealthy face. The vaults only get heavier if you let them, you know. Let's lighten the load.",
+        "Gold sitting idle is just gold wasted, Adventurer. I deal exclusively in the finer things — let's talk business.",
+        "You didn't fight your way this far just to look the same as everyone else. Let's fix that.",
+        "Excess gold has a funny way of finding my counter eventually. Might as well be today.",
+        "Welcome, welcome. I don't do potions or trinkets — I do legacy. And legacy isn't cheap.",
+        "Every adventurer of means ends up here sooner or later. Glad you didn't keep me waiting.",
+    ],
     # ── Settlement ────────────────────────────────────────────────────────────
     "black_market": [
         "Max tilts his head. 'What have you brought me today?'",

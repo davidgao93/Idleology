@@ -467,6 +467,10 @@ class Player:
     stat_invest_hp: int = 0
     stat_invest_gold: int = 0
 
+    # Prestige cosmetics — loaded at session start; see core/character/prestige_display.py
+    prestige_title: str = ""
+    prestige_emblem: str = ""
+
     # Per-combat transient state — reset via reset_combat_state()
     cs: CombatState = field(default_factory=CombatState)
 

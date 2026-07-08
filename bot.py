@@ -217,6 +217,8 @@ class DiscordBot(commands.Bot):
                 # Corrupted Monsters / Paradise moved to level 70: new player settings.
                 "ALTER TABLE users ADD COLUMN corrupted_encounters_enabled INTEGER NOT NULL DEFAULT 1",
                 "ALTER TABLE users ADD COLUMN auto_potion_reload INTEGER NOT NULL DEFAULT 0",
+                # Prestige rework: emoji "Emblem" cosmetic (replaces title/flair catalogues).
+                "ALTER TABLE users ADD COLUMN prestige_emblem TEXT DEFAULT NULL",
             ]:
                 try:
                     await db.execute(stmt)

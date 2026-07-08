@@ -11,6 +11,7 @@ from typing import Dict
 
 import discord
 
+from core.character.prestige_display import format_prestige_name
 from core.emojis import QUENCH, STAT_ATK, STAT_DEF, STAT_FDR, STAT_HP, STAT_PDR, STAT_WARD
 from core.models import Monster, Player
 
@@ -477,15 +478,19 @@ def create_combat_layout(
 
     description = f"A level **{monster.level}** {monster.name} approaches!{mod_text}"
 
+    prestige_name = format_prestige_name(
+        player.name, player.prestige_title, player.prestige_emblem
+    )
+
     is_essence = getattr(monster, "is_essence", False)
     if is_uber:
         title = "UBER ENCOUNTER"
         accent = discord.Color.gold()
     elif is_essence:
-        title = title_override or f"Witness {player.name} (Level {player.level})"
+        title = title_override or f"Witness {prestige_name} (Level {player.level})"
         accent = discord.Color.from_rgb(255, 255, 255)
     else:
-        title = title_override or f"Witness {player.name} (Level {player.level})"
+        title = title_override or f"Witness {prestige_name} (Level {player.level})"
         accent = discord.Color.green()
 
     children: list = [discord.ui.TextDisplay(f"## {title}\n{description}")]
@@ -504,7 +509,7 @@ def create_combat_layout(
     # One stat line per combatant instead of two — still fully readable
     # pipe-separated, just without the extra line break.
     player_text = (
-        f"### 🧠 {player.name}\n"
+        f"### 🧠 {prestige_name}\n"
         f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
         f"{STAT_ATK} {p_atk:,} | {STAT_DEF} {p_def:,} | 🎯 ~{p_hit}% | 🗡️ {p_crit}%{_mit_suffix}"
     )
@@ -633,6 +638,10 @@ def create_combat_embed(
 
     description = f"A level **{monster.level}** {monster.name} approaches!{mod_text}"
 
+    prestige_name = format_prestige_name(
+        player.name, player.prestige_title, player.prestige_emblem
+    )
+
     # UBER OVERRIDES
     is_essence = getattr(monster, "is_essence", False)
     if is_uber:
@@ -642,14 +651,14 @@ def create_combat_embed(
         title = (
             title_override
             if title_override
-            else f"Witness {player.name} (Level {player.level})"
+            else f"Witness {prestige_name} (Level {player.level})"
         )
         color = 0xFFFFFF  # White — Calcified monster
     else:
         title = (
             title_override
             if title_override
-            else f"Witness {player.name} (Level {player.level})"
+            else f"Witness {prestige_name} (Level {player.level})"
         )
         color = 0x00FF00  # Green
 
@@ -676,7 +685,7 @@ def create_combat_embed(
     _mit_line = ("\n" + " | ".join(_mit_parts)) if _mit_parts else ""
 
     embed.add_field(
-        name=f"🧠 {player.name}",
+        name=f"🧠 {prestige_name}",
         value=(
             f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
             f"{STAT_ATK} {p_atk:,} | {STAT_DEF} {p_def:,}\n"

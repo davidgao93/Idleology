@@ -62,6 +62,9 @@ ARBITER_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1
 TESSARA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684191674896384/tessara_lapidary.jpg?ex=6a372d0c&is=6a35db8c&hm=d658e0bb24bc7c85df495988027ba5cd6d16397b1f4cf5865af4a2f5fae62001&"
 TESSARA_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1517684191926419476/tessara_lapidary_portrait.jpg?ex=6a372d0c&is=6a35db8c&hm=02bf22c965b775160c5ab2f48efce90edc46f1c4aeee6c11e86f453d2bb2fe19&"
 
+ELIZA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1524391542804975686/prestige_vendor.jpg?ex=6a4f93c1&is=6a4e4241&hm=fc19ec93fa4a24f987ec225d92a694223a5199316aa9e03b875ac93d9f66e017&"
+ELIZA_PORTRAIT = "https://cdn.discordapp.com/attachments/1334637411363323996/1524391543023206561/prestige_vendor_profile.jpg?ex=6a4f93c1&is=6a4e4241&hm=13b54f4955129130e6dd3161611345ae9e68242b3425eedfabf90a0095ab94e4&"
+
 # ── COMBAT ────────────────────────────────────────────────────────────────────
 COMBAT_VICTORY = "https://cdn.discordapp.com/attachments/1334637411363323996/1521926282831724674/combat_victory.png?ex=6a469bcd&is=6a454a4d&hm=dc26b97e719a462648394e6988d92487bb4e069139823a775ef5590fd74774a2&"
 COMBAT_REDEMPTION = "https://cdn.discordapp.com/attachments/1334637411363323996/1521926291178262649/combat_redemption.png?ex=6a469bcf&is=6a454a4f&hm=f0084a2b079e1126beb4e0c9d1a058a518654ce16e6f160345dd041aadfb5d07&"

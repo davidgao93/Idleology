@@ -32,7 +32,7 @@ class PrestigeRepository:
     async def get_active(self, user_id: str) -> dict:
         cursor = await self.connection.execute(
             """SELECT prestige_border, prestige_title, prestige_display_name,
-                      prestige_flair, prestige_death_message, prestige_monument
+                      prestige_emblem, prestige_monument
                FROM users WHERE user_id = ?""",
             (user_id,),
         )
@@ -43,8 +43,7 @@ class PrestigeRepository:
             "border": row["prestige_border"],
             "title": row["prestige_title"],
             "display_name": row["prestige_display_name"],
-            "flair": row["prestige_flair"],
-            "death_message": row["prestige_death_message"],
+            "emblem": row["prestige_emblem"],
             "monument": row["prestige_monument"],
         }
 
@@ -53,8 +52,7 @@ class PrestigeRepository:
             "prestige_border",
             "prestige_title",
             "prestige_display_name",
-            "prestige_flair",
-            "prestige_death_message",
+            "prestige_emblem",
             "prestige_monument",
         }
         if field not in valid:
@@ -66,7 +64,8 @@ class PrestigeRepository:
 
     async def get_monument_hall(self, server_id: str, limit: int = 10) -> list:
         cursor = await self.connection.execute(
-            """SELECT name, prestige_monument, prestige_title, level
+            """SELECT name, prestige_monument, prestige_title, prestige_display_name,
+                      prestige_emblem, level
                FROM users
                WHERE server_id = ? AND prestige_monument IS NOT NULL AND prestige_monument != ''
                ORDER BY level DESC
