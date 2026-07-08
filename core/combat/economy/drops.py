@@ -332,8 +332,8 @@ async def apply_incubated_monster_drops(
         "evolutionary": "Evolutionary 🧬",
         "mutative": "Mutative ☣️",
     }
-    reward_data.setdefault("special", [])
-    reward_data["special"].append(
+    reward_data.setdefault("msgs", [])
+    reward_data["msgs"].append(
         f"🩸 Incubated monster dropped **{blood_amount:,}x {blood_names[blood_type]}** blood!"
     )
 
@@ -411,7 +411,7 @@ async def apply_corrupted_monster_drops(
 
     # Guaranteed first sigil
     await bot.database.uber.increment_corruption_sigils(user_id, server_id, 1)
-    reward_data["special"].append("☠️ Sigil of Corruption")
+    reward_data["special"].append("Sigil of Corruption")
 
     # Corruption Shrine: bonus second sigil chance
     _, corruption_workers = await bot.database.settlement.get_building_details(
@@ -432,7 +432,7 @@ async def apply_corrupted_monster_drops(
             corruption_workers * SIGIL_WORKER_MULTIPLIER * shrine_eff
         ):
             await bot.database.uber.increment_corruption_sigils(user_id, server_id, 1)
-            reward_data["special"].append("☠️ Sigil of Corruption")
+            reward_data["special"].append("Sigil of Corruption")
 
     if random.random() < CORRUPTED_PARADISE_JEWEL_CHANCE:
         await bot.database.uber.increment_paradise_jewels(user_id, server_id, 1)

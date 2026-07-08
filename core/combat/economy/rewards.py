@@ -519,7 +519,7 @@ async def apply_special_flags(
 
         elif key == "guild_ticket":
             await bot.database.partners.add_tickets(user_id, 1)
-            reward_data["special"].append("🎫 Guild Ticket")
+            reward_data["special"].append("Guild Ticket")
 
         elif key == "velour_doubled":
             reward_data["special"] = reward_data["special"] * 2
