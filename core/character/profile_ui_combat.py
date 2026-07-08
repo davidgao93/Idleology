@@ -206,7 +206,7 @@ class CombatProfileBuilder:
             crit_val += f"\n↳ Bonuses: {crit_bonuses:+}"
         if cb["crit"]:
             crit_val += f"\n↳ Combat start: {cb['crit']:+}"
-        embed.add_field(name="🎯 Crit Chance", value=crit_val, inline=True)
+        embed.add_field(name="🗡️ Crit Chance", value=crit_val, inline=True)
 
         # ── Crit Multiplier ──────────────────────────────────────────────────
         weapon_base_multi = p.equipped_weapon.crit_multi if p.equipped_weapon else 2.0

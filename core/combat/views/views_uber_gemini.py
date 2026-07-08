@@ -6,6 +6,7 @@ from core.combat.mobgen.gen_mob import generate_uber_gemini
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
+from core.emojis import BOUND_ENGRAM, BOUND_SIGIL
 from core.images import BOSS_GEMINI
 from core.models import Monster, Player
 
@@ -65,7 +66,7 @@ class UberGeminiLobbyView(BaseView):
             "You approach two chubby kids. A voice — no, two voices, perfectly in time:\n"
             '*"We are balance made flesh. For every blow you land, we answer in kind."*\n'
             '*"You think to yourself, I need to layoff the drugs..."*\n\n'
-            f"**Entry Cost:** 3 Bound Sigils\n"
+            f"**Entry Cost:** 3 {BOUND_SIGIL} Bound Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "⚡ **Balanced Protection** — globally reduces all incoming damage by 60%.\n"
@@ -79,7 +80,7 @@ class UberGeminiLobbyView(BaseView):
             else "🔒 Locked"
         )
         embed.add_field(
-            name="Bound Engrams",
+            name=f"{BOUND_ENGRAM} Bound Engrams",
             value=str(self.uber_data.get("gemini_engrams", 0)),
             inline=True,
         )

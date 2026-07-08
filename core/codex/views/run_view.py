@@ -577,7 +577,7 @@ class CodexRunView(BaseView):
         stats_block = (
             f"{STAT_ATK} ATK: **{atk:,}**  {STAT_DEF} DEF: **{def_:,}**\n"
             f"{hp_line}\n"
-            f"🎯 Hit: **{hit_total}%**  Crit: **{crit_chance}%**  ×{crit_multi:.2f}"
+            f"🎯 Hit: **{hit_total}%**  🗡️ Crit: **{crit_chance}%**  ×{crit_multi:.2f}"
         )
         if fdr > 0 or pdr > 0:
             stats_block += f"\n{STAT_FDR} FDR: **{fdr}**  {STAT_PDR} PDR: **{pdr}%**"

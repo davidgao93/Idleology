@@ -6,6 +6,7 @@ from core.combat.mobgen.gen_mob import generate_uber_evelynn
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
+from core.emojis import CORRUPTION_ENGRAM, CORRUPTION_SIGIL
 from core.images import CORRUPTION_GATE
 from core.models import Monster
 
@@ -64,7 +65,7 @@ class UberEvelynnLobbyView(BaseView):
         desc = (
             "The air itself rots as you approach. A voice without sound fills your mind:\n"
             '*"I was here before the first sin. I will remain after the last breath."*\n\n'
-            f"**Entry Cost:** 3 Sigils of Corruption\n"
+            f"**Entry Cost:** 3 {CORRUPTION_SIGIL} Sigils of Corruption\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "☠️ **Corrupted Protection** — globally reduces all incoming damage by 60%.\n"
@@ -79,7 +80,7 @@ class UberEvelynnLobbyView(BaseView):
             else "🔒 Locked"
         )
         embed.add_field(
-            name="Corruption Engrams",
+            name=f"{CORRUPTION_ENGRAM} Corruption Engrams",
             value=str(self.uber_data.get("corruption_engrams", 0)),
             inline=True,
         )

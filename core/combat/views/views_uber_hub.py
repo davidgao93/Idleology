@@ -3,6 +3,13 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
+from core.emojis import (
+    BOUND_SIGIL,
+    CELESTIAL_SIGIL,
+    CORRUPTION_SIGIL,
+    INFERNAL_SIGIL,
+    VOID_SIGIL,
+)
 from core.images import ARBITER_PORTRAIT, ARBITER_THUMBNAIL
 from core.npc_voices import get_quip
 from core.models import Player
@@ -150,7 +157,7 @@ class UberHubView(BaseLayoutView):
             value=_boss_field(
                 "aphrodite",
                 "Aphrodite's fury has been unleashed.",
-                f"{self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*",
+                f"{CELESTIAL_SIGIL} {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*",
                 self._BOSS_LEVELS["aphrodite"],
             ),
             inline=False,
@@ -160,7 +167,7 @@ class UberHubView(BaseLayoutView):
             value=_boss_field(
                 "lucifer",
                 "Lucifer's fury knows no bounds.",
-                f"{self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*",
+                f"{INFERNAL_SIGIL} {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*",
                 self._BOSS_LEVELS["lucifer"],
             ),
             inline=False,
@@ -170,7 +177,7 @@ class UberHubView(BaseLayoutView):
             value=_boss_field(
                 "gemini",
                 "The Gemini's balance is absolute.",
-                f"{self.uber_data['gemini_sigils']} Bound Sigils *(costs 3)*",
+                f"{BOUND_SIGIL} {self.uber_data['gemini_sigils']} Bound Sigils *(costs 3)*",
                 self._BOSS_LEVELS["gemini"],
             ),
             inline=False,
@@ -180,7 +187,7 @@ class UberHubView(BaseLayoutView):
             value=_boss_field(
                 "neet",
                 "NEET's pain has no known depths.",
-                f"{self.uber_data['void_shards']} Void Sigils *(costs 3)*",
+                f"{VOID_SIGIL} {self.uber_data['void_shards']} Void Sigils *(costs 3)*",
                 self._BOSS_LEVELS["neet"],
             ),
             inline=False,
@@ -190,7 +197,7 @@ class UberHubView(BaseLayoutView):
             value=_boss_field(
                 "evelynn",
                 "The source of all corruption stirs.",
-                f"{self.uber_data['corruption_sigils']} Sigils of Corruption *(costs 3)*",
+                f"{CORRUPTION_SIGIL} {self.uber_data['corruption_sigils']} Sigils of Corruption *(costs 3)*",
                 self._BOSS_LEVELS["evelynn"],
             ),
             inline=False,

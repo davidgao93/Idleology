@@ -7,6 +7,7 @@ from core.emojis import (
     ACCESSORY_SLOT,
     ARMOR_SLOT,
     BOOT_SLOT,
+    GEAR_BACKPACK,
     GLOVE_SLOT,
     HELMET_SLOT,
     STAT_ATK,
@@ -99,7 +100,7 @@ def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     embed.add_field(name="🎯 Hit Chance", value=f"{hit_pct}%", inline=True)
     crit_pct = int(getattr(item, "crit_chance", 0.00) * 100)
     if crit_pct > 0:
-        embed.add_field(name="⚡ Crit Chance", value=f"+{crit_pct}%", inline=True)
+        embed.add_field(name="🗡️ Crit Chance", value=f"+{crit_pct}%", inline=True)
     crit_multi = getattr(item, "crit_multi", 2.00)
     embed.add_field(name="💥 Crit Multi", value=f"{crit_multi:.2f}x", inline=True)
 
@@ -293,7 +294,7 @@ def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
     if getattr(item, "ward", 0):
         embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
     if getattr(item, "crit", 0):
-        embed.add_field(name="🎯 Crit", value=f"{item.crit:,}", inline=True)
+        embed.add_field(name="🗡️ Crit", value=f"{item.crit:,}", inline=True)
     embed.add_field(
         name="Enchants Remaining", value=str(item.potential_remaining), inline=True
     )
@@ -518,7 +519,7 @@ class InventoryUI:
         if getattr(item, "ward", 0) > 0:
             parts.append(f"{STAT_WARD} Ward: {item.ward}%")
         if getattr(item, "crit", 0) > 0:
-            parts.append(f"🎯 Crit: {item.crit}")
+            parts.append(f"🗡️ Crit: {item.crit}")
         if getattr(item, "block", 0) > 0:
             parts.append(f"{STAT_BLOCK} Block: {item.block}%")
         if getattr(item, "evasion", 0) > 0:
@@ -620,7 +621,7 @@ class InventoryUI:
                 line = f"**→ {line}**"
             lines.append(line)
 
-        embed.add_field(name="Gear Overview", value="\n".join(lines), inline=False)
+        embed.add_field(name=f"{GEAR_BACKPACK} Gear", value="\n".join(lines), inline=False)
 
         if total_pages > 1:
             embed.set_footer(

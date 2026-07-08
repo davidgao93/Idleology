@@ -6,6 +6,7 @@ from core.combat.mobgen.gen_mob import generate_uber_aphrodite
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
+from core.emojis import CELESTIAL_ENGRAM, CELESTIAL_SIGIL
 from core.images import BOSS_APHRODITE
 from core.models import Monster, Player
 
@@ -61,7 +62,7 @@ class UberAphroditeLobbyView(BaseView):
 
         desc = (
             "A chibi angel appears and says: ME HUNGRY, FEED ME SIGILS!\n\n"
-            f"**Entry Cost:** 3 Celestial Sigils\n"
+            f"**Entry Cost:** 3 {CELESTIAL_SIGIL} Celestial Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "🛡️ **Radiant Protection** — globally reduces all incoming damage by 60%.\n"
@@ -75,7 +76,7 @@ class UberAphroditeLobbyView(BaseView):
             else "🔒 Locked"
         )
         embed.add_field(
-            name="Celestial Engrams",
+            name=f"{CELESTIAL_ENGRAM} Celestial Engrams",
             value=str(self.uber_data["celestial_engrams"]),
             inline=True,
         )

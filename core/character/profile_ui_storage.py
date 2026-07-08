@@ -13,11 +13,21 @@ from core.emojis import (
     BARS_REFINED,
     BLESSED_BISMUTH,
     BOOT_SLOT,
+    BOUND_CRYSTAL,
+    BOUND_ENGRAM,
+    BOUND_SIGIL,
     CAPRICIOUS_CARP,
+    CELESTIAL_ENGRAM,
+    CELESTIAL_SIGIL,
+    CELESTIAL_STONE,
     COAL_ORE,
     CONSUME_ICON,
+    CORRUPTION_CORE,
+    CORRUPTION_ENGRAM,
+    CORRUPTION_SIGIL,
     CURIO,
     DESICCATED_BONES,
+    DEVELOPMENT_CONTRACT,
     DIVINER_ROD,
     DRAGON_KEY,
     ESSENCE_COMMON,
@@ -30,6 +40,9 @@ from core.emojis import (
     HELMET_SLOT,
     IDEA_LOGS,
     IDEA_ORE,
+    INFERNAL_CINDER,
+    INFERNAL_ENGRAM,
+    INFERNAL_SIGIL,
     IRON_ORE,
     LIFE_ROOT,
     MAGIC_LOGS,
@@ -42,6 +55,7 @@ from core.emojis import (
     PUZZLE_BOX,
     REGULAR_BONES,
     REINFORCED_BONES,
+    RUNE_GENERIC,
     RUNE_IMBUE,
     RUNE_MIRAGE_IMPERFECT,
     RUNE_MIRAGE_PERFECT,
@@ -58,10 +72,14 @@ from core.emojis import (
     STURDY_BONES,
     TIDE_RELIC,
     TITANIUM_BONES,
+    VOID_CRYSTAL,
+    VOID_ENGRAM,
     VOID_FRAG,
     VOID_KEY,
+    VOID_SIGIL,
     WEAPON_SLOT,
     WILLOW_LOGS,
+    WOODEN_PLANKS,
 )
 
 
@@ -186,7 +204,7 @@ class StorageProfileBuilder:
         embed.set_thumbnail(url=user["appearance"])
 
         embed.add_field(
-            name=f"{RUNE_REFINEMENT} **Runes**",
+            name=f"{RUNE_GENERIC} **Runes**",
             value=(
                 f"{RUNE_REFINEMENT} Refinement: {ref_runes}\n{RUNE_POTENTIAL} Potential: {pot_runes}\n{RUNE_IMBUE} Imbuing: {imbue_runes}\n"
                 f"{RUNE_SHATTER} Shatter: {shat_runes}\n{RUNE_PARTNERSHIP} Partnership: {r_partner}\n{RUNE_REGRET} Regret: {r_regret}\n"
@@ -196,7 +214,7 @@ class StorageProfileBuilder:
         )
 
         embed.add_field(
-            name=f"{VOID_KEY} **Void Keys**",
+            name="⭐ **Special**",
             value=f"{VOID_KEY} Void Keys: {void_keys}",
             inline=True,
         )
@@ -301,6 +319,9 @@ class StorageProfileBuilder:
             ],
         )
         rares = await bot.database.settlement_materials.get_rare_materials(user_id)
+        dev_contracts = await bot.database.settlement.get_development_contracts(
+            user_id, server_id
+        )
 
         mastery_row = await bot.database.skills.get_mastery(user_id, server_id)
         geode_cores = mastery_row.get("geode_cores", 0) or 0
@@ -320,11 +341,11 @@ class StorageProfileBuilder:
 
         gathering_value = (
             f"**Ores:** {IRON_ORE} Iron {ores[0]:,} · {COAL_ORE} Coal {ores[1]:,} · {GOLD_ORE} Gold {ores[2]:,} · "
-            f"{PLATINUM_ORE} Plat {ores[3]:,} · {IDEA_ORE} Idea {ores[4]:,}\n"
+            f"{PLATINUM_ORE} Plat {ores[3]:,} · {IDEA_ORE} Idea {ores[4]:,}\n\n"
             f"**Logs:** {OAK_LOGS} Oak {logs[0]:,} · {WILLOW_LOGS} Willow {logs[1]:,} · {MAHOGANY_LOGS} Mahog {logs[2]:,} · "
-            f"{MAGIC_LOGS} Magic {logs[3]:,} · {IDEA_LOGS} Idea {logs[4]:,}\n"
+            f"{MAGIC_LOGS} Magic {logs[3]:,} · {IDEA_LOGS} Idea {logs[4]:,}\n\n"
             f"**Bones:** {DESICCATED_BONES} Desic {bones[0]:,} · {REGULAR_BONES} Reg {bones[1]:,} · {STURDY_BONES} Sturdy {bones[2]:,} · "
-            f"{REINFORCED_BONES} Reinf {bones[3]:,} · {TITANIUM_BONES} Titan {bones[4]:,}\n"
+            f"{REINFORCED_BONES} Reinf {bones[3]:,} · {TITANIUM_BONES} Titan {bones[4]:,}\n\n"
             f"**Elemental Keys:** {BLESSED_BISMUTH} Bismuth: {blessed_bismuth} · {SPARKLING_SPRIG} Sprig: {sparkling_sprig} · {CAPRICIOUS_CARP} Carp: {capricious_carp}"
         )
         embed.add_field(name="⛏️ Gathering", value=gathering_value, inline=False)
@@ -340,12 +361,13 @@ class StorageProfileBuilder:
         )
 
         settlement_value = (
-            f"🪵 Timber: {settlement.timber:,} · 🪨 Stone: {settlement.stone:,}\n"
-            f"**{BARS_REFINED} Ingots:** Iron {ingots[0]:,} · Steel {ingots[1]:,} · Gold {ingots[2]:,} · Plat {ingots[3]:,} · Idea {ingots[4]:,}\n"
-            f"**Planks:** Oak {planks[0]:,} · Willow {planks[1]:,} · Mahog {planks[2]:,} · Magic {planks[3]:,} · Idea {planks[4]:,}\n"
-            f"**Essence:** Desic {essence[0]:,} · Reg {essence[1]:,} · Sturdy {essence[2]:,} · Reinf {essence[3]:,} · Titan {essence[4]:,}\n"
-            f"**Rare Materials:** {MAGMA_CORE} Magma Core: {rares[0]} · {LIFE_ROOT} Life Root: {rares[1]} · {SPIRIT_SHARD} Spirit Shard: {rares[2]}\n"
-            f"📋 Blueprints: {blueprint_count} · {DIVINER_ROD} Diviner's Rods: {mat_all.get('diviners_rod', 0)}"
+            f"🪵 Timber: {settlement.timber:,} · 🪨 Stone: {settlement.stone:,}\n\n"
+            f"**{BARS_REFINED} Ingots:** Iron {ingots[0]:,} · Steel {ingots[1]:,} · Gold {ingots[2]:,} · Plat {ingots[3]:,} · Idea {ingots[4]:,}\n\n"
+            f"**{WOODEN_PLANKS} Planks:** Oak {planks[0]:,} · Willow {planks[1]:,} · Mahog {planks[2]:,} · Magic {planks[3]:,} · Idea {planks[4]:,}\n\n"
+            f"**Essence:** Desic {essence[0]:,} · Reg {essence[1]:,} · Sturdy {essence[2]:,} · Reinf {essence[3]:,} · Titan {essence[4]:,}\n\n"
+            f"**Rare Materials:** {MAGMA_CORE} Magma Core: {rares[0]} · {LIFE_ROOT} Life Root: {rares[1]} · {SPIRIT_SHARD} Spirit Shard: {rares[2]}\n\n"
+            f"📋 Blueprints: {blueprint_count} · {DIVINER_ROD} Diviner's Rods: {mat_all.get('diviners_rod', 0)} · "
+            f"{DEVELOPMENT_CONTRACT} Development Contracts: {dev_contracts:,}"
         )
         embed.add_field(name="🏭 Settlement", value=settlement_value, inline=False)
 
@@ -366,9 +388,9 @@ class StorageProfileBuilder:
         embed.add_field(
             name="**Aphrodite**",
             value=(
-                f"🔮 Celestial Sigils: {uber_data['celestial_sigils']}\n"
-                f"💠 Celestial Engrams: {uber_data['celestial_engrams']}\n"
-                f"🪨 Celestial Stone: {specials[0]}\n"
+                f"{CELESTIAL_SIGIL} Celestial Sigils: {uber_data['celestial_sigils']}\n"
+                f"{CELESTIAL_ENGRAM} Celestial Engrams: {uber_data['celestial_engrams']}\n"
+                f"{CELESTIAL_STONE} Celestial Stone: {specials[0]}\n"
                 f"📜 Celestial Statue Blueprint: {bp_status}"
             ),
             inline=True,
@@ -380,9 +402,9 @@ class StorageProfileBuilder:
         embed.add_field(
             name="**Lucifer**",
             value=(
-                f"🔥 Infernal Sigils: {uber_data['infernal_sigils']}\n"
-                f"🔴 Infernal Engrams: {uber_data['infernal_engrams']}\n"
-                f"🔥 Infernal Cinder: {specials[1]}\n"
+                f"{INFERNAL_SIGIL} Infernal Sigils: {uber_data['infernal_sigils']}\n"
+                f"{INFERNAL_ENGRAM} Infernal Engrams: {uber_data['infernal_engrams']}\n"
+                f"{INFERNAL_CINDER} Infernal Cinder: {specials[1]}\n"
                 f"📜 Infernal Statue Blueprint: {infernal_bp_status}"
             ),
             inline=True,
@@ -396,9 +418,9 @@ class StorageProfileBuilder:
         embed.add_field(
             name="**NEET**",
             value=(
-                f"⬛ Void Sigils: {uber_data.get('void_shards', 0)}\n"
-                f"🔮 Void Engrams: {uber_data.get('void_engrams', 0)}\n"
-                f"💎 Void Crystal: {specials[2]}\n"
+                f"{VOID_SIGIL} Void Sigils: {uber_data.get('void_shards', 0)}\n"
+                f"{VOID_ENGRAM} Void Engrams: {uber_data.get('void_engrams', 0)}\n"
+                f"{VOID_CRYSTAL} Void Crystal: {specials[2]}\n"
                 f"📜 Void Statue Blueprint: {void_bp_status}"
             ),
             inline=True,
@@ -412,9 +434,9 @@ class StorageProfileBuilder:
         embed.add_field(
             name="**Gemini**",
             value=(
-                f"♊ Bound Sigils: {uber_data.get('gemini_sigils', 0)}\n"
-                f"💠 Bound Engrams: {uber_data.get('gemini_engrams', 0)}\n"
-                f"🔷 Bound Crystal: {specials[3]}\n"
+                f"{BOUND_SIGIL} Bound Sigils: {uber_data.get('gemini_sigils', 0)}\n"
+                f"{BOUND_ENGRAM} Bound Engrams: {uber_data.get('gemini_engrams', 0)}\n"
+                f"{BOUND_CRYSTAL} Bound Crystal: {specials[3]}\n"
                 f"📜 Twin Statue Blueprint: {gemini_bp_status}"
             ),
             inline=True,
@@ -427,9 +449,9 @@ class StorageProfileBuilder:
         embed.add_field(
             name="**Evelynn**",
             value=(
-                f"☠️ Corruption Sigils: {uber_data.get('corruption_sigils', 0)}\n"
-                f"💠 Corruption Engrams: {uber_data.get('corruption_engrams', 0)}\n"
-                f"🌑 Corrupted Core: {specials[4]}\n"
+                f"{CORRUPTION_SIGIL} Corruption Sigils: {uber_data.get('corruption_sigils', 0)}\n"
+                f"{CORRUPTION_ENGRAM} Corruption Engrams: {uber_data.get('corruption_engrams', 0)}\n"
+                f"{CORRUPTION_CORE} Corrupted Core: {specials[4]}\n"
                 f"📜 Corrupted Statue Blueprint: {corrupted_bp_status}"
             ),
             inline=True,

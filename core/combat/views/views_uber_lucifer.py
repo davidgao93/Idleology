@@ -6,6 +6,7 @@ from core.combat.mobgen.gen_mob import generate_uber_lucifer
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
+from core.emojis import INFERNAL_ENGRAM, INFERNAL_SIGIL
 from core.images import BOSS_LUCIFER
 from core.models import Monster, Player
 
@@ -64,7 +65,7 @@ class UberLuciferLobbyView(BaseView):
             "A chibi Lucifer appears and squeaks:\n"
             '*"You dare enter my domain? I will grind your bones to ash."*\n'
             '*"Hand me your sigils and I may let you live..."*\n\n'
-            f"**Entry Cost:** 3 Infernal Sigils\n"
+            f"**Entry Cost:** 3 {INFERNAL_SIGIL} Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "🔥 **Infernal Protection** — globally reduces all incoming damage by 60%.\n"
@@ -78,7 +79,7 @@ class UberLuciferLobbyView(BaseView):
             else "🔒 Locked"
         )
         embed.add_field(
-            name="Infernal Engrams",
+            name=f"{INFERNAL_ENGRAM} Infernal Engrams",
             value=str(self.uber_data["infernal_engrams"]),
             inline=True,
         )
