@@ -107,7 +107,7 @@ async def _grant_level_60(bot, user_id: str, server_id: str) -> list:
 _SIGIL_POOL = [
     ("celestial", "Celestial Sigil"),
     ("infernal", "Infernal Sigil"),
-    ("gemini", "Gemini Sigil"),
+    ("gemini", "Bound Sigil"),
     ("corruption", "Corruption Sigil"),
 ]
 

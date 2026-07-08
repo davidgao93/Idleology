@@ -96,7 +96,7 @@ SPECIAL_MAP = {
     "infernal_shrine": "infernal_cinder",
     "void_shrine": "void_crystal",
     "twin_shrine": "bound_crystal",
-    "corruption_shrine": "corrupted_crystal",
+    "corruption_shrine": "corrupted_core",
 }
 
 ITEM_NAMES = {
@@ -107,7 +107,7 @@ ITEM_NAMES = {
     "infernal_cinder": "Infernal Cinder",
     "void_crystal": "Void Crystal",
     "bound_crystal": "Bound Crystal",
-    "corrupted_crystal": "Corrupted Crystal",
+    "corrupted_core": "Corrupted Core",
 }
 
 # Legacy individual shrine types (kept for DB backward-compat; new builds use uber_shrine)
@@ -212,8 +212,8 @@ UBER_STATUE_DEFS: dict[str, dict] = {
         "slot": 5,
         "blueprint_key": "corruption_blueprint_unlocked",
         "boss_name": "Evelynn",
-        "material": "corrupted_crystal",
-        "material_name": "Corrupted Crystal",
+        "material": "corrupted_core",
+        "material_name": "Corrupted Core",
         "material_qty": 1,
         "build_dt": 40,
         "sigil_key": "corruption_shrine",
@@ -351,7 +351,7 @@ BM_ITEM_VALUES: dict[str, int] = {
     "infernal_cinder": 1_250_000,
     "void_crystal": 1_250_000,
     "bound_crystal": 1_250_000,
-    "corrupted_crystal": 10_000_000,
+    "corrupted_core": 10_000_000,
     # Blueprints etc. — Valuables ×100
     "unidentified_blueprint": 100_000,
     "diviners_rod": 100_000,

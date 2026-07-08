@@ -65,7 +65,7 @@ class UberGeminiLobbyView(BaseView):
             "You approach two chubby kids. A voice — no, two voices, perfectly in time:\n"
             '*"We are balance made flesh. For every blow you land, we answer in kind."*\n'
             '*"You think to yourself, I need to layoff the drugs..."*\n\n'
-            f"**Entry Cost:** 3 Gemini Sigils\n"
+            f"**Entry Cost:** 3 Bound Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
             "⚡ **Balanced Protection** — globally reduces all incoming damage by 60%.\n"
@@ -79,7 +79,7 @@ class UberGeminiLobbyView(BaseView):
             else "🔒 Locked"
         )
         embed.add_field(
-            name="Gemini Engrams",
+            name="Bound Engrams",
             value=str(self.uber_data.get("gemini_engrams", 0)),
             inline=True,
         )
@@ -101,8 +101,7 @@ class UberGeminiLobbyView(BaseView):
         hub = UberHubView(
             self.bot, self.user_id, self.server_id, self.player, uber_data
         )
-        embed = hub.build_embed()
-        await interaction.edit_original_response(embed=embed, view=hub)
+        await interaction.edit_original_response(view=hub)
         hub.message = await interaction.original_response()
         self.stop()
 
@@ -118,7 +117,7 @@ class UberGeminiLobbyView(BaseView):
         if current_data["gemini_sigils"] < 3:
             self._processing = False
             return await interaction.response.send_message(
-                "You do not have enough Gemini Sigils.", ephemeral=True
+                "You do not have enough Bound Sigils.", ephemeral=True
             )
 
         await interaction.response.defer()

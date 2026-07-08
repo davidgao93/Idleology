@@ -166,11 +166,11 @@ class UberHubView(BaseLayoutView):
             inline=False,
         )
         embed.add_field(
-            name="♊ Castor & Pollux, Bound Sovereigns",
+            name="♊ Gemini, Bound Sovereigns",
             value=_boss_field(
                 "gemini",
                 "The Gemini's balance is absolute.",
-                f"{self.uber_data['gemini_sigils']} Gemini Sigils *(costs 3)*",
+                f"{self.uber_data['gemini_sigils']} Bound Sigils *(costs 3)*",
                 self._BOSS_LEVELS["gemini"],
             ),
             inline=False,

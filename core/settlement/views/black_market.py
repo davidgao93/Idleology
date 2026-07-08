@@ -84,7 +84,7 @@ _BM_RESOURCE_NAMES: list[list[tuple[str, str]]] = [
         ("infernal_cinder", "Infernal Cinder"),
         ("void_crystal", "Void Crystal"),
         ("bound_crystal", "Bound Crystal"),
-        ("corrupted_crystal", "Corrupted Crystal"),
+        ("corrupted_core", "Corrupted Core"),
         ("blessed_bismuth", "Blessed Bismuth"),
         ("sparkling_sprig", "Sparkling Sprig"),
         ("capricious_carp", "Capricious Carp"),
@@ -189,7 +189,7 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
             "infernal_cinder",
             "void_crystal",
             "bound_crystal",
-            "corrupted_crystal",
+            "corrupted_core",
             "blessed_bismuth",
             "sparkling_sprig",
             "capricious_carp",
@@ -217,6 +217,7 @@ _SETTLEMENT_MATERIAL_KEYS: frozenset[str] = frozenset(
         "bound_crystal",
         "diviners_rod",
         "unidentified_blueprint",
+        "corrupted_core",
     ]
 )
 _SKILL_RESOURCE_KEYS: frozenset[str] = frozenset(

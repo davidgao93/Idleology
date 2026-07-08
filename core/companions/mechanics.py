@@ -312,7 +312,7 @@ class CompanionMechanics:
         primary_type: str, primary_tier: int, current_balanced: str = "none"
     ) -> tuple:
         """
-        Rolls a secondary balanced passive for a companion awakened by a Gemini Engram.
+        Rolls a secondary balanced passive for a companion awakened by a Bound Engram.
         Type is always different from the primary passive and the current balanced passive.
         Tier = max(1, primary_tier - 2) — rewards higher-tier primaries.
         """

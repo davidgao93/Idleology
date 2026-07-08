@@ -97,8 +97,7 @@ class UberNEETLobbyView(BaseView):
         hub = UberHubView(
             self.bot, self.user_id, self.server_id, self.player, uber_data
         )
-        embed = hub.build_embed()
-        await interaction.edit_original_response(embed=embed, view=hub)
+        await interaction.edit_original_response(view=hub)
         hub.message = await interaction.original_response()
         self.stop()
 

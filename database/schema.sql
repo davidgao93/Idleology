@@ -846,7 +846,8 @@ CREATE TABLE IF NOT EXISTS settlement_materials (
   infernal_cinder       INTEGER NOT NULL DEFAULT 0,
   bound_crystal         INTEGER NOT NULL DEFAULT 0,
   diviners_rod          INTEGER NOT NULL DEFAULT 0,
-  unidentified_blueprint INTEGER NOT NULL DEFAULT 0
+  unidentified_blueprint INTEGER NOT NULL DEFAULT 0,
+  corrupted_core        INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS buildings (

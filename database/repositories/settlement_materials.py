@@ -15,6 +15,7 @@ _VALID_MATERIALS = frozenset(
         "bound_crystal",
         "diviners_rod",
         "unidentified_blueprint",
+        "corrupted_core",
     }
 )
 _COLUMN_RE = re.compile(r"^[a-z_]+$")
@@ -23,6 +24,17 @@ _COLUMN_RE = re.compile(r"^[a-z_]+$")
 class SettlementMaterialsRepository(BaseRepository):
     def __init__(self, connection: aiosqlite.Connection):
         super().__init__(connection)
+
+    async def migrate_schema(self) -> None:
+        """Add new columns to settlement_materials for existing databases."""
+        try:
+            await self.connection.execute(
+                "ALTER TABLE settlement_materials ADD COLUMN corrupted_core "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+            await self.connection.commit()
+        except Exception:
+            pass  # column already exists
 
     async def _ensure(self, user_id: str) -> None:
         """Insert a default row for the user if one doesn't exist yet."""
@@ -37,7 +49,8 @@ class SettlementMaterialsRepository(BaseRepository):
         async with self.connection.execute(
             "SELECT magma_core, life_root, spirit_shard, celestial_stone, "
             "void_crystal, infernal_cinder, bound_crystal, diviners_rod, "
-            "unidentified_blueprint FROM settlement_materials WHERE user_id = ?",
+            "unidentified_blueprint, corrupted_core FROM settlement_materials "
+            "WHERE user_id = ?",
             (user_id,),
         ) as cursor:
             row = await cursor.fetchone()
@@ -53,6 +66,7 @@ class SettlementMaterialsRepository(BaseRepository):
             "bound_crystal",
             "diviners_rod",
             "unidentified_blueprint",
+            "corrupted_core",
         ]
         return {k: (row[i] or 0) for i, k in enumerate(keys)}
 
@@ -68,15 +82,15 @@ class SettlementMaterialsRepository(BaseRepository):
         return row if row else (0, 0, 0)
 
     async def get_uber_materials(self, user_id: str) -> tuple:
-        """Returns (celestial_stone, infernal_cinder, void_crystal, bound_crystal)."""
+        """Returns (celestial_stone, infernal_cinder, void_crystal, bound_crystal, corrupted_core)."""
         await self._ensure(user_id)
         async with self.connection.execute(
-            "SELECT celestial_stone, infernal_cinder, void_crystal, bound_crystal "
-            "FROM settlement_materials WHERE user_id = ?",
+            "SELECT celestial_stone, infernal_cinder, void_crystal, bound_crystal, "
+            "corrupted_core FROM settlement_materials WHERE user_id = ?",
             (user_id,),
         ) as cursor:
             row = await cursor.fetchone()
-        return row if row else (0, 0, 0, 0)
+        return row if row else (0, 0, 0, 0, 0)
 
     async def modify(self, user_id: str, material: str, amount: int) -> None:
         """Add *amount* (may be negative) to a material column, flooring at 0."""

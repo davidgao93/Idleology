@@ -10,7 +10,7 @@ from core.images import (
 
 
 class BalancedEngramView(BaseView):
-    """Allows consuming a Gemini Engram to awaken or reroll a companion's balanced (secondary) passive."""
+    """Allows consuming a Bound Engram to awaken or reroll a companion's balanced (secondary) passive."""
 
     def __init__(self, bot, user_id, companion, parent_view):
         super().__init__(bot, user_id=user_id, parent=parent_view)
@@ -47,7 +47,7 @@ class BalancedEngramView(BaseView):
 
         desc = (
             f"**Current Balanced Passive:** {tier_display}{display_passive}\n"
-            f"**Gemini Engrams Owned:** {self.engrams}\n\n"
+            f"**Bound Engrams Owned:** {self.engrams}\n\n"
             f"Consuming an Engram awakens your companion's hidden potential, granting a secondary passive "
             f"at T{max(1, self.comp.passive_tier - 2)} (Primary Tier − 2, minimum T1).\n"
             f"Re-rolling always changes the secondary passive type."
@@ -97,7 +97,7 @@ class BalancedEngramView(BaseView):
         if uber_prog.get("gemini_engrams", 0) < 1:
             self._processing = False
             return await interaction.response.send_message(
-                "You do not have any Gemini Engrams!", ephemeral=True
+                "You do not have any Bound Engrams!", ephemeral=True
             )
 
         gold = await self.bot.database.users.get_gold(self.user_id)

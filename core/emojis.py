@@ -172,7 +172,7 @@ RESOURCE_EMOJI: dict[str, str] = {
     "infernal_cinder": "🔥",
     "void_crystal": "💜",
     "bound_crystal": "🔗",
-    "corrupted_crystal": "🌑",
+    "corrupted_core": "🌑",
     "blessed_bismuth": BLESSED_BISMUTH,
     "sparkling_sprig": SPARKLING_SPRIG,
     "capricious_carp": CAPRICIOUS_CARP,

@@ -126,7 +126,7 @@ class CompanionRepository:
     async def update_balanced_passive(
         self, companion_id: int, b_type: str, b_tier: int
     ) -> None:
-        """Sets the balanced (secondary) passive from a Gemini Engram."""
+        """Sets the balanced (secondary) passive from a Bound Engram."""
         await self.connection.execute(
             "UPDATE companions SET balanced_passive = ?, balanced_passive_tier = ? WHERE id = ?",
             (b_type, b_tier, companion_id),

@@ -300,7 +300,7 @@ _BOSS_SIGIL_CONFIGS = [
     ("Lucifer", "infernal_shrine", "increment_infernal_sigils", "Infernal Sigil"),
     ("NEET", "void_shrine", "increment_void_shards", "Void Sigil"),
     ("Aphrodite", "celestial_shrine", "increment_sigils", "Celestial Sigil"),
-    ("Gemini", "twin_shrine", "increment_gemini_sigils", "Gemini Sigil"),
+    ("Gemini", "twin_shrine", "increment_gemini_sigils", "Bound Sigil"),
 ]
 
 

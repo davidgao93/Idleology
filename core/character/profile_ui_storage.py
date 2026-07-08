@@ -410,10 +410,10 @@ class StorageProfileBuilder:
             else "🔒 Locked"
         )
         embed.add_field(
-            name="**Castor & Pollux**",
+            name="**Gemini**",
             value=(
-                f"♊ Gemini Sigils: {uber_data.get('gemini_sigils', 0)}\n"
-                f"💠 Gemini Engrams: {uber_data.get('gemini_engrams', 0)}\n"
+                f"♊ Bound Sigils: {uber_data.get('gemini_sigils', 0)}\n"
+                f"💠 Bound Engrams: {uber_data.get('gemini_engrams', 0)}\n"
                 f"🔷 Bound Crystal: {specials[3]}\n"
                 f"📜 Twin Statue Blueprint: {gemini_bp_status}"
             ),
@@ -428,6 +428,8 @@ class StorageProfileBuilder:
             name="**Evelynn**",
             value=(
                 f"☠️ Corruption Sigils: {uber_data.get('corruption_sigils', 0)}\n"
+                f"💠 Corruption Engrams: {uber_data.get('corruption_engrams', 0)}\n"
+                f"🌑 Corrupted Core: {specials[4]}\n"
                 f"📜 Corrupted Statue Blueprint: {corrupted_bp_status}"
             ),
             inline=True,

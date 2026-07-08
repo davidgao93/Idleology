@@ -155,7 +155,7 @@ def create_victory_embed(
         "Celestial Sigil": "🌌",
         "Infernal Sigil": "🔥",
         "Void Sigil": "🟣",
-        "Gemini Sigil": "⚖️",
+        "Bound Sigil": "⚖️",
     }
 
     for item_name in rewards.get("special", []):
