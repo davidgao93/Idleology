@@ -230,6 +230,7 @@ class GatherView(BaseView):
         await interaction.edit_original_response(
             embed=new_view.get_embed(), view=new_view
         )
+        new_view.message = await interaction.original_response()
         self.stop()
 
     def get_embed(self) -> discord.Embed:

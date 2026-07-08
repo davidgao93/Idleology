@@ -54,12 +54,19 @@ class FishingView(BaseView):
         self._accel_active: bool = False
         self._processing = False
 
+        # Guards background tasks from writing to a message this view no
+        # longer owns (e.g. after pack_up_callback has handed the message
+        # back to the gathering hub). Checked right before every direct
+        # self.message.edit() call from a background task.
+        self._active = True
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
+        self._active = False
         self._cancel_tasks()
         try:
             await self.message.edit(view=None)
@@ -321,6 +328,8 @@ class FishingView(BaseView):
         try:
             while time.time() < self._bite_end_time:
                 await asyncio.sleep(1.0)
+            if not self._active:
+                return
             # Cancel the accel scheduler since bite is ready
             if self._accel_scheduler_task:
                 self._accel_scheduler_task.cancel()
@@ -332,6 +341,11 @@ class FishingView(BaseView):
                 embed=self.get_embed(),
                 view=self,
             )
+            # Re-check after the awaited edit: pack_up_callback may have run
+            # (and found _escape_task still None to cancel) while this was
+            # in flight. Bail out instead of leaving an unmanaged escape task.
+            if not self._active:
+                return
             self._escape_task = asyncio.create_task(self._fish_escape())
         except asyncio.CancelledError:
             pass
@@ -355,6 +369,8 @@ class FishingView(BaseView):
             await asyncio.sleep(first_delay)
 
             while self.state == "casting":
+                if not self._active:
+                    return
                 self._accel_active = True
                 window_duration = random.randint(ACCEL_WINDOW_MIN, ACCEL_WINDOW_MAX)
                 self.setup_ui()
@@ -367,6 +383,8 @@ class FishingView(BaseView):
 
                 await asyncio.sleep(window_duration)
 
+                if not self._active:
+                    return
                 if self._accel_active:
                     self._accel_active = False
                     if self.state == "casting":
@@ -386,6 +404,8 @@ class FishingView(BaseView):
     async def _fish_escape(self):
         try:
             await asyncio.sleep(BITE_WINDOW)
+            if not self._active:
+                return
             if self.state == "bite":
                 # Streak penalty: aggressive cuts streak in half, steady resets
                 if self.approach == "aggressive":
@@ -508,6 +528,7 @@ class FishingView(BaseView):
             await interaction.response.defer()
             return
         self._processing = True
+        self._active = False
         self._cancel_tasks()
 
         if self.parent_gather_view:

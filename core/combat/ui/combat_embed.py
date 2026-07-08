@@ -513,28 +513,54 @@ def create_combat_layout(
         f"{monster.hp:,}/{monster.max_hp:,} {STAT_HP}\n"
         f"{STAT_ATK} {m_atk:,} | {STAT_DEF} {monster.effective_defence:,} | 🎯 ~{m_hit}%"
     )
-    # Player and monster share one component (Section when there's a
-    # portrait, plain text otherwise) instead of two, closing the gap
-    # between them.
-    combined_text = f"{player_text}\n\n{monster_text}"
-    if player_avatar_url:
-        children.append(
-            discord.ui.Section(
-                combined_text,
-                accessory=discord.ui.Thumbnail(
-                    player_avatar_url, description=player.name
-                ),
-            )
-        )
-    else:
-        children.append(discord.ui.TextDisplay(combined_text))
+    # Round 0 is the opening encounter frame, before any turn has resolved —
+    # show the monster's full art once via a MediaGallery, sharing one
+    # Section with the player for their portrait+stats. From round 1 onward
+    # the turn log starts stacking up, so the monster's art collapses to a
+    # thumbnail (same treatment as the player) to leave room for battle text.
+    show_full_monster_image = monster.combat_round == 0 and bool(monster.image)
 
-    if monster.image:
+    if show_full_monster_image:
+        combined_text = f"{player_text}\n\n{monster_text}"
+        if player_avatar_url:
+            children.append(
+                discord.ui.Section(
+                    combined_text,
+                    accessory=discord.ui.Thumbnail(
+                        player_avatar_url, description=player.name
+                    ),
+                )
+            )
+        else:
+            children.append(discord.ui.TextDisplay(combined_text))
+
         children.append(
             discord.ui.MediaGallery(
                 discord.MediaGalleryItem(media=monster.image, description=monster.name)
             )
         )
+    else:
+        if player_avatar_url:
+            children.append(
+                discord.ui.Section(
+                    player_text,
+                    accessory=discord.ui.Thumbnail(
+                        player_avatar_url, description=player.name
+                    ),
+                )
+            )
+        else:
+            children.append(discord.ui.TextDisplay(player_text))
+
+        if monster.image:
+            children.append(
+                discord.ui.Section(
+                    monster_text,
+                    accessory=discord.ui.Thumbnail(monster.image, description=monster.name),
+                )
+            )
+        else:
+            children.append(discord.ui.TextDisplay(monster_text))
 
     status_text = build_status_text(player, monster)
     afflictions = build_afflictions_text(player, monster)

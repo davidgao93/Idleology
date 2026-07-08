@@ -10,52 +10,52 @@
 # constants below are stale and which live application emojis aren't registered
 # yet — that's the fastest way to "preview" one without a running bot.
 
-MONSTER_CHEEK = "<:monster_cheek:1524149883941032157>"
-GOLD_ORE = "<:gold_ore:1524149884658389072>"
-PLATINUM_ORE = "<:platinum_ore:1524149885459234957>"
-QUENCH = "<:quench:1524149885719543901>"
+MONSTER_CHEEK = "<:monster_cheeks:1524223653330554890>"
+GOLD_ORE = "<:gold_ore:1524223636624379924>"
+PLATINUM_ORE = "<:platinum_ore:1524223622044975115>"
+QUENCH = "<:quench_potion:1524223620786819204>"
 
 # ── Gathering materials ─────────────────────────────────────────────────────
-IRON_ORE = "<:iron_ore:1524165429898252420>"
-COAL_ORE = "<:coal:1524165423975764078>"
-IDEA_ORE = "<:idea_ore:1524165428937752796>"
-BARS_REFINED = "<:bars_refined:1524165421241204876>"  # shared icon for all bar tiers
-OAK_LOGS = "<:oak_logs:1524165432406315008>"
-WILLOW_LOGS = "<:willow:1524165440069173468>"
-MAHOGANY_LOGS = "<:mahogany_logs:1524165431395352827>"
-MAGIC_LOGS = "<:magic_logs:1524165430556622958>"
-IDEA_LOGS = "<:idea_log:1524165427943702681>"
-DESICCATED_BONES = "<:desiccated_fish:1524165424785264880>"
-REGULAR_BONES = "<:regular_bone:1524165433446633502>"
-STURDY_BONES = "<:sturdy_bone:1524165437242478774>"
-REINFORCED_BONES = "<:reinforced_bone:1524165433995952338>"
-TITANIUM_BONES = "<:titanium_bone:1524165438102175855>"
+IRON_ORE = "<:iron_ore:1524223630509211658>"
+COAL_ORE = "<:coal:1524223652218933438>"
+IDEA_ORE = "<:idea_ore:1524223632476209162>"
+BARS_REFINED = "<:refined_bars:1524223657679917206>"  # shared icon for all bar tiers
+OAK_LOGS = "<:oak_log:1524223624561819820>"
+WILLOW_LOGS = "<:willow_log:1524223586448052334>"
+MAHOGANY_LOGS = "<:mahogany_log:1524223626230890516>"
+MAGIC_LOGS = "<:magic_log:1524223627506221086>"
+IDEA_LOGS = "<:idea_log:1524223633239572490>"
+DESICCATED_BONES = "<:desiccated_bones:1524223649455018075>"
+REGULAR_BONES = "<:regular_bone:1524223620157673594>"
+STURDY_BONES = "<:sturdy_bone:1524223591506378894>"
+REINFORCED_BONES = "<:reinforced_bone:1524223618572226660>"
+TITANIUM_BONES = "<:titanium_bone:1524223589711216640>"
 
 # ── Boss keys / high-value materials ────────────────────────────────────────
-DRAGON_KEY = "<:draconic_key:1524165425385046167>"
-ANGEL_KEY = "<:angelic_key_noBackground:1524165419332665354>"
-SOUL_CORE = "<:soul_core:1524165435065372732>"
-VOID_FRAG = "<:void_frag:1524165438890840185>"
-BLESSED_BISMUTH = "<:blessed_bismuth:1524165421802979430>"
-SPARKLING_SPRIG = "<:sparkling_sprig:1524165436130725988>"
-CAPRICIOUS_CARP = "<:capricious_carp:1524165423162069033>"
+DRAGON_KEY = "<:draconic_key:1524223647688949940>"
+ANGEL_KEY = "<:angelic_key:1524223659265364028>"
+SOUL_CORE = "<:soul_core:1524223609328111666>"
+VOID_FRAG = "<:void_frag:1524223588507324539>"
+BLESSED_BISMUTH = "<:blessed_bismuth:1524223656841056367>"
+SPARKLING_SPRIG = "<:sparkling_sprig:1524223605397917786>"
+CAPRICIOUS_CARP = "<:capricious_carp:1524223653993120015>"
 
 # ── Equipment slots (see core/inventory/views/_slot_defs.py: SLOT_EMOJIS) ───
-WEAPON_SLOT = "<:weapon:1524182189208637521>"
-ARMOR_SLOT = "<:armor:1524165420196823055>"
-HELMET_SLOT = "<:helmet:1524165426857246930>"
-GLOVE_SLOT = "<:gloves:1524165426186293360>"
-BOOT_SLOT = "<:boots:1524165422503563374>"
-ACCESSORY_SLOT = "<:accessory:1524165418598797512>"
+WEAPON_SLOT = "<:weapon:1524223586951237722>"
+ARMOR_SLOT = "<:armor:1524223658422440056>"
+HELMET_SLOT = "<:helmet:1524223634988601474>"
+GLOVE_SLOT = "<:gloves:1524223644098756779>"
+BOOT_SLOT = "<:boots:1524223655381303456>"
+ACCESSORY_SLOT = "<:accessory:1524223660104355870>"
 
 # ── Combat stats (profile stat sheet + in-combat stat lines) ───────────────
-STAT_ATK = "<:stat_atk:1524182195516870756>"
-STAT_DEF = "<:stat_def:1524182194229084250>"
-STAT_HP = "<:stat_hp:1524182193037901954>"
-STAT_WARD = "<:stat_ward:1524182191867691129>"
-STAT_PDR = "<:stat_pdr:1524182192438251650>"
-STAT_FDR = "<:stat_fdr:1524182193725902898>"
-STAT_BLOCK = "<:stat_block:1524182194728210696>"
+STAT_ATK = "<:stat_atk:1524223599618035742>"
+STAT_DEF = "<:stat_def:1524223597047185429>"
+STAT_HP = "<:stat_hp:1524223594413031565>"
+STAT_WARD = "<:stat_ward:1524223592320209037>"
+STAT_PDR = "<:stat_pdr:1524223593423175770>"
+STAT_FDR = "<:stat_fdr:1524223595591630928>"
+STAT_BLOCK = "<:stat_block:1524223598141898912>"
 
 STAT_EMOJI: dict[str, str] = {
     "atk": STAT_ATK,
@@ -68,42 +68,42 @@ STAT_EMOJI: dict[str, str] = {
 }
 
 # ── Runes (9 types — previously all shared one generic 🔮) ──────────────────
-RUNE_REFINEMENT = "<:rune_refinement:1524182208817139763>"
-RUNE_POTENTIAL = "<:rune_potential:1524182209882493098>"
-RUNE_SHATTER = "<:rune_shatter:1524182207701192785>"
-RUNE_IMBUE = "<:rune_imbue:1524182215544672266>"
-RUNE_PARTNERSHIP = "<:rune_partnership:1524182211190984735>"
-RUNE_REGRET = "<:rune_regret:1524182208347373718>"
-RUNE_NATURE = "<:rune_nature:1524182212084498585>"
-RUNE_MIRAGE_IMPERFECT = "<:rune_mirage_imperfect:1524182214458343565>"
-RUNE_MIRAGE_PERFECT = "<:rune_mirage_perfect:1524182212734484520>"
+RUNE_REFINEMENT = "<:rune_refinement:1524223611747963072>"
+RUNE_POTENTIAL = "<:rune_potential:1524223612197015694>"
+RUNE_SHATTER = "<:rune_shatter:1524223610028429554>"
+RUNE_IMBUE = "<:rune_imbue:1524223617301221537>"
+RUNE_PARTNERSHIP = "<:rune_partnership:1524223613350187040>"
+RUNE_REGRET = "<:rune_regret:1524223610749849630>"
+RUNE_NATURE = "<:rune_nature:1524223614306615327>"
+RUNE_MIRAGE_IMPERFECT = "<:rune_mirage_imperfect:1524223616244388061>"
+RUNE_MIRAGE_PERFECT = "<:rune_mirage_perfect:1524223615032229948>"
 
 # ── Essence tiers (category headers, not per-type essence icons) ───────────
-ESSENCE_COMMON = "<:essence_common:1524182185802731744>"
-ESSENCE_RARE = "<:essence_rare:1524182184028672162>"
-ESSENCE_CORRUPT = "<:essence_corrupt:1524182184947224640>"
+ESSENCE_COMMON = "<:essence_common:1524223646921527296>"
+ESSENCE_RARE = "<:essence_rare:1524223645679882340>"
+ESSENCE_CORRUPT = "<:essence_corrupt:1524223646380458188>"
 
 # ── Misc materials / currencies ─────────────────────────────────────────────
-CURIO = "<:curio:1524182187656876143>"
-PUZZLE_BOX = "<:puzzle_box:1524182216165560442>"
-PINNACLE_KEY = "<:pinnacle_key:1524182216975061083>"
-VOID_KEY = "<:void_key:1524182190240432338>"
-DIVINER_ROD = "<:diviner_rod:1524182186910285854>"
-SPIRIT_STONE = "<:spirit_stone:1524182196267651122>"
-SPIRIT_SHARD = "<:spirit_shard:1524182197395783691>"
-MAGMA_CORE = "<:magma_core:1524182219080601622>"
-LIFE_ROOT = "<:life_root:1524182219768336464>"
-PARADISE_JEWEL_UNCUT = "<:paradise_jewel_uncut:1524182217595551955>"
+CURIO = "<:curio:1524223650205663383>"
+PUZZLE_BOX = "<:puzzle_box:1524223621545853148>"
+PINNACLE_KEY = "<:pinnacle_key:1524223622934429776>"
+VOID_KEY = "<:void_key:1524223587660202134>"
+DIVINER_ROD = "<:diviner_rod:1524223648318095380>"
+SPIRIT_STONE = "<:spirit_stone:1524223600805150780>"
+SPIRIT_SHARD = "<:spirit_shard:1524223601396416522>"
+MAGMA_CORE = "<:magma_core:1524223626860167278>"
+LIFE_ROOT = "<:life_root:1524223629141999707>"
+PARADISE_JEWEL_UNCUT = "<:paradise_jewel_uncut:1524223623718506607>"
 
 # ── Artisan Mastery remnants (prestige gathering-boss drops) ───────────────
-TIDE_RELIC = "<:tide_relic:1524182191188349008>"
-HEARTWOOD_SHARD = "<:heartwood_shard:1524182220976423057>"
-GEODE_CORE = "<:geode_core:1524182222062747699>"
+TIDE_RELIC = "<:tide_relic:1524223590776438794>"
+HEARTWOOD_SHARD = "<:heartwood_shard:1524223636066533526>"
+GEODE_CORE = "<:geode_core:1524223645021507715>"
 
 # ── Feature / hub branding icons ─────────────────────────────────────────────
-CONSUME_ICON = "<:consume:1524182188256526376>"
-NETHER_MARKET_PLUNDER = "<:nether_market_plunder:1524182218329555055>"
-INFINITE_MAW = "<:infinite_maw:1524182220552798238>"
+CONSUME_ICON = "<:consume:1524223651485061251>"
+NETHER_MARKET_PLUNDER = "<:nether_plunder:1524223625685897307>"
+INFINITE_MAW = "<:infinite_maw:1524223631436021872>"
 
 # ── RESOURCE_EMOJI ─────────────────────────────────────────────────────────
 # Single source of truth for gathering/settlement/Black Market material icons.

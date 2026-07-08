@@ -406,3 +406,36 @@ NETHER_NPC_LADY_FENWICK_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334
 NETHER_NPC_IRONMONGER_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541785911366/ironmonger.jpg?ex=6a46c506&is=6a457386&hm=53836ee6838e694938e5a045f2175d5b01b471d7d32b9de12b86be66d0e5d245&"
 NETHER_NPC_COUNTESS_VAELORA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541261623418/countess_vael.jpg?ex=6a46c505&is=6a457385&hm=0c1795051ce727338745f048c29af1d925e8f774d54ed713dfa7e2a3b1be0212&"
 NETHER_NPC_THE_HOARDER_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541529927791/hoarder.jpg?ex=6a46c505&is=6a457385&hm=2801dad317700dda1301488e10f7d52d71658fe88bdd0538fa947a40d3f4b5a1&"
+
+# ── PRESTIGE AVATARS ──────────────────────────────────────────────────────────
+# Purchasable animated avatar gallery (cogs/prestige.py). Keys are internal
+# codenames; display labels + tier pricing live in cogs/prestige.py:
+# PRESTIGE_AVATAR_CATALOG.
+PRESTIGE_AVATARS_MALE = {
+    "berserker": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246978920452136/male_berserker-1.gif?ex=6a4f0d1e&is=6a4dbb9e&hm=8a64158e4f1628f60dc8f931d8592896fa5ec391a9d29adf3da2e1d5a7a0286b&",
+    "gilded": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246979465576598/male_gilded.gif?ex=6a4f0d1f&is=6a4dbb9f&hm=f71c22a2735b21b17831cdbce3f8c335849a292a369a694569fa0073d51fcc13&",
+    "ronin": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246980019359814/male_ronin-1.gif?ex=6a4f0d1f&is=6a4dbb9f&hm=9492ca69176d60f02af3a7537cc56d57a24243c4d08da2346ddbbf836543e6ca&",
+    "wiz": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246988152115300/male_wiz-1.gif?ex=6a4f0d21&is=6a4dbba1&hm=2418293c155b20e6fa6cd1febbd3819d4b9dee42963e352f006bb466cabcf90a&",
+}
+
+PRESTIGE_AVATARS_FEMALE = {
+    "bloodmage": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246935933030450/female_bloodmage-1.gif?ex=6a4f0d14&is=6a4dbb94&hm=789b6eb7c2de39355adab4427bd8b5bde9c55910622d9c98b25c5b1f17e22a7f&",
+    "gem": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246936474091520/female_gem-1.gif?ex=6a4f0d14&is=6a4dbb94&hm=c05b27742306f79103051b748faa5bd1b56c825b64cdf19fb99efede1e9e935f&",
+    "hunt": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246936927080538/female_hunt-1.gif?ex=6a4f0d14&is=6a4dbb94&hm=3beffff2bbef5fbba68503834ebf15abecded4519baf4f1eaaa4e706e8a7f24a&",
+    "ninja": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246945554632764/female_ninja-1.gif?ex=6a4f0d16&is=6a4dbb96&hm=ade3963467d912d6d8202d2e61fe4654c1c38ff3d30117c2f0c7a336641a0b8e&",
+    "sorc": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246946045231205/female_sorc-1.gif?ex=6a4f0d17&is=6a4dbb97&hm=33c590d13b89e8df3f252dff088918b1b53f11e3ba2690582415c2cd5cf16810&",
+    "void": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246968837210182/female_void-1.gif?ex=6a4f0d1c&is=6a4dbb9c&hm=57a08357e84551fd742193fb609b759da2d5a0c548c16e9a337cbd56fe921ceb&",
+    "warriorangel": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246978341634048/female_warriorangel-1.gif?ex=6a4f0d1e&is=6a4dbb9e&hm=b15e25efc6acc71b957834d898adf10c9aca2c83e262876d3e7b75d4e668e3f7&",
+}
+
+PRESTIGE_AVATARS_FEMALE_SS = {
+    "bride": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246946519318569/female_ss_bride.gif?ex=6a4f0d17&is=6a4dbb97&hm=68f20caa59b83c73d604f8eabef3143d5b2487c7db890b88e951c110dc52e58c&",
+    "deepocean": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246947047673977/female_ss_deepocean.gif?ex=6a4f0d17&is=6a4dbb97&hm=43692a1c367320387ba8a195172f5e68b2657cca90015c890e3b04d81b92fdc6&",
+    "fox": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246956032000090/female_ss_fox.gif?ex=6a4f0d19&is=6a4dbb99&hm=39a28316056c278a4aead7de083a7ee4d7d326cf9f07aea6f6160451290a2471&",
+    "ice": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246956690509844/female_ss_ice.gif?ex=6a4f0d19&is=6a4dbb99&hm=2e5a42af4a6d24dd091074565d6b4bf9507abee4577b876b7045a51ef4f16c2e&",
+    "oni": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246957273514154/female_ss_oni.gif?ex=6a4f0d19&is=6a4dbb99&hm=5359004fc68befb7d34ef2db1ea0a4c6776a4fb7f441a38e9f77fa0c7b68c05d&",
+    "petals": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246957818777620/female_ss_petals.gif?ex=6a4f0d19&is=6a4dbb99&hm=14ae4cb9464fd2d0c6b2801378674e866c20984a62823835f490bfea6de560e0&",
+    "snow": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246967377727628/female_ss_snow.gif?ex=6a4f0d1c&is=6a4dbb9c&hm=e13832b3843f365b0ce63d5c782ccd63d4773db5dc40cc7ab94b88bb4c5146cc&",
+    "storm": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246967860068382/female_ss_storm.gif?ex=6a4f0d1c&is=6a4dbb9c&hm=1966b55a6e691dd3ff333c154efb141689254422f9b9284f93fb5606961073fc&",
+    "tech": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246968359063573/female_ss_tech.gif?ex=6a4f0d1c&is=6a4dbb9c&hm=719c1a4c56359816b3ea58d43db82486e05450959963c3e6d53adce358bf78db&",
+}

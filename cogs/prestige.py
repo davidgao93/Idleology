@@ -6,13 +6,72 @@ import discord
 from discord import ButtonStyle, app_commands, ui
 from discord.ext import commands
 from core.base_view import BaseView
-from core.images import PRESTIGE_HUB, PRESTIGE_HALL
+from core.images import (
+    PRESTIGE_HUB,
+    PRESTIGE_HALL,
+    PRESTIGE_AVATARS_MALE,
+    PRESTIGE_AVATARS_FEMALE,
+    PRESTIGE_AVATARS_FEMALE_SS,
+)
 
 # ---------------------------------------------------------------------------
 # Catalogue
 # ---------------------------------------------------------------------------
 
 AVATAR_COST = 100_000_000
+
+AVATAR_TIER_PRICES: dict[str, int] = {
+    "male": 250_000_000,
+    "female": 500_000_000,
+    "female_ss": 1_000_000_000,
+}
+AVATAR_TIER_LABELS: dict[str, str] = {
+    "male": "Male",
+    "female": "Female",
+    "female_ss": "Female SS",
+}
+
+# Purchasable animated avatar gallery. Tier -> codename -> {label, url}.
+# Codenames match the keys in core.images.PRESTIGE_AVATARS_*; labels are
+# the presentation names shown to players.
+PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
+    "male": {
+        "berserker": {"label": "Berserker", "url": PRESTIGE_AVATARS_MALE["berserker"]},
+        "gilded": {"label": "Gilded Champion", "url": PRESTIGE_AVATARS_MALE["gilded"]},
+        "ronin": {"label": "Ronin", "url": PRESTIGE_AVATARS_MALE["ronin"]},
+        "wiz": {"label": "Archmage", "url": PRESTIGE_AVATARS_MALE["wiz"]},
+    },
+    "female": {
+        "bloodmage": {"label": "Blood Mage", "url": PRESTIGE_AVATARS_FEMALE["bloodmage"]},
+        "gem": {"label": "Crystal Warden", "url": PRESTIGE_AVATARS_FEMALE["gem"]},
+        "hunt": {"label": "Huntress", "url": PRESTIGE_AVATARS_FEMALE["hunt"]},
+        "ninja": {"label": "Kunoichi", "url": PRESTIGE_AVATARS_FEMALE["ninja"]},
+        "sorc": {"label": "Sorceress", "url": PRESTIGE_AVATARS_FEMALE["sorc"]},
+        "void": {"label": "Void Walker", "url": PRESTIGE_AVATARS_FEMALE["void"]},
+        "warriorangel": {"label": "Seraph Warrior", "url": PRESTIGE_AVATARS_FEMALE["warriorangel"]},
+    },
+    "female_ss": {
+        "bride": {"label": "Eternal Bride", "url": PRESTIGE_AVATARS_FEMALE_SS["bride"]},
+        "deepocean": {"label": "Abyssal Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["deepocean"]},
+        "fox": {"label": "Ninetails Fox", "url": PRESTIGE_AVATARS_FEMALE_SS["fox"]},
+        "ice": {"label": "Glacial Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["ice"]},
+        "oni": {"label": "Oni Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["oni"]},
+        "petals": {"label": "Blossom Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["petals"]},
+        "snow": {"label": "Winter Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["snow"]},
+        "storm": {"label": "Storm Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["storm"]},
+        "tech": {"label": "Neon Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["tech"]},
+    },
+}
+
+
+def _avatar_label_for_url(url: str) -> str | None:
+    """Reverse-lookup a preset avatar's display label from its equipped URL."""
+    for tier_catalog in PRESTIGE_AVATAR_CATALOG.values():
+        for info in tier_catalog.values():
+            if info["url"] == url:
+                return info["label"]
+    return None
+
 
 TITLES: dict[str, dict] = {
     "the_gilded": {"label": "The Gilded", "price": 1_000_000_000},
@@ -123,6 +182,167 @@ class AvatarModal(discord.ui.Modal, title="Set Custom Avatar"):
         await interaction.followup.send(
             f"Avatar updated! (-{AVATAR_COST:,}g)", ephemeral=True
         )
+
+
+_AVATAR_TIER_ORDER = ("male", "female", "female_ss")
+
+
+class AvatarGalleryView(BaseView):
+    """Preset prestige avatar gallery: browse one animated avatar at a time
+    (GIF rendered full-size via embed.set_image) with tier tabs + prev/next,
+    a Buy & Equip button, and a Custom URL fallback."""
+
+    def __init__(self, bot, parent: "PrestigeHubView"):
+        super().__init__(bot, parent=parent)
+        self.hub_view = parent
+        self.owned_avatars: list[str] = []
+        self.tier = "male"
+        self.index = 0
+
+    async def refresh(self) -> None:
+        self.owned_avatars = await self.bot.database.prestige.get_owned(
+            self.user_id, "avatar"
+        )
+        self._rebuild()
+
+    def _tier_ids(self) -> list[str]:
+        return list(PRESTIGE_AVATAR_CATALOG[self.tier].keys())
+
+    def _current(self) -> tuple[str, dict]:
+        avatar_id = self._tier_ids()[self.index]
+        return avatar_id, PRESTIGE_AVATAR_CATALOG[self.tier][avatar_id]
+
+    def build_embed(self) -> discord.Embed:
+        avatar_id, info = self._current()
+        price = AVATAR_TIER_PRICES[self.tier]
+        owned = f"{self.tier}:{avatar_id}" in self.owned_avatars
+        ids = self._tier_ids()
+
+        embed = discord.Embed(
+            title=info["label"],
+            description=(
+                f"**{AVATAR_TIER_LABELS[self.tier]} Tier**\n"
+                + ("Owned — free to equip" if owned else f"**{price:,}g**")
+            ),
+            color=DEFAULT_COLOR,
+        )
+        embed.set_image(url=info["url"])
+        embed.set_footer(
+            text=f"{self.index + 1} of {len(ids)} — {AVATAR_TIER_LABELS[self.tier]}"
+        )
+        return embed
+
+    def _rebuild(self) -> None:
+        self.clear_items()
+
+        for tier in _AVATAR_TIER_ORDER:
+            style = ButtonStyle.primary if tier == self.tier else ButtonStyle.secondary
+            btn = ui.Button(
+                label=AVATAR_TIER_LABELS[tier],
+                style=style,
+                custom_id=f"avtier_{tier}",
+                row=0,
+            )
+            btn.callback = self._handle_tier
+            self.add_item(btn)
+
+        back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, row=0)
+        back_btn.callback = self._handle_back
+        self.add_item(back_btn)
+
+        ids = self._tier_ids()
+        prev_btn = ui.Button(
+            label="◀", style=ButtonStyle.secondary, disabled=(self.index == 0), row=1
+        )
+        prev_btn.callback = self._handle_prev
+        self.add_item(prev_btn)
+
+        avatar_id, info = self._current()
+        price = AVATAR_TIER_PRICES[self.tier]
+        owned = f"{self.tier}:{avatar_id}" in self.owned_avatars
+        buy_btn = ui.Button(
+            label="Equip" if owned else f"Buy & Equip — {price:,}g",
+            style=ButtonStyle.success if owned else ButtonStyle.primary,
+            row=1,
+        )
+        buy_btn.callback = self._handle_buy
+        self.add_item(buy_btn)
+
+        next_btn = ui.Button(
+            label="▶",
+            style=ButtonStyle.secondary,
+            disabled=(self.index == len(ids) - 1),
+            row=1,
+        )
+        next_btn.callback = self._handle_next
+        self.add_item(next_btn)
+
+        custom_btn = ui.Button(
+            label="Custom URL", emoji="🖼️", style=ButtonStyle.secondary, row=2
+        )
+        custom_btn.callback = self._handle_custom
+        self.add_item(custom_btn)
+
+    async def _handle_tier(self, interaction: discord.Interaction) -> None:
+        self.tier = interaction.data["custom_id"].removeprefix("avtier_")
+        self.index = 0
+        self._rebuild()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _handle_prev(self, interaction: discord.Interaction) -> None:
+        self.index -= 1
+        self._rebuild()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _handle_next(self, interaction: discord.Interaction) -> None:
+        self.index += 1
+        self._rebuild()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+    async def _handle_back(self, interaction: discord.Interaction) -> None:
+        await self.hub_view.refresh()
+        embed = await PrestigeBuilder.build_overview(self.bot, self.user_id, self.server_id)
+        self.hub_view.active_tab = "overview"
+        self.hub_view._rebuild()
+        await interaction.response.defer()
+        await interaction.edit_original_response(embed=embed, view=self.hub_view)
+        self.hub_view.message = await interaction.original_response()
+
+    async def _handle_custom(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_modal(AvatarModal(self.bot, self.user_id, self.hub_view))
+
+    async def _handle_buy(self, interaction: discord.Interaction) -> None:
+        avatar_id, info = self._current()
+        item_key = f"{self.tier}:{avatar_id}"
+        price = AVATAR_TIER_PRICES[self.tier]
+        owned = item_key in self.owned_avatars
+
+        if not owned:
+            gold = await self.bot.database.users.get_gold(self.user_id)
+            if gold < price:
+                return await interaction.response.send_message(
+                    f"You need **{price:,}g** for **{info['label']}**. You have **{gold:,}g**.",
+                    ephemeral=True,
+                )
+            await self.bot.database.users.modify_gold(self.user_id, -price)
+            await self.bot.database.prestige.add_owned(self.user_id, "avatar", item_key)
+            self.owned_avatars.append(item_key)
+
+        await self.bot.database.users.update_appearance(self.user_id, info["url"])
+        self._rebuild()
+
+        suffix = f" (-{price:,}g)" if not owned else " (free)"
+        await interaction.response.defer()
+        await interaction.edit_original_response(
+            embed=self.build_embed(),
+            view=self,
+            content=f"Avatar **{info['label']}** equipped.{suffix}",
+        )
+        await asyncio.sleep(3)
+        try:
+            await interaction.edit_original_response(content=None)
+        except Exception:
+            pass
 
 
 class RenameModal(discord.ui.Modal, title="Rename Character"):
@@ -286,6 +506,10 @@ class PrestigeBuilder:
         embed.set_thumbnail(url=user["appearance"])
 
         active_flair = _flair_label(active.get("flair", ""))
+        if user["appearance"]:
+            avatar_display = _avatar_label_for_url(user["appearance"]) or "Custom"
+        else:
+            avatar_display = "Default"
         embed.add_field(
             name="Active Cosmetics",
             value=(
@@ -293,7 +517,7 @@ class PrestigeBuilder:
                 f"**Flair:** {active_flair or 'None'}\n"
                 f"**Death Msg:** {active.get('death_message') or 'None'}\n"
                 f"**Monument:** {active.get('monument') or 'None'}\n"
-                f"**Avatar:** {'Custom' if user['appearance'] else 'Default'}"
+                f"**Avatar:** {avatar_display}"
             ),
             inline=False,
         )
@@ -330,6 +554,9 @@ class PrestigeBuilder:
         embed.add_field(
             name="Other",
             value=(
+                f"🖼️ **Prestige Avatar Gallery** — {AVATAR_TIER_PRICES['male']:,}g (Male) / "
+                f"{AVATAR_TIER_PRICES['female']:,}g (Female) / "
+                f"{AVATAR_TIER_PRICES['female_ss']:,}g (Female SS) — owned permanently\n"
                 f"🖼️ **Custom Avatar** — **{AVATAR_COST:,}g** (per upload)\n"
                 f"✏️ **Rename** — **{RENAME_COST:,}g** per rename\n"
                 f"💀 **Death Message** — **{DEATH_MSG_COST:,}g** to unlock, free to update\n"
@@ -338,7 +565,7 @@ class PrestigeBuilder:
             inline=False,
         )
         embed.set_footer(
-            text="Titles and flairs are purchased once and freely swappable."
+            text="Titles, flairs, and prestige avatars are purchased once and freely swappable."
         )
         return embed
 
@@ -510,7 +737,11 @@ class PrestigeHubView(BaseView):
         await interaction.delete_original_response()
 
     async def _handle_avatar(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_modal(AvatarModal(self.bot, self.user_id, self))
+        view = AvatarGalleryView(self.bot, self)
+        await view.refresh()
+        await interaction.response.defer()
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        view.message = await interaction.original_response()
 
     async def _handle_rename(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(

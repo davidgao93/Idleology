@@ -44,12 +44,18 @@ class ForestryView(BaseView):
         self._cooldown_start_time: float = 0.0
         self._processing = False
 
+        # Guards the cooldown background task from writing to a message this
+        # view no longer owns (e.g. after pack_up_callback has handed the
+        # message back to the gathering hub).
+        self._active = True
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
+        self._active = False
         if self._cooldown_task:
             self._cooldown_task.cancel()
         try:
@@ -414,6 +420,8 @@ class ForestryView(BaseView):
     async def _run_cooldown(self, seconds: int):
         try:
             await asyncio.sleep(seconds)
+            if not self._active:
+                return
             self.state = "ready"
             self.setup_ui()
             await self.refresh_data()
@@ -426,6 +434,7 @@ class ForestryView(BaseView):
             await interaction.response.defer()
             return
         self._processing = True
+        self._active = False
         if self._cooldown_task:
             self._cooldown_task.cancel()
 
