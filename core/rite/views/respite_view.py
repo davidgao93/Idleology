@@ -10,7 +10,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
-from core.combat import ui as combat_ui
+from core.npc_voices import get_quip
 from core.rite.run_state import RiteRunState
 
 RESPITE_HEAL_PCT = 0.40
@@ -37,6 +37,7 @@ class RespiteView(BaseLayoutView):
             if "devouts_burden" in run_state.writs
             else None
         )
+        self._quip = get_quip("arbiter")
         self._sync_items()
 
     def _build_container(self) -> discord.ui.Container:
@@ -45,7 +46,7 @@ class RespiteView(BaseLayoutView):
         )
         lines = [
             "## 🕯️ The Arbiter's Aid",
-            "*\"You've earned a moment's respite, adventurer. Choose your aid.\"*",
+            f'*"{self._quip}"*',
             "",
             f"**HP:** {self.player.current_hp:,}/{self.player.total_max_hp:,} ({hp_pct}%)  •  "
             f"**Potions:** {self.player.potions}",

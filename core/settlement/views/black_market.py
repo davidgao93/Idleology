@@ -15,7 +15,7 @@ from __future__ import annotations
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.emojis import GOLD_COIN, RESOURCE_EMOJI
+from core.emojis import RESOURCE_EMOJI
 from core.images import BLACK_MARKET_AUTHOR, SETTLEMENT_BUILDINGS
 from core.npc_voices import get_quip
 from core.settlement.constants import (

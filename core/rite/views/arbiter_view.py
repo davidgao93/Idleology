@@ -14,6 +14,7 @@ from core.combat.turns import engine
 from core.combat.turns import jewel_engine as _je
 from core.combat.turns.boundary import reset_for_phase_transition
 from core.combat.views.views import CombatView
+from core.npc_voices import get_quip
 from core.rite import mobgen
 from core.rite.data import compute_devotion_points
 from core.rite.loot import grant_run_completion_rewards
@@ -185,6 +186,7 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
         embed = discord.Embed(
             title="💀 The Rite Ends — The Arbiter Prevails",
             description=(
+                f'*"{get_quip("arbiter_defeat")}"*\n\n'
                 "No attempts remain. The Rite of Convergence has ended; "
                 "your keys are spent."
             ),

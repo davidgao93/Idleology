@@ -113,3 +113,28 @@ def compute_devotion_points(writs: list[str], total_turns: int) -> int:
             continue
         dp += writ.dp
     return dp
+
+
+# Flavor text for the 5 entry keys — display name -> (thematic link, blurb).
+RITE_KEY_FLAVOR: dict[str, tuple[str, str]] = {
+    "Apex of Dreams": (
+        "Aphrodite Reborn",
+        "A shard of unbroken devotion, still warm from a dream that refused to end.",
+    ),
+    "Corruption of Memories": (
+        "Lucifer Reborn",
+        "Every regret you've ever buried, compressed into something you can hold.",
+    ),
+    "Scales of Judgment": (
+        "Gemini Reborn",
+        "Perfectly balanced. It has never once tipped in anyone's favor.",
+    ),
+    "Devoid of Thoughts": (
+        "NEET Reborn",
+        "Silence given shape. Holding it feels like forgetting something important.",
+    ),
+    "Zenith of Nightmares": (
+        "Evelynn Reborn",
+        "The peak of a fear you haven't had yet. It's been waiting for you.",
+    ),
+}

@@ -242,6 +242,31 @@ _VOICES: dict[str, list[str]] = {
         "The Sovereigns are not just powerful. They are patient. Do not let them outlast you.",
         "Every key you spend here is a declaration. Make sure you mean it.",
     ],
+    # ── The Rite of Convergence ───────────────────────────────────────────────
+    # Guide-mode: shown at respites between wings, before the mask drops.
+    "arbiter": [
+        "You've earned a moment's respite, adventurer. Choose your aid wisely.",
+        "Rest, if you can call it that. The next wing will not be kinder.",
+        "Five gods, reborn and broken by my design. You've handled yourself well so far.",
+        "Take what aid you need. I've seen stronger adventurers falter for want of it.",
+        "I offer this respite freely. What you do with it is entirely your own affair.",
+        "Not far now. Or perhaps very far indeed. Time is strange in here.",
+    ],
+    # Villain-mode: the fifth respite's reveal, transitioning straight into the finale.
+    "arbiter_reveal": [
+        "Splendid, adventurer. Five gods, reborn and broken by your hand — and every one of them, my design.",
+        "You've been my finest creation. My most entertaining toy. Let's see how far the game goes.",
+        "Did you think the guide and the architect were different people? How wonderfully naive.",
+        "Every respite, every wing, every choice — all of it, mine to arrange. Now, the true test begins.",
+        "I built five gods to break you slowly. I built myself to finish the job.",
+    ],
+    # Defeat dialogue, shown when a Rite run ends in failure (0 attempts remaining).
+    "arbiter_defeat": [
+        "Splendid, adventurer. You've been my finest creation. My most entertaining toy. Do come find me again.",
+        "A worthy attempt. Not worthy enough — but worthy. I'll be here when you're ready to try again.",
+        "The Rite does not forgive weakness, only reward its absence. Come back stronger.",
+        "You lasted longer than most. That is either a compliment or a warning. Take your pick.",
+    ],
     # ── Upgrade Smiths ───────────────────────────────────────────────────────
     "forge": [
         "Another blade that needs real work. Hand it over — I'll make it sing.",

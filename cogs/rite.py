@@ -3,7 +3,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.items.factory import load_player
-from core.rite.data import starting_attempts
+from core.rite.data import RITE_KEY_FLAVOR, starting_attempts
 from core.rite.run_state import RiteRunState
 from core.rite.views.wing_hub_view import WingHubView
 from core.rite.views.writ_select_view import WritSelectView
@@ -18,8 +18,9 @@ _RITE_KEY_COLUMNS = [
 
 
 class Rite(commands.Cog, name="rite"):
-    """The Rite of Convergence. The Arbiter finale (Milestone 5) is not
-    built yet — see wing_hub_view.py.
+    """The Rite of Convergence — 5 wing fights, writs/Devotion Points, and
+    the 6-phase Arbiter finale. See core/rite/views/wing_hub_view.py for the
+    run loop and core/rite/views/arbiter_view.py for the finale.
     """
 
     def __init__(self, bot):
@@ -39,15 +40,18 @@ class Rite(commands.Cog, name="rite"):
         missing = [name for name, col in _RITE_KEY_COLUMNS if balances[col] < 1]
         if missing:
             self.bot.state_manager.clear_active(user_id)
-            await interaction.edit_original_response(
-                content=(
-                    "You need all 5 Rite keys to enter, held simultaneously:\n"
-                    + "\n".join(f"- {name}" for name in missing)
-                    + "\n\nMissing the above."
-                ),
-                embed=None,
-                view=None,
+            embed = discord.Embed(
+                title="🕯️ The Rite of Convergence",
+                description="You need all 5 Rite keys held simultaneously to enter.",
+                color=discord.Color.dark_purple(),
             )
+            for name, _col in _RITE_KEY_COLUMNS:
+                source, blurb = RITE_KEY_FLAVOR[name]
+                have = "✅" if name not in missing else "❌"
+                embed.add_field(
+                    name=f"{have} {name}", value=f"*{source}* — {blurb}", inline=False
+                )
+            await interaction.edit_original_response(content=None, embed=embed, view=None)
             return
 
         async with self.bot.database.transaction():

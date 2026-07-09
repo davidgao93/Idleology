@@ -10,6 +10,7 @@ import asyncio
 import discord
 
 from core.images import ARBITER_PORTRAIT, ARBITER_THUMBNAIL
+from core.npc_voices import get_quip
 from core.rite.run_state import RiteRunState
 
 
@@ -26,9 +27,7 @@ async def trigger_reveal_and_arbiter(bot, user_id: str, server_id: str, player, 
     reveal_embed = discord.Embed(
         title="🕯️ The Arbiter Reveals Itself",
         description=(
-            '*"Splendid, adventurer. Five gods, reborn and broken by your hand — '
-            'and every one of them, my design. My finest creation. My most '
-            'entertaining toy."*\n\n'
+            f'*"{get_quip("arbiter_reveal")}"*\n\n'
             "The essences of the five defeated bosses converge. The air fractures. "
             "The Arbiter's true form emerges — the architect behind everything "
             "you have faced tonight.\n\n"

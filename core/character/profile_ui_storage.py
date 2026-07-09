@@ -113,6 +113,11 @@ class StorageProfileBuilder:
         pinnacle_keys = cur["pinnacle_key"]
         puzzle_boxes = cur["curio_puzzle_boxes"]
         spirit_stones = cur["spirit_stones"]
+        rite_apex = cur["rite_key_apex_of_dreams"]
+        rite_corruption = cur["rite_key_corruption_of_memories"]
+        rite_scales = cur["rite_key_scales_of_judgment"]
+        rite_devoid = cur["rite_key_devoid_of_thoughts"]
+        rite_zenith = cur["rite_key_zenith_of_nightmares"]
         items = await bot.database.partners.get_items(user_id)
         guild_tickets = items.get("guild_tickets", 0)
 
@@ -159,6 +164,18 @@ class StorageProfileBuilder:
                 f"{PUZZLE_BOX} Puzzle Boxes: {puzzle_boxes}\n"
                 f"🎫 Guild Tickets: {guild_tickets}\n"
                 f"📖 Antique Tomes: {antique_tomes}\n{PINNACLE_KEY} Pinnacle Keys: {pinnacle_keys}"
+            ),
+            inline=True,
+        )
+
+        embed.add_field(
+            name="🕯️ **Rite of Convergence**",
+            value=(
+                f"🌌 Apex of Dreams: {rite_apex}\n"
+                f"🩸 Corruption of Memories: {rite_corruption}\n"
+                f"⚖️ Scales of Judgment: {rite_scales}\n"
+                f"⬛ Devoid of Thoughts: {rite_devoid}\n"
+                f"👁️ Zenith of Nightmares: {rite_zenith}"
             ),
             inline=True,
         )

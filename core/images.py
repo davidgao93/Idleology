@@ -72,7 +72,7 @@ COMBAT_ELEMENTAL = "https://cdn.discordapp.com/attachments/1334637411363323996/1
 COMBAT_DUMMY = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512846797213838/commoner_f.png?ex=69f8b4fc&is=69f7637c&hm=65b9cf447b2c8fc98dadeab8f21692279631f496c79dc9d1e526fc67ec99a899&"
 COMBAT_LOW_HEALTH = "https://cdn.discordapp.com/attachments/1334637411363323996/1507523688075890708/COMBAT_LOW_HEALTH.jpg?ex=6a123657&is=6a10e4d7&hm=1084f405af2092a55216f5ae245f102ffc6d3f679183e0963dea63ae5435efed&"
 
-# ── BOSS PORTRAITS ────────────────────────────────────────────────────────────
+# ── BOSS PET PORTRAITS ────────────────────────────────────────────────────────────
 # Shared between uber-entry embeds and in-combat pet thumbnails.
 BOSS_APHRODITE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512847120171179/boss_aphrodite.jpeg?ex=69f8b4fc&is=69f7637c&hm=19f9a7010b27f757393a38bf96229a267c4b4d90005906b52eb16a1f66e6a2f8&"
 BOSS_LUCIFER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512847564898396/boss_lucifer.png?ex=69f8b4fd&is=69f7637d&hm=48834029b0438c566ac4bb049b739ae58862f1e514a33cd5e47a689115d6c9d1&"
@@ -87,7 +87,7 @@ BOSS_GEMINI_ANIM = "https://cdn.discordapp.com/attachments/1334637411363323996/1
 BOSS_NEET_ANIM = "https://cdn.discordapp.com/attachments/1334637411363323996/1524772594660933652/uber_neet_anim.gif?ex=6a50f6a3&is=6a4fa523&hm=a1b160a531ec79cc399ab584dcd3fb2e2d346e2eb94eaefa593469e155aca478&"
 BOSS_LUCIFER_ANIM = "https://cdn.discordapp.com/attachments/1334637411363323996/1524773647863255081/uber_lucifer_anim.gif?ex=6a50f79e&is=6a4fa61e&hm=0853f4e90611c77faef04cf48f5c06414b4de30d89790f02caaa738f369be015&"
 
-# ── BOSS MONSTER IMAGES (set on Monster.image, shown in combat embeds) ────────
+# ── UBER BOSS MONSTER IMAGES (set on Monster.image, shown in combat embeds) ────────
 MONSTER_APHRODITE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512849729032354/monster_aphrodite.jpeg?ex=69f8b4fd&is=69f7637d&hm=9e8d92508b4afa68ed37ae90b215ef84543abf46e77888b2bd9dd245c5383140&"
 MONSTER_LUCIFER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512850135744654/monster_lucifer.jpeg?ex=69f8b4fd&is=69f7637d&hm=e02fcc19942992b88f1b7b3ba32a2aa2e04e393131e913668cb4ea4bcffe431d&"
 MONSTER_NEET = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512850614161528/monster_neet.jpeg?ex=69f8b4fd&is=69f7637d&hm=e46ec818e6ee38e464844230b7b8200bbc96928e4015ed4ef1967c649428f28c&"
