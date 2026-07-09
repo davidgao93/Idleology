@@ -23,7 +23,9 @@ class RiteRunState:
     room_entry_potions: int = 0
     total_turns: int = 0
     writs: list[str] = field(default_factory=list)  # empty until Milestone 4
-    pending_power_buff: bool = False  # Respite's "Power" choice: +30% ATK/DEF, cleared on wing clear
+    pending_power_buff: bool = (
+        False  # Respite's "Power" choice: +30% ATK/DEF, cleared on wing clear
+    )
 
     @property
     def is_run_complete(self) -> bool:

@@ -7,7 +7,14 @@ from __future__ import annotations
 import random
 from datetime import datetime, timedelta
 
-from core.emojis import ANGEL_KEY, DRAGON_KEY, GOLD_COIN, SOUL_CORE, SPIRIT_STONE, VOID_FRAG
+from core.emojis import (
+    ANGEL_KEY,
+    DRAGON_KEY,
+    GOLD_COIN,
+    SOUL_CORE,
+    SPIRIT_STONE,
+    VOID_FRAG,
+)
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, get_damage_goals
 
 BOARD_COOLDOWN_HOURS = 20

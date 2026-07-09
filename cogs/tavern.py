@@ -127,7 +127,9 @@ class Tavern(commands.Cog, name="tavern"):
             )
             embed.set_author(name="Elara", icon_url=POTION_SHOP_AUTHOR)
             embed.set_thumbnail(url=POTION_SHOP)
-            embed.add_field(name=f"Your Gold {GOLD_COIN}", value=f"{gold:,}", inline=False)
+            embed.add_field(
+                name=f"Your Gold {GOLD_COIN}", value=f"{gold:,}", inline=False
+            )
             embed.add_field(
                 name=f"Potion {POTION}",
                 value=(

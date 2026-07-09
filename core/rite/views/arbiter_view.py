@@ -62,7 +62,9 @@ async def build_arbiter_combat_view(
     )
 
 
-def _build_victory_embed(run_state: RiteRunState, dp: int, rewards: dict) -> discord.Embed:
+def _build_victory_embed(
+    run_state: RiteRunState, dp: int, rewards: dict
+) -> discord.Embed:
     embed = discord.Embed(
         title="✨ The Rite of Convergence is Complete",
         description=(
@@ -91,7 +93,10 @@ def _build_victory_embed(run_state: RiteRunState, dp: int, rewards: dict) -> dis
 def make_arbiter_end_state_callback(run_state: RiteRunState):
     async def _end_state(view: CombatView, message, interaction: discord.Interaction):
         # --- Mid-run phase clear: advance to next phase, keep this CombatView alive ---
-        if view.monster.hp <= 0 and view.current_phase_index < len(view.combat_phases) - 1:
+        if (
+            view.monster.hp <= 0
+            and view.current_phase_index < len(view.combat_phases) - 1
+        ):
             view.current_phase_index += 1
             next_phase_data = view.combat_phases[view.current_phase_index]
             reset_for_phase_transition(view.player)
@@ -111,7 +116,9 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
                 color=discord.Color.orange(),
             )
             trans_embed.set_thumbnail(url=view.monster.image)
-            view._sync_items(combat_ui.embed_to_container(trans_embed), interactive=False)
+            view._sync_items(
+                combat_ui.embed_to_container(trans_embed), interactive=False
+            )
             await message.edit(view=view)
             await asyncio.sleep(2)
 

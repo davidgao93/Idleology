@@ -341,10 +341,7 @@ async def _load_player_inventory(bot, user_id: str, server_id: str) -> dict[str,
 
     _handled = {"timber", "stone", *_MINING_COLS, *_WOOD_COLS, *_FISH_COLS}
     remaining = [
-        k
-        for _cat_id, _lbl, keys in _BM_CATEGORIES
-        for k in keys
-        if k not in _handled
+        k for _cat_id, _lbl, keys in _BM_CATEGORIES for k in keys if k not in _handled
     ]
     mat_data = await bot.database.settlement_materials.get_all(user_id)
     for key in remaining:

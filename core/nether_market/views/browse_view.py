@@ -105,14 +105,17 @@ class BrowseListView(BaseView):
 
     async def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title=f"{NETHER_MARKET_PLUNDER} Browse Targets", color=discord.Color.dark_purple()
+            title=f"{NETHER_MARKET_PLUNDER} Browse Targets",
+            color=discord.Color.dark_purple(),
         )
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if VEX_THUMBNAIL:
             embed.set_thumbnail(url=VEX_THUMBNAIL)
         charges = self.attacker_profile["plunder_charges"]
         embed.add_field(
-            name=f"{NETHER_MARKET_PLUNDER} Plunder Charges", value=f"{charges} / {MAX_CHARGES}", inline=True
+            name=f"{NETHER_MARKET_PLUNDER} Plunder Charges",
+            value=f"{charges} / {MAX_CHARGES}",
+            inline=True,
         )
         if charges < MAX_CHARGES:
             regen_seconds = M.get_charge_regen_seconds(
@@ -268,7 +271,8 @@ class ConfirmAttackView(BaseView):
 
     async def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title=f"{NETHER_MARKET_PLUNDER} Confirm Plunder Attempt", color=discord.Color.orange()
+            title=f"{NETHER_MARKET_PLUNDER} Confirm Plunder Attempt",
+            color=discord.Color.orange(),
         )
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         if self.target["kind"] == "npc":

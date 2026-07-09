@@ -165,7 +165,10 @@ class ItemDetailView(BaseView):
                 )
             if isinstance(self.item, Accessory):
                 self.add_upgrade_button(
-                    "Void Engram", ButtonStyle.secondary, "void_engram", emoji=VOID_ENGRAM
+                    "Void Engram",
+                    ButtonStyle.secondary,
+                    "void_engram",
+                    emoji=VOID_ENGRAM,
                 )
             if isinstance(self.item, (Glove, Boot, Helmet)):
                 self.add_upgrade_button(

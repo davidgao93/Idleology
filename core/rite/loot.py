@@ -101,8 +101,13 @@ async def grant_run_completion_rewards(
     rolls + equips a new Artefact. Returns a summary dict for the victory screen."""
     value = effective_loot_value(total_dp)
     bm_rewards = await complete_bm_deal_instant(
-        bot, user_id, server_id, value,
-        active_biases=[], player_level=player.level, tree_nodes={},
+        bot,
+        user_id,
+        server_id,
+        value,
+        active_biases=[],
+        player_level=player.level,
+        tree_nodes={},
     )
 
     artefact_key = roll_artefact_key(total_dp)

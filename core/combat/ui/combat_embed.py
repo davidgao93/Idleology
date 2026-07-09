@@ -12,7 +12,15 @@ from typing import Dict
 import discord
 
 from core.character.prestige_display import format_prestige_name
-from core.emojis import QUENCH, STAT_ATK, STAT_DEF, STAT_FDR, STAT_HP, STAT_PDR, STAT_WARD
+from core.emojis import (
+    QUENCH,
+    STAT_ATK,
+    STAT_DEF,
+    STAT_FDR,
+    STAT_HP,
+    STAT_PDR,
+    STAT_WARD,
+)
 from core.models import Monster, Player
 
 
@@ -439,12 +447,16 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
     # column layout to fall back on, so this is the only lever available.
     for idx, text in enumerate(field_texts):
         if idx > 0:
-            children.append(discord.ui.Separator(spacing=discord.SeparatorSpacing.small))
+            children.append(
+                discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
+            )
         children.append(discord.ui.TextDisplay(text))
 
     if ran_out:
         children.append(
-            discord.ui.TextDisplay("-# …additional content omitted (message length limit)")
+            discord.ui.TextDisplay(
+                "-# …additional content omitted (message length limit)"
+            )
         )
 
     if embed.image and embed.image.url:
@@ -584,7 +596,9 @@ def create_combat_layout(
             children.append(
                 discord.ui.Section(
                     monster_text,
-                    accessory=discord.ui.Thumbnail(monster.image, description=monster.name),
+                    accessory=discord.ui.Thumbnail(
+                        monster.image, description=monster.name
+                    ),
                 )
             )
         else:
@@ -657,7 +671,6 @@ def create_combat_embed(
     p_crit = player.get_current_crit_chance()
     p_pdr = player.get_total_pdr()
     p_fdr = player.get_total_fdr()
-    p_ward_pct = player.get_total_ward_percentage()
 
     description = f"A level **{monster.level}** {monster.name} approaches!{mod_text}"
 

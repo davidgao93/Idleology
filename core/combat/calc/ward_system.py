@@ -73,7 +73,12 @@ def generate_player_ward_on_hit(
     # non-crit-only passive to fire anyway.
     _ward_touched_crit_ok = not is_crit or player.roll_corrupted_insignia()
 
-    if is_hit and _ward_touched_crit_ok and glove_passive == "ward-touched" and glove_lvl > 0:
+    if (
+        is_hit
+        and _ward_touched_crit_ok
+        and glove_passive == "ward-touched"
+        and glove_lvl > 0
+    ):
         ward = int(glove_lvl * 25)
         if ward > 0:
             added = add_ward(player, ward, log)

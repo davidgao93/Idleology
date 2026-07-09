@@ -38,57 +38,90 @@ class WritSelectView(BaseLayoutView):
             mark = "✅" if key in self.selected else "▫️"
             lines.append(f"{mark} **{w.name}** (+{w.dp} DP) — {w.effect}")
         lines.append("")
-        lines.append(f"**Preview Devotion Points:** {preview_dp}+ *(speed writ DP only counts if you hit the deadline)*")
+        lines.append(
+            f"**Preview Devotion Points:** {preview_dp}+ *(speed writ DP only counts if you hit the deadline)*"
+        )
         return discord.ui.Container(
-            discord.ui.TextDisplay("\n".join(lines)), accent_color=discord.Color.dark_gold()
+            discord.ui.TextDisplay("\n".join(lines)),
+            accent_color=discord.Color.dark_gold(),
         )
 
     def _build_rows(self) -> list[discord.ui.ActionRow]:
         row1 = discord.ui.ActionRow()
         opts1 = [
             SelectOption(
-                label=WRITS[k].name, value=k, description=f"+{WRITS[k].dp} DP",
+                label=WRITS[k].name,
+                value=k,
+                description=f"+{WRITS[k].dp} DP",
                 default=(k in self.selected),
             )
             for k in TOGGLE_WRIT_KEYS
         ]
         sel1 = ui.Select(
             placeholder="Independent writs (pick any)...",
-            options=opts1, min_values=0, max_values=len(opts1),
+            options=opts1,
+            min_values=0,
+            max_values=len(opts1),
         )
         sel1.callback = self._on_toggle_select
         row1.add_item(sel1)
 
         row2 = discord.ui.ActionRow()
         speed_selected = next((k for k in SPEED_WRIT_KEYS if k in self.selected), None)
-        opts2 = [SelectOption(label="None", value=_NONE_VALUE, default=speed_selected is None)]
+        opts2 = [
+            SelectOption(
+                label="None", value=_NONE_VALUE, default=speed_selected is None
+            )
+        ]
         opts2 += [
             SelectOption(
-                label=WRITS[k].name, value=k, description=f"+{WRITS[k].dp} DP",
+                label=WRITS[k].name,
+                value=k,
+                description=f"+{WRITS[k].dp} DP",
                 default=(k == speed_selected),
             )
             for k in SPEED_WRIT_KEYS
         ]
-        sel2 = ui.Select(placeholder="Speed writ (pick one)...", options=opts2, min_values=1, max_values=1)
+        sel2 = ui.Select(
+            placeholder="Speed writ (pick one)...",
+            options=opts2,
+            min_values=1,
+            max_values=1,
+        )
         sel2.callback = self._on_speed_select
         row2.add_item(sel2)
 
         row3 = discord.ui.ActionRow()
-        attempts_selected = next((k for k in ATTEMPTS_WRIT_KEYS if k in self.selected), None)
-        opts3 = [SelectOption(label="None", value=_NONE_VALUE, default=attempts_selected is None)]
+        attempts_selected = next(
+            (k for k in ATTEMPTS_WRIT_KEYS if k in self.selected), None
+        )
+        opts3 = [
+            SelectOption(
+                label="None", value=_NONE_VALUE, default=attempts_selected is None
+            )
+        ]
         opts3 += [
             SelectOption(
-                label=WRITS[k].name, value=k, description=f"+{WRITS[k].dp} DP",
+                label=WRITS[k].name,
+                value=k,
+                description=f"+{WRITS[k].dp} DP",
                 default=(k == attempts_selected),
             )
             for k in ATTEMPTS_WRIT_KEYS
         ]
-        sel3 = ui.Select(placeholder="Attempts writ (pick one)...", options=opts3, min_values=1, max_values=1)
+        sel3 = ui.Select(
+            placeholder="Attempts writ (pick one)...",
+            options=opts3,
+            min_values=1,
+            max_values=1,
+        )
         sel3.callback = self._on_attempts_select
         row3.add_item(sel3)
 
         row4 = discord.ui.ActionRow()
-        btn_confirm = ui.Button(label="Begin the Rite", style=ButtonStyle.danger, emoji="🕯️")
+        btn_confirm = ui.Button(
+            label="Begin the Rite", style=ButtonStyle.danger, emoji="🕯️"
+        )
         btn_confirm.callback = self._on_confirm
         row4.add_item(btn_confirm)
 

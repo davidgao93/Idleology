@@ -235,7 +235,10 @@ class NetherMarketHubView(BaseView):
         self.add_item(holdings_btn)
 
         browse_btn = ui.Button(
-            label="Browse Targets", style=ButtonStyle.blurple, emoji=NETHER_MARKET_PLUNDER, row=1
+            label="Browse Targets",
+            style=ButtonStyle.blurple,
+            emoji=NETHER_MARKET_PLUNDER,
+            row=1,
         )
         browse_btn.callback = self.open_browse
         self.add_item(browse_btn)

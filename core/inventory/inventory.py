@@ -92,13 +92,19 @@ def _add_passive_field(embed, name_label: str, display_name: str, desc: str):
 
 def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     if getattr(item, "attack", 0):
-        embed.add_field(name=f"{STAT_ATK} Attack", value=f"{item.attack:,}", inline=True)
+        embed.add_field(
+            name=f"{STAT_ATK} Attack", value=f"{item.attack:,}", inline=True
+        )
     if getattr(item, "defence", 0):
-        embed.add_field(name=f"{STAT_DEF} Defence", value=f"{item.defence:,}", inline=True)
+        embed.add_field(
+            name=f"{STAT_DEF} Defence", value=f"{item.defence:,}", inline=True
+        )
     if getattr(item, "rarity", 0):
         embed.add_field(name=f"{RARITY} Rarity", value=f"{item.rarity:,}%", inline=True)
     embed.add_field(
-        name=f"{RUNE_REFINEMENT} Refinement", value=f"+{item.refinement_lvl}", inline=True
+        name=f"{RUNE_REFINEMENT} Refinement",
+        value=f"+{item.refinement_lvl}",
+        inline=True,
     )
 
     # Weapon template stats
@@ -111,7 +117,9 @@ def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     if crit_pct > 0:
         embed.add_field(name="🗡️ Crit Chance", value=f"+{crit_pct}%", inline=True)
     crit_multi = getattr(item, "crit_multi", 2.00)
-    embed.add_field(name=f"{CRIT_MULTI} Crit Multi", value=f"{crit_multi:.2f}x", inline=True)
+    embed.add_field(
+        name=f"{CRIT_MULTI} Crit Multi", value=f"{crit_multi:.2f}x", inline=True
+    )
 
     if item.passive not in ("none", ""):
         _add_passive_field(
@@ -166,9 +174,13 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
 
     # Secondary stat
     if getattr(item, "block", 0):
-        embed.add_field(name=f"{STAT_BLOCK} Block", value=f"{item.block:,}%", inline=True)
+        embed.add_field(
+            name=f"{STAT_BLOCK} Block", value=f"{item.block:,}%", inline=True
+        )
     if getattr(item, "evasion", 0):
-        embed.add_field(name=f"{DODGE_EVASION} Evasion", value=f"{item.evasion:,}%", inline=True)
+        embed.add_field(
+            name=f"{DODGE_EVASION} Evasion", value=f"{item.evasion:,}%", inline=True
+        )
     if getattr(item, "ward", 0):
         embed.add_field(name=f"{STAT_WARD} Ward", value=f"{item.ward:,}%", inline=True)
 
@@ -295,9 +307,13 @@ def _glove_boot_fields(embed, item, passive_funcs: dict):
 
 def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
     if getattr(item, "attack", 0):
-        embed.add_field(name=f"{STAT_ATK} Attack", value=f"{item.attack:,}", inline=True)
+        embed.add_field(
+            name=f"{STAT_ATK} Attack", value=f"{item.attack:,}", inline=True
+        )
     if getattr(item, "defence", 0):
-        embed.add_field(name=f"{STAT_DEF} Defence", value=f"{item.defence:,}", inline=True)
+        embed.add_field(
+            name=f"{STAT_DEF} Defence", value=f"{item.defence:,}", inline=True
+        )
     if getattr(item, "rarity", 0):
         embed.add_field(name=f"{RARITY} Rarity", value=f"{item.rarity:,}%", inline=True)
     if getattr(item, "ward", 0):
@@ -464,7 +480,9 @@ class InventoryUI:
                 if item.passive != "none" and item.passive != "":
                     passives.append(item.passive.title())
                 if getattr(item, "void_passive", "none") not in ("none", ""):
-                    passives.append(f"{VOID_ENGRAM}{item.void_passive.replace('_', ' ').title()}")
+                    passives.append(
+                        f"{VOID_ENGRAM}{item.void_passive.replace('_', ' ').title()}"
+                    )
             details_str = f" - {' | '.join(details)}" if details else ""
             passives_str = f" - {', '.join(passives)}" if passives else ""
 
@@ -560,11 +578,15 @@ class InventoryUI:
         if isinstance(item, Armor) and getattr(
             item, "celestial_passive", "none"
         ) not in ("none", ""):
-            passives.append(f"{CELESTIAL_ENGRAM} {item.celestial_passive.replace('_', ' ').title()}")
+            passives.append(
+                f"{CELESTIAL_ENGRAM} {item.celestial_passive.replace('_', ' ').title()}"
+            )
         if isinstance(item, Accessory) and getattr(
             item, "void_passive", "none"
         ) not in ("none", ""):
-            passives.append(f"{VOID_ENGRAM} {item.void_passive.replace('_', ' ').title()}")
+            passives.append(
+                f"{VOID_ENGRAM} {item.void_passive.replace('_', ' ').title()}"
+            )
 
         stat_line = " · ".join(parts)
         passive_line = ("Passives:\n" + ", ".join(passives)) if passives else ""
@@ -632,7 +654,9 @@ class InventoryUI:
                 line = f"**→ {line}**"
             lines.append(line)
 
-        embed.add_field(name=f"{GEAR_BACKPACK} Gear", value="\n".join(lines), inline=False)
+        embed.add_field(
+            name=f"{GEAR_BACKPACK} Gear", value="\n".join(lines), inline=False
+        )
 
         if total_pages > 1:
             embed.set_footer(

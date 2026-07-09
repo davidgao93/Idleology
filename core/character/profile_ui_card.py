@@ -10,7 +10,12 @@ from datetime import datetime, timedelta, timezone
 import discord
 
 from core.character.prestige_display import format_prestige_name
-from core.emojis import DEVELOPMENT_CONTRACT, GOLD_COIN, INFINITE_MAW, NETHER_MARKET_PLUNDER
+from core.emojis import (
+    DEVELOPMENT_CONTRACT,
+    GOLD_COIN,
+    INFINITE_MAW,
+    NETHER_MARKET_PLUNDER,
+)
 from core.items.factory import load_player
 
 
@@ -73,7 +78,9 @@ class CardProfileBuilder:
                     _exp_str = f"{_exp:,} *(MAX)*"
                 else:
                     _pct = min(99.9, _exp / _needed * 100)
-                    _exp_str = f"{_exp:,} / {_needed:,}\n*({_pct:.1f}% to Lv.{_lvl + 1})*"
+                    _exp_str = (
+                        f"{_exp:,} / {_needed:,}\n*({_pct:.1f}% to Lv.{_lvl + 1})*"
+                    )
         except Exception:
             _exp_str = f"{_exp:,}"
         embed.add_field(name="Experience", value=_exp_str, inline=True)
@@ -579,7 +586,9 @@ class CardProfileBuilder:
                     nm_str = (
                         f"{nm_charges}/{MAX_CHARGES} · next in {nh}h {nr // 60:02d}m"
                     )
-                misc_lines.append(f"{NETHER_MARKET_PLUNDER} **Plunder Attempts** — {nm_str}")
+                misc_lines.append(
+                    f"{NETHER_MARKET_PLUNDER} **Plunder Attempts** — {nm_str}"
+                )
             except Exception:
                 pass
 

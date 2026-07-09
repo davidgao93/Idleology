@@ -2,6 +2,25 @@ import csv
 import os
 import random
 
+from core.combat.mobgen.modifier_data import (
+    BOSS_MOD_NAMES,
+    COMMON_MOD_NAMES,
+    MODIFIER_DEFINITIONS,
+    RARE_TIERED_MOD_NAMES,
+    make_modifier,
+)
+from core.images import (
+    COMBAT_DUMMY,
+    CORRUPTED_MONSTERS,
+    MONSTER_APHRODITE,
+    MONSTER_EVELYNN,
+    MONSTER_EVELYNN_PRECURSOR,
+    MONSTER_GEMINI,
+    MONSTER_LUCIFER,
+    MONSTER_NEET,
+)
+from core.models import Monster
+
 # Module-level cache for monsters.csv rows — populated on first call, never re-read.
 # Tuple layout: (name, url, level_scaled, flavor, species)
 _MONSTER_ROWS: list[tuple] | None = None
@@ -29,26 +48,6 @@ def _load_monster_rows() -> list[tuple]:
         print(f"Error reading monsters.csv: {e}")
     _MONSTER_ROWS = rows
     return rows
-
-
-from core.combat.mobgen.modifier_data import (
-    BOSS_MOD_NAMES,
-    COMMON_MOD_NAMES,
-    MODIFIER_DEFINITIONS,
-    RARE_TIERED_MOD_NAMES,
-    make_modifier,
-)
-from core.images import (
-    COMBAT_DUMMY,
-    CORRUPTED_MONSTERS,
-    MONSTER_APHRODITE,
-    MONSTER_EVELYNN,
-    MONSTER_EVELYNN_PRECURSOR,
-    MONSTER_GEMINI,
-    MONSTER_LUCIFER,
-    MONSTER_NEET,
-)
-from core.models import Monster
 
 
 async def generate_encounter(

@@ -651,9 +651,7 @@ class PlotDetailView(SettlementBaseView):
                             cost_str += f" | {s_emoji} {s['name']} ×{s['qty']}"
                     elif "special_name" in cost:
                         sp_emoji = RESOURCE_EMOJI.get(cost.get("special_key"), "✨")
-                        cost_str += (
-                            f" | {sp_emoji} {cost['special_name']} ×{cost['special_qty']}"
-                        )
+                        cost_str += f" | {sp_emoji} {cost['special_name']} ×{cost['special_qty']}"
                     embed.add_field(
                         name="Next Upgrade Cost", value=cost_str, inline=False
                     )
@@ -1346,7 +1344,9 @@ class PlotDetailView(SettlementBaseView):
         embed = self.build_embed()
 
         if not result["changed"]:
-            embed.title = f"📍 Plot {self.plot.plot_index} — {DIVINER_ROD} Power Fails to Bind"
+            embed.title = (
+                f"📍 Plot {self.plot.plot_index} — {DIVINER_ROD} Power Fails to Bind"
+            )
             embed.color = discord.Color.dark_grey()
             embed.add_field(
                 name="The Diviner's Rod fizzles...",
@@ -1358,7 +1358,9 @@ class PlotDetailView(SettlementBaseView):
                 inline=False,
             )
         else:
-            embed.title = f"📍 Plot {self.plot.plot_index} — {DIVINER_ROD} Terrain Rerolled!"
+            embed.title = (
+                f"📍 Plot {self.plot.plot_index} — {DIVINER_ROD} Terrain Rerolled!"
+            )
             embed.color = discord.Color.purple()
 
         await interaction.edit_original_response(content=None, embed=embed, view=self)

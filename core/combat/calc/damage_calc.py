@@ -340,7 +340,9 @@ def calc_crit_damage(
     # Corrupted Insignia (Artefact): on crit, 50% chance for Adroit (normally
     # a normal-hit-only floor) to also apply.
     if player.get_glove_passive() == "adroit" and player.roll_corrupted_insignia():
-        _ci_glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+        _ci_glove_lvl = (
+            player.equipped_glove.passive_lvl if player.equipped_glove else 0
+        )
         if _ci_glove_lvl > 0:
             adroit_min = int(base_max * (_ci_glove_lvl * 0.02))
             base_min = max(base_min, adroit_min)
@@ -749,8 +751,12 @@ def apply_monster_damage_reduction(
 
 
 def apply_damage_to_monster(
-    player: Player, monster: Monster, damage: int, log: list[str],
-    *, bypass_ward: bool = False,
+    player: Player,
+    monster: Monster,
+    damage: int,
+    log: list[str],
+    *,
+    bypass_ward: bool = False,
 ) -> int:
     """Phase 7 — apply damage to monster ward then HP, respecting Time Lord.
     Returns damage actually dealt. bypass_ward=True (The Final Edict artefact)

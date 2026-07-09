@@ -40,7 +40,7 @@ _VOICES: dict[str, list[str]] = {
         'Vespera exhales through her teeth. "Beginner\'s luck. It has to be."',
         '"Well played," Vespera admits, sliding your winnings across the felt. "Don\'t get used to it."',
         'She taps the table twice. "Fine. You earned that one. The house remembers, though."',
-        '"Hm." Vespera\'s smile doesn\'t quite reach her eyes as she counts out your gold.',
+        "\"Hm.\" Vespera's smile doesn't quite reach her eyes as she counts out your gold.",
         '"Lucky cards," Vespera mutters, already reshuffling. "Let\'s see if it holds."',
     ],
     "casino_blackjack_loss": [
@@ -88,7 +88,7 @@ _VOICES: dict[str, list[str]] = {
     "casino_horse_loss": [
         '"That\'s racing," Vespera says, sweeping up your bet with a grin.',
         '"Wrong horse," she shrugs. "There\'s always next time."',
-        '"I could\'ve told you that one wasn\'t winning," Vespera smirks.',
+        "\"I could've told you that one wasn't winning,\" Vespera smirks.",
         'She pats the track fondly. "The house breeds these horses, you know."',
         '"Better luck picking next time," Vespera says, not even trying to sound sincere.',
     ],

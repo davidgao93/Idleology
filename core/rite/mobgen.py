@@ -199,7 +199,9 @@ def generate_wing_gemini(
     # tier-0 value regardless of force flags, so a non-default percentage
     # (Fracture of Balance) needs to be constructed directly.
     monster.modifiers.append(
-        MonsterModifier(name="True Reckoning", tier=0, value=true_reckoning_pct, difficulty=0.0)
+        MonsterModifier(
+            name="True Reckoning", tier=0, value=true_reckoning_pct, difficulty=0.0
+        )
     )
 
     _apply_spawn_modifiers(monster)
@@ -207,7 +209,9 @@ def generate_wing_gemini(
     return monster
 
 
-def generate_wing_neet(player, monster: "Monster", *, void_drain_rate: float = 0.015) -> "Monster":
+def generate_wing_neet(
+    player, monster: "Monster", *, void_drain_rate: float = 0.015
+) -> "Monster":
     """Wing 4 — NEET Reborn (Void Drain): stat-pool attrition test.
 
     void_drain_rate defaults to 1.5%/round per RAID-DESIGN.md; the Hungering
@@ -244,7 +248,9 @@ def generate_wing_neet(player, monster: "Monster", *, void_drain_rate: float = 0
     return monster
 
 
-def generate_wing_evelynn(player, monster: "Monster", *, delirious: bool = False) -> "Monster":
+def generate_wing_evelynn(
+    player, monster: "Monster", *, delirious: bool = False
+) -> "Monster":
     """Wing 5 — Evelynn Reborn (All Modifiers): every common/rare mod at T5,
     scaled to Nightmarish difficulty (Delirious under the Abyssal Embrace writ,
     Milestone 4).
@@ -342,8 +348,14 @@ def generate_arbiter_phase(player, phase_data: dict, phase_index: int) -> "Monst
     monster = Monster(
         name=phase_data["name"],
         level=ref_level,
-        hp=0, max_hp=0, xp=150000, attack=0, defence=0,
-        modifiers=[], image=ARBITER_PORTRAIT, image2=ARBITER_THUMBNAIL,
+        hp=0,
+        max_hp=0,
+        xp=150000,
+        attack=0,
+        defence=0,
+        modifiers=[],
+        image=ARBITER_PORTRAIT,
+        image2=ARBITER_THUMBNAIL,
         flavor="watches, unmoved by anything you can do",
         species="???",
         is_boss=True,

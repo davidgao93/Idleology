@@ -27,7 +27,12 @@ class Rite(commands.Cog, name="rite"):
         self.bot = bot
 
     async def _begin_run(
-        self, interaction: Interaction, user_id: str, server_id: str, player, writ_keys: list[str]
+        self,
+        interaction: Interaction,
+        user_id: str,
+        server_id: str,
+        player,
+        writ_keys: list[str],
     ):
         """Checks + consumes the 5 entry keys atomically, creates a fresh run
         (with writ-driven starting attempts), and shows the wing hub. Shared
@@ -51,12 +56,16 @@ class Rite(commands.Cog, name="rite"):
                 embed.add_field(
                     name=f"{have} {name}", value=f"*{source}* — {blurb}", inline=False
                 )
-            await interaction.edit_original_response(content=None, embed=embed, view=None)
+            await interaction.edit_original_response(
+                content=None, embed=embed, view=None
+            )
             return
 
         async with self.bot.database.transaction():
             for _name, col in _RITE_KEY_COLUMNS:
-                ok = await self.bot.database.users.deduct_currency_atomic(user_id, col, 1)
+                ok = await self.bot.database.users.deduct_currency_atomic(
+                    user_id, col, 1
+                )
                 if not ok:
                     raise RuntimeError(
                         f"Rite key balance changed mid-transaction for {user_id} ({col})"
@@ -65,7 +74,9 @@ class Rite(commands.Cog, name="rite"):
         run_state = RiteRunState(
             attempts_remaining=starting_attempts(writ_keys), writs=writ_keys
         )
-        await self.bot.database.rite.upsert_run(user_id, server_id, run_state.to_snapshot())
+        await self.bot.database.rite.upsert_run(
+            user_id, server_id, run_state.to_snapshot()
+        )
 
         view = WingHubView(self.bot, user_id, server_id, player, run_state)
         self.bot.state_manager.set_active(user_id, "rite")
@@ -97,12 +108,21 @@ class Rite(commands.Cog, name="rite"):
             view.message = await interaction.original_response()
             return
 
-        has_first_clear = await self.bot.database.rite.has_first_clear(user_id, server_id)
+        has_first_clear = await self.bot.database.rite.has_first_clear(
+            user_id, server_id
+        )
         if has_first_clear:
-            async def _on_writs_confirmed(inner_interaction: Interaction, writ_keys: list[str]):
-                await self._begin_run(inner_interaction, user_id, server_id, player, writ_keys)
 
-            view = WritSelectView(self.bot, user_id, server_id, player, _on_writs_confirmed)
+            async def _on_writs_confirmed(
+                inner_interaction: Interaction, writ_keys: list[str]
+            ):
+                await self._begin_run(
+                    inner_interaction, user_id, server_id, player, writ_keys
+                )
+
+            view = WritSelectView(
+                self.bot, user_id, server_id, player, _on_writs_confirmed
+            )
             self.bot.state_manager.set_active(user_id, "rite")
             await interaction.response.send_message(view=view)
             view.message = await interaction.original_response()

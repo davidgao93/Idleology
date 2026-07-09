@@ -134,7 +134,9 @@ def process_heal(player: Player, monster=None) -> str:
             divine_overheal = int(excess * helmet_lvl)
             if divine_overheal > 0:
                 added = _add_ward(player, divine_overheal, [], "Divine")
-                msg += f"\n**Divine** converts **{added}** overheal into {STAT_WARD} Ward!"
+                msg += (
+                    f"\n**Divine** converts **{added}** overheal into {STAT_WARD} Ward!"
+                )
         else:
             # Soul stone: divine — 1:1 tier match to helmet lvl.
             ss_divine = player.get_soul_stone_passive("divine")
@@ -808,7 +810,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     if player.get_celestial_armor_passive() == "celestial_ghostreaver":
         _gr_regen = random.randint(50, 200)
         _gr_added = _add_ward(player, _gr_regen, log)
-        log.append(f"✨ **Celestial Ghostreaver** restores **{_gr_added}** {STAT_WARD} Ward!")
+        log.append(
+            f"✨ **Celestial Ghostreaver** restores **{_gr_added}** {STAT_WARD} Ward!"
+        )
         _je.process_jewel_trigger(player, monster, "ward", _gr_added, log)
 
     # --- Hematurgy: post-hit and post-miss passives ---

@@ -221,8 +221,6 @@ class RefineView(BaseUpgradeView):
         await interaction.response.defer()
 
         uid, sid = self.user_id, str(interaction.guild.id)
-
-        cost_data = EquipmentMechanics.calculate_refine_cost(self.item)
         gold = await self.bot.database.users.get_gold(uid)
 
         sim = copy.copy(self.item)

@@ -64,6 +64,7 @@ def _passive_display_name(passive_type: str) -> str:
     emoji = _PASSIVE_EMOJI.get(passive_type)
     return f"{emoji} {name}" if emoji else name
 
+
 _PASSIVE_DESCRIPTIONS = {
     "vitality": "Hardens your body, permanently raising your maximum HP.",
     "wrath": "Channels fury, converting a portion of your Defence into Attack.",
@@ -299,7 +300,9 @@ class CodexTomsView(BaseLayoutView):
         embed.set_author(name="Seraphine", icon_url=SERAPHINE_PORTRAIT)
         embed.set_thumbnail(url=SERAPHINE_THUMBNAIL)
         embed.add_field(
-            name="Growth Potential", value=_passive_range_text(tome.passive_type), inline=False
+            name="Growth Potential",
+            value=_passive_range_text(tome.passive_type),
+            inline=False,
         )
         embed.set_footer(
             text=f"Slot {tome.slot + 1} unlocked — upgrade it with Codex Fragments."

@@ -14,10 +14,15 @@ from core.npc_voices import get_quip
 from core.rite.run_state import RiteRunState
 
 
-async def trigger_reveal_and_arbiter(bot, user_id: str, server_id: str, player, run_state: RiteRunState, message) -> None:
+async def trigger_reveal_and_arbiter(
+    bot, user_id: str, server_id: str, player, run_state: RiteRunState, message
+) -> None:
     # Lazy imports: arbiter_view <-> wing_hub_view/reveal_view form a small
     # import cycle at the module level otherwise.
-    from core.rite.views.arbiter_view import build_arbiter_combat_view, make_arbiter_end_state_callback
+    from core.rite.views.arbiter_view import (
+        build_arbiter_combat_view,
+        make_arbiter_end_state_callback,
+    )
 
     run_state.current_wing = "arbiter"
     run_state.room_entry_hp = player.current_hp

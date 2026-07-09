@@ -240,7 +240,9 @@ class General(commands.Cog, name="general"):
                 _WEAPON_PASSIVE_DESC.get(f"{key}_{tier}", defn.description(tier))
                 for tier in range(1, len(defn.tier_labels) + 1)
             ]
-            output += f"**{defn.display_name}** — {_compact_tier_descriptions(descs)}\n\n"
+            output += (
+                f"**{defn.display_name}** — {_compact_tier_descriptions(descs)}\n\n"
+            )
         return output
 
     # ------------------------------------------------------------------

@@ -149,7 +149,9 @@ class DropManager:
             )
             neet_suffix = " (**Void Echo** doubled the yield!)"
         msg_map = {"mining": "ores", "woodcutting": "logs", "fishing": "fish"}
-        return f"{BOOT_SLOT} **Skiller** found extra {msg_map[skill_type]}!{neet_suffix}"
+        return (
+            f"{BOOT_SLOT} **Skiller** found extra {msg_map[skill_type]}!{neet_suffix}"
+        )
 
     @staticmethod
     async def process_drops(

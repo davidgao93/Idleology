@@ -2,7 +2,14 @@ import random
 from typing import Dict
 
 from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
-from core.emojis import GOLD_COIN, HEMATURGY_ICON, STAT_ATK, STAT_DEF, STAT_PDR, STAT_WARD
+from core.emojis import (
+    GOLD_COIN,
+    HEMATURGY_ICON,
+    STAT_ATK,
+    STAT_DEF,
+    STAT_PDR,
+    STAT_WARD,
+)
 from core.models import Monster, Player
 
 
@@ -304,7 +311,9 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
 
         player.gamble_roll = _random.randint(1, 6)
         if player.gamble_roll == 1:
-            logs["Artefact"] = "🎲 **Sad One's Gamble** rolls a 1 — no effect this combat."
+            logs["Artefact"] = (
+                "🎲 **Sad One's Gamble** rolls a 1 — no effect this combat."
+            )
         elif player.gamble_roll == 6:
             logs["Artefact"] = (
                 "🎲 **Sad One's Gamble** rolls a 6 — Unlucky effects become Lucky, "

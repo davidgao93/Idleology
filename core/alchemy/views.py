@@ -84,7 +84,9 @@ class AlchemyHubView(BaseView):
             f"**Passive Slots:** {slot_count} unlocked",
         ]
         if level_cost is not None:
-            info.append(f"**Next Level Cost:** {SPIRIT_STONE} {level_cost} Spirit Stones")
+            info.append(
+                f"**Next Level Cost:** {SPIRIT_STONE} {level_cost} Spirit Stones"
+            )
         else:
             info.append("**Level:** ✨ MAX")
         embed.description = "\n".join(info)

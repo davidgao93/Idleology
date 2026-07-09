@@ -711,7 +711,9 @@ class CodexRunView(BaseLayoutView):
             name="📚 Total XP", value=f"{self.cumulative_xp:,}", inline=True
         )
         embed.add_field(
-            name=f"{GOLD_COIN} Total Gold", value=f"{self.cumulative_gold:,}", inline=True
+            name=f"{GOLD_COIN} Total Gold",
+            value=f"{self.cumulative_gold:,}",
+            inline=True,
         )
         if exp_changes["ascensions_gained"]:
             embed.add_field(
@@ -1059,7 +1061,9 @@ class CodexRunView(BaseLayoutView):
             name="📚 XP Forfeited", value=f"{chapter_xp_lost:,}", inline=True
         )
         embed.add_field(
-            name=f"{GOLD_COIN} Gold Forfeited", value=f"{chapter_gold_lost:,}", inline=True
+            name=f"{GOLD_COIN} Gold Forfeited",
+            value=f"{chapter_gold_lost:,}",
+            inline=True,
         )
         embed.add_field(name="💀 Deaths", value=str(self.deaths), inline=True)
 
@@ -1244,7 +1248,9 @@ class CodexRunView(BaseLayoutView):
             name="📚 XP Banked", value=f"{self.chapter_start_xp:,}", inline=True
         )
         embed.add_field(
-            name=f"{GOLD_COIN} Gold Banked", value=f"{self.chapter_start_gold:,}", inline=True
+            name=f"{GOLD_COIN} Gold Banked",
+            value=f"{self.chapter_start_gold:,}",
+            inline=True,
         )
         lobby_view = CodexRunCompleteView(
             self.bot,

@@ -97,12 +97,16 @@ class SettingsView(BaseView):
 
         if self.auto_rest_unlocked:
             rest_lbl = (
-                "Disable Auto-Pay Rest" if self.auto_rest_pay else "Enable Auto-Pay Rest"
+                "Disable Auto-Pay Rest"
+                if self.auto_rest_pay
+                else "Enable Auto-Pay Rest"
             )
             rest_style = (
                 ButtonStyle.danger if self.auto_rest_pay else ButtonStyle.success
             )
-            rest_btn = ui.Button(label=rest_lbl, style=rest_style, emoji=GOLD_COIN, row=1)
+            rest_btn = ui.Button(
+                label=rest_lbl, style=rest_style, emoji=GOLD_COIN, row=1
+            )
             rest_btn.callback = self.toggle_auto_rest_pay
         else:
             rest_btn = ui.Button(

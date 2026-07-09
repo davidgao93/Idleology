@@ -439,9 +439,7 @@ class RecycleConfirmView(BaseView):
 
         slot_label = _SLOT_LABELS.get(slot, slot)
         embed = _build_main_embed(self.consume_view.player, self.consume_view.inventory)
-        embed.set_footer(
-            text=f"Recycled into {slot_label} — +{self.new_hp:,} Max HP!"
-        )
+        embed.set_footer(text=f"Recycled into {slot_label} — +{self.new_hp:,} Max HP!")
         await interaction.edit_original_response(embed=embed, view=self.consume_view)
         self.stop()
 
@@ -564,7 +562,9 @@ class ConsumeView(BaseView):
     def build_embed(self) -> discord.Embed:
         return _build_main_embed(self.player, self.inventory)
 
-    @ui.button(label="Hematurgy", style=ButtonStyle.primary, emoji=HEMATURGY_ICON, row=1)
+    @ui.button(
+        label="Hematurgy", style=ButtonStyle.primary, emoji=HEMATURGY_ICON, row=1
+    )
     async def hematurgy(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         passives = await self.bot.database.hematurgy.get_all_passives(self.user_id)

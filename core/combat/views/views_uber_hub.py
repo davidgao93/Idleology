@@ -166,7 +166,9 @@ class UberHubView(BaseLayoutView):
                 "These are the most powerful beings in existence. "
                 "Only the truly prepared dare to challenge them.\n\n"
                 "Select a boss to view your readiness and available keys.",
-                accessory=discord.ui.Thumbnail(ARBITER_THUMBNAIL, description="The Arbiter"),
+                accessory=discord.ui.Thumbnail(
+                    ARBITER_THUMBNAIL, description="The Arbiter"
+                ),
             ),
             sep(),
             _boss_section(

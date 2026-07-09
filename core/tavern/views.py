@@ -91,7 +91,9 @@ class ShopView(BaseView):
 
     async def refresh_ui(self, interaction: Interaction, msg: str):
         embed = interaction.message.embeds[0]
-        embed.set_field_at(0, name=f"Your Gold {GOLD_COIN}", value=f"{self.gold:,}", inline=False)
+        embed.set_field_at(
+            0, name=f"Your Gold {GOLD_COIN}", value=f"{self.gold:,}", inline=False
+        )
         topup_qty = self._topup_qty()
         embed.set_field_at(
             1,

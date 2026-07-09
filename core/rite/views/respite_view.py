@@ -41,9 +41,7 @@ class RespiteView(BaseLayoutView):
         self._sync_items()
 
     def _build_container(self) -> discord.ui.Container:
-        hp_pct = int(
-            100 * self.player.current_hp / max(1, self.player.total_max_hp)
-        )
+        hp_pct = int(100 * self.player.current_hp / max(1, self.player.total_max_hp))
         lines = [
             "## 🕯️ The Arbiter's Aid",
             f'*"{self._quip}"*',
@@ -55,14 +53,22 @@ class RespiteView(BaseLayoutView):
             "",
         ]
         if self._omitted_option:
-            lines.append("*The Devout's Burden weighs on this respite — one aid is unavailable.*")
+            lines.append(
+                "*The Devout's Burden weighs on this respite — one aid is unavailable.*"
+            )
             lines.append("")
         if self._omitted_option != "power":
-            lines.append(f"⚔️ **Power** — +{int((POWER_ATK_DEF_MULT - 1) * 100)}% ATK and DEF for the next fight only")
+            lines.append(
+                f"⚔️ **Power** — +{int((POWER_ATK_DEF_MULT - 1) * 100)}% ATK and DEF for the next fight only"
+            )
         if self._omitted_option != "respite":
-            lines.append(f"💚 **Respite** — restore ~{int(RESPITE_HEAL_PCT * 100)}% HP + {RESPITE_POTIONS} potions")
+            lines.append(
+                f"💚 **Respite** — restore ~{int(RESPITE_HEAL_PCT * 100)}% HP + {RESPITE_POTIONS} potions"
+            )
         if self._omitted_option != "emergency":
-            lines.append(f"✨ **Emergency** — full HP restore + {EMERGENCY_POTIONS} potion")
+            lines.append(
+                f"✨ **Emergency** — full HP restore + {EMERGENCY_POTIONS} potion"
+            )
         return discord.ui.Container(
             discord.ui.TextDisplay("\n".join(lines)), accent_color=discord.Color.gold()
         )
@@ -75,12 +81,16 @@ class RespiteView(BaseLayoutView):
             row.add_item(btn_power)
 
         if self._omitted_option != "respite":
-            btn_respite = ui.Button(label="Respite", style=ButtonStyle.success, emoji="💚")
+            btn_respite = ui.Button(
+                label="Respite", style=ButtonStyle.success, emoji="💚"
+            )
             btn_respite.callback = self._on_respite
             row.add_item(btn_respite)
 
         if self._omitted_option != "emergency":
-            btn_emergency = ui.Button(label="Emergency", style=ButtonStyle.primary, emoji="✨")
+            btn_emergency = ui.Button(
+                label="Emergency", style=ButtonStyle.primary, emoji="✨"
+            )
             btn_emergency.callback = self._on_emergency
             row.add_item(btn_emergency)
         return [row]

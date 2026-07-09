@@ -91,8 +91,13 @@ class RiteEndView(BaseLayoutView):
 
 
 async def _build_wing_combat_view(
-    bot, user_id: str, server_id: str, player: Player, run_state: RiteRunState,
-    wing_key: str, rite_callback,
+    bot,
+    user_id: str,
+    server_id: str,
+    player: Player,
+    run_state: RiteRunState,
+    wing_key: str,
+    rite_callback,
 ) -> CombatView:
     """Generates a fresh encounter for `wing_key` and wraps it in a CombatView.
     Shared by the initial wing-select launch and death retries of the same wing."""
@@ -112,8 +117,16 @@ async def _build_wing_combat_view(
         player.cs.def_multiplier = POWER_ATK_DEF_MULT
 
     monster = Monster(
-        name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0,
-        modifiers=[], image="", flavor="",
+        name="",
+        level=0,
+        hp=0,
+        max_hp=0,
+        xp=0,
+        attack=0,
+        defence=0,
+        modifiers=[],
+        image="",
+        flavor="",
     )
 
     # Writs that change a wing's own generation logic (not just a stat overlay)
@@ -175,7 +188,11 @@ class WingHubView(BaseLayoutView):
 
     def _build_container(self) -> discord.ui.Container:
         def _wing_section(key, name, subtitle, thumb_url) -> discord.ui.Section:
-            status = "✅ Cleared" if key in self.run_state.wings_cleared else "⚔️ Not yet cleared"
+            status = (
+                "✅ Cleared"
+                if key in self.run_state.wings_cleared
+                else "⚔️ Not yet cleared"
+            )
             text = f"### {name}\n{subtitle}\n**Status:** {status}"
             return discord.ui.Section(
                 text, accessory=discord.ui.Thumbnail(thumb_url, description=name)
@@ -195,7 +212,11 @@ class WingHubView(BaseLayoutView):
                 f"**Wings cleared:** {len(self.run_state.wings_cleared)}/5\n"
                 f"**HP:** {self.player.current_hp:,}/{self.player.total_max_hp:,} ({hp_pct}%)  •  "
                 f"**Potions:** {self.player.potions}"
-                + ("\n⚔️ **Power** is active for your next fight." if self.run_state.pending_power_buff else "")
+                + (
+                    "\n⚔️ **Power** is active for your next fight."
+                    if self.run_state.pending_power_buff
+                    else ""
+                )
                 + writs_line
             ),
             sep(),
@@ -220,7 +241,9 @@ class WingHubView(BaseLayoutView):
             btn.callback = self._make_start_callback(key)
             (row0 if i < 3 else row1).add_item(btn)
 
-        btn_close = ui.Button(label="Close (Save & Exit)", style=ButtonStyle.secondary, emoji="✖️")
+        btn_close = ui.Button(
+            label="Close (Save & Exit)", style=ButtonStyle.secondary, emoji="✖️"
+        )
         btn_close.callback = self.close_view
         row2.add_item(btn_close)
 
@@ -302,7 +325,12 @@ class WingHubView(BaseLayoutView):
                     from core.rite.views.reveal_view import trigger_reveal_and_arbiter
 
                     await trigger_reveal_and_arbiter(
-                        view.bot, view.user_id, view.server_id, view.player, run_state, message
+                        view.bot,
+                        view.user_id,
+                        view.server_id,
+                        view.player,
+                        run_state,
+                        message,
                     )
                     view.stop()
                     return

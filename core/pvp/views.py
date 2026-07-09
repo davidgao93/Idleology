@@ -119,8 +119,12 @@ class DuelView(BaseView):
         embed = discord.Embed(
             title=f"⚔️ Duel for {self.amount:,} Gold", color=discord.Color.gold()
         )
-        embed.add_field(name=p1_fmt, value=f"{STAT_HP} {self.hp[self.p1_id]} HP", inline=True)
-        embed.add_field(name=p2_fmt, value=f"{STAT_HP} {self.hp[self.p2_id]} HP", inline=True)
+        embed.add_field(
+            name=p1_fmt, value=f"{STAT_HP} {self.hp[self.p1_id]} HP", inline=True
+        )
+        embed.add_field(
+            name=p2_fmt, value=f"{STAT_HP} {self.hp[self.p2_id]} HP", inline=True
+        )
         embed.add_field(name="Log", value=self.logs, inline=False)
         embed.set_footer(text=f"Turn: {self.names[self.current_turn]}")
 

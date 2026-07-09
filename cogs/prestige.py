@@ -54,23 +54,41 @@ PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
         "wiz": {"label": "Archmage", "url": PRESTIGE_AVATARS_MALE["wiz"]},
     },
     "female": {
-        "bloodmage": {"label": "Blood Mage", "url": PRESTIGE_AVATARS_FEMALE["bloodmage"]},
+        "bloodmage": {
+            "label": "Blood Mage",
+            "url": PRESTIGE_AVATARS_FEMALE["bloodmage"],
+        },
         "gem": {"label": "Crystal Warden", "url": PRESTIGE_AVATARS_FEMALE["gem"]},
         "hunt": {"label": "Huntress", "url": PRESTIGE_AVATARS_FEMALE["hunt"]},
         "ninja": {"label": "Kunoichi", "url": PRESTIGE_AVATARS_FEMALE["ninja"]},
         "sorc": {"label": "Sorceress", "url": PRESTIGE_AVATARS_FEMALE["sorc"]},
         "void": {"label": "Void Walker", "url": PRESTIGE_AVATARS_FEMALE["void"]},
-        "warriorangel": {"label": "Seraph Warrior", "url": PRESTIGE_AVATARS_FEMALE["warriorangel"]},
+        "warriorangel": {
+            "label": "Seraph Warrior",
+            "url": PRESTIGE_AVATARS_FEMALE["warriorangel"],
+        },
     },
     "female_ss": {
         "bride": {"label": "Eternal Bride", "url": PRESTIGE_AVATARS_FEMALE_SS["bride"]},
-        "deepocean": {"label": "Abyssal Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["deepocean"]},
+        "deepocean": {
+            "label": "Abyssal Sovereign",
+            "url": PRESTIGE_AVATARS_FEMALE_SS["deepocean"],
+        },
         "fox": {"label": "Ninetails Fox", "url": PRESTIGE_AVATARS_FEMALE_SS["fox"]},
         "ice": {"label": "Glacial Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["ice"]},
         "oni": {"label": "Oni Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["oni"]},
-        "petals": {"label": "Blossom Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["petals"]},
-        "snow": {"label": "Winter Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["snow"]},
-        "storm": {"label": "Storm Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["storm"]},
+        "petals": {
+            "label": "Blossom Sovereign",
+            "url": PRESTIGE_AVATARS_FEMALE_SS["petals"],
+        },
+        "snow": {
+            "label": "Winter Sovereign",
+            "url": PRESTIGE_AVATARS_FEMALE_SS["snow"],
+        },
+        "storm": {
+            "label": "Storm Sovereign",
+            "url": PRESTIGE_AVATARS_FEMALE_SS["storm"],
+        },
         "tech": {"label": "Neon Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["tech"]},
     },
 }
@@ -231,7 +249,9 @@ class AvatarGalleryView(BaseView):
         )
         embed.set_author(name="Eliza", icon_url=ELIZA_PORTRAIT)
         embed.set_image(url=info["url"])
-        embed.set_footer(text=f"{self.index + 1} of {len(ids)} — {AVATAR_TIER_LABELS[self.tier]}")
+        embed.set_footer(
+            text=f"{self.index + 1} of {len(ids)} — {AVATAR_TIER_LABELS[self.tier]}"
+        )
         return embed
 
     def _rebuild(self) -> None:
@@ -310,7 +330,9 @@ class AvatarGalleryView(BaseView):
 
     async def _handle_back(self, interaction: discord.Interaction) -> None:
         await self.hub_view.refresh()
-        embed = await PrestigeBuilder.build_overview(self.bot, self.user_id, self.server_id)
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
+        )
         self.hub_view.active_tab = "overview"
         self.hub_view._rebuild()
         await interaction.response.defer()
@@ -318,7 +340,9 @@ class AvatarGalleryView(BaseView):
         self.hub_view.message = await interaction.original_response()
 
     async def _handle_custom(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_modal(AvatarModal(self.bot, self.user_id, self.hub_view))
+        await interaction.response.send_modal(
+            AvatarModal(self.bot, self.user_id, self.hub_view)
+        )
 
     async def _handle_buy(self, interaction: discord.Interaction) -> None:
         avatar_id, info = self._current()
@@ -415,7 +439,9 @@ class EmblemGalleryView(BaseView):
                     label=label,
                     value=key,
                     emoji=emoji,
-                    description="Owned — free to equip" if owned else f"{EMBLEM_COST:,}g",
+                    description="Owned — free to equip"
+                    if owned
+                    else f"{EMBLEM_COST:,}g",
                     default=(key == self.active_emblem),
                 )
             )
@@ -425,7 +451,10 @@ class EmblemGalleryView(BaseView):
 
         total_pages = self._total_pages()
         prev_btn = ui.Button(
-            label="◀ Prev", style=ButtonStyle.secondary, disabled=(self.page == 0), row=1
+            label="◀ Prev",
+            style=ButtonStyle.secondary,
+            disabled=(self.page == 0),
+            row=1,
         )
         prev_btn.callback = self._handle_prev
         self.add_item(prev_btn)
@@ -464,7 +493,9 @@ class EmblemGalleryView(BaseView):
 
     async def _handle_back(self, interaction: discord.Interaction) -> None:
         await self.hub_view.refresh()
-        embed = await PrestigeBuilder.build_overview(self.bot, self.user_id, self.server_id)
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
+        )
         self.hub_view.active_tab = "overview"
         self.hub_view._rebuild()
         await interaction.response.defer()
@@ -564,7 +595,9 @@ class TitleModal(discord.ui.Modal, title="Set Prestige Title"):
             color=DEFAULT_COLOR,
         )
         embed.set_author(name="Eliza", icon_url=ELIZA_PORTRAIT)
-        view = TitlePreviewView(self.bot, self.user_id, self.server_id, text, self.hub_view)
+        view = TitlePreviewView(
+            self.bot, self.user_id, self.server_id, text, self.hub_view
+        )
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
 
@@ -573,14 +606,21 @@ class TitlePreviewView(BaseView):
     the final display name before any gold is spent."""
 
     def __init__(
-        self, bot, user_id: str, server_id: str, title_text: str, hub_view: "PrestigeHubView"
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        title_text: str,
+        hub_view: "PrestigeHubView",
     ):
         super().__init__(bot, user_id, server_id)
         self.title_text = title_text
         self.hub_view = hub_view
 
     @ui.button(label="Confirm", style=ButtonStyle.success, emoji="✅")
-    async def confirm(self, interaction: discord.Interaction, button: ui.Button) -> None:
+    async def confirm(
+        self, interaction: discord.Interaction, button: ui.Button
+    ) -> None:
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < TITLE_COST:
             return await interaction.response.edit_message(
@@ -801,7 +841,9 @@ class PrestigeBuilder:
                 name = row["prestige_display_name"] or row["name"]
                 quote = row["prestige_monument"]
                 title_text = row["prestige_title"]
-                title_text = "" if not title_text or title_text == "none" else title_text
+                title_text = (
+                    "" if not title_text or title_text == "none" else title_text
+                )
                 emblem_key = row["prestige_emblem"] or ""
                 emblem_entry = EMBLEM_CATALOG.get(emblem_key)
                 emblem_emoji = emblem_entry[1] if emblem_entry else ""
@@ -857,7 +899,9 @@ class PrestigeHubView(BaseView):
             ("Monument", "🗿", self._handle_monument),
             ("Rename", "✏️", self._handle_rename),
         ]:
-            btn = ui.Button(label=label, emoji=emoji, style=ButtonStyle.secondary, row=0)
+            btn = ui.Button(
+                label=label, emoji=emoji, style=ButtonStyle.secondary, row=0
+            )
             btn.callback = cb
             self.add_item(btn)
 
@@ -878,7 +922,9 @@ class PrestigeHubView(BaseView):
 
         # Row 2: Close, alone on its own row (matches the Close convention used
         # by every other hub view in the bot).
-        close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2)
+        close_btn = ui.Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2
+        )
         close_btn.callback = self._handle_close
         self.add_item(close_btn)
 
