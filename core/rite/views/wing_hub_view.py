@@ -1,10 +1,12 @@
-"""Milestone 2 scaffolding: a minimal wing-selection hub for The Rite of
-Convergence's 5 standalone wing fights.
+"""Wing-selection hub for The Rite of Convergence.
 
-No key consumption, no attempts/retry, no writs, no loot payout — those land
-in Milestones 3-5. This view exists so the 5 wing encounters and their new
-combat mechanics (Unbreakable, Judgment, True Reckoning, Void Drain) can be
-fought and verified end-to-end before the run/attempt state machine is built.
+Run structure: [Entry] -> Choose Wing -> Fight -> Respite -> Choose Wing ->
+Fight -> Respite -> (x5 wings) -> [Arbiter Reveal] -> Final Boss (6 phases).
+
+The Arbiter finale (6-phase boss) and Writs/Devotion Points are not built
+yet (Milestones 4-5) — clearing all 5 wings currently shows a placeholder
+instead of the real reveal, and writs always contribute nothing (run_state.writs
+stays empty, so e.g. Devout's Burden never trims the respite options).
 """
 
 import discord
@@ -24,6 +26,8 @@ from core.images import (
 )
 from core.models import Monster, Player
 from core.rite import mobgen
+from core.rite.run_state import RiteRunState
+from core.rite.views.respite_view import POWER_ATK_DEF_MULT, RespiteView
 
 # (key, display name, subtitle, generator fn, thumbnail)
 _WINGS = [
@@ -66,35 +70,67 @@ _WINGS = [
 _WING_BY_KEY = {w[0]: w for w in _WINGS}
 
 
-class WingReturnRow(discord.ui.ActionRow["WingReturnView"]):
-    @discord.ui.button(label="↩ Return to Wing Select", style=ButtonStyle.secondary)
-    async def return_to_hub(self, interaction: Interaction, button: ui.Button):
-        await self.view._on_return(interaction)
-
-
-class WingReturnView(BaseLayoutView):
-    """Minimal post-fight view. Milestone 3 replaces this with the real
-    attempts/respite flow."""
-
-    def __init__(self, bot, user_id: str, server_id: str, player, wings_cleared: set):
-        super().__init__(bot, user_id, server_id)
-        self.player = player
-        self.wings_cleared = wings_cleared
-        self.row = WingReturnRow()
-
-    def set_content(self, embed: discord.Embed) -> None:
-        self.clear_items()
-        self.add_item(combat_ui.embed_to_container(embed))
-        self.add_item(self.row)
-
-    async def _on_return(self, interaction: Interaction):
+class RiteEndRow(discord.ui.ActionRow["RiteEndView"]):
+    @discord.ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
+    async def close(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
-        hub = WingHubView(
-            self.bot, self.user_id, self.server_id, self.player, self.wings_cleared
-        )
-        await interaction.edit_original_response(view=hub)
-        hub.message = await interaction.original_response()
-        self.stop()
+        await interaction.delete_original_response()
+        self.view.bot.state_manager.clear_active(self.view.user_id)
+        self.view.stop()
+
+
+class RiteEndView(BaseLayoutView):
+    """Terminal screen: run failed (0 attempts left), or the 5-wing reveal
+    placeholder pending the real Arbiter finale (Milestone 5)."""
+
+    def __init__(self, bot, user_id: str, server_id: str, embed: discord.Embed):
+        super().__init__(bot, user_id, server_id)
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(RiteEndRow())
+
+
+async def _build_wing_combat_view(
+    bot, user_id: str, server_id: str, player: Player, run_state: RiteRunState,
+    wing_key: str, rite_callback,
+) -> CombatView:
+    """Generates a fresh encounter for `wing_key` and wraps it in a CombatView.
+    Shared by the initial wing-select launch and death retries of the same wing."""
+    _key, name, _subtitle, generate_fn, _thumb = _WING_BY_KEY[wing_key]
+
+    # Wing hub reuses the same Player object across fights (same reason Uber
+    # lobbies do — see start_uber() precedent), so leftover combat stacks/
+    # buffs from a previous encounter must be cleared first.
+    player.reset_combat_state()
+
+    # Respite's "Power" choice applies for every attempt at the CURRENT wing
+    # (including retries after death), and is only cleared once that wing is
+    # actually cleared — see the victory branch of the end-state callback.
+    if run_state.pending_power_buff:
+        player.cs.atk_multiplier = POWER_ATK_DEF_MULT
+        player.cs.def_multiplier = POWER_ATK_DEF_MULT
+
+    monster = Monster(
+        name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0,
+        modifiers=[], image="", flavor="",
+    )
+    monster = generate_fn(player, monster)
+    player.combat_ward = player.get_combat_ward_value()
+    engine.apply_stat_effects(player, monster)
+    start_logs = engine.apply_combat_start_passives(player, monster)
+
+    user_row = await bot.database.users.get(user_id, server_id)
+    return CombatView(
+        bot,
+        user_id,
+        server_id,
+        player,
+        monster,
+        start_logs,
+        combat_phases=None,
+        rite_callback=rite_callback,
+        title_override=f"🕯️ RITE OF CONVERGENCE — {name.upper()}",
+        player_avatar_url=user_row["appearance"] if user_row else None,
+    )
 
 
 class WingHubView(BaseLayoutView):
@@ -104,17 +140,17 @@ class WingHubView(BaseLayoutView):
         user_id: str,
         server_id: str,
         player: Player,
-        wings_cleared: set | None = None,
+        run_state: RiteRunState,
     ):
         super().__init__(bot, user_id, server_id)
         self.player = player
-        self.wings_cleared = wings_cleared if wings_cleared is not None else set()
+        self.run_state = run_state
         self._processing = False
         self._sync_items()
 
     def _build_container(self) -> discord.ui.Container:
         def _wing_section(key, name, subtitle, thumb_url) -> discord.ui.Section:
-            status = "✅ Cleared" if key in self.wings_cleared else "⚔️ Not yet cleared"
+            status = "✅ Cleared" if key in self.run_state.wings_cleared else "⚔️ Not yet cleared"
             text = f"### {name}\n{subtitle}\n**Status:** {status}"
             return discord.ui.Section(
                 text, accessory=discord.ui.Thumbnail(thumb_url, description=name)
@@ -122,11 +158,15 @@ class WingHubView(BaseLayoutView):
 
         sep = lambda: discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
 
+        hp_pct = int(100 * self.player.current_hp / max(1, self.player.total_max_hp))
         children: list = [
             discord.ui.TextDisplay(
                 "## 🕯️ The Rite of Convergence — Wing Select\n"
-                "*(Milestone 2 scaffolding: no keys, no attempts, no loot yet.)*\n\n"
-                f"**Wings cleared:** {len(self.wings_cleared)}/5"
+                f"**Attempts remaining:** {self.run_state.attempts_remaining}  •  "
+                f"**Wings cleared:** {len(self.run_state.wings_cleared)}/5\n"
+                f"**HP:** {self.player.current_hp:,}/{self.player.total_max_hp:,} ({hp_pct}%)  •  "
+                f"**Potions:** {self.player.potions}"
+                + ("\n⚔️ **Power** is active for your next fight." if self.run_state.pending_power_buff else "")
             ),
             sep(),
         ]
@@ -140,15 +180,17 @@ class WingHubView(BaseLayoutView):
         row2 = discord.ui.ActionRow()
 
         for i, (key, name, _subtitle, _fn, _thumb) in enumerate(_WINGS):
+            cleared = key in self.run_state.wings_cleared
             btn = ui.Button(
                 label=name.split(" Reborn")[0].split(" &")[0],
-                style=ButtonStyle.success if key in self.wings_cleared else ButtonStyle.danger,
+                style=ButtonStyle.success if cleared else ButtonStyle.danger,
+                disabled=cleared,
                 custom_id=f"rite_wing_{key}",
             )
             btn.callback = self._make_start_callback(key)
             (row0 if i < 3 else row1).add_item(btn)
 
-        btn_close = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
+        btn_close = ui.Button(label="Close (Save & Exit)", style=ButtonStyle.secondary, emoji="✖️")
         btn_close.callback = self.close_view
         row2.add_item(btn_close)
 
@@ -174,42 +216,24 @@ class WingHubView(BaseLayoutView):
             self._processing = True
             await interaction.response.defer()
 
-            _key, name, _subtitle, generate_fn, _thumb = _WING_BY_KEY[wing_key]
-
-            # Wing hub reuses the same Player object across fights (same reason
-            # Uber lobbies do — see start_uber() precedent), so leftover combat
-            # stacks/buffs from a previous wing must be cleared first.
-            self.player.reset_combat_state()
-
-            monster = Monster(
-                name="",
-                level=0,
-                hp=0,
-                max_hp=0,
-                xp=0,
-                attack=0,
-                defence=0,
-                modifiers=[],
-                image="",
-                flavor="",
+            # Room-entry snapshot: on death-with-attempts-remaining, HP resets
+            # to this value (potions do not — any spent during a failed
+            # attempt stay spent, per RAID-DESIGN.md).
+            self.run_state.current_wing = wing_key
+            self.run_state.room_entry_hp = self.player.current_hp
+            self.run_state.room_entry_potions = self.player.potions
+            await self.bot.database.rite.upsert_run(
+                self.user_id, self.server_id, self.run_state.to_snapshot()
             )
-            monster = generate_fn(self.player, monster)
-            self.player.combat_ward = self.player.get_combat_ward_value()
-            engine.apply_stat_effects(self.player, monster)
-            start_logs = engine.apply_combat_start_passives(self.player, monster)
 
-            user_row = await self.bot.database.users.get(self.user_id, self.server_id)
-            view = CombatView(
+            view = await _build_wing_combat_view(
                 self.bot,
                 self.user_id,
                 self.server_id,
                 self.player,
-                monster,
-                start_logs,
-                combat_phases=None,
-                rite_callback=self._make_end_state_callback(wing_key),
-                title_override=f"🕯️ RITE OF CONVERGENCE — {name.upper()}",
-                player_avatar_url=user_row["appearance"] if user_row else None,
+                self.run_state,
+                wing_key,
+                self._make_end_state_callback(wing_key),
             )
 
             self.bot.state_manager.set_active(self.user_id, "rite")
@@ -221,39 +245,87 @@ class WingHubView(BaseLayoutView):
 
     def _make_end_state_callback(self, wing_key: str):
         async def _end_state(view: CombatView, message, interaction: Interaction):
+            run_state = self.run_state
             won = view.monster.hp <= 0 and view.player.current_hp > 0
 
-            view.bot.state_manager.clear_active(view.user_id)
             await view.bot.database.users.update_from_player_object(view.player)
             await _je.save_jewel_state(view.bot, view.user_id, view.player)
 
             if won:
-                self.wings_cleared.add(wing_key)
-                embed = discord.Embed(
-                    title=f"✅ {view.monster.name} defeated!",
-                    description=(
-                        "Wing cleared.\n\n"
-                        "*(Milestone 2 scaffolding — no rewards yet; attempts, HP "
-                        "carry-through, and respite land in Milestone 3.)*"
-                    ),
-                    color=discord.Color.green(),
-                )
-            else:
-                embed = discord.Embed(
-                    title=f"💀 Defeated by {view.monster.name}",
-                    description=(
-                        "*(Milestone 2 scaffolding — attempts/retry-on-death land "
-                        "in Milestone 3; this run simply ends here for now.)*"
-                    ),
-                    color=discord.Color.red(),
+                run_state.wings_cleared.add(wing_key)
+                run_state.current_wing = None
+                run_state.pending_power_buff = False
+                await view.bot.database.rite.upsert_run(
+                    view.user_id, view.server_id, run_state.to_snapshot()
                 )
 
-            return_view = WingReturnView(
-                view.bot, view.user_id, view.server_id, view.player, self.wings_cleared
+                if run_state.is_run_complete:
+                    view.bot.state_manager.clear_active(view.user_id)
+                    embed = discord.Embed(
+                        title="✨ All 5 Wings Cleared",
+                        description=(
+                            "The Arbiter's essences begin to converge...\n\n"
+                            "*(Milestone 3 scaffolding — the real Reveal narrative "
+                            "and the 6-phase Arbiter finale land in Milestone 5. "
+                            "Your run is saved; close and resume with `/rite` once "
+                            "it's ready.)*"
+                        ),
+                        color=discord.Color.gold(),
+                    )
+                    end_view = RiteEndView(view.bot, view.user_id, view.server_id, embed)
+                    await message.edit(view=end_view)
+                    end_view.message = message
+                    view.stop()
+                    return
+
+                respite = RespiteView(
+                    view.bot, view.user_id, view.server_id, view.player, run_state
+                )
+                await message.edit(view=respite)
+                respite.message = message
+                view.stop()
+                return
+
+            # --- Defeat ---
+            run_state.attempts_remaining -= 1
+
+            if run_state.attempts_remaining > 0:
+                # Retry the SAME wing: HP resets to the room-entry snapshot,
+                # potions do not (any used this attempt stay spent).
+                view.player.current_hp = run_state.room_entry_hp
+                await view.bot.database.users.update_from_player_object(view.player)
+                await view.bot.database.rite.upsert_run(
+                    view.user_id, view.server_id, run_state.to_snapshot()
+                )
+
+                retry_view = await _build_wing_combat_view(
+                    view.bot,
+                    view.user_id,
+                    view.server_id,
+                    view.player,
+                    run_state,
+                    wing_key,
+                    self._make_end_state_callback(wing_key),
+                )
+                await message.edit(embed=None, view=retry_view)
+                retry_view.message = message
+                view.stop()
+                return
+
+            # --- Run failed: no attempts remaining ---
+            view.bot.state_manager.clear_active(view.user_id)
+            await view.bot.database.rite.delete_run(view.user_id, view.server_id)
+            embed = discord.Embed(
+                title=f"💀 The Rite Ends — Defeated by {view.monster.name}",
+                description=(
+                    "No attempts remain. The Rite of Convergence has ended; "
+                    "your keys are spent."
+                ),
+                color=discord.Color.red(),
             )
-            return_view.set_content(embed)
-            await message.edit(view=return_view)
-            return_view.message = message
+            end_view = RiteEndView(view.bot, view.user_id, view.server_id, embed)
+            await message.edit(view=end_view)
+            end_view.message = message
             view.stop()
 
         return _end_state
