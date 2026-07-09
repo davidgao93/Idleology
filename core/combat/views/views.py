@@ -263,6 +263,7 @@ class CombatView(BaseLayoutView):
         hard_mode: int = 0,
         combat_streak: int = 0,
         crisis_callback=None,
+        rite_callback=None,
         player_avatar_url: str | None = None,
         title_override: str | None = None,
     ):
@@ -276,6 +277,13 @@ class CombatView(BaseLayoutView):
         self.post_combat_view = post_combat_view
         self.rematch_callback = rematch_callback
         self.crisis_callback = crisis_callback
+        # The Rite of Convergence: when set, handle_end_state() hands victory/defeat
+        # entirely to this callback instead of the standard reward pipeline (which
+        # is keyed by boss-name substrings — e.g. "Lucifer", "NEET" — that Rite's
+        # own "Lucifer Reborn"/"NEET Reborn" wing monsters would otherwise collide
+        # with) and the Uber-specific reward path. Signature: async fn(view, message,
+        # interaction) -> None; the callback owns the entire end-of-fight flow.
+        self.rite_callback = rite_callback
         self.hard_mode = (
             hard_mode  # int: 0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious
         )
@@ -801,6 +809,11 @@ class CombatView(BaseLayoutView):
 
     async def handle_end_state(self, message, interaction: Interaction):
         """Processes victory or defeat, including phase transitions for boss chains."""
+
+        # --- THE RITE OF CONVERGENCE ---
+        if self.rite_callback:
+            await self.rite_callback(self, message, interaction)
+            return
 
         # --- UBER ENCOUNTERS ---
         if getattr(self.monster, "is_uber", False):

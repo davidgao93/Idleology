@@ -207,15 +207,48 @@ def process_monster_turn(
         # skip in compact — HP regen visible in monster HP bar
 
     # --- Void Aura drain (regardless of hit) ---
+    # void_drain_rate defaults to 0.0 on every Monster; when unset we keep the
+    # standard Uber NEET rate (0.5%) exactly as before. NEET Reborn (Rite of
+    # Convergence, Wing 4) sets a higher rate on the monster at generation time.
     start = len(log)
     if monster.has_modifier("Void Aura"):
-        drain_atk = max(1, int(player.flat_atk * 0.005))
-        drain_def = max(0, int(player.flat_def * 0.005))
+        drain_rate = monster.void_drain_rate if monster.void_drain_rate > 0 else 0.005
+        drain_atk = max(1, int(player.flat_atk * drain_rate))
+        drain_def = max(0, int(player.flat_def * drain_rate))
         player.bonus_atk -= drain_atk
         player.bonus_def -= drain_def
         log.append(
             f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
         )
+    capture_compact_events(log, clog, start)
+
+    # --- Unbreakable (Aphrodite Reborn — Rite of Convergence, Wing 1): +1 charge
+    # per turn; at threshold, deals the player's full HP + Ward as true damage
+    # (guaranteed kill unless an Undying effect — e.g. Celestial Vow — saves them).
+    start = len(log)
+    if monster.has_modifier("Unbreakable"):
+        monster.unbreakable_charges += 1
+        threshold = int(monster.get_modifier_value("Unbreakable"))
+        if monster.unbreakable_charges >= threshold:
+            if celestial == "celestial_vow" and not getattr(
+                player, "celestial_vow_used", False
+            ):
+                player.current_hp = 1
+                ward_gain = int(player.total_max_hp * 0.5)
+                added = _add_ward(player, ward_gain, log)
+                player.celestial_vow_used = True
+                log.append(
+                    f"💥 **Unbreakable** reaches its limit — but **Celestial Vow** "
+                    f"saves you! You survive with **{added}** {STAT_WARD} Ward!"
+                )
+            else:
+                player.current_hp = 0
+                player.combat_ward = 0
+                log.append(
+                    "💥 **Unbreakable** reaches its limit! An unstoppable wave of "
+                    "true damage obliterates you!"
+                )
+            monster.unbreakable_charges = 0
     capture_compact_events(log, clog, start)
 
     # ==========================================================================
@@ -459,6 +492,24 @@ def process_monster_turn(
             total_damage += multistrike_damage
             calc.append(f"  multistrike: +{multistrike_damage} → total={total_damage}")
 
+        # --- True Reckoning (Gemini Reborn — Rite of Convergence, Wing 3): a fixed
+        # percentage of the RAW pre-mitigation hit is unconditionally true damage
+        # (bypasses PDR/FDR/Ward entirely); only the remainder is mitigated normally
+        # and can still be dodged/blocked/ward-absorbed like a regular hit. Applied
+        # once dodge/block are known, further down.
+        true_reckoning_portion = 0
+        if monster.has_modifier("True Reckoning"):
+            tr_pct = monster.get_modifier_value("True Reckoning")
+            true_reckoning_portion = int(dmg_raw * tr_pct)
+            remaining_raw = dmg_raw - true_reckoning_portion
+            total_damage = max(
+                0, int(remaining_raw * (1 - effective_pdr / 100)) - effective_fdr
+            )
+            calc.append(
+                f"  true_reckoning: raw={dmg_raw} → true={true_reckoning_portion} "
+                f"mitigated_remainder={total_damage}"
+            )
+
         # --- Executioner: 1% proc; true damage fires after dodge/block if not avoided ---
         is_executed = False
         if monster.has_modifier("Executioner") and random.random() < 0.01:
@@ -583,6 +634,17 @@ def process_monster_turn(
                     log.append(
                         f"**Soul Thorns T{ss_thorns}** reflects **{reflect}** damage back!"
                     )
+
+        # --- True Reckoning: apply the true-damage portion now that dodge/block
+        # are known. Dodging or blocking the hit avoids the true portion too. ---
+        if true_reckoning_portion > 0 and not is_dodged and not is_blocked:
+            player.current_hp = max(0, player.current_hp - true_reckoning_portion)
+            _tr_msg = (
+                f"⚖️ **True Reckoning** — **{true_reckoning_portion}** damage "
+                "bypasses all mitigation!"
+            )
+            log.append(_tr_msg)
+            clog.append(_tr_msg)
 
         # --- Sundering: 25% of damage bypasses player ward directly to HP ---
         if (
@@ -918,6 +980,24 @@ def process_monster_turn(
                 if random.random() < 0.30:
                     monster.bleed_stacks += 1
                     # skip in compact — stack count visible in Afflictions
+
+            # --- Judgment (Lucifer Reborn — Rite of Convergence, Wing 2): +1 charge
+            # per hit the player takes; at threshold, deals 99% of full HP + Ward
+            # as true damage.
+            if monster.has_modifier("Judgment") and damage_dealt > 0:
+                monster.judgment_charges += 1
+                threshold = int(monster.get_modifier_value("Judgment"))
+                if monster.judgment_charges >= threshold:
+                    pool = player.current_hp + player.combat_ward
+                    j_dmg = int(pool * 0.99)
+                    player.current_hp = max(0, player.current_hp - j_dmg)
+                    _judgment_msg = (
+                        f"⚖️ **Judgment** reaches its limit! A cataclysmic true "
+                        f"damage strike deals **{j_dmg}** damage!"
+                    )
+                    log.append(_judgment_msg)
+                    clog.append(_judgment_msg)
+                    monster.judgment_charges = 0
 
             # --- Impending Doom: +1 doom stack per hit; instant kill at tier-scaled threshold ---
             if monster.has_modifier("Impending Doom") and damage_dealt > 0:

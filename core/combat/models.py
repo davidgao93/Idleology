@@ -238,6 +238,15 @@ class Monster:
     # Flat damage reduction against player hits from Nightmarish/Delirious modes.
     difficulty_dr: float = 0.0
 
+    # --- The Rite of Convergence (per-wing transient state) ---
+    # Unbreakable (Aphrodite Reborn): +1 per turn; guaranteed kill at threshold.
+    unbreakable_charges: int = 0
+    # Judgment (Lucifer Reborn): +1 per hit taken; near-guaranteed kill at threshold.
+    judgment_charges: int = 0
+    # Void Drain rate override (NEET Reborn): 0 = use the standard Uber NEET 0.5%
+    # Void Aura rate untouched; set >0 to override it for this specific encounter.
+    void_drain_rate: float = 0.0
+
     # =====================================================================
     # New clean combat stat model (Phase 1+)
     # =====================================================================

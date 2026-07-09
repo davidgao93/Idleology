@@ -626,6 +626,40 @@ MODIFIER_DEFINITIONS: dict = {
             "10% chance per turn to snare you, preventing your action until freed"
         ),
     ),
+    # --- The Rite of Convergence (unrollable "uber" style, one per reborn wing) ---
+    "Unbreakable": ModifierDef(
+        "Unbreakable",
+        "uber",
+        tiers=[150],
+        difficulties=[0.0],
+        level_gates=[],
+        description=lambda v: (
+            f"Gains 1 charge per turn; at {int(v)} charges, deals your full HP + "
+            "Ward as true damage (guaranteed kill unless an Undying effect saves you)"
+        ),
+    ),
+    "Judgment": ModifierDef(
+        "Judgment",
+        "uber",
+        tiers=[50],
+        difficulties=[0.0],
+        level_gates=[],
+        description=lambda v: (
+            f"Gains 1 charge whenever you take damage; at {int(v)} charges, deals "
+            "99% of your full HP + Ward as true damage"
+        ),
+    ),
+    "True Reckoning": ModifierDef(
+        "True Reckoning",
+        "uber",
+        tiers=[0.80],
+        difficulties=[0.0],
+        level_gates=[],
+        description=lambda v: (
+            f"{int(v * 100)}% of each hit is unconditionally true damage, "
+            "bypassing PDR, FDR, and Ward"
+        ),
+    ),
 }
 
 COMMON_MOD_NAMES = [k for k, v in MODIFIER_DEFINITIONS.items() if v.pool == "common"]

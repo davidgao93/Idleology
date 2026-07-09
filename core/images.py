@@ -423,7 +423,7 @@ NETHER_NPC_THE_HOARDER_THUMBNAIL = "https://cdn.discordapp.com/attachments/13346
 # PRESTIGE_AVATAR_CATALOG.
 PRESTIGE_AVATARS_MALE = {
     "berserker": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246978920452136/male_berserker-1.gif?ex=6a4f0d1e&is=6a4dbb9e&hm=8a64158e4f1628f60dc8f931d8592896fa5ec391a9d29adf3da2e1d5a7a0286b&",
-    "gilded": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246979465576598/male_gilded.gif?ex=6a4f0d1f&is=6a4dbb9f&hm=f71c22a2735b21b17831cdbce3f8c335849a292a369a694569fa0073d51fcc13&",
+    "gilded": "https://cdn.discordapp.com/attachments/1334637411363323996/1524849628640710676/gilded_sov.gif?ex=6a513e61&is=6a4fece1&hm=267531452767f5eae769669d9f693c6da35be6330d16d60cbf4052837eb74e93&",
     "ronin": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246980019359814/male_ronin-1.gif?ex=6a4f0d1f&is=6a4dbb9f&hm=9492ca69176d60f02af3a7537cc56d57a24243c4d08da2346ddbbf836543e6ca&",
     "wiz": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246988152115300/male_wiz-1.gif?ex=6a4f0d21&is=6a4dbba1&hm=2418293c155b20e6fa6cd1febbd3819d4b9dee42963e352f006bb466cabcf90a&",
 }
