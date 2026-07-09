@@ -668,6 +668,7 @@ class General(commands.Cog, name="general"):
                 ("passives", "View your active passives"),
                 ("journey", "Level milestone rewards"),
                 ("cooldowns", "Check command timers"),
+                ("unstuck", "Reset a stuck session (after 10m)"),
                 ("player_settings", "Manage your personal game settings"),
                 ("tutorial", "Replay the intro tutorial"),
                 ("unregister", "Delete your character (Permanent!)"),
@@ -787,6 +788,15 @@ class General(commands.Cog, name="general"):
         embed = await ProfileBuilder.build_cooldowns(self.bot, user_id, server_id)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
+
+    @app_commands.command(
+        name="unstuck",
+        description="Reset a stuck session if a command's view stopped responding.",
+    )
+    async def unstuck(self, interaction: discord.Interaction) -> None:
+        user_id = str(interaction.user.id)
+        success, message = self.bot.state_manager.self_reset(user_id)
+        await interaction.response.send_message(message, ephemeral=True)
 
     @app_commands.command(
         name="ids", description="Fetch your user ID and all item IDs."

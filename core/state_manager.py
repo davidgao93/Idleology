@@ -4,7 +4,13 @@ Tracks which users are currently inside an interactive view.
 """
 
 import time
-from typing import Dict
+from typing import Dict, Tuple
+
+
+def _fmt_duration(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    minutes, secs = divmod(seconds, 60)
+    return f"{minutes}m {secs}s" if minutes else f"{secs}s"
 
 
 class StateManager:
@@ -20,22 +26,38 @@ class StateManager:
       ``STALE_LOCK_SECONDS`` — this covers the "the message with my Close
       button is gone" case that otherwise locks a player out until a
       restart.
+    - By the player themselves via ``self_reset()`` (see below) once a
+      lock has been held long enough that it's either genuinely stuck or
+      not worth the wait to abuse.
 
-    Force-clearing (stale expiry) also bumps the user's session token.
-    ``BaseView`` captures the token at construction and rejects
-    interactions when it no longer matches, so a force-cleared session's
-    orphaned views go dead instead of racing a new session against the
-    same state. Regular ``clear_active`` does NOT bump the token: views
-    like PostCombatView legitimately outlive their session lock.
+    Force-clearing (stale expiry, self-reset) also bumps the user's
+    session token. ``BaseView`` captures the token at construction and
+    rejects interactions when it no longer matches, so a force-cleared
+    session's orphaned views go dead instead of racing a new session
+    against the same state. Regular ``clear_active`` does NOT bump the
+    token: views like PostCombatView legitimately outlive their session
+    lock.
     """
 
     STALE_LOCK_SECONDS = 45 * 60
+
+    # A lock must have been held this long before the player can self-reset
+    # it — long enough that any normal interactive flow (fight, upgrade,
+    # menu) has already resolved, so this only fires for genuinely stuck
+    # views or someone deliberately waiting out a real fight, which costs
+    # them the wait either way.
+    SELF_RESET_MIN_ACTIVE_SECONDS = 10 * 60
+    # Rate limit on top of the above, in case a session gets stuck again
+    # immediately after a reset.
+    SELF_RESET_COOLDOWN_SECONDS = 10 * 60
 
     def __init__(self, logger):
         self.logger = logger
         # user_id → (operation name, monotonic start time)
         self.active_operations: Dict[str, tuple] = {}
         self._tokens: Dict[str, int] = {}
+        # user_id → monotonic time of last successful self_reset()
+        self._last_self_reset: Dict[str, float] = {}
 
     def set_active(self, user_id: str, operation: str):
         self.logger.info(f"Set {user_id} as {operation}")
@@ -55,6 +77,47 @@ class StateManager:
 
     def current_token(self, user_id: str) -> int:
         return self._tokens.get(user_id, 0)
+
+    def self_reset(self, user_id: str) -> Tuple[bool, str]:
+        """Player-facing self-service reset for a stuck session.
+
+        Only breaks a lock that has been held for at least
+        ``SELF_RESET_MIN_ACTIVE_SECONDS``, and only once per
+        ``SELF_RESET_COOLDOWN_SECONDS``. Returns ``(success, message)`` —
+        ``message`` is safe to show directly to the user in both cases.
+        """
+        now = time.monotonic()
+
+        entry = self.active_operations.get(user_id)
+        if entry is None:
+            return False, "You don't have an active session to reset."
+
+        operation, started_at = entry
+        elapsed = now - started_at
+        if elapsed < self.SELF_RESET_MIN_ACTIVE_SECONDS:
+            remaining = self.SELF_RESET_MIN_ACTIVE_SECONDS - elapsed
+            return False, (
+                f"Your **{operation.title()}** session needs to be stuck for "
+                f"10 minutes before you can reset it "
+                f"({_fmt_duration(remaining)} remaining)."
+            )
+
+        last_used = self._last_self_reset.get(user_id)
+        if last_used is not None:
+            cooldown_remaining = self.SELF_RESET_COOLDOWN_SECONDS - (now - last_used)
+            if cooldown_remaining > 0:
+                return False, (
+                    f"Self-reset is on cooldown "
+                    f"({_fmt_duration(cooldown_remaining)} remaining)."
+                )
+
+        self.force_clear(user_id)
+        self._last_self_reset[user_id] = now
+        self.logger.info(f"{user_id} self-reset their {operation} session")
+        return True, (
+            f"Your **{operation.title()}** session has been reset — "
+            "you can start fresh now."
+        )
 
     def is_active(self, user_id: str) -> bool:
         entry = self.active_operations.get(user_id)
