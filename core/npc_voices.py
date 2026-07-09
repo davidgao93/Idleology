@@ -269,6 +269,7 @@ _VOICES: dict[str, list[str]] = {
         "Raw power, added one roll at a time. Refine does it manually. Refinemaxx runs until materials are gone. Refinemaxx ✨ adds Runes to the loop — won't stop until everything's spent.",
         "A weapon that doesn't get better is already falling behind. Refine handles it one refinement at a time, or all at once with Refinemaxx. The star version burns Runes too, for those who want it all.",
         "Refinement isn't glamorous. It's just better numbers. Refine — one at a time. Refinemaxx — runs dry. Refinemaxx ✨ — adds Runes, runs even drier.",
+        "Push a weapon deep enough into refinement and even I can't bear to see it scrapped for nothing — dismantle it later and I'll salvage some of the Runes out of the wreckage. The deeper you've pushed it, the more comes back.",
     ],
     # ── Alchemy ───────────────────────────────────────────────────────────────
     "alchemy": [

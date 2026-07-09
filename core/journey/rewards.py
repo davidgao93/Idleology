@@ -284,7 +284,7 @@ MILESTONES = [
             "Alchemy — transmute, sythesize, and upgrade your potions",
             "Bosses — Lucifer unlocked; you might encounter him in Combat",
         ],
-        "commands": ["/alchemy", "/essences"],
+        "commands": ["/alchemy", "/gear"],
         "image": ALCHEMY_HUB,
         "grant": _grant_level_30,
     },

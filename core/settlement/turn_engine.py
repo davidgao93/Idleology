@@ -783,7 +783,7 @@ def compute_processing_turns(
     tree_nodes: dict[str, int],
 ) -> int:
     """Returns the number of Development Turns required to process a deal."""
-    raw = BM_TURNS_BASE + value / BM_TURNS_PER_VALUE
+    raw = (BM_TURNS_BASE + value / BM_TURNS_PER_VALUE) * 1.5
 
     # Tier reduction (T5 = −30%)
     tier_reduction = (bm_tier - 1) * 0.075  # 0% T1 → 30% T5
@@ -897,6 +897,12 @@ def roll_bm_rewards(
         extra_count = rolls_list[min(invested_level - 1, len(rolls_list) - 1)]
         category = node.get("category", "rune")
         extra_rolls.extend([category] * extra_count)
+
+    # Fortune's Cut — always-on Idlem sink: 1% chance per level of one bonus
+    # random-category roll. Not part of active_biases (no per-deal toggle).
+    fortune_lvl = _nodes.get("fortune_bias", 0)
+    if fortune_lvl > 0 and random.random() < fortune_lvl * 0.01:
+        extra_rolls.append(random.choices(categories, weights=weights, k=1)[0])
 
     if bm_logger:
         bm_logger.log_roll_plan(base_rolls, extra_rolls)

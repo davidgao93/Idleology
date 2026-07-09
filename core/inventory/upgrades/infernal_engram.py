@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
+from core.emojis import GOLD_COIN, INFERNAL_ENGRAM
 from core.images import SYLAS_AUTHOR, UPGRADE_INFERNAL_ENGRAM
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
@@ -33,13 +34,13 @@ class InfernalEngramView(BaseUpgradeView):
 
         desc = (
             f"**Current Infernal Passive:** {display_passive}\n"
-            f"**Infernal Engrams Owned:** {self.engrams}\n"
-            f"**Gold Cost:** 25,000,000\n\n"
+            f"{INFERNAL_ENGRAM} **Infernal Engrams Owned:** {self.engrams}\n"
+            f"**Gold Cost:** {GOLD_COIN} 25,000,000\n\n"
             "Consuming an Engram will imbue your weapon with a powerful Infernal passive, or reroll your existing one."
         )
 
         self.embed = discord.Embed(
-            title=f"🔥 Infernal Imbue: {self.item.name}",
+            title=f"{INFERNAL_ENGRAM} Infernal Imbue: {self.item.name}",
             description=desc,
             color=discord.Color.dark_red(),
         )
@@ -50,7 +51,7 @@ class InfernalEngramView(BaseUpgradeView):
         btn_consume = Button(
             label="Consume Engram",
             style=ButtonStyle.danger,
-            emoji="🔥",
+            emoji=INFERNAL_ENGRAM,
             disabled=(self.engrams < 1),
         )
         btn_consume.callback = self.confirm_engram
@@ -79,7 +80,7 @@ class InfernalEngramView(BaseUpgradeView):
         if gold < 25_000_000:
             self._processing = False
             return await interaction.response.send_message(
-                "You need **25,000,000 gold** to use an Infernal Engram.",
+                f"You need **{GOLD_COIN} 25,000,000 gold** to use an Infernal Engram.",
                 ephemeral=True,
             )
 
@@ -102,7 +103,7 @@ class InfernalEngramView(BaseUpgradeView):
 
         display_new = new_passive.replace("_", " ").title()
         res_embed = discord.Embed(
-            title="🔥 Engram Ignited!",
+            title=f"{INFERNAL_ENGRAM} Engram Ignited!",
             description=f"The Engram shatters in hellfire, branding your weapon.\n\n**New Passive:** {display_new}",
             color=discord.Color.red(),
         )

@@ -3,7 +3,7 @@ import discord
 from datetime import datetime, timedelta
 from discord import ButtonStyle, Interaction, ui
 
-from core.emojis import GOLD_COIN
+from core.emojis import DEVELOPMENT_CONTRACT, GOLD_COIN, RESOURCE_EMOJI
 from core.images import SETTLEMENT_BUILDINGS
 from core.settlement.mechanics import SettlementMechanics
 from core.settlement.plots import get_meta_slots
@@ -146,7 +146,7 @@ class TownHallView(SettlementBaseView):
             f"**Level:** {tier}/7\n"
             f"**Meta Building Slots:** {meta_used}/{meta_cap}\n"
             f"**Passive Zeal:** {passive_zeal_rate}/hr\n"
-            f"📜 **Development Contracts:** {self.dc_count}"
+            f"{DEVELOPMENT_CONTRACT} **Development Contracts:** {self.dc_count}"
         )
 
         embed = discord.Embed(
@@ -166,7 +166,7 @@ class TownHallView(SettlementBaseView):
         m, s = divmod(_r, 60)
         reset_str = f"{h}h:{m:02d}m:{s:02d}s"
         embed.add_field(
-            name="📜 Craft Development Contracts",
+            name=f"{DEVELOPMENT_CONTRACT} Craft Development Contracts",
             value=(
                 f"Cost per DC: {GOLD_COIN} {_DC_GOLD:,}g | "
                 f"🪵 {_DC_TIMBER:,} Timber | "
@@ -200,8 +200,11 @@ class TownHallView(SettlementBaseView):
                     f"{GOLD_COIN} {costs['gold']:,} | ⏱️ {dt} DTs"
                 )
                 if "specials" in costs:
-                    reqs = [f"{s['name']} ×{s['qty']}" for s in costs["specials"]]
-                    cost_str += f"\n✨ **Requires:** {', '.join(reqs)}"
+                    reqs = [
+                        f"{RESOURCE_EMOJI.get(s['key'], '✨')} {s['name']} ×{s['qty']}"
+                        for s in costs["specials"]
+                    ]
+                    cost_str += f"\n**Requires:** {', '.join(reqs)}"
 
                 next_passive_zeal = 5 + tier * 9
                 embed.add_field(
@@ -230,7 +233,7 @@ class TownHallView(SettlementBaseView):
         btn_craft = ui.Button(
             label="Craft Development Contracts",
             style=ButtonStyle.blurple,
-            emoji="📜",
+            emoji=DEVELOPMENT_CONTRACT,
             row=0,
         )
         btn_craft.callback = self.craft_dcs

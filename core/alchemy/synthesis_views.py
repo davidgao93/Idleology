@@ -221,7 +221,7 @@ class AlchemySynthesisHubView(BaseView):
                         inline=False,
                     )
 
-        # --- Reference table ---
+        # --- Reference table (split so no single field can exceed Discord's 1024-char cap) ---
         synth_lines = []
         for col, name in AlchemyMechanics.KEY_DISPLAY_NAMES.items():
             emoji = AlchemyMechanics.KEY_EMOJIS[col]
@@ -230,13 +230,18 @@ class AlchemySynthesisHubView(BaseView):
             synth_lines.append(
                 f"{emoji} **{name}** — DE: {de_yield} {COSMIC_DUST} · Synth: {synth_dust:,} {COSMIC_DUST} + {GOLD_COIN} 100k"
             )
-        jewel_yield = dust_from_jewel(level)
-        synth_lines.append(
-            f"💎 **Jewel of Paradise** — DE: {jewel_yield:,} {COSMIC_DUST} · Synth: {_JEWEL_SYNTH_DUST:,} {COSMIC_DUST} + {GOLD_COIN} 10M"
-        )
         embed.add_field(
             name="⚗️ Synthesizable (Disenchant · Synthesis)",
             value="\n".join(synth_lines),
+            inline=False,
+        )
+        jewel_yield = dust_from_jewel(level)
+        embed.add_field(
+            name="💎 Jewel of Paradise",
+            value=(
+                f"DE: {jewel_yield:,} {COSMIC_DUST} · "
+                f"Synth: {_JEWEL_SYNTH_DUST:,} {COSMIC_DUST} + {GOLD_COIN} 10M"
+            ),
             inline=False,
         )
         embed.add_field(

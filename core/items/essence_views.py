@@ -11,7 +11,14 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button, Select
 
 from core.base_view import BaseView
-from core.emojis import DODGE_EVASION
+from core.emojis import (
+    CRIT_MULTI,
+    DODGE_EVASION,
+    ESSENCE_COMMON,
+    ESSENCE_CORRUPT,
+    ESSENCE_RARE,
+    STAT_BLOCK,
+)
 from core.images import ESSENCE_HUB
 from core.items.essence_mechanics import (
     CORRUPTED_ESSENCE_TYPES,
@@ -31,21 +38,21 @@ from core.models import Boot, Glove, Helmet
 # ---------------------------------------------------------------------------
 
 ESSENCE_DISPLAY = {
-    "power": ("✦ Essence of Power", "🔆"),
-    "protection": ("✦ Essence of Protection", "🛡️"),
-    "insight": ("✦ Essence of Insight", "👁️"),
-    "evasion": ("✦ Essence of Evasion", DODGE_EVASION),
-    "blocking": ("✦ Essence of Blocking", "🧱"),
-    "deftness": ("✦ Essence of Deftness", "⚡"),
-    "precision": ("✦ Essence of Precision", "🎯"),
-    "gluttony": ("✦ Essence of Gluttony", "🩸"),
-    "cleansing": ("✦ Essence of Cleansing", "🌊"),
-    "chaos": ("✦ Essence of Chaos", "🌀"),
-    "annulment": ("✦ Essence of Annulment", "✂️"),
-    "aphrodite": ("✦ Essence of Aphrodite's Disciple", "💠"),
-    "lucifer": ("✦ Essence of Lucifer's Heir", "💠"),
-    "gemini": ("✦ Essence of Gemini's Lost Twin", "💠"),
-    "neet": ("✦ Essence of NEET's Voidling", "💠"),
+    "power": ("Power", "🔆"),
+    "protection": ("Protection", "🛡️"),
+    "insight": ("Insight", "🗡️"),
+    "evasion": ("Evasion", DODGE_EVASION),
+    "blocking": ("Blocking", STAT_BLOCK),
+    "deftness": ("Deftness", CRIT_MULTI),
+    "precision": ("Precision", "🎯"),
+    "gluttony": ("Gluttony", "🩸"),
+    "cleansing": ("Cleansing", "🌊"),
+    "chaos": ("Chaos", "🌀"),
+    "annulment": ("Annulment", "✂️"),
+    "aphrodite": ("Aphrodite's Disciple", "💠"),
+    "lucifer": ("Lucifer's Heir", "💠"),
+    "gemini": ("Gemini's Lost Twin", "💠"),
+    "neet": ("NEET's Voidling", "💠"),
 }
 
 ESSENCE_BRIEF = {
@@ -206,28 +213,39 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
     else:
         embed.add_field(name="Corrupted Slot", value="*— Empty —*", inline=False)
 
-    # --- Owned essences summary ---
-    owned_lines = []
-    for cat_name, types in [
-        ("Common", ["power", "protection"]),
-        (
-            "Rare",
-            ["insight", "evasion", "blocking", "deftness", "precision", "gluttony"],
-        ),
-        ("Utility", ["cleansing", "chaos", "annulment"]),
-        ("Corrupted", ["aphrodite", "lucifer", "gemini", "neet"]),
-    ]:
-        cat_parts = []
+    # --- Owned essences summary — 2×2 inline grid ---
+    def _cat_text(types: list[str]) -> str:
+        parts = []
         for etype in types:
             qty = essence_inventory.get(etype, 0)
             if qty > 0:
                 e_name, emoji = ESSENCE_DISPLAY.get(etype, (etype.title(), "💠"))
-                cat_parts.append(f"{emoji} {e_name}: **×{qty}**")
-        if cat_parts:
-            owned_lines.append(f"**{cat_name}:** " + "  ·  ".join(cat_parts))
+                parts.append(f"{emoji} {e_name}: **×{qty}**")
+        return "\n".join(parts) if parts else "*None*"
 
-    inv_text = "\n".join(owned_lines) if owned_lines else "*You have no essences.*"
-    embed.add_field(name="Your Essences", value=inv_text, inline=False)
+    embed.add_field(
+        name=f"{ESSENCE_COMMON} Common Essences",
+        value=_cat_text(["power", "protection"]),
+        inline=True,
+    )
+    embed.add_field(
+        name=f"{ESSENCE_RARE} Rare Essences",
+        value=_cat_text(
+            ["insight", "evasion", "blocking", "deftness", "precision", "gluttony"]
+        ),
+        inline=True,
+    )
+    embed.add_field(name="​", value="​", inline=True)
+    embed.add_field(
+        name="Meta (Utility) Essences",
+        value=_cat_text(["cleansing", "chaos", "annulment"]),
+        inline=True,
+    )
+    embed.add_field(
+        name=f"{ESSENCE_CORRUPT} Corrupted Essences",
+        value=_cat_text(["aphrodite", "lucifer", "gemini", "neet"]),
+        inline=True,
+    )
 
     return embed
 

@@ -332,6 +332,8 @@ BM_ITEM_VALUES: dict[str, int] = {
     "shatter_runes": 85_000,
     "imbue_runes": 175_000,
     "partnership_runes": 50_000,
+    "runes_of_nature": 120_000,
+    "rune_of_regret": 40_000,
     # Boss keys — Valuables ×100
     "dragon_key": 40_000,
     "angel_key": 40_000,
@@ -508,6 +510,15 @@ BM_TREE_NODES: dict[str, dict] = {
         "idlem_costs": [100, 300],
         "extra_rolls": [2, 4],
         "category": "gold",
+    },
+    # Always-on Idlem sink: +1% chance per level of one bonus random-category
+    # roll on every completed deal (not a toggleable per-deal bias).
+    "fortune_bias": {
+        "name": "Fortune's Cut",
+        "description": "+1% chance per level of one bonus loot roll on every completed deal.",
+        "branch": "value",
+        "max_level": 20,
+        "idlem_costs": [1000] * 20,
     },
 }
 

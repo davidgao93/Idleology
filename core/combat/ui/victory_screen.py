@@ -19,7 +19,6 @@ from core.emojis import (
     COSMIC_DUST,
     CURIO,
     DIVINER_ROD,
-    DODGE_EVASION,
     DRAGON_KEY,
     GOLD_COIN,
     LIFE_ROOT,
@@ -168,25 +167,10 @@ def create_victory_embed(
         loot_lines.append(f"{emoji} **{item_name}**")
 
     # 3. Essence Drops
-    _ESSENCE_DISPLAY = {
-        "power": ("✦ Essence of Power", "🔆"),
-        "protection": ("✦ Essence of Protection", "🛡️"),
-        "insight": ("✦ Essence of Insight", "👁️"),
-        "evasion": ("✦ Essence of Evasion", DODGE_EVASION),
-        "blocking": ("✦ Essence of Blocking", "🧱"),
-        "deftness": ("✦ Essence of Deftness", "⚡"),
-        "precision": ("✦ Essence of Precision", "🎯"),
-        "gluttony": ("✦ Essence of Gluttony", "🩸"),
-        "cleansing": ("✦ Essence of Cleansing", "🌊"),
-        "chaos": ("✦ Essence of Chaos", "🌀"),
-        "annulment": ("✦ Essence of Annulment", "✂️"),
-        "aphrodite": ("✦ Essence of Aphrodite's Disciple", "💎"),
-        "lucifer": ("✦ Essence of Lucifer's Heir", "💎"),
-        "gemini": ("✦ Essence of Gemini's Lost Twin", "💎"),
-        "neet": ("✦ Essence of NEET's Voidling", "💎"),
-    }
+    from core.items.essence_views import ESSENCE_DISPLAY
+
     for essence_type in rewards.get("essences", []):
-        label, emoji = _ESSENCE_DISPLAY.get(
+        label, emoji = ESSENCE_DISPLAY.get(
             essence_type, (f"✦ Essence of {essence_type.title()}", "✨")
         )
         loot_lines.append(f"{emoji} **{label}**")

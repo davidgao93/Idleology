@@ -5,7 +5,14 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
-from core.emojis import DIVINER_ROD, GOLD_COIN, LIFE_ROOT, MAGMA_CORE, SPIRIT_SHARD
+from core.emojis import (
+    DEVELOPMENT_CONTRACT,
+    DIVINER_ROD,
+    GOLD_COIN,
+    LIFE_ROOT,
+    MAGMA_CORE,
+    SPIRIT_SHARD,
+)
 from core.images import (
     CRISIS_MONSTER_IMAGES,
     MAID_AUTHOR,
@@ -847,6 +854,32 @@ class SettlementDashboardView(SettlementBaseView):
         research_btn.callback = self.open_research
         self.add_item(research_btn)
 
+        has_hatchery = any(
+            b.building_type == "hatchery" for b in self.settlement.buildings
+        )
+        hatchery_btn = ui.Button(
+            label="Hatchery",
+            style=ButtonStyle.secondary,
+            emoji="🥚",
+            row=2,
+            disabled=not has_hatchery,
+        )
+        hatchery_btn.callback = self._open_hatchery_quick
+        self.add_item(hatchery_btn)
+
+        has_bm = any(
+            b.building_type == "black_market" for b in self.settlement.buildings
+        )
+        bm_btn = ui.Button(
+            label="Black Market",
+            style=ButtonStyle.secondary,
+            emoji="💱",
+            row=2,
+            disabled=not has_bm,
+        )
+        bm_btn.callback = self._open_black_market_quick
+        self.add_item(bm_btn)
+
         # --- Row 3: help / info buttons ---
         guide_btn = ui.Button(
             label="Building List",
@@ -997,6 +1030,52 @@ class SettlementDashboardView(SettlementBaseView):
         )
         view.message = msg
 
+    async def _quick_open_building(
+        self, interaction: Interaction, building_type: str, opener: str
+    ) -> None:
+        """Jumps straight to a special building's view via its plot, skipping grid selection."""
+        from core.settlement.views.plot_detail import PlotDetailView
+
+        building = next(
+            (b for b in self.settlement.buildings if b.building_type == building_type),
+            None,
+        )
+        if building is None:
+            return await interaction.response.send_message(
+                f"You haven't built a {building_type.replace('_', ' ').title()} yet.",
+                ephemeral=True,
+            )
+
+        plot = next(
+            (p for p in self.plots if p.plot_index == building.plot_index), None
+        )
+        if plot is None:
+            return await interaction.response.send_message(
+                "Plot data unavailable — try closing and reopening the settlement.",
+                ephemeral=True,
+            )
+
+        adj_bonuses = SettlementMechanics.calculate_adjacency_bonuses(
+            self.plots, self.settlement.buildings
+        )
+        plot_view = PlotDetailView(
+            bot=self.bot,
+            user_id=self.user_id,
+            plot=plot,
+            building=building,
+            parent=self,
+            adj_bonus=adj_bonuses.get(plot.plot_index, {}),
+        )
+        await getattr(plot_view, opener)(interaction)
+
+    async def _open_hatchery_quick(self, interaction: Interaction) -> None:
+        await self._quick_open_building(interaction, "hatchery", "_open_hatchery")
+
+    async def _open_black_market_quick(self, interaction: Interaction) -> None:
+        await self._quick_open_building(
+            interaction, "black_market", "_open_black_market"
+        )
+
     async def collect_resources(self, interaction: Interaction):
         if self._processing:
             await interaction.response.defer()
@@ -1033,7 +1112,7 @@ class SettlementDashboardView(SettlementBaseView):
                 else ""
             )
             dc_msg = (
-                f"\n📜 **Expedition Camp:** +{dc_earned} "
+                f"\n{DEVELOPMENT_CONTRACT} **Expedition Camp:** +{dc_earned} "
                 f"Development Contract{'s' if dc_earned != 1 else ''}."
                 if dc_earned > 0
                 else ""

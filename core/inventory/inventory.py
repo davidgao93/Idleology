@@ -7,17 +7,22 @@ from core.emojis import (
     ACCESSORY_SLOT,
     ARMOR_SLOT,
     BOOT_SLOT,
+    CELESTIAL_ENGRAM,
+    CRIT_MULTI,
     DODGE_EVASION,
     GEAR_BACKPACK,
     GLOVE_SLOT,
     HELMET_SLOT,
+    INFERNAL_ENGRAM,
     RARITY,
+    RUNE_REFINEMENT,
     STAT_ATK,
     STAT_BLOCK,
     STAT_DEF,
     STAT_FDR,
     STAT_PDR,
     STAT_WARD,
+    VOID_ENGRAM,
     WEAPON_SLOT,
 )
 from core.images import (
@@ -87,12 +92,14 @@ def _add_passive_field(embed, name_label: str, display_name: str, desc: str):
 
 def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     if getattr(item, "attack", 0):
-        embed.add_field(name="⚔️ Attack", value=f"{item.attack:,}", inline=True)
+        embed.add_field(name=f"{STAT_ATK} Attack", value=f"{item.attack:,}", inline=True)
     if getattr(item, "defence", 0):
-        embed.add_field(name="🛡️ Defence", value=f"{item.defence:,}", inline=True)
+        embed.add_field(name=f"{STAT_DEF} Defence", value=f"{item.defence:,}", inline=True)
     if getattr(item, "rarity", 0):
         embed.add_field(name=f"{RARITY} Rarity", value=f"{item.rarity:,}%", inline=True)
-    embed.add_field(name="🔧 Refinement", value=f"+{item.refinement_lvl}", inline=True)
+    embed.add_field(
+        name=f"{RUNE_REFINEMENT} Refinement", value=f"+{item.refinement_lvl}", inline=True
+    )
 
     # Weapon template stats
     base_rar = getattr(item, "base_rarity", 0)
@@ -104,7 +111,7 @@ def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     if crit_pct > 0:
         embed.add_field(name="🗡️ Crit Chance", value=f"+{crit_pct}%", inline=True)
     crit_multi = getattr(item, "crit_multi", 2.00)
-    embed.add_field(name="💥 Crit Multi", value=f"{crit_multi:.2f}x", inline=True)
+    embed.add_field(name=f"{CRIT_MULTI} Crit Multi", value=f"{crit_multi:.2f}x", inline=True)
 
     if item.passive not in ("none", ""):
         _add_passive_field(
@@ -131,7 +138,7 @@ def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     if inf not in ("none", ""):
         _add_passive_field(
             embed,
-            "🔥 Infernal",
+            f"{INFERNAL_ENGRAM} Infernal",
             inf.replace("_", " ").title(),
             _pdesc(infernal_desc, inf),
         )
@@ -151,7 +158,7 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
     main_stat = getattr(item, "main_stat", 0)
     reinforcement_lvl = getattr(item, "reinforcement_lvl", 0)
     if main_stat > 0:
-        stat_label = "⚔️ ATK" if main_stat_type == "atk" else "🛡️ DEF"
+        stat_label = f"{STAT_ATK} ATK" if main_stat_type == "atk" else f"{STAT_DEF} DEF"
         reinforce_str = f"  (+{reinforcement_lvl})" if reinforcement_lvl > 0 else ""
         embed.add_field(
             name=f"{stat_label}{reinforce_str}", value=f"{main_stat:,}", inline=True
@@ -159,17 +166,17 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
 
     # Secondary stat
     if getattr(item, "block", 0):
-        embed.add_field(name="🛑 Block", value=f"{item.block:,}%", inline=True)
+        embed.add_field(name=f"{STAT_BLOCK} Block", value=f"{item.block:,}%", inline=True)
     if getattr(item, "evasion", 0):
         embed.add_field(name=f"{DODGE_EVASION} Evasion", value=f"{item.evasion:,}%", inline=True)
     if getattr(item, "ward", 0):
-        embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
+        embed.add_field(name=f"{STAT_WARD} Ward", value=f"{item.ward:,}%", inline=True)
 
     # Tertiary stat
     if getattr(item, "pdr", 0):
-        embed.add_field(name="🛡️ PDR", value=f"{item.pdr:,}%", inline=True)
+        embed.add_field(name=f"{STAT_PDR} PDR", value=f"{item.pdr:,}%", inline=True)
     if getattr(item, "fdr", 0):
-        embed.add_field(name="💫 FDR", value=f"{item.fdr:,}", inline=True)
+        embed.add_field(name=f"{STAT_FDR} FDR", value=f"{item.fdr:,}", inline=True)
 
     reinforces_remaining = getattr(item, "reinforces_remaining", 0)
     embed.add_field(
@@ -193,7 +200,7 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
     if cel not in ("none", ""):
         _add_passive_field(
             embed,
-            "🌌 Celestial",
+            f"{CELESTIAL_ENGRAM} Celestial",
             cel.replace("_", " ").title(),
             _pdesc(celestial_desc, cel),
         )
@@ -204,15 +211,15 @@ def _helmet_fields(embed, item, passive_funcs: dict):
     rlvl_str = f" **(+{rlvl})**" if rlvl > 0 else ""
     primary = _primary_stat_col_gear(item)
     if getattr(item, "defence", 0):
-        label = f"🛡️ Defence{rlvl_str if primary == 'defence' else ''}"
+        label = f"{STAT_DEF} Defence{rlvl_str if primary == 'defence' else ''}"
         embed.add_field(name=label, value=f"{item.defence:,}", inline=True)
     if getattr(item, "ward", 0):
-        label = f"🔮 Ward{rlvl_str if primary == 'ward' else ''}"
+        label = f"{STAT_WARD} Ward{rlvl_str if primary == 'ward' else ''}"
         embed.add_field(name=label, value=f"{item.ward:,}%", inline=True)
     if getattr(item, "pdr", 0):
-        embed.add_field(name="🛡️ PDR", value=f"{item.pdr:,}%", inline=True)
+        embed.add_field(name=f"{STAT_PDR} PDR", value=f"{item.pdr:,}%", inline=True)
     if getattr(item, "fdr", 0):
-        embed.add_field(name="💫 FDR", value=f"{item.fdr:,}", inline=True)
+        embed.add_field(name=f"{STAT_FDR} FDR", value=f"{item.fdr:,}", inline=True)
     reinforces_remaining = getattr(item, "reinforces_remaining", 0)
     embed.add_field(
         name="Upgrades",
@@ -253,18 +260,18 @@ def _glove_boot_fields(embed, item, passive_funcs: dict):
     rlvl_str = f" **(+{rlvl})**" if rlvl > 0 else ""
     primary = _primary_stat_col_gear(item)
     if getattr(item, "attack", 0):
-        label = f"⚔️ Attack{rlvl_str if primary == 'attack' else ''}"
+        label = f"{STAT_ATK} Attack{rlvl_str if primary == 'attack' else ''}"
         embed.add_field(name=label, value=f"{item.attack:,}", inline=True)
     if getattr(item, "defence", 0):
-        label = f"🛡️ Defence{rlvl_str if primary == 'defence' else ''}"
+        label = f"{STAT_DEF} Defence{rlvl_str if primary == 'defence' else ''}"
         embed.add_field(name=label, value=f"{item.defence:,}", inline=True)
     if getattr(item, "ward", 0):
-        label = f"🔮 Ward{rlvl_str if primary == 'ward' else ''}"
+        label = f"{STAT_WARD} Ward{rlvl_str if primary == 'ward' else ''}"
         embed.add_field(name=label, value=f"{item.ward:,}%", inline=True)
     if getattr(item, "pdr", 0):
-        embed.add_field(name="🛡️ PDR", value=f"{item.pdr:,}%", inline=True)
+        embed.add_field(name=f"{STAT_PDR} PDR", value=f"{item.pdr:,}%", inline=True)
     if getattr(item, "fdr", 0):
-        embed.add_field(name="💫 FDR", value=f"{item.fdr:,}", inline=True)
+        embed.add_field(name=f"{STAT_FDR} FDR", value=f"{item.fdr:,}", inline=True)
     reinforces_remaining = getattr(item, "reinforces_remaining", 0)
     embed.add_field(
         name="Upgrades",
@@ -288,13 +295,13 @@ def _glove_boot_fields(embed, item, passive_funcs: dict):
 
 def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
     if getattr(item, "attack", 0):
-        embed.add_field(name="⚔️ Attack", value=f"{item.attack:,}", inline=True)
+        embed.add_field(name=f"{STAT_ATK} Attack", value=f"{item.attack:,}", inline=True)
     if getattr(item, "defence", 0):
-        embed.add_field(name="🛡️ Defence", value=f"{item.defence:,}", inline=True)
+        embed.add_field(name=f"{STAT_DEF} Defence", value=f"{item.defence:,}", inline=True)
     if getattr(item, "rarity", 0):
         embed.add_field(name=f"{RARITY} Rarity", value=f"{item.rarity:,}%", inline=True)
     if getattr(item, "ward", 0):
-        embed.add_field(name="🔮 Ward", value=f"{item.ward:,}%", inline=True)
+        embed.add_field(name=f"{STAT_WARD} Ward", value=f"{item.ward:,}%", inline=True)
     if getattr(item, "crit", 0):
         embed.add_field(name="🗡️ Crit", value=f"{item.crit:,}", inline=True)
     embed.add_field(
@@ -315,7 +322,7 @@ def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
     if void_p not in ("none", ""):
         _add_passive_field(
             embed,
-            "🌀 Void",
+            f"{VOID_ENGRAM} Void",
             void_p.replace("_", " ").title(),
             _pdesc(void_desc, void_p),
         )
@@ -410,24 +417,24 @@ class InventoryUI:
             # 1. Armor Specifics (Block/Evasion)
             if isinstance(item, Armor):
                 if item.block > 0:
-                    details.append(f"{item.block}% 🛑Block")
+                    details.append(f"{item.block}% {STAT_BLOCK}Block")
                 if item.evasion > 0:
                     details.append(f"{item.evasion}% {DODGE_EVASION}Evasion")
 
             # Base stats
             if hasattr(item, "attack") and item.attack > 0:
-                details.append(f"{item.attack} ⚔️ATK")
+                details.append(f"{item.attack} {STAT_ATK}ATK")
             if hasattr(item, "defence") and item.defence > 0:
-                details.append(f"{item.defence} 🛡️DEF")
+                details.append(f"{item.defence} {STAT_DEF}DEF")
             if hasattr(item, "rarity") and item.rarity > 0:
                 details.append(f"{item.rarity}% {RARITY}Rarity")
             # 2. Defensive Stats (PDR/FDR/Ward) - Applies to Armor, Gloves, Boots, Helmets
             if hasattr(item, "ward") and item.ward > 0:
-                details.append(f"{item.ward}% HP as 🔮Ward")
+                details.append(f"{item.ward}% HP as {STAT_WARD}Ward")
             if hasattr(item, "pdr") and item.pdr > 0:
-                details.append(f"{item.pdr}% 🛡️PDR")
+                details.append(f"{item.pdr}% {STAT_PDR}PDR")
             if hasattr(item, "fdr") and item.fdr > 0:
-                details.append(f"{item.fdr} 🛡️FDR")
+                details.append(f"{item.fdr} {STAT_FDR}FDR")
             if hasattr(item, "crit") and item.crit > 0:
                 details.append(f"{item.crit} 🗡️Crit")
 
@@ -444,20 +451,20 @@ class InventoryUI:
                     passives.append(fmt_weapon_passive(item.u_passive))
                 if getattr(item, "infernal_passive", "none") not in ("none", ""):
                     passives.append(
-                        f"🔥{item.infernal_passive.replace('_', ' ').title()}"
+                        f"{INFERNAL_ENGRAM}{item.infernal_passive.replace('_', ' ').title()}"
                     )
             if isinstance(item, Armor):
                 if item.passive != "none" and item.passive != "":
                     passives.append(f"✨{item.passive.title()}")
                 if getattr(item, "celestial_passive", "none") != "none":
                     passives.append(
-                        f"🌌{item.celestial_passive.replace('_', ' ').title()}"
+                        f"{CELESTIAL_ENGRAM}{item.celestial_passive.replace('_', ' ').title()}"
                     )
             if isinstance(item, Accessory):
                 if item.passive != "none" and item.passive != "":
                     passives.append(item.passive.title())
                 if getattr(item, "void_passive", "none") not in ("none", ""):
-                    passives.append(f"🌀{item.void_passive.replace('_', ' ').title()}")
+                    passives.append(f"{VOID_ENGRAM}{item.void_passive.replace('_', ' ').title()}")
             details_str = f" - {' | '.join(details)}" if details else ""
             passives_str = f" - {', '.join(passives)}" if passives else ""
 
@@ -531,7 +538,7 @@ class InventoryUI:
         if getattr(item, "fdr", 0) > 0:
             parts.append(f"{STAT_FDR} FDR: {item.fdr}")
         if isinstance(item, Weapon) and item.refinement_lvl > 0:
-            parts.append(f"🔧 Refine: +{item.refinement_lvl}")
+            parts.append(f"{RUNE_REFINEMENT} Refine: +{item.refinement_lvl}")
 
         passives = []
         if getattr(item, "passive", "none") not in ("none", ""):
@@ -547,15 +554,17 @@ class InventoryUI:
             if getattr(item, "u_passive", "none") not in ("none", ""):
                 passives.append(fmt_weapon_passive(item.u_passive))
             if getattr(item, "infernal_passive", "none") not in ("none", ""):
-                passives.append(item.infernal_passive.replace("_", " ").title())
+                passives.append(
+                    f"{INFERNAL_ENGRAM} {item.infernal_passive.replace('_', ' ').title()}"
+                )
         if isinstance(item, Armor) and getattr(
             item, "celestial_passive", "none"
         ) not in ("none", ""):
-            passives.append(f"🌌 {item.celestial_passive.replace('_', ' ').title()}")
+            passives.append(f"{CELESTIAL_ENGRAM} {item.celestial_passive.replace('_', ' ').title()}")
         if isinstance(item, Accessory) and getattr(
             item, "void_passive", "none"
         ) not in ("none", ""):
-            passives.append(f"🌀 {item.void_passive.replace('_', ' ').title()}")
+            passives.append(f"{VOID_ENGRAM} {item.void_passive.replace('_', ' ').title()}")
 
         stat_line = " · ".join(parts)
         passive_line = ("Passives:\n" + ", ".join(passives)) if passives else ""

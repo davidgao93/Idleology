@@ -27,7 +27,6 @@ from core.settlement.turn_engine import (
     calculate_offer_value,
     compute_processing_turns,
     resolve_bm_event_value_bonus,
-    upgrade_dt_cost,
 )
 
 from .base import SettlementBaseView
@@ -69,6 +68,9 @@ _BM_RESOURCE_NAMES: list[list[tuple[str, str]]] = [
         ("potential_runes", "Potential Runes"),
         ("shatter_runes", "Shatter Runes"),
         ("imbue_runes", "Imbuing Runes"),
+        ("partnership_runes", "Partnership Runes"),
+        ("runes_of_nature", "Rune of Nature"),
+        ("rune_of_regret", "Rune of Regret"),
         ("dragon_key", "Draconic Keys"),
         ("angel_key", "Angelic Keys"),
         ("soul_cores", "Soul Cores"),
@@ -117,7 +119,11 @@ _BM_ALL_NAMES: dict[str, str] = {
 
 # Category filter buttons: (id, button_label, [resource_keys])
 _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
-    ("settlement", "🏗️ Settlement", ["timber", "stone"]),
+    (
+        "settlement",
+        "🏗️ Settlement",
+        ["timber", "stone", "magma_core", "life_root", "spirit_shard"],
+    ),
     (
         "mining",
         "⛏️ Mining",
@@ -167,29 +173,41 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
         ],
     ),
     (
-        "valuables",
-        "💎 Valuables",
+        "boss_keys",
+        "🗝️ Boss Keys",
         [
-            "refinement_runes",
-            "potential_runes",
-            "shatter_runes",
-            "imbue_runes",
             "dragon_key",
             "angel_key",
             "soul_cores",
             "balance_fragment",
             "void_frags",
-            "magma_core",
-            "life_root",
-            "spirit_shard",
-            "curios",
-            "unidentified_blueprint",
-            "spirit_stones",
             "celestial_stone",
             "infernal_cinder",
             "void_crystal",
             "bound_crystal",
             "corrupted_core",
+        ],
+    ),
+    (
+        "runes",
+        "🔮 Runes",
+        [
+            "refinement_runes",
+            "potential_runes",
+            "shatter_runes",
+            "imbue_runes",
+            "partnership_runes",
+            "runes_of_nature",
+            "rune_of_regret",
+        ],
+    ),
+    (
+        "materials",
+        "💎 Materials",
+        [
+            "curios",
+            "unidentified_blueprint",
+            "spirit_stones",
             "blessed_bismuth",
             "sparkling_sprig",
             "capricious_carp",
@@ -202,6 +220,13 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
 _BM_CATEGORIES = [
     (cat_id, label, sorted(keys, key=lambda k: BM_ITEM_VALUES.get(k, 0)))
     for cat_id, label, keys in _BM_CATEGORIES
+]
+
+# Merchanting (BM passive tree) branch tabs: (branch_id, button/field label)
+_BM_TREE_BRANCHES: list[tuple[str, str]] = [
+    ("efficiency", "⚡ Efficiency"),
+    ("value", "💹 Value"),
+    ("bias", "🎯 Biases"),
 ]
 
 # Resources stored in skill / settlement tables vs. user currency columns
@@ -314,14 +339,15 @@ async def _load_player_inventory(bot, user_id: str, server_id: str) -> dict[str,
         for i, col in enumerate(_FISH_COLS):
             inv[col] = int(skill_fish[3 + i]) if len(skill_fish) > 3 + i else 0
 
-    valuables = [
+    _handled = {"timber", "stone", *_MINING_COLS, *_WOOD_COLS, *_FISH_COLS}
+    remaining = [
         k
-        for cat_id, _lbl, keys in _BM_CATEGORIES
-        if cat_id == "valuables"
+        for _cat_id, _lbl, keys in _BM_CATEGORIES
         for k in keys
+        if k not in _handled
     ]
     mat_data = await bot.database.settlement_materials.get_all(user_id)
-    for key in valuables:
+    for key in remaining:
         if key in _SETTLEMENT_MATERIAL_KEYS:
             inv[key] = mat_data.get(key, 0)
         else:
@@ -372,13 +398,6 @@ class BlackMarketView(SettlementBaseView):
         )
         tree_btn.callback = self._on_passive_tree
         self.add_item(tree_btn)
-
-        if self.building.tier < 5:
-            up_btn = ui.Button(
-                label="Upgrade Facility", style=ButtonStyle.success, emoji="⬆️", row=0
-            )
-            up_btn.callback = self._on_upgrade
-            self.add_item(up_btn)
 
         back_btn = ui.Button(
             label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1
@@ -443,17 +462,9 @@ class BlackMarketView(SettlementBaseView):
             )
 
         if tier < 5:
-            costs = SettlementMechanics.get_upgrade_cost("black_market", tier)
-            cost_parts = [
-                f"🪵 {costs['timber']:,}",
-                f"🪨 {costs['stone']:,}",
-                f"{GOLD_COIN} {costs['gold']:,}",
-            ]
-            for spec in costs.get("specials", []):
-                cost_parts.append(f"{spec['name']} ×{spec['qty']}")
             embed.add_field(
-                name=f"⬆️ Upgrade to Tier {tier + 1}",
-                value=" | ".join(cost_parts),
+                name="⬆️ Upgrading?",
+                value="Manage this facility's upgrade from its plot in the settlement grid.",
                 inline=False,
             )
 
@@ -520,94 +531,6 @@ class BlackMarketView(SettlementBaseView):
             idlem=zeal_data.get("idlem", 0),
         )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
-
-    async def _on_upgrade(self, interaction: Interaction) -> None:
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-
-        costs = SettlementMechanics.get_upgrade_cost("black_market", self.building.tier)
-
-        if self.parent is not None:
-            settlement_timber = self.parent.settlement.timber
-            settlement_stone = self.parent.settlement.stone
-        else:
-            _s = await self.bot.database.settlement.get_settlement(
-                self.user_id, self.server_id
-            )
-            settlement_timber = _s.timber
-            settlement_stone = _s.stone
-
-        if settlement_timber < costs.get("timber", 0) or settlement_stone < costs.get(
-            "stone", 0
-        ):
-            self._processing = False
-            return await interaction.response.send_message(
-                "Insufficient Timber or Stone!", ephemeral=True
-            )
-
-        gold = await self.bot.database.users.get_gold(self.user_id)
-        if gold < costs.get("gold", 0):
-            self._processing = False
-            return await interaction.response.send_message(
-                "Insufficient Gold!", ephemeral=True
-            )
-
-        # Check specials (black_market needs all 3)
-        if costs.get("specials"):
-            _mats = await self.bot.database.settlement_materials.get_all(self.user_id)
-            for spec in costs["specials"]:
-                owned = _mats.get(spec["key"], 0)
-                if owned < spec["qty"]:
-                    self._processing = False
-                    return await interaction.response.send_message(
-                        f"Need {spec['qty']}× {spec['name']}!", ephemeral=True
-                    )
-
-        await interaction.response.defer()
-
-        for spec in costs.get("specials", []):
-            await self.bot.database.settlement_materials.modify(
-                self.user_id, spec["key"], -spec["qty"]
-            )
-
-        await self.bot.database.settlement.commit_production(
-            self.user_id,
-            self.server_id,
-            {"timber": -costs.get("timber", 0), "stone": -costs.get("stone", 0)},
-        )
-        await self.bot.database.users.modify_gold(self.user_id, -costs.get("gold", 0))
-        if self.parent is not None:
-            self.parent.settlement.timber -= costs.get("timber", 0)
-            self.parent.settlement.stone -= costs.get("stone", 0)
-
-        # Queue as a DT project (same pattern as other building upgrades)
-        target_tier = self.building.tier + 1
-        dt_cost = upgrade_dt_cost("black_market", target_tier)
-        await self.bot.database.settlement.upsert_project(
-            user_id=self.user_id,
-            server_id=self.server_id,
-            project_type="upgrade",
-            target_id=self.building.id,
-            required_turns=dt_cost,
-            data={"building_type": "black_market"},
-        )
-
-        queued_embed = discord.Embed(
-            title="⏳ Upgrade Queued",
-            description=(
-                f"**Black Market** upgrade to Tier {target_tier} has been queued.\n\n"
-                f"Resources deducted. The upgrade will complete after "
-                f"**{dt_cost} Development Turn(s)**.\n"
-                f"Use **Next Turn** on your settlement dashboard to process it."
-            ),
-            color=discord.Color.blurple(),
-        )
-        self._processing = False
-        await interaction.edit_original_response(
-            embed=queued_embed, view=discord.ui.View()
-        )
 
     async def _on_back(self, interaction: Interaction) -> None:
         if self.parent is None:
@@ -1098,13 +1021,30 @@ class BMPassiveTreeView(SettlementBaseView):
         self.tree_nodes = tree_nodes or {}
         self.idlem = idlem
         self._processing = False
+        self.current_branch = "efficiency"
         self._build_ui()
 
     def _build_ui(self) -> None:
         self.clear_items()
 
+        # Row 0 — branch tabs
+        for branch_id, branch_label in _BM_TREE_BRANCHES:
+            tab_btn = ui.Button(
+                label=branch_label,
+                style=(
+                    ButtonStyle.primary
+                    if branch_id == self.current_branch
+                    else ButtonStyle.secondary
+                ),
+                row=0,
+            )
+            tab_btn.callback = self._make_branch_switch(branch_id)
+            self.add_item(tab_btn)
+
         options = []
         for key, node in BM_TREE_NODES.items():
+            if node.get("branch") != self.current_branch:
+                continue
             current_lvl = self.tree_nodes.get(key, 0)
             max_lvl = node["max_level"]
             if current_lvl >= max_lvl:
@@ -1118,7 +1058,7 @@ class BMPassiveTreeView(SettlementBaseView):
             sel = ui.Select(
                 placeholder="Choose a node to unlock/upgrade...",
                 options=options[:25],
-                row=0,
+                row=1,
             )
             sel.callback = self._on_unlock
             self.add_item(sel)
@@ -1127,15 +1067,23 @@ class BMPassiveTreeView(SettlementBaseView):
                 label="All Nodes Unlocked!",
                 style=ButtonStyle.success,
                 disabled=True,
-                row=0,
+                row=1,
             )
             self.add_item(no_btn)
 
         back_btn = ui.Button(
-            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=1
+            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=2
         )
         back_btn.callback = self._on_back
         self.add_item(back_btn)
+
+    def _make_branch_switch(self, branch_id: str):
+        async def _cb(interaction: Interaction) -> None:
+            self.current_branch = branch_id
+            self._build_ui()
+            await interaction.response.edit_message(embed=self.build_embed(), view=self)
+
+        return _cb
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -1148,9 +1096,10 @@ class BMPassiveTreeView(SettlementBaseView):
             color=discord.Color.dark_teal(),
         )
 
-        branches: dict[str, list[str]] = {}
+        lines: list[str] = []
         for key, node in BM_TREE_NODES.items():
-            branch = node.get("branch", "other")
+            if node.get("branch") != self.current_branch:
+                continue
             current_lvl = self.tree_nodes.get(key, 0)
             max_lvl = node["max_level"]
             status = (
@@ -1162,20 +1111,18 @@ class BMPassiveTreeView(SettlementBaseView):
                 cost_str = "✅ Max Tier"
             else:
                 cost_str = f"next: {node['idlem_costs'][current_lvl]} Idlem"
-            line = f"{status} **{node['name']}** — {node['description']} ({cost_str})"
-            branches.setdefault(branch, []).append(line)
-
-        branch_labels = {
-            "efficiency": "⚡ Efficiency",
-            "value": "💹 Value",
-            "bias": "🎯 Biases",
-        }
-        for branch, lines in branches.items():
-            embed.add_field(
-                name=branch_labels.get(branch, branch.title()),
-                value="\n".join(lines),
-                inline=False,
+            lines.append(
+                f"{status} **{node['name']}** — {node['description']} ({cost_str})"
             )
+
+        branch_label = dict(_BM_TREE_BRANCHES).get(
+            self.current_branch, self.current_branch.title()
+        )
+        embed.add_field(
+            name=branch_label,
+            value="\n".join(lines) if lines else "*No nodes in this branch.*",
+            inline=False,
+        )
 
         return embed
 

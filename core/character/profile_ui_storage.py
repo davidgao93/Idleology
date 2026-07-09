@@ -231,10 +231,8 @@ class StorageProfileBuilder:
             "deftness",
             "precision",
             "gluttony",
-            "cleansing",
-            "chaos",
-            "annulment",
         ]
+        _UTILITY_ESSENCES = ["cleansing", "chaos", "annulment"]
         _CORRUPTED_ESSENCES = ["aphrodite", "lucifer", "gemini", "neet"]
 
         def _essence_lines(types):
@@ -251,6 +249,11 @@ class StorageProfileBuilder:
         embed.add_field(
             name=f"{ESSENCE_RARE} **Rare Essences**",
             value=_essence_lines(_RARE_ESSENCES),
+            inline=True,
+        )
+        embed.add_field(
+            name="**Meta (Utility) Essences**",
+            value=_essence_lines(_UTILITY_ESSENCES),
             inline=True,
         )
         embed.add_field(
@@ -343,9 +346,7 @@ class StorageProfileBuilder:
         )
         embed.set_thumbnail(url=user["appearance"])
 
-        # ── Gathering ── Row 1: Ore | Logs | Bones — Row 2: Elemental Keys | Artisan Remnants
-        embed.add_field(name="⛏️ **Gathering**", value="​", inline=False)
-
+        # ── Gathering ── Row 1: Ore | Logs | Bones — Row 2: Elemental Keys | Artisan Remnants | Runes of Nature
         embed.add_field(
             name="⛏️ Ore",
             value=(
@@ -391,14 +392,17 @@ class StorageProfileBuilder:
             inline=True,
         )
 
-        # ── Settlement ── Row 1: Building | Rare — Row 2: Ingots | Planks | Essence
-        embed.add_field(name="🏭 **Settlement**", value="​", inline=False)
+        embed.add_field(name="​", value="​", inline=False)
 
+        # ── Settlement ── Row 1: Building | R&D | Rare — Row 2: Ingots | Planks | Essence
         embed.add_field(
             name="🏗️ Building",
+            value=f"🪵 Timber: {settlement.timber:,}\n🪨 Stone: {settlement.stone:,}",
+            inline=True,
+        )
+        embed.add_field(
+            name=f"{DEVELOPMENT_CONTRACT} R&D",
             value=(
-                f"🪵 Timber: {settlement.timber:,}\n"
-                f"🪨 Stone: {settlement.stone:,}\n"
                 f"📋 Blueprints: {blueprint_count}\n"
                 f"{DIVINER_ROD} Diviner's Rods: {mat_all.get('diviners_rod', 0)}\n"
                 f"{DEVELOPMENT_CONTRACT} Dev Contracts: {dev_contracts:,}"
@@ -414,8 +418,6 @@ class StorageProfileBuilder:
             ),
             inline=True,
         )
-
-        embed.add_field(name="​", value="​", inline=False)
 
         embed.add_field(
             name=f"{BARS_REFINED} Ingots",
@@ -511,52 +513,5 @@ class StorageProfileBuilder:
             ),
             inline=True,
         )
-
-        return embed
-
-    @staticmethod
-    async def build_essences(bot, user_id: str, server_id: str) -> discord.Embed:
-        user = await bot.database.users.get(user_id, server_id)
-        essence_data = await bot.database.essences.get_all(user_id)
-
-        embed = discord.Embed(
-            title="Essence Vault",
-            description="Essences used to enchant and upgrade equipment.",
-            color=0x9B59B6,
-        )
-        embed.set_thumbnail(url=user["appearance"])
-
-        if not essence_data:
-            embed.add_field(
-                name="Empty", value="No essence data found for your account."
-            )
-            return embed
-
-        items = {}
-        if hasattr(essence_data, "keys"):
-            items = {
-                k: v
-                for k, v in dict(essence_data).items()
-                if k not in ("user_id", "server_id", "id")
-            }
-
-        if not items:
-            embed.add_field(name="Empty", value="No essence data available.")
-            return embed
-
-        lines = []
-        for e_type, count in items.items():
-            safe_count = count if count is not None else 0
-            name = str(e_type).replace("_", " ").title()
-            lines.append(f"✦ **{name}**: {safe_count:,}")
-
-        chunk_size = 12
-        for i in range(0, len(lines), chunk_size):
-            chunk = lines[i : i + chunk_size]
-            embed.add_field(
-                name="Stored Essences" if i == 0 else "​",
-                value="\n".join(chunk),
-                inline=True,
-            )
 
         return embed

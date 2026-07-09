@@ -4,6 +4,9 @@ import discord
 from discord import Interaction
 
 from core.companions.mechanics import CompanionMechanics
+from core.emojis import RUNE_REFINEMENT
+from core.items.equipment_mechanics import EquipmentMechanics
+from core.models import Weapon
 
 
 class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
@@ -43,10 +46,13 @@ class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
 
         itype = self.parent_view._get_db_type()
         total_xp_val = 0
+        total_runes_back = 0
 
         # Execute DB Deletions
         for item in items_to_delete:
             total_xp_val += CompanionMechanics.calculate_feed_xp(item)
+            if isinstance(item, Weapon):
+                total_runes_back += EquipmentMechanics.calculate_refine_refund(item)
             await self.parent_view.bot.database.equipment.discard(item.item_id, itype)
 
         # Pool XP for manual distribution via Companions view
@@ -56,6 +62,17 @@ class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
                 self.parent_view.user_id, "companion_pet_xp", total_xp_val
             )
             xp_msg = f"\n🐾 **+{total_xp_val:,} XP** added to your Companion XP pool."
+
+        # Weapon refinement rune refund (mirrors single-item discard)
+        rune_msg = ""
+        if total_runes_back > 0:
+            await self.parent_view.bot.database.users.modify_currency(
+                self.parent_view.user_id, "refinement_runes", total_runes_back
+            )
+            rune_msg = (
+                f"\n{RUNE_REFINEMENT} Recovered **{total_runes_back}** "
+                "Refinement Rune(s)."
+            )
 
         # Update List State
         deleted_ids = {i.item_id for i in items_to_delete}
@@ -78,7 +95,10 @@ class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
         temp_embed = discord.Embed(
             title="Mass Discard Complete", color=discord.Color.red()
         )
-        temp_embed.description = f"🗑️ Dismantled **{len(items_to_delete)}** items (Level <= {level_limit}).{xp_msg}"
+        temp_embed.description = (
+            f"🗑️ Dismantled **{len(items_to_delete)}** items "
+            f"(Level <= {level_limit}).{xp_msg}{rune_msg}"
+        )
 
         await interaction.edit_original_response(
             content=None, embed=temp_embed, view=None

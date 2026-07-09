@@ -3,6 +3,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.character.passive_formatters import get_scaled_passive_description
+from core.emojis import GOLD_COIN, VOID_ENGRAM
 from core.images import (
     SYLAS_AUTHOR,
     UPGRADE_ENCHANT,
@@ -237,13 +238,13 @@ class VoidEngramView(BaseUpgradeView):
 
         desc = (
             f"**Current Void Passive:** {display_passive}\n"
-            f"**Void Engrams Owned:** {self.engrams}\n"
-            f"**Gold Cost:** 25,000,000\n\n"
+            f"{VOID_ENGRAM} **Void Engrams Owned:** {self.engrams}\n"
+            f"**Gold Cost:** {GOLD_COIN} 25,000,000\n\n"
             "Consuming an Engram will corrupt your accessory with a Void passive, or reroll your existing one."
         )
 
         self.embed = discord.Embed(
-            title=f"⬛ Void Corruption: {self.item.name}",
+            title=f"{VOID_ENGRAM} Void Corruption: {self.item.name}",
             description=desc,
             color=discord.Color.dark_theme(),
         )
@@ -253,7 +254,7 @@ class VoidEngramView(BaseUpgradeView):
         btn_consume = Button(
             label="Consume Engram",
             style=ButtonStyle.secondary,
-            emoji="⬛",
+            emoji=VOID_ENGRAM,
             disabled=(self.engrams < 1),
         )
         btn_consume.callback = self.confirm_engram
@@ -282,7 +283,8 @@ class VoidEngramView(BaseUpgradeView):
         if gold < 25_000_000:
             self._processing = False
             return await interaction.response.send_message(
-                "You need **25,000,000 gold** to use a Void Engram.", ephemeral=True
+                f"You need **{GOLD_COIN} 25,000,000 gold** to use a Void Engram.",
+                ephemeral=True,
             )
 
         await interaction.response.defer()
@@ -302,7 +304,7 @@ class VoidEngramView(BaseUpgradeView):
 
         display_new = new_passive.replace("_", " ").title()
         res_embed = discord.Embed(
-            title="⬛ Engram Absorbed!",
+            title=f"{VOID_ENGRAM} Engram Absorbed!",
             description=f"The Engram dissolves into the void, reshaping your accessory.\n\n**New Passive:** {display_new}",
             color=discord.Color.dark_theme(),
         )

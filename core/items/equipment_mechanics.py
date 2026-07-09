@@ -294,6 +294,19 @@ class EquipmentMechanics:
 
         return {"gold": gold_cost, "materials": materials}
 
+    @staticmethod
+    def calculate_refine_refund(weapon: Weapon) -> int:
+        """
+        Refinement rune refund granted when a weapon is discarded.
+        Applies only at higher refinement levels; returns 0 otherwise.
+        """
+        if weapon.refinement_lvl <= 0:
+            return 0
+        runes_back = max(0, int(weapon.refinement_lvl - 6 * 0.8))
+        if weapon.attack > 0 and weapon.defence > 0 and weapon.rarity > 0:
+            runes_back += 1
+        return runes_back
+
     # Per-refine soft caps. get_scaled_stat approaches these asymptotically via a
     # hyperbolic curve: expected = cap * (level / (level + 100)), ±20% variance.
     _REFINE_CAPS = {"attack": 15, "defence": 10, "rarity": 50}

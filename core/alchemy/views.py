@@ -10,7 +10,7 @@ from core.alchemy.mechanics import (
     get_passive_name_emoji,
 )
 from core.base_view import BaseView
-from core.emojis import COSMIC_DUST, GOLD_COIN, RESOURCE_EMOJI, SPIRIT_STONE
+from core.emojis import COSMIC_DUST, GOLD_COIN, POTION, RESOURCE_EMOJI, SPIRIT_STONE
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.skills.mastery import get_attunement_alchemy_bonus
@@ -151,7 +151,7 @@ class AlchemyHubView(BaseView):
         view.message = msg
         self.stop()
 
-    @ui.button(label="Potion Lab", style=ButtonStyle.green, emoji="⚗️", row=0)
+    @ui.button(label="Potion Lab", style=ButtonStyle.green, emoji=POTION, row=0)
     async def potion_lab(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         free_roll_used = await self.bot.database.alchemy.get_free_roll_used(
@@ -1008,7 +1008,7 @@ class AlchemyPotionLabView(BaseView):
         slot_count = AlchemyMechanics.get_slot_count(self.alchemy_level)
         chosen = self._slot_select.chosen_slot if self._slot_select else 1
 
-        embed = discord.Embed(title="⚗️ Potion Lab", color=discord.Color.green())
+        embed = discord.Embed(title=f"{POTION} Potion Lab", color=discord.Color.green())
         embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
         embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
         embed.set_footer(text=get_quip("alchemy"))

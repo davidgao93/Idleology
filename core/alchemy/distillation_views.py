@@ -19,7 +19,7 @@ from core.alchemy.mechanics import (
     get_passive_name_emoji,
 )
 from core.base_view import BaseView
-from core.emojis import COSMIC_DUST
+from core.emojis import COSMIC_DUST, POTION
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 
@@ -106,7 +106,7 @@ class PotionDistillationView(BaseView):
         base = s.get("base_type")
 
         embed = discord.Embed(
-            title="⚗️ Potion Distillation", color=discord.Color.purple()
+            title=f"{POTION} Potion Distillation", color=discord.Color.purple()
         )
         embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
         embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
@@ -513,7 +513,7 @@ class PotionDistillationView(BaseView):
                 distill_view=self,
             )
             choice_embed = discord.Embed(
-                title="⚗️ Distillation Complete — Choose Your Passive",
+                title=f"{POTION} Distillation Complete — Choose Your Passive",
                 color=discord.Color.gold(),
             )
             choice_embed.set_author(
@@ -556,7 +556,7 @@ class PotionDistillationView(BaseView):
 
         hub = await _hub_from_db(self.bot, self.user_id, self.server_id)
         result_embed = hub.build_embed()
-        result_embed.title = "⚗️ Alchemy — New Elixir Ready"
+        result_embed.title = f"{POTION} Alchemy — New Elixir Ready"
         result_embed.colour = discord.Color.gold()
         result_embed.insert_field_at(
             0,
@@ -693,7 +693,7 @@ class _KeepOrReplaceView(BaseView):
 
         hub = await _hub_from_db(self.bot, self.user_id, self.server_id)
         embed = hub.build_embed()
-        embed.title = "⚗️ Alchemy — Passive Kept"
+        embed.title = f"{POTION} Alchemy — Passive Kept"
         msg = await interaction.edit_original_response(embed=embed, view=hub)
         hub.message = msg
         self.stop()

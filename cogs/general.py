@@ -33,9 +33,14 @@ from core.emojis import (
     ACCESSORY_SLOT,
     ARMOR_SLOT,
     BOOT_SLOT,
+    CELESTIAL_ENGRAM,
+    CRIT_MULTI,
     DODGE_EVASION,
     GLOVE_SLOT,
     HELMET_SLOT,
+    INFERNAL_ENGRAM,
+    STAT_BLOCK,
+    VOID_ENGRAM,
     WEAPON_SLOT,
 )
 from core.images import AMARA_AUTHOR, AMARA_PORTRAIT
@@ -230,12 +235,11 @@ class General(commands.Cog, name="general"):
     def _generate_weapon_details(self) -> str:
         output = ""
         for key, defn in WEAPON_PASSIVE_DEFS.items():
-            output += f"__**{defn.display_name}**__\n"
-            for idx, label in enumerate(defn.tier_labels):
-                tier = idx + 1
-                desc = _WEAPON_PASSIVE_DESC.get(f"{key}_{tier}", defn.description(tier))
-                output += f"`T{tier}` **{label}** - {desc}\n"
-            output += "\n"
+            descs = [
+                _WEAPON_PASSIVE_DESC.get(f"{key}_{tier}", defn.description(tier))
+                for tier in range(1, len(defn.tier_labels) + 1)
+            ]
+            output += f"**{defn.display_name}** — {_compact_tier_descriptions(descs)}\n\n"
         return output
 
     # ------------------------------------------------------------------
@@ -247,17 +251,8 @@ class General(commands.Cog, name="general"):
         """
         output = ""
         for name, calc in passives.items():
-            output += f"__**{name}**__\n"
-            # Show Level 1, Middle, and Max to save space if needed,
-            # OR loop all if list is short. Listing all for clarity here.
-            levels_to_show = range(1, max_lvl + 1)
-
-            lines = []
-            for lvl in levels_to_show:
-                effect = calc(lvl)
-                lines.append(f"`L{lvl}` {effect}")
-
-            output += "\n".join(lines) + "\n\n"
+            descs = [calc(lvl) for lvl in range(1, max_lvl + 1)]
+            output += f"**{name}** — {_compact_tier_descriptions(descs)}\n\n"
         return output
 
     @app_commands.command(
@@ -340,7 +335,7 @@ class General(commands.Cog, name="general"):
         elif category == "weapon":
             embed.title = f"{WEAPON_SLOT} Weapon Passives"
             infernal_text = (
-                "\n**🔥 Infernal Passives (Engram):**\n"
+                f"\n**{INFERNAL_ENGRAM} Infernal Passives (Engram):**\n"
                 + self._format_passive_descs(_INFERNAL_PASSIVE_DESC)
             )
             embed.description = self._generate_weapon_details() + infernal_text
@@ -350,7 +345,7 @@ class General(commands.Cog, name="general"):
             embed.title = f"{ACCESSORY_SLOT} Accessory Passive Scaling (Max Lvl 10)"
             passives = {k.title(): v for k, v in _ACCESSORY_PASSIVE_FUNCS.items()}
             void_text = (
-                "\n**⬛ Void Passives (Engram):**\n"
+                f"\n**{VOID_ENGRAM} Void Passives (Engram):**\n"
                 + self._format_passive_descs(_VOID_PASSIVE_DESC)
             )
             embed.description = self._generate_scaling_details(passives, 10) + void_text
@@ -373,7 +368,7 @@ class General(commands.Cog, name="general"):
             armor_text = (
                 "**Standard Passives:**\n"
                 + self._format_passive_descs(_ARMOR_PASSIVE_DESC)
-                + "\n\n**🌌 Celestial Passives (Engram):**\n"
+                + f"\n\n**{CELESTIAL_ENGRAM} Celestial Passives (Engram):**\n"
                 + self._format_passive_descs(_CELESTIAL_PASSIVE_DESC)
             )
             embed.description = armor_text
@@ -477,15 +472,24 @@ class General(commands.Cog, name="general"):
                 "**🛡️ Essence of Protection**\n"
                 "Amplifies existing damage reduction on the item. "
                 "Rolls **20–80%** of the item's base PDR and FDR values as a flat bonus to each.\n\n"
-                "**👁️ Essence of Insight**\n"
+                "**🗡️ Essence of Insight**\n"
                 "Grants a flat crit chance increase. "
                 "Rolls **+1–8%** Crit Chance.\n\n"
                 f"**{DODGE_EVASION} Essence of Evasion**\n"
                 "Grants a flat evasion chance bonus. "
                 "Rolls **+1–8%** Evasion.\n\n"
-                "**🧱 Essence of Unyielding**\n"
+                f"**{STAT_BLOCK} Essence of Blocking**\n"
                 "Grants a flat block chance bonus. "
                 "Rolls **+1–8%** Block Chance.\n\n"
+                f"**{CRIT_MULTI} Essence of Deftness**\n"
+                "Increases the item's crit damage multiplier. "
+                "Rolls **+0.1–0.5×** Crit Multiplier.\n\n"
+                "**🎯 Essence of Precision**\n"
+                "Grants a flat hit chance bonus. "
+                "Rolls **+1–8%** Hit Chance.\n\n"
+                "**🩸 Essence of Gluttony**\n"
+                "Increases max HP by a percentage. "
+                "Rolls **+1–8%** Max HP.\n\n"
                 "**— Utility Essences (consumed on use) —**\n\n"
                 "**🌊 Essence of Cleansing**\n"
                 "Removes all 3 regular essence slots from the item, resetting them to empty.\n\n"
@@ -692,7 +696,6 @@ class General(commands.Cog, name="general"):
                 ("boots", "Manage boots"),
                 ("helmets", "Manage helmets"),
                 ("gear", "Manage gear"),
-                ("essences", "View your stored essences"),
             ],
             "🌲 Skills": [
                 ("gather", "Manage mining, fishing, and woodcutting"),

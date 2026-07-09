@@ -6,7 +6,7 @@ Split across three implementation modules:
   profile_ui_card.py    — build_card, build_cooldowns
   profile_ui_combat.py  — build_stats, build_gear_passives, build_misc_passives
   profile_ui_storage.py — build_inventory, build_crafting, build_resources,
-                          build_uber, build_essences
+                          build_uber
 """
 
 from core.character.profile_ui_card import CardProfileBuilder

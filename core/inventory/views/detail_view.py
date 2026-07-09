@@ -7,7 +7,21 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
+from core.emojis import (
+    CELESTIAL_ENGRAM,
+    INFERNAL_ENGRAM,
+    RUNE_GENERIC,
+    RUNE_IMBUE,
+    RUNE_MIRAGE_PERFECT,
+    RUNE_POTENTIAL,
+    RUNE_REFINEMENT,
+    RUNE_SHATTER,
+    VOID_ENGRAM,
+    VOID_KEY,
+)
 from core.inventory.inventory import InventoryUI
+from core.items.equipment_mechanics import EquipmentMechanics
+from core.items.essence_mechanics import get_essence_slots
 from core.inventory.upgrades import (
     EngramView,
     ForgeView,
@@ -97,26 +111,43 @@ class ItemDetailView(BaseView):
         # 2. Dynamic Upgrade Actions
         if isinstance(self.item, Weapon):
             if self.item.forges_remaining > 0:
-                self.add_upgrade_button("Forge", ButtonStyle.success, "forge")
-            self.add_upgrade_button("Refine", ButtonStyle.secondary, "refine")
+                self.add_upgrade_button(
+                    "Forge", ButtonStyle.success, "forge", emoji=RUNE_GENERIC
+                )
+            self.add_upgrade_button(
+                "Refine", ButtonStyle.secondary, "refine", emoji=RUNE_REFINEMENT
+            )
 
             if (
                 self.void_keys > 0
                 and self.item.passive != "none"
                 and self.item.u_passive == "none"
             ):
-                self.add_upgrade_button("Voidforge", ButtonStyle.primary, "voidforge")
+                self.add_upgrade_button(
+                    "Voidforge", ButtonStyle.primary, "voidforge", emoji=VOID_KEY
+                )
             self.add_upgrade_button(
-                "Infernal Engram", ButtonStyle.danger, "infernal_engram"
+                "Infernal Engram",
+                ButtonStyle.danger,
+                "infernal_engram",
+                emoji=INFERNAL_ENGRAM,
             )
 
         elif isinstance(self.item, Armor):
             if self.item.temper_remaining > 0:
-                self.add_upgrade_button("Temper", ButtonStyle.success, "temper")
+                self.add_upgrade_button(
+                    "Temper", ButtonStyle.success, "temper", emoji=RUNE_GENERIC
+                )
             if self.item.imbue_remaining > 0 and self.item.passive == "none":
-                self.add_upgrade_button("Imbue", ButtonStyle.primary, "imbue")
-            self.add_upgrade_button("Reinforce", ButtonStyle.primary, "reinforce")
-            self.add_upgrade_button("Engram", ButtonStyle.danger, "engram")
+                self.add_upgrade_button(
+                    "Imbue", ButtonStyle.primary, "imbue", emoji=RUNE_IMBUE
+                )
+            self.add_upgrade_button(
+                "Reinforce", ButtonStyle.primary, "reinforce", emoji=RUNE_SHATTER
+            )
+            self.add_upgrade_button(
+                "Engram", ButtonStyle.danger, "engram", emoji=CELESTIAL_ENGRAM
+            )
 
         elif isinstance(self.item, (Accessory, Glove, Boot, Helmet)):
             max_lvl = (
@@ -129,13 +160,17 @@ class ItemDetailView(BaseView):
                 and self.item.potential_remaining > 0
                 and self.item.passive_lvl < max_lvl
             ):
-                self.add_upgrade_button("Enchant", ButtonStyle.success, "potential")
+                self.add_upgrade_button(
+                    "Enchant", ButtonStyle.success, "potential", emoji=RUNE_POTENTIAL
+                )
             if isinstance(self.item, Accessory):
                 self.add_upgrade_button(
-                    "Void Engram", ButtonStyle.secondary, "void_engram"
+                    "Void Engram", ButtonStyle.secondary, "void_engram", emoji=VOID_ENGRAM
                 )
             if isinstance(self.item, (Glove, Boot, Helmet)):
-                self.add_upgrade_button("Reinforce", ButtonStyle.primary, "reinforce")
+                self.add_upgrade_button(
+                    "Reinforce", ButtonStyle.primary, "reinforce", emoji=RUNE_SHATTER
+                )
                 essence_btn = Button(
                     label="Essences", style=ButtonStyle.primary, emoji="💎"
                 )
@@ -144,7 +179,9 @@ class ItemDetailView(BaseView):
 
         # 3. Mirage (all item types, requires at least one rune)
         if self.mirage_runes_imperfect > 0 or self.mirage_runes_perfected > 0:
-            self.add_upgrade_button("Mirage", ButtonStyle.secondary, "mirage")
+            self.add_upgrade_button(
+                "Mirage", ButtonStyle.secondary, "mirage", emoji=RUNE_MIRAGE_PERFECT
+            )
 
         # 4. Standard Actions
         discard_btn = Button(label="Discard", style=ButtonStyle.danger)
@@ -157,8 +194,8 @@ class ItemDetailView(BaseView):
             back_btn
         )  # intra-inventory navigation (detail -> list) — do not clear_active
 
-    def add_upgrade_button(self, label, style, action_type):
-        btn = Button(label=label, style=style)
+    def add_upgrade_button(self, label, style, action_type, emoji=None):
+        btn = Button(label=label, style=style, emoji=emoji)
         # Capture action_type in default arg
         btn.callback = lambda i, at=action_type: self.handle_upgrade(i, at)
         self.add_item(btn)
@@ -256,13 +293,61 @@ class ItemDetailView(BaseView):
 
         return False
 
+    def _build_discard_preview_embed(self) -> discord.Embed:
+        """Preview of what discarding self.item will grant/refund, shown before confirming."""
+        embed = discord.Embed(
+            title="⚠️ Confirm Discard",
+            description=(
+                f"Are you sure you want to discard **{self.item.name}** "
+                f"(Lv.{self.item.level})? This cannot be undone."
+            ),
+            color=discord.Color.orange(),
+        )
+
+        xp_val = CompanionMechanics.calculate_feed_xp(self.item)
+        if xp_val > 0:
+            embed.add_field(
+                name="🐾 Companion XP",
+                value=f"+{xp_val:,} XP added to your Companion XP pool.",
+                inline=False,
+            )
+
+        if isinstance(self.item, Weapon):
+            runes_back = EquipmentMechanics.calculate_refine_refund(self.item)
+            if runes_back > 0:
+                embed.add_field(
+                    name=f"{RUNE_REFINEMENT} Refinement Runes",
+                    value=f"**{runes_back}** rune(s) will be recovered.",
+                    inline=False,
+                )
+
+        if isinstance(self.item, (Glove, Boot, Helmet)):
+            from core.items.essence_views import ESSENCE_DISPLAY
+
+            lines = []
+            for _, etype, _ in get_essence_slots(self.item):
+                e_name, emoji = ESSENCE_DISPLAY.get(etype, (etype.title(), "✦"))
+                lines.append(f"{emoji} {e_name}")
+            corrupted = getattr(self.item, "corrupted_essence", "none") or "none"
+            if corrupted != "none":
+                c_name, c_emoji = ESSENCE_DISPLAY.get(
+                    corrupted, (corrupted.title(), "💠")
+                )
+                lines.append(f"{c_emoji} {c_name} *(corrupted)*")
+            if lines:
+                embed.add_field(
+                    name="💎 Essences Lost", value="\n".join(lines), inline=False
+                )
+
+        return embed
+
     async def discard_item(self, interaction: Interaction):
         # 1. Check if valuable
         if self._is_valuable():
             confirm_view = DiscardConfirmView(self)
             await interaction.response.edit_message(
-                content="⚠️ **Warning:** This item has passives or upgrades. Are you sure you want to discard it?",
-                embed=None,
+                content=None,
+                embed=self._build_discard_preview_embed(),
                 view=confirm_view,
             )
             self.message = await interaction.original_response()
@@ -297,15 +382,13 @@ class ItemDetailView(BaseView):
 
         # Weapon refinement rune refund
         rune_msg = ""
-        if isinstance(self.item, Weapon) and self.item.refinement_lvl > 0:
-            runes_back = max(0, int(self.item.refinement_lvl - 6 * 0.8))
-            if self.item.attack > 0 and self.item.defence > 0 and self.item.rarity > 0:
-                runes_back += 1
+        if isinstance(self.item, Weapon):
+            runes_back = EquipmentMechanics.calculate_refine_refund(self.item)
             if runes_back > 0:
                 await self.bot.database.users.modify_currency(
                     self.user_id, "refinement_runes", runes_back
                 )
-                rune_msg = f"\n🔮 Recovered **{runes_back}** Refinement Rune(s)."
+                rune_msg = f"\n{RUNE_REFINEMENT} Recovered **{runes_back}** Refinement Rune(s)."
 
         # Update List State
         self.parent.items = [

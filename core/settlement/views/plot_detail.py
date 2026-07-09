@@ -15,7 +15,7 @@ import asyncio
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.emojis import GOLD_COIN
+from core.emojis import DEVELOPMENT_CONTRACT, DIVINER_ROD, GOLD_COIN, RESOURCE_EMOJI
 from core.images import SETTLEMENT_BUILDINGS, SETTLEMENT_CONSTRUCTION
 from core.settlement.constants import (
     BUILDING_INFO,
@@ -579,6 +579,8 @@ class PlotDetailView(SettlementBaseView):
             )
             if b.building_type == "uber_shrine":
                 desc = f"**Tier:** {b.tier}/5\n🏛️ Workers are managed per statue — open Monument Hall to assign them."
+            elif b.building_type == "black_market":
+                desc = f"**Tier:** {b.tier}/5\n💱 Special trading post — no workers required."
             elif b.is_meta:
                 if is_passive_meta:
                     desc = "**Meta Building** *(Passive — no workers needed)*"
@@ -645,10 +647,12 @@ class PlotDetailView(SettlementBaseView):
                         cost_str += " _(Inspiration Surge — halved!)_"
                     if "specials" in cost:
                         for s in cost["specials"]:
-                            cost_str += f" | ✨ {s['name']} ×{s['qty']}"
+                            s_emoji = RESOURCE_EMOJI.get(s["key"], "✨")
+                            cost_str += f" | {s_emoji} {s['name']} ×{s['qty']}"
                     elif "special_name" in cost:
+                        sp_emoji = RESOURCE_EMOJI.get(cost.get("special_key"), "✨")
                         cost_str += (
-                            f" | ✨ {cost['special_name']} ×{cost['special_qty']}"
+                            f" | {sp_emoji} {cost['special_name']} ×{cost['special_qty']}"
                         )
                     embed.add_field(
                         name="Next Upgrade Cost", value=cost_str, inline=False
@@ -750,6 +754,12 @@ class PlotDetailView(SettlementBaseView):
     def _add_manage_buttons(self):
         b = self.building
 
+        # Pre-compute whether this building already has an upgrade queued.
+        _projects = getattr(self.parent, "projects", []) or []
+        _has_upgrade = any(
+            p["project_type"] == "upgrade" and p["target_id"] == b.id for p in _projects
+        )
+
         # --- Special case: Black Market opens its own dedicated view ---
         if b.building_type == "black_market":
             if b.is_disabled:
@@ -772,18 +782,23 @@ class PlotDetailView(SettlementBaseView):
                 btn_bm.callback = self._open_black_market
                 self.add_item(btn_bm)
 
+            if b.tier < 5:
+                btn_up = ui.Button(
+                    label=f"Upgrade to T{b.tier + 1}",
+                    style=ButtonStyle.success,
+                    emoji="⬆️",
+                    row=0,
+                    disabled=_has_upgrade,
+                )
+                btn_up.callback = self._upgrade_building
+                self.add_item(btn_up)
+
             btn_demo = ui.Button(
                 label="Demolish", style=ButtonStyle.danger, emoji="💥", row=1
             )
             btn_demo.callback = self._demolish_confirm
             self.add_item(btn_demo)
             return
-
-        # Pre-compute whether this building already has an upgrade queued.
-        _projects = getattr(self.parent, "projects", []) or []
-        _has_upgrade = any(
-            p["project_type"] == "upgrade" and p["target_id"] == b.id for p in _projects
-        )
 
         # --- Special case: Uber Shrine opens Monument Hall view ---
         if b.building_type == "uber_shrine":
@@ -967,7 +982,7 @@ class PlotDetailView(SettlementBaseView):
         if dcs < dc_cost:
             self._processing = False
             return await interaction.response.send_message(
-                f"You need **{dc_cost}** Development Contract(s) (you have **{dcs}**).",
+                f"You need **{dc_cost}** {DEVELOPMENT_CONTRACT} Development Contract(s) (you have **{dcs}**).",
                 ephemeral=True,
             )
 
@@ -1016,7 +1031,7 @@ class PlotDetailView(SettlementBaseView):
             title="⛏️ Excavation Queued",
             description=(
                 f"**Plot {self.plot.plot_index}** excavation has been queued.\n\n"
-                f"Development Contracts deducted. The plot will be ready after "
+                f"{DEVELOPMENT_CONTRACT} Development Contracts deducted. The plot will be ready after "
                 f"**{dt_cost} Development Turn(s)**.\n"
                 f"Use **Next Turn** on your settlement dashboard to process it."
             ),
@@ -1289,7 +1304,7 @@ class PlotDetailView(SettlementBaseView):
         btn = ui.Button(
             label="Use Diviner's Rod",
             style=ButtonStyle.secondary,
-            emoji="🔮",
+            emoji=DIVINER_ROD,
             row=1,
         )
         btn.callback = self._use_diviners_rod
@@ -1306,7 +1321,7 @@ class PlotDetailView(SettlementBaseView):
         if mats.get("diviners_rod", 0) < 1:
             self._processing = False
             return await interaction.response.send_message(
-                "You don't have any **Diviner's Rods**! They can drop from combat.",
+                f"You don't have any {DIVINER_ROD} **Diviner's Rods**! They can drop from combat.",
                 ephemeral=True,
             )
 
@@ -1330,7 +1345,7 @@ class PlotDetailView(SettlementBaseView):
         embed = self.build_embed()
 
         if not result["changed"]:
-            embed.title = f"📍 Plot {self.plot.plot_index} — 🔮 Power Fails to Bind"
+            embed.title = f"📍 Plot {self.plot.plot_index} — {DIVINER_ROD} Power Fails to Bind"
             embed.color = discord.Color.dark_grey()
             embed.add_field(
                 name="The Diviner's Rod fizzles...",
@@ -1342,7 +1357,7 @@ class PlotDetailView(SettlementBaseView):
                 inline=False,
             )
         else:
-            embed.title = f"📍 Plot {self.plot.plot_index} — 🔮 Terrain Rerolled!"
+            embed.title = f"📍 Plot {self.plot.plot_index} — {DIVINER_ROD} Terrain Rerolled!"
             embed.color = discord.Color.purple()
 
         await interaction.edit_original_response(content=None, embed=embed, view=self)

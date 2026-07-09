@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction, SelectOption
 from discord.ui import Button, Select
 
 from core.combat.calc.calcs import fmt_weapon_passive
+from core.emojis import GOLD_COIN, VOID_KEY
 from core.first_use import TUTORIALS
 from core.images import HARLAN_AUTHOR, UPGRADE_VOIDFORGE
 from core.inventory.upgrades.base import BaseUpgradeView
@@ -59,7 +60,7 @@ class VoidforgeView(BaseUpgradeView):
 
         if not self.candidates:
             embed = discord.Embed(
-                title="🌌 Voidforge",
+                title=f"{VOID_KEY} Voidforge",
                 description=(
                     "**No eligible sacrifice weapons found.**\n"
                     "Requires: Unequipped weapon with an active passive.\n\n"
@@ -75,10 +76,10 @@ class VoidforgeView(BaseUpgradeView):
 
         if user_gold < self.gold_cost:
             embed = discord.Embed(
-                title="🌌 Voidforge",
+                title=f"{VOID_KEY} Voidforge",
                 description=(
                     f"**Insufficient funds.**\n"
-                    f"You need **{self.gold_cost:,} gold** to initiate a Voidforge."
+                    f"You need **{GOLD_COIN} {self.gold_cost:,} gold** to initiate a Voidforge."
                 ),
                 color=discord.Color.dark_purple(),
             )
@@ -104,10 +105,10 @@ class VoidforgeView(BaseUpgradeView):
         self.add_back_button()
 
         embed = discord.Embed(
-            title="🌌 Voidforge",
+            title=f"{VOID_KEY} Voidforge",
             description=(
                 f"Select a weapon to sacrifice.\n"
-                f"**Cost:** 1 Void Key & {self.gold_cost:,} Gold\n\n"
+                f"**Cost:** 1 {VOID_KEY} Void Key & {GOLD_COIN} {self.gold_cost:,} Gold\n\n"
                 "**Effects:**\n"
                 "25%: Add Passive as Pinnacle/Utmost\n"
                 "25%: Overwrite Main Passive\n"
@@ -148,7 +149,7 @@ class VoidforgeView(BaseUpgradeView):
                 f"You are about to sacrifice:\n"
                 f"🗡️ **{self.selected_target.name}** (Lv{self.selected_target.level})\n"
                 f"✨ **Passive:** {fmt_weapon_passive(self.selected_target.passive)}\n\n"
-                f"**Cost:** 1 Void Key & {self.gold_cost:,} Gold\n\n"
+                f"**Cost:** 1 {VOID_KEY} Void Key & {GOLD_COIN} {self.gold_cost:,} Gold\n\n"
                 "**This item will be PERMANENTLY DESTROYED regardless of success or failure.**"
             ),
             color=discord.Color.red(),
@@ -224,7 +225,7 @@ class VoidforgeView(BaseUpgradeView):
             else:
                 self.item.u_passive = target.passive
 
-            res_txt = f"🌌 **Success!**\n{fmt_weapon_passive(target.passive)} added as {slot.replace('_', ' ').title()}."
+            res_txt = f"{VOID_KEY} **Success!**\n{fmt_weapon_passive(target.passive)} added as {slot.replace('_', ' ').title()}."
             color = discord.Color.purple()
 
         elif roll < 0.50:
@@ -238,7 +239,7 @@ class VoidforgeView(BaseUpgradeView):
             res_txt = "❌ **Failure.**\nThe essence dissipated into the void."
 
         embed = discord.Embed(
-            title="Voidforge Result", description=res_txt, color=color
+            title=f"{VOID_KEY} Voidforge Result", description=res_txt, color=color
         )
         embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_VOIDFORGE)

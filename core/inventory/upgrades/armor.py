@@ -5,7 +5,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.character.passive_formatters import get_armor_passive_description
-from core.emojis import GOLD_COIN, RUNE_SHATTER
+from core.emojis import CELESTIAL_ENGRAM, GOLD_COIN, RUNE_SHATTER
 from core.images import (
     SYLAS_AUTHOR,
     UPGRADE_CELESTIAL_ENGRAM,
@@ -769,13 +769,13 @@ class EngramView(BaseUpgradeView):
 
         desc = (
             f"**Current Celestial Passive:** {display_passive}\n"
-            f"**Celestial Engrams Owned:** {self.engrams}\n"
-            f"**Gold Cost:** 25,000,000\n\n"
+            f"{CELESTIAL_ENGRAM} **Celestial Engrams Owned:** {self.engrams}\n"
+            f"**Gold Cost:** {GOLD_COIN} 25,000,000\n\n"
             "Consuming an Engram will imbue your armor with a powerful Celestial passive, or reroll your existing one."
         )
 
         self.embed = discord.Embed(
-            title=f"🌌 Imbue {self.item.name}",
+            title=f"{CELESTIAL_ENGRAM} Imbue {self.item.name}",
             description=desc,
             color=discord.Color.purple(),
         )
@@ -786,7 +786,7 @@ class EngramView(BaseUpgradeView):
         btn_consume = Button(
             label="Consume Engram",
             style=ButtonStyle.danger,
-            emoji="🌌",
+            emoji=CELESTIAL_ENGRAM,
             disabled=(self.engrams < 1),
         )
         btn_consume.callback = self.confirm_engram
@@ -815,7 +815,7 @@ class EngramView(BaseUpgradeView):
         if gold < 25_000_000:
             self._processing = False
             return await interaction.response.send_message(
-                "You need **25,000,000 gold** to use a Celestial Engram.",
+                f"You need **{GOLD_COIN} 25,000,000 gold** to use a Celestial Engram.",
                 ephemeral=True,
             )
 
@@ -836,7 +836,7 @@ class EngramView(BaseUpgradeView):
 
         display_new = new_passive.replace("_", " ").title()
         res_embed = discord.Embed(
-            title="🌌 Engram Resonated!", color=discord.Color.gold()
+            title=f"{CELESTIAL_ENGRAM} Engram Resonated!", color=discord.Color.gold()
         )
         res_embed.description = f"The Engram shatters, weaving divine energy into your armor.\n\n**New Passive:** {display_new}"
         res_embed.set_author(name="Artificer Sylas", icon_url=SYLAS_AUTHOR)

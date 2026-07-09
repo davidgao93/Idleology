@@ -344,7 +344,7 @@ class SoulStoneView(BaseView):
         await interaction.response.defer()
 
         from core.apex.models import profile_from_db
-        from core.apex.views.lobby_view import ApexLobbyView, _build_lobby_embed
+        from core.apex.views.lobby_view import ApexLobbyView
 
         profile_row = await self.bot.database.apex.get_or_create_profile(
             self.user_id, self.server_id
@@ -358,7 +358,6 @@ class SoulStoneView(BaseView):
             profile.hunt_charges = charges
             profile.last_charge_time = new_ts
 
-        secs = ApexMechanics.seconds_until_next_charge(profile)
         lobby_view = ApexLobbyView(
             self.bot,
             self.user_id,
@@ -367,8 +366,7 @@ class SoulStoneView(BaseView):
             profile,
             charges,
         )
-        lobby_embed = _build_lobby_embed(self.player.name, profile, charges, secs)
-        await interaction.edit_original_response(embed=lobby_embed, view=lobby_view)
+        await interaction.edit_original_response(view=lobby_view)
         lobby_view.message = await interaction.original_response()
         self._processing = False
         self.stop()

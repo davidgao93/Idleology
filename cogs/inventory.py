@@ -162,17 +162,6 @@ class Inventory(commands.Cog, name="inventory"):
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
-    @app_commands.command(name="essences", description="View your stored essences.")
-    async def essences(self, interaction: discord.Interaction):
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild_id)
-
-        embed = await ProfileBuilder.build_essences(self.bot, user_id, server_id)
-
-        view = ProfileHubView(self.bot, user_id, server_id, active_tab="essences")
-
-        await interaction.response.send_message(embed=embed, view=view)
-
 
 async def setup(bot):
     await bot.add_cog(Inventory(bot))
