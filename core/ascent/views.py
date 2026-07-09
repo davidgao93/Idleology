@@ -5,7 +5,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.ascent.mechanics import PINNACLE_REWARDS, AscentMechanics
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.combat_log import CombatLogger
@@ -97,7 +97,21 @@ async def _grant_milestone_rewards(
 # ---------------------------------------------------------------------------
 
 
-class AscentLobbyView(BaseView):
+class AscentLobbyRow(discord.ui.ActionRow["AscentLobbyView"]):
+    @discord.ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="🏔️")
+    async def begin_run_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_begin_run(interaction)
+
+    @discord.ui.button(label="Pinnacles", style=ButtonStyle.primary, emoji="✨")
+    async def pinnacles_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_view_pinnacles(interaction)
+
+    @discord.ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
+    async def close_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_close(interaction)
+
+
+class AscentLobbyView(BaseLayoutView):
     def __init__(
         self,
         bot,
@@ -106,12 +120,21 @@ class AscentLobbyView(BaseView):
         player: Player,
         best_floor: int,
         pinnacle_keys: int,
+        player_avatar_url: str | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.player = player
         self.best_floor = best_floor
         self.pinnacle_keys = pinnacle_keys
+        self.player_avatar_url = player_avatar_url
         self._processing = False
+        self.row = AscentLobbyRow()
+        self._sync_items()
+
+    def _sync_items(self):
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(self.build_embed()))
+        self.add_item(self.row)
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -182,8 +205,7 @@ class AscentLobbyView(BaseView):
         embed.set_footer(text="A Pinnacle Key is consumed when you begin a run.")
         return embed
 
-    @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="🏔️", row=0)
-    async def begin_run(self, interaction: Interaction, button: ui.Button):
+    async def _on_begin_run(self, interaction: Interaction):
         if self._processing:
             await interaction.response.defer()
             return
@@ -229,12 +251,6 @@ class AscentLobbyView(BaseView):
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
 
-        embed = combat_ui.create_combat_embed(
-            self.player,
-            monster,
-            start_logs,
-            title_override=f"Ascent Floor {starting_floor} | {self.player.name}",
-        )
         view = AscentView(
             self.bot,
             self.user_id,
@@ -244,13 +260,13 @@ class AscentLobbyView(BaseView):
             start_logs,
             starting_floor=starting_floor,
             best_floor=self.best_floor,
+            player_avatar_url=self.player_avatar_url,
         )
         self.stop()
-        msg = await interaction.edit_original_response(embed=embed, view=view)
+        msg = await interaction.edit_original_response(view=view)
         view.message = msg
 
-    @ui.button(label="Pinnacles", style=ButtonStyle.primary, emoji="✨", row=0)
-    async def view_pinnacles(self, interaction: Interaction, button: ui.Button):
+    async def _on_view_pinnacles(self, interaction: Interaction):
         unlocked = self.player.ascension_unlocks
         lines = []
         for floor, _ in sorted(PINNACLE_REWARDS.items()):
@@ -265,11 +281,9 @@ class AscentLobbyView(BaseView):
             pages.append("\n".join(lines[i : i + chunk_size]))
 
         view = AscentPinnacleListView(self, pages)
-        embed = view.build_embed()
-        await interaction.response.edit_message(embed=embed, view=view)
+        await interaction.response.edit_message(view=view)
 
-    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=0)
-    async def close_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_close(self, interaction: Interaction):
         # session-terminating Close for ascent lobby
         await interaction.response.defer()
         self.bot.state_manager.clear_active(self.user_id)
@@ -277,17 +291,38 @@ class AscentLobbyView(BaseView):
         self.stop()
 
 
-class AscentPinnacleListView(BaseView):
+class AscentPinnacleRow(discord.ui.ActionRow["AscentPinnacleListView"]):
+    @discord.ui.button(label="◀", style=ButtonStyle.secondary)
+    async def prev_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_prev(interaction)
+
+    @discord.ui.button(label="▶", style=ButtonStyle.secondary)
+    async def next_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_next(interaction)
+
+    @discord.ui.button(label="Back", style=ButtonStyle.secondary)
+    async def back_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_back(interaction)
+
+
+class AscentPinnacleListView(BaseLayoutView):
     def __init__(self, lobby_view: "AscentLobbyView", pages: list[str]):
         super().__init__(lobby_view.bot, parent=lobby_view)
         self.lobby_view = lobby_view
         self.pages = pages
         self.page = 0
-        self._update_buttons()
+        self.row = AscentPinnacleRow()
+        self._sync_items()
 
     def _update_buttons(self):
-        self.prev_btn.disabled = self.page == 0
-        self.next_btn.disabled = self.page >= len(self.pages) - 1
+        self.row.prev_btn.disabled = self.page == 0
+        self.row.next_btn.disabled = self.page >= len(self.pages) - 1
+
+    def _sync_items(self):
+        self._update_buttons()
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(self.build_embed()))
+        self.add_item(self.row)
 
     def build_embed(self) -> discord.Embed:
         unlocked_count = len(self.lobby_view.player.ascension_unlocks)
@@ -304,24 +339,20 @@ class AscentPinnacleListView(BaseView):
         )
         return embed
 
-    @ui.button(label="◀", style=ButtonStyle.secondary, row=0)
-    async def prev_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_prev(self, interaction: Interaction):
         self.page -= 1
-        self._update_buttons()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+        self._sync_items()
+        await interaction.response.edit_message(view=self)
 
-    @ui.button(label="▶", style=ButtonStyle.secondary, row=0)
-    async def next_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_next(self, interaction: Interaction):
         self.page += 1
-        self._update_buttons()
-        await interaction.response.edit_message(embed=self.build_embed(), view=self)
+        self._sync_items()
+        await interaction.response.edit_message(view=self)
 
-    @ui.button(label="Back", style=ButtonStyle.secondary, row=0)
-    async def back_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_back(self, interaction: Interaction):
         self.stop()
-        await interaction.response.edit_message(
-            embed=self.lobby_view.build_embed(), view=self.lobby_view
-        )
+        self.lobby_view._sync_items()
+        await interaction.response.edit_message(view=self.lobby_view)
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +360,25 @@ class AscentPinnacleListView(BaseView):
 # ---------------------------------------------------------------------------
 
 
-class AscentView(BaseView):
+class AscentCombatRow(discord.ui.ActionRow["AscentView"]):
+    @discord.ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
+    async def attack_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_attack(interaction)
+
+    @discord.ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
+    async def heal_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_heal(interaction)
+
+    @discord.ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
+    async def auto_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_auto(interaction)
+
+    @discord.ui.button(label="Retreat", style=ButtonStyle.secondary, emoji="🏃")
+    async def retreat_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_retreat(interaction)
+
+
+class AscentView(BaseLayoutView):
     def __init__(
         self,
         bot,
@@ -340,11 +389,13 @@ class AscentView(BaseView):
         start_logs: dict,
         starting_floor: int,
         best_floor: int,
+        player_avatar_url: str | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.player = player
         self.monster = initial_monster
         self.logs = start_logs or {}
+        self.player_avatar_url = player_avatar_url
 
         self.current_floor = starting_floor
         self.best_floor = best_floor
@@ -356,8 +407,9 @@ class AscentView(BaseView):
         self.combat_logger = CombatLogger(player, initial_monster)
         self.combat_logger.log_combat_start(player, initial_monster)
 
-        self.heal.label = f"Heal ({self.player.potions}/20)"
-        self.heal.disabled = self.player.potions <= 0
+        self.row = AscentCombatRow()
+        self._update_heal_btn()
+        self._sync_items(self._combat_layout())
 
     async def on_timeout(self):
         if self.player.current_hp > 0:
@@ -371,27 +423,40 @@ class AscentView(BaseView):
         return f"Ascent Floor {self.current_floor} | {self.player.name}"
 
     def _update_heal_btn(self):
-        self.heal.label = f"Heal ({self.player.potions}/20)"
-        self.heal.disabled = self.player.potions <= 0
+        self.row.heal_btn.label = f"Heal ({self.player.potions}/20)"
+        self.row.heal_btn.disabled = self.player.potions <= 0
+
+    def _combat_layout(self) -> discord.ui.Container:
+        return combat_ui.create_combat_layout(
+            self.player,
+            self.monster,
+            self.logs,
+            title_override=self._floor_title(),
+            player_avatar_url=self.player_avatar_url,
+        )
+
+    def _sync_items(self, container=None, *, interactive: bool = True):
+        container = container if container is not None else self._combat_layout()
+        self.clear_items()
+        self.add_item(container)
+        if interactive:
+            self.add_item(self.row)
 
     async def _refresh(
         self, interaction: Interaction = None, message: discord.Message = None
     ):
         self._update_heal_btn()
-        embed = combat_ui.create_combat_embed(
-            self.player, self.monster, self.logs, title_override=self._floor_title()
-        )
+        self._sync_items(self._combat_layout())
         if interaction and not interaction.response.is_done():
-            await interaction.response.edit_message(embed=embed, view=self)
+            await interaction.response.edit_message(view=self)
         elif message:
-            await message.edit(embed=embed, view=self)
+            await message.edit(view=self)
         elif interaction:
-            await interaction.edit_original_response(embed=embed, view=self)
+            await interaction.edit_original_response(view=self)
 
     # --- Buttons ---
 
-    @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
-    async def attack(self, interaction: Interaction, button: ui.Button):
+    async def _on_attack(self, interaction: Interaction):
         p_log = engine.process_player_turn(self.player, self.monster)
         self.combat_logger.log_player_turn(p_log, self.monster)
         self.logs = {self.player.name: p_log}
@@ -401,8 +466,7 @@ class AscentView(BaseView):
             self.logs[self.monster.name] = m_log
         await self._check_state(interaction)
 
-    @ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
-    async def heal(self, interaction: Interaction, button: ui.Button):
+    async def _on_heal(self, interaction: Interaction):
         self.logs = {"Heal": engine.process_heal(self.player, self.monster)}
         if self.monster.hp > 0:
             m_log = engine.process_monster_turn(self.player, self.monster)
@@ -410,13 +474,12 @@ class AscentView(BaseView):
             self.logs[self.monster.name] = m_log
         await self._check_state(interaction)
 
-    @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
-    async def auto(self, interaction: Interaction, button: ui.Button):
+    async def _on_auto(self, interaction: Interaction):
         await interaction.response.defer()
         message = interaction.message
 
         # Disable all buttons for the duration of the auto loop
-        for child in self.children:
+        for child in self.row.children:
             child.disabled = True
         await message.edit(view=self)
 
@@ -454,7 +517,7 @@ class AscentView(BaseView):
             and self.monster.hp > 0
         ):
             # Low HP pause — re-enable buttons so the player can act
-            for child in self.children:
+            for child in self.row.children:
                 child.disabled = False
             self.logs["Auto-Battle"] = "🛑 Paused: Low HP protection!"
             await self._refresh(message=message)
@@ -465,8 +528,7 @@ class AscentView(BaseView):
         else:
             await self._check_state(interaction, message)
 
-    @ui.button(label="Retreat", style=ButtonStyle.secondary, emoji="🏃")
-    async def retreat(self, interaction: Interaction, button: ui.Button):
+    async def _on_retreat(self, interaction: Interaction):
         await self._end_run(interaction, retreated=True)
 
     # --- Logic ---
@@ -546,12 +608,13 @@ class AscentView(BaseView):
             text=f"HP: {self.player.current_hp}/{self.player.total_max_hp} | Next floor in 3s..."
         )
 
+        self._sync_items(combat_ui.embed_to_container(embed), interactive=False)
         target = (
             interaction.edit_original_response
             if interaction and interaction.response.is_done()
             else (interaction.response.edit_message if interaction else message.edit)
         )
-        await target(embed=embed, view=None)
+        await target(view=self)
 
         await asyncio.sleep(3)
         await self._next_floor(interaction, message)
@@ -591,18 +654,13 @@ class AscentView(BaseView):
         self.combat_logger = CombatLogger(self.player, self.monster)
         self.combat_logger.log_combat_start(self.player, self.monster)
 
-        for child in self.children:
+        for child in self.row.children:
             child.disabled = False
         self._update_heal_btn()
+        self._sync_items(self._combat_layout())
 
         msg_obj = message if message else (await interaction.original_response())
-        embed = combat_ui.create_combat_embed(
-            self.player,
-            self.monster,
-            self.logs,
-            title_override=self._floor_title(),
-        )
-        await msg_obj.edit(embed=embed, view=self)
+        await msg_obj.edit(view=self)
 
     async def _handle_defeat(self, interaction, message):
         self.combat_logger.log_combat_end(self.player, self.monster, "defeat")
@@ -615,16 +673,24 @@ class AscentView(BaseView):
             description_extra=f"\nBest floor this session: **{self.best_floor}**",
         )
 
+        self.bot.state_manager.clear_active(self.user_id)
+        await self.bot.database.users.update_from_player_object(self.player)
+        self.stop()
+
+        lobby_view = AscentRunCompleteView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            embed,
+            player_avatar_url=self.player_avatar_url,
+        )
         target = (
             interaction.response.edit_message
             if interaction and not interaction.response.is_done()
             else (interaction.edit_original_response if interaction else message.edit)
         )
-        await target(embed=embed, view=None)
-
-        self.bot.state_manager.clear_active(self.user_id)
-        await self.bot.database.users.update_from_player_object(self.player)
-        self.stop()
+        await target(view=lobby_view)
 
     async def _end_run(self, interaction_or_msg, retreated: bool = True):
         embed = discord.Embed(
@@ -651,14 +717,75 @@ class AscentView(BaseView):
                 inline=False,
             )
 
-        if isinstance(interaction_or_msg, Interaction):
-            if not interaction_or_msg.response.is_done():
-                await interaction_or_msg.response.edit_message(embed=embed, view=None)
-            else:
-                await interaction_or_msg.edit_original_response(embed=embed, view=None)
-        elif interaction_or_msg:
-            await interaction_or_msg.edit(embed=embed, view=None)
-
         self.bot.state_manager.clear_active(self.user_id)
         await self.bot.database.users.update_from_player_object(self.player)
         self.stop()
+
+        lobby_view = AscentRunCompleteView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            embed,
+            player_avatar_url=self.player_avatar_url,
+        )
+        if isinstance(interaction_or_msg, Interaction):
+            if not interaction_or_msg.response.is_done():
+                await interaction_or_msg.response.edit_message(view=lobby_view)
+            else:
+                await interaction_or_msg.edit_original_response(view=lobby_view)
+        elif interaction_or_msg:
+            await interaction_or_msg.edit(view=lobby_view)
+
+
+class AscentLobbyReturnRow(discord.ui.ActionRow["AscentRunCompleteView"]):
+    @discord.ui.button(label="Back to Lobby", style=ButtonStyle.primary, emoji="🏔️")
+    async def back_to_lobby_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_back_to_lobby(interaction)
+
+
+class AscentRunCompleteView(BaseLayoutView):
+    """Shown after an Ascent run ends (defeat or retreat) — lets the player
+    jump back to the lobby on the same message."""
+
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        player: Player,
+        header_embed: discord.Embed,
+        player_avatar_url: str | None = None,
+    ):
+        super().__init__(bot, user_id, server_id)
+        self.player = player
+        self.player_avatar_url = player_avatar_url
+        self._processing = False
+        self.row = AscentLobbyReturnRow()
+        self.add_item(combat_ui.embed_to_container(header_embed))
+        self.add_item(self.row)
+
+    async def _on_back_to_lobby(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        self.bot.state_manager.set_active(self.user_id, "ascent")
+        pinnacle_keys = await self.bot.database.users.get_currency(
+            self.user_id, "pinnacle_key"
+        )
+        best_floor = await self.bot.database.ascension.get_highest_floor(self.user_id)
+
+        lobby = AscentLobbyView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            best_floor,
+            pinnacle_keys,
+            player_avatar_url=self.player_avatar_url,
+        )
+        self.stop()
+        await interaction.edit_original_response(view=lobby)

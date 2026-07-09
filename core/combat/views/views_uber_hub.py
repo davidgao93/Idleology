@@ -11,8 +11,8 @@ from core.emojis import (
     VOID_SIGIL,
 )
 from core.images import ARBITER_PORTRAIT, ARBITER_THUMBNAIL
-from core.npc_voices import get_quip
 from core.models import Player
+from core.npc_voices import get_quip
 
 
 class UberReturnRow(discord.ui.ActionRow["UberReturnView"]):
@@ -153,7 +153,7 @@ class UberHubView(BaseLayoutView):
             return f"🔒 Unlocks at Level {req_lvl}"
 
         embed.add_field(
-            name="🌌 Aphrodite, Celestial Sovereign",
+            name="Aphrodite, Celestial Sovereign",
             value=_boss_field(
                 "aphrodite",
                 "Aphrodite's fury has been unleashed.",
@@ -163,7 +163,7 @@ class UberHubView(BaseLayoutView):
             inline=False,
         )
         embed.add_field(
-            name="🔥 Lucifer, Infernal Sovereign",
+            name="Lucifer, Infernal Sovereign",
             value=_boss_field(
                 "lucifer",
                 "Lucifer's fury knows no bounds.",
@@ -173,7 +173,7 @@ class UberHubView(BaseLayoutView):
             inline=False,
         )
         embed.add_field(
-            name="♊ Gemini, Bound Sovereigns",
+            name="Gemini, Bound Sovereigns",
             value=_boss_field(
                 "gemini",
                 "The Gemini's balance is absolute.",
@@ -183,7 +183,7 @@ class UberHubView(BaseLayoutView):
             inline=False,
         )
         embed.add_field(
-            name="⬛ NEET, Void Sovereign",
+            name="NEET, Void Sovereign",
             value=_boss_field(
                 "neet",
                 "NEET's pain has no known depths.",
@@ -193,7 +193,7 @@ class UberHubView(BaseLayoutView):
             inline=False,
         )
         embed.add_field(
-            name="☠️ Evelynn, the Primordial Corruptor",
+            name="Evelynn, the Primordial Corruptor",
             value=_boss_field(
                 "evelynn",
                 "The source of all corruption stirs.",

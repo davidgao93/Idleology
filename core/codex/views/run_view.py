@@ -5,7 +5,7 @@ from dataclasses import asdict
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
 from core.codex.mechanics import (
     CodexBoon,
     CodexChapter,
@@ -94,38 +94,39 @@ async def _generate_codex_wave_monster(
     return monster
 
 
-class BoonButton(ui.Button):
-    def __init__(self, boon: CodexBoon, run_view: "CodexRunView", row: int):
-        label = boon.label
-        if boon.downside_label:
-            label = f"{label} / ⚠️ {boon.downside_label}"
-        super().__init__(
-            label=label[:80],
-            style=ButtonStyle.primary,
-            row=row,
-        )
-        self.boon = boon
-        self.run_view = run_view
+class CodexCombatRow(discord.ui.ActionRow["CodexRunView"]):
+    """Row 0: Attack / Auto / Full Send. Thin dispatchers — logic lives on
+    CodexRunView so it stays easy to follow and share with the auto-battle /
+    full-send loops, which drive the same methods directly."""
 
-    async def callback(self, interaction: Interaction):
-        await self.run_view.handle_boon_choice(interaction, self.boon)
+    @discord.ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️")
+    async def attack_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_attack(interaction)
 
+    @discord.ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
+    async def auto_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_auto(interaction)
 
-class RerollButton(ui.Button):
-    def __init__(self, run_view: "CodexRunView"):
-        super().__init__(
-            label="Reroll Choices",
-            style=ButtonStyle.secondary,
-            emoji="🔄",
-            row=2,
-        )
-        self.run_view = run_view
-
-    async def callback(self, interaction: Interaction):
-        await self.run_view.handle_reroll(interaction)
+    @discord.ui.button(
+        label="Full Send", style=ButtonStyle.danger, emoji="💀", disabled=True
+    )
+    async def full_send_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_full_send(interaction)
 
 
-class CodexRunView(BaseView):
+class CodexMetaRow(discord.ui.ActionRow["CodexRunView"]):
+    """Row 1: Save & Exit / Abandon."""
+
+    @discord.ui.button(label="Save & Exit", style=ButtonStyle.secondary, emoji="💾")
+    async def retreat_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_retreat(interaction)
+
+    @discord.ui.button(label="Abandon", style=ButtonStyle.danger, emoji="🗑️")
+    async def abandon_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_abandon(interaction)
+
+
+class CodexRunView(BaseLayoutView):
     """
     Manages a complete Codex run (5 chapters × 7 waves each).
     State machine: "combat" | "respite" | "chapter_transition" | "done"
@@ -149,7 +150,7 @@ class CodexRunView(BaseView):
 
     View timeout
     ------------
-    BaseView.timeout is None (no auto-expiry).  Players must explicitly retreat
+    BaseLayoutView.timeout is None (no auto-expiry).  Players must explicitly retreat
     or finish; they cannot idle-timeout their way out of a damaged HP state.
     A shard resume clears StateManager so the player can start a new run, but
     the in-progress run is abandoned and any unsaved HP damage from that session
@@ -166,6 +167,7 @@ class CodexRunView(BaseView):
         start_logs: dict,
         chapter_wave_baseline: dict = None,
         server_id: str = "",
+        player_avatar_url: str | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.player = player
@@ -174,6 +176,7 @@ class CodexRunView(BaseView):
         self.wave_num = 1
         self.monster = initial_monster
         self.logs = start_logs or {}
+        self.player_avatar_url = player_avatar_url
 
         # Baseline snapshot taken after chapter setup (signature + boons applied) but before
         # combat passives fire. Reset at the start of every wave so that sturdy/omnipotent/
@@ -214,7 +217,12 @@ class CodexRunView(BaseView):
 
         self.combat_logger = CombatLogger(player, initial_monster)
         self.combat_logger.log_combat_start(player, initial_monster)
+
+        self.row1 = CodexCombatRow()
+        self.row2 = CodexMetaRow()
+
         self._update_full_send_state()
+        self._sync_items(self._combat_layout())
 
     # ------------------------------------------------------------------
     # Run persistence (chapter-boundary snapshots)
@@ -267,7 +275,13 @@ class CodexRunView(BaseView):
 
     @classmethod
     async def resume_from_snapshot(
-        cls, bot, user_id: str, player: Player, snap: dict, server_id: str = ""
+        cls,
+        bot,
+        user_id: str,
+        player: Player,
+        snap: dict,
+        server_id: str = "",
+        player_avatar_url: str | None = None,
     ) -> "CodexRunView":
         """Rebuild a run from a chapter-boundary snapshot, restarting the
         current chapter at wave 1 (mirrors begin_run's chapter setup)."""
@@ -338,6 +352,7 @@ class CodexRunView(BaseView):
             start_logs,
             chapter_wave_baseline=wave_baseline,
             server_id=server_id,
+            player_avatar_url=player_avatar_url,
         )
         view.chapter_idx = chapter_idx
         view.active_boons = active_boons
@@ -353,6 +368,9 @@ class CodexRunView(BaseView):
         view.chapter_start_gold = view.cumulative_gold
         view.cleared_chapter_indices = set(snap.get("cleared_chapter_indices", []))
         view.page_drops = list(snap.get("page_drops", []))
+        # chapter_idx/run_state were patched after __init__'s own render used
+        # their defaults — re-sync now that the resumed state is in place.
+        view._sync_items(view._combat_layout())
         return view
 
     @property
@@ -360,19 +378,36 @@ class CodexRunView(BaseView):
         return self.chapters[self.chapter_idx]
 
     # ------------------------------------------------------------------
-    # Embed builders
+    # Layout / item sync (Components V2)
     # ------------------------------------------------------------------
 
-    def _combat_embed(self) -> discord.Embed:
+    def _sync_items(self, container=None, *, interactive: bool = True):
+        """Rebuilds the LayoutView's top-level items: the display Container
+        plus the two combat action rows. row1/row2 keep their identity across
+        rebuilds so button .disabled state set mid-loop carries over.
+        interactive=False drops the button rows entirely (terminal frames:
+        chapter clear / defeat pause before the next wave/chapter loads)."""
+        container = container if container is not None else self._combat_layout()
+        self.clear_items()
+        self.add_item(container)
+        if interactive:
+            self.add_item(self.row1)
+            self.add_item(self.row2)
+
+    def _combat_layout(self) -> discord.ui.Container:
         chapter = self.current_chapter
         title = (
             f"📖 Codex — {chapter.name} | Wave {self.wave_num}/7 "
             f"(Chapter {self.chapter_idx + 1}/5)"
         )
-        embed = combat_ui.create_combat_embed(
-            self.player, self.monster, self.logs, title_override=title
+        container = combat_ui.create_combat_layout(
+            self.player,
+            self.monster,
+            self.logs,
+            title_override=title,
+            player_avatar_url=self.player_avatar_url,
         )
-        embed.color = discord.Color.dark_purple()
+        container.accent_color = discord.Color.dark_purple()
         sig_label = chapter.signature_label
         sig_desc = chapter.signature_description
         if (
@@ -380,15 +415,14 @@ class CodexRunView(BaseView):
             and self.chapter_idx < len(self.chapters) - 1
         ):
             next_name = self.chapters[self.chapter_idx + 1].name
-            embed.set_footer(
-                text=(
-                    f"Signature: {sig_label} — {sig_desc} | "
-                    f"⚡ Next chapter '{next_name}' signature NULLIFIED"
-                )
+            sig_text = (
+                f"Signature: {sig_label} — {sig_desc} | "
+                f"⚡ Next chapter '{next_name}' signature NULLIFIED"
             )
         else:
-            embed.set_footer(text=f"Signature: {sig_label} — {sig_desc}")
-        return embed
+            sig_text = f"Signature: {sig_label} — {sig_desc}"
+        container.add_item(discord.ui.TextDisplay(f"-# {sig_text}"))
+        return container
 
     def _snapshot_wave_baseline(self):
         """Snapshot base stats after chapter/boon setup but before combat passives fire.
@@ -759,16 +793,14 @@ class CodexRunView(BaseView):
         self.combat_logger = CombatLogger(self.player, self.monster)
         self.combat_logger.log_combat_start(self.player, self.monster)
 
-        for child in self.children:
-            child.disabled = False
-        self._update_full_send_state()
+        self._update_buttons()
+        self._sync_items(self._combat_layout())
 
-        embed = self._combat_embed()
         msg_obj = message or (
             await interaction.original_response() if interaction else None
         )
         if msg_obj:
-            await msg_obj.edit(embed=embed, view=self)
+            await msg_obj.edit(view=self)
 
     async def _handle_wave_clear(
         self, interaction: Interaction = None, message: discord.Message = None
@@ -797,6 +829,48 @@ class CodexRunView(BaseView):
         self.wave_num += 1
         await self._setup_next_wave(interaction, message)
 
+    def _build_respite_rows(
+        self, boons: list[CodexBoon], reroll_available: bool
+    ) -> list[discord.ui.ActionRow]:
+        """One ActionRow per boon (label can run long) plus an optional
+        reroll row. Built fresh each respite/reroll since the boon choices
+        are randomised per call."""
+        rows = []
+        for boon in boons:
+            label = boon.label
+            if boon.downside_label:
+                label = f"{label} / ⚠️ {boon.downside_label}"
+            row = discord.ui.ActionRow()
+            btn = discord.ui.Button(label=label[:80], style=ButtonStyle.primary)
+            btn.callback = self._make_boon_callback(boon)
+            row.add_item(btn)
+            rows.append(row)
+        if reroll_available:
+            row = discord.ui.ActionRow()
+            btn = discord.ui.Button(
+                label="Reroll Choices", style=ButtonStyle.secondary, emoji="🔄"
+            )
+            btn.callback = self.handle_reroll
+            row.add_item(btn)
+            rows.append(row)
+        return rows
+
+    def _make_boon_callback(self, boon: CodexBoon):
+        async def callback(interaction: Interaction):
+            await self.handle_boon_choice(interaction, boon)
+
+        return callback
+
+    def _sync_respite_items(self, boons: list[CodexBoon], reroll_available: bool):
+        self.clear_items()
+        self.add_item(
+            combat_ui.embed_to_container(
+                self._respite_embed(boons, reroll_available=reroll_available)
+            )
+        )
+        for row in self._build_respite_rows(boons, reroll_available):
+            self.add_item(row)
+
     async def _enter_respite(
         self, interaction: Interaction = None, message: discord.Message = None
     ):
@@ -804,30 +878,21 @@ class CodexRunView(BaseView):
         self._boon_processing = False
         boons = roll_boons(2)
         reroll_available = self.chapter_idx not in self.reroll_used_chapters
-        self.clear_items()
-        self.add_item(BoonButton(boons[0], self, row=0))
-        self.add_item(BoonButton(boons[1], self, row=1))
-        if reroll_available:
-            self.add_item(RerollButton(self))
+        self._sync_respite_items(boons, reroll_available)
 
-        embed = self._respite_embed(boons, reroll_available=reroll_available)
         msg_obj = message or (
             await interaction.original_response() if interaction else None
         )
         if msg_obj:
-            await msg_obj.edit(embed=embed, view=self)
+            await msg_obj.edit(view=self)
 
     async def handle_reroll(self, interaction: Interaction):
         """Re-rolls both boon choices (once per chapter)."""
         await interaction.response.defer()
         self.reroll_used_chapters.add(self.chapter_idx)
         boons = roll_boons(2)
-        self.clear_items()
-        self.add_item(BoonButton(boons[0], self, row=0))
-        self.add_item(BoonButton(boons[1], self, row=1))
-
-        embed = self._respite_embed(boons, reroll_available=False)
-        await (await interaction.original_response()).edit(embed=embed, view=self)
+        self._sync_respite_items(boons, reroll_available=False)
+        await (await interaction.original_response()).edit(view=self)
 
     async def handle_boon_choice(self, interaction: Interaction, boon: CodexBoon):
         """Processes the player's respite boon selection."""
@@ -837,9 +902,6 @@ class CodexRunView(BaseView):
         self._boon_processing = True
         await interaction.response.defer()
         apply_respite_boon(self.player, boon, self.active_boons, self.run_state)
-
-        self.clear_items()
-        self._add_combat_buttons()
 
         self.wave_num += 1
         await self._setup_next_wave(message=await interaction.original_response())
@@ -869,11 +931,12 @@ class CodexRunView(BaseView):
         embed = self._chapter_clear_embed(
             self.cumulative_xp, self.cumulative_gold, page_dropped
         )
+        self._sync_items(combat_ui.embed_to_container(embed), interactive=False)
         msg_obj = message or (
             await interaction.original_response() if interaction else None
         )
         if msg_obj:
-            await msg_obj.edit(embed=embed, view=None)
+            await msg_obj.edit(view=self)
 
         await asyncio.sleep(4)
 
@@ -885,7 +948,6 @@ class CodexRunView(BaseView):
         self.chapter_idx = next_idx
         self.wave_num = 1
         await self._save_run()  # checkpoint: cleared chapter banked
-        self._add_combat_buttons()
 
         if msg_obj:
             await self._setup_next_wave(message=msg_obj)
@@ -944,9 +1006,14 @@ class CodexRunView(BaseView):
 
         if message:
             lobby_view = CodexRunCompleteView(
-                self.bot, self.user_id, self.player, server_id=self.server_id
+                self.bot,
+                self.user_id,
+                self.player,
+                embed,
+                server_id=self.server_id,
+                player_avatar_url=self.player_avatar_url,
             )
-            await message.edit(embed=embed, view=lobby_view)
+            await message.edit(view=lobby_view)
 
     # ------------------------------------------------------------------
     # Defeat / Retreat
@@ -996,11 +1063,12 @@ class CodexRunView(BaseView):
         )
         embed.add_field(name="💀 Deaths", value=str(self.deaths), inline=True)
 
+        self._sync_items(combat_ui.embed_to_container(embed), interactive=False)
         msg_obj = message or (
             await interaction.original_response() if interaction else None
         )
         if msg_obj:
-            await msg_obj.edit(embed=embed, view=None)
+            await msg_obj.edit(view=self)
 
         await asyncio.sleep(4)
 
@@ -1011,7 +1079,6 @@ class CodexRunView(BaseView):
         self.chapter_idx = next_idx
         self.wave_num = 1
         await self._save_run()  # checkpoint: death rolled back, next chapter
-        self._add_combat_buttons()
         if msg_obj:
             await self._setup_next_wave(message=msg_obj)
 
@@ -1019,32 +1086,31 @@ class CodexRunView(BaseView):
     # Combat button helpers
     # ------------------------------------------------------------------
 
-    def _add_combat_buttons(self):
-        """Clears and re-adds the standard combat buttons."""
-        self.clear_items()
-        self.add_item(self._attack_btn)
-        self.add_item(self._auto_btn)
-        self.add_item(self._full_send_btn)
-        self.add_item(self._retreat_btn)
-        self.add_item(self._abandon_btn)
+    def _update_buttons(self):
+        """Re-enables every combat button, then re-applies Full Send's own
+        HP-gated lock. Called after any state change that might have left
+        buttons disabled mid-loop (Auto/Full Send) or stale from a previous
+        wave."""
+        for child in (*self.row1.children, *self.row2.children):
+            child.disabled = False
         self._update_full_send_state()
 
     def _update_full_send_state(self):
         """Full Send unlocks once HP is at/below Auto's low-HP protection threshold (20%)."""
-        self._full_send_btn.disabled = not (
+        self.row1.full_send_btn.disabled = not (
             0 < self.player.current_hp <= self.player.total_max_hp * 0.2
         )
 
     async def _refresh_ui(
         self, interaction: Interaction = None, message: discord.Message = None
     ):
-        embed = self._combat_embed()
+        self._sync_items(self._combat_layout())
         if interaction and not interaction.response.is_done():
-            await interaction.response.edit_message(embed=embed, view=self)
+            await interaction.response.edit_message(view=self)
         elif message:
-            await message.edit(embed=embed, view=self)
+            await message.edit(view=self)
         elif interaction:
-            await interaction.edit_original_response(embed=embed, view=self)
+            await interaction.edit_original_response(view=self)
 
     async def _execute_turn(self, message: discord.Message):
         p_log = engine.process_player_turn(self.player, self.monster)
@@ -1068,21 +1134,19 @@ class CodexRunView(BaseView):
             await self._refresh_ui(interaction, message)
 
     # ------------------------------------------------------------------
-    # Static combat buttons
+    # Combat button handlers (dispatched from CodexCombatRow / CodexMetaRow)
     # ------------------------------------------------------------------
 
-    @ui.button(label="Attack", style=ButtonStyle.danger, emoji="⚔️", row=0)
-    async def _attack_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_attack(self, interaction: Interaction):
         await interaction.response.defer()
         await self._execute_turn(message=interaction.message)
 
-    @ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩", row=0)
-    async def _auto_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_auto(self, interaction: Interaction):
         await interaction.response.defer()
         message = interaction.message
 
         # Disable all buttons for the duration of the auto loop
-        for child in self.children:
+        for child in (*self.row1.children, *self.row2.children):
             child.disabled = True
         await message.edit(view=self)
 
@@ -1117,9 +1181,7 @@ class CodexRunView(BaseView):
             and self.monster.hp > 0
         ):
             # Low HP pause — re-enable buttons so the player can act
-            for child in self.children:
-                child.disabled = False
-            self._update_full_send_state()
+            self._update_buttons()
             self.logs["Auto-Wave"] = "🛑 Paused: Low HP Protection triggered!"
             await self._refresh_ui(message=message)
             await message.channel.send(
@@ -1130,20 +1192,13 @@ class CodexRunView(BaseView):
         else:
             await self._check_state(message=message)
 
-    @ui.button(
-        label="Full Send",
-        style=ButtonStyle.danger,
-        emoji="💀",
-        row=0,
-        disabled=True,
-    )
-    async def _full_send_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_full_send(self, interaction: Interaction):
         """Unlocked at low HP (same threshold Auto warns on). Repeats attacks with
         no HP floor until the monster is defeated or the player dies."""
         await interaction.response.defer()
         message = interaction.message
 
-        for child in self.children:
+        for child in (*self.row1.children, *self.row2.children):
             child.disabled = True
         await message.edit(view=self)
 
@@ -1165,8 +1220,7 @@ class CodexRunView(BaseView):
 
         await self._check_state(message=message)
 
-    @ui.button(label="Save & Exit", style=ButtonStyle.secondary, emoji="💾", row=1)
-    async def _retreat_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_retreat(self, interaction: Interaction):
         """Persist the run and leave. Resume via /codex restarts the current
         chapter at wave 1 (this chapter's unbanked XP/gold are rolled back)."""
         await self._save_run(at_chapter_start=True)
@@ -1193,36 +1247,53 @@ class CodexRunView(BaseView):
             name=f"{GOLD_COIN} Gold Banked", value=f"{self.chapter_start_gold:,}", inline=True
         )
         lobby_view = CodexRunCompleteView(
-            self.bot, self.user_id, self.player, server_id=self.server_id
+            self.bot,
+            self.user_id,
+            self.player,
+            embed,
+            server_id=self.server_id,
+            player_avatar_url=self.player_avatar_url,
         )
-        await interaction.response.edit_message(embed=embed, view=lobby_view)
+        await interaction.response.edit_message(view=lobby_view)
 
-    @ui.button(label="Abandon", style=ButtonStyle.danger, emoji="🗑️", row=1)
-    async def _abandon_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_abandon(self, interaction: Interaction):
         confirm = CodexAbandonConfirmView(self.bot, self)
-        embed = discord.Embed(
-            title="🗑️ Abandon this run?",
-            description=(
-                "The saved run is **deleted** — no rewards, and the Antique "
-                "Tome is **not** refunded.\n"
-                f"Chapters cleared: {self.chapters_cleared}/5 | "
-                f"XP: {self.cumulative_xp:,} | Gold: {self.cumulative_gold:,} "
-                "— all lost."
-            ),
-            color=discord.Color.red(),
-        )
-        await interaction.response.edit_message(embed=embed, view=confirm)
+        await interaction.response.edit_message(view=confirm)
 
 
-class CodexAbandonConfirmView(BaseView):
+class CodexAbandonConfirmRow(discord.ui.ActionRow["CodexAbandonConfirmView"]):
+    @discord.ui.button(label="Abandon Run", style=ButtonStyle.danger, emoji="🗑️")
+    async def confirm_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_confirm(interaction)
+
+    @discord.ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="↩️")
+    async def cancel_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_cancel(interaction)
+
+
+class CodexAbandonConfirmView(BaseLayoutView):
     """Confirmation gate for permanently discarding a Codex run."""
 
     def __init__(self, bot, run_view: "CodexRunView"):
         super().__init__(bot, parent=run_view)
         self.run_view = run_view
+        self.row = CodexAbandonConfirmRow()
 
-    @ui.button(label="Abandon Run", style=ButtonStyle.danger, emoji="🗑️", row=0)
-    async def confirm(self, interaction: Interaction, button: ui.Button):
+        embed = discord.Embed(
+            title="🗑️ Abandon this run?",
+            description=(
+                "The saved run is **deleted** — no rewards, and the Antique "
+                "Tome is **not** refunded.\n"
+                f"Chapters cleared: {run_view.chapters_cleared}/5 | "
+                f"XP: {run_view.cumulative_xp:,} | Gold: {run_view.cumulative_gold:,} "
+                "— all lost."
+            ),
+            color=discord.Color.red(),
+        )
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(self.row)
+
+    async def _on_confirm(self, interaction: Interaction):
         rv = self.run_view
         await self.bot.database.codex.delete_run(rv.user_id, rv.server_id)
         await self.bot.database.users.update_from_player_object(rv.player)
@@ -1249,28 +1320,50 @@ class CodexAbandonConfirmView(BaseView):
             inline=True,
         )
         lobby_view = CodexRunCompleteView(
-            self.bot, rv.user_id, rv.player, server_id=rv.server_id
+            self.bot,
+            rv.user_id,
+            rv.player,
+            embed,
+            server_id=rv.server_id,
+            player_avatar_url=rv.player_avatar_url,
         )
-        await interaction.response.edit_message(embed=embed, view=lobby_view)
+        await interaction.response.edit_message(view=lobby_view)
 
-    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="↩️", row=0)
-    async def cancel(self, interaction: Interaction, button: ui.Button):
+    async def _on_cancel(self, interaction: Interaction):
         self.stop()
-        await interaction.response.edit_message(
-            embed=self.run_view._combat_embed(), view=self.run_view
-        )
+        self.run_view._sync_items(self.run_view._combat_layout())
+        await interaction.response.edit_message(view=self.run_view)
 
 
-class CodexRunCompleteView(BaseView):
-    """Shown after a Codex run ends (complete or retreat) — lets the player jump back to the lobby."""
+class CodexLobbyReturnRow(discord.ui.ActionRow["CodexRunCompleteView"]):
+    @discord.ui.button(label="Back to Lobby", style=ButtonStyle.primary, emoji="📖")
+    async def back_to_lobby_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_back_to_lobby(interaction)
 
-    def __init__(self, bot, user_id: str, player: Player, server_id: str = ""):
+
+class CodexRunCompleteView(BaseLayoutView):
+    """Shown after a Codex run ends (complete, retreat, or abandon) — lets
+    the player jump back to the lobby. `header_embed` supplies the
+    outcome-specific summary (Run Complete / Saved / Abandoned)."""
+
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        player: Player,
+        header_embed: discord.Embed,
+        server_id: str = "",
+        player_avatar_url: str | None = None,
+    ):
         super().__init__(bot, user_id, server_id)
         self.player = player
+        self.player_avatar_url = player_avatar_url
         self._processing = False
+        self.row = CodexLobbyReturnRow()
+        self.add_item(combat_ui.embed_to_container(header_embed))
+        self.add_item(self.row)
 
-    @ui.button(label="Back to Lobby", style=ButtonStyle.primary, emoji="📖", row=0)
-    async def back_to_lobby(self, interaction: Interaction, button: ui.Button):
+    async def _on_back_to_lobby(self, interaction: Interaction):
         if self._processing:
             await interaction.response.defer()
             return
@@ -1300,6 +1393,7 @@ class CodexRunCompleteView(BaseView):
             antique_tomes=cur["antique_tome"],
             server_id=self.server_id,
             saved_run=saved_run,
+            player_avatar_url=self.player_avatar_url,
         )
         self.stop()
-        await interaction.edit_original_response(embed=menu.build_embed(), view=menu)
+        await interaction.edit_original_response(view=menu)

@@ -64,8 +64,9 @@ class Codex(commands.Cog, name="codex"):
                 antique_tomes=antique_tomes,
                 server_id=server_id,
                 saved_run=saved_run,
+                player_avatar_url=existing_user["appearance"],
             )
-            return _view.build_embed(), _view
+            return None, _view
 
         if not await self.bot.database.tutorials.has_seen(user_id, "codex"):
             await self.bot.database.tutorials.mark_seen(user_id, "codex")
@@ -76,8 +77,8 @@ class Codex(commands.Cog, name="codex"):
             gate.message = await interaction.original_response()
             return
 
-        embed, view = await _build()
-        await interaction.response.send_message(embed=embed, view=view)
+        _, view = await _build()
+        await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
 

@@ -1248,6 +1248,7 @@ class PlotDetailView(SettlementBaseView):
         await interaction.edit_original_response(embed=queued_embed, view=ui.View())
         self.stop()
         await asyncio.sleep(3)
+        self.parent._rebuild_ui()
         dash_embed = self.parent.build_embed()
         await interaction.edit_original_response(embed=dash_embed, view=self.parent)
 

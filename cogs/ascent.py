@@ -40,9 +40,15 @@ class Ascent(commands.Cog, name="ascent"):
 
         async def _build():
             _view = AscentLobbyView(
-                self.bot, user_id, server_id, player, best_floor, pinnacle_keys
+                self.bot,
+                user_id,
+                server_id,
+                player,
+                best_floor,
+                pinnacle_keys,
+                player_avatar_url=existing_user["appearance"],
             )
-            return _view.build_embed(), _view
+            return None, _view
 
         if not await self.bot.database.tutorials.has_seen(user_id, "ascent"):
             await self.bot.database.tutorials.mark_seen(user_id, "ascent")
@@ -53,8 +59,8 @@ class Ascent(commands.Cog, name="ascent"):
             gate.message = await interaction.original_response()
             return
 
-        embed, view = await _build()
-        await interaction.response.send_message(embed=embed, view=view)
+        _, view = await _build()
+        await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
 

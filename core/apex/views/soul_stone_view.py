@@ -366,7 +366,13 @@ class SoulStoneView(BaseView):
             profile,
             charges,
         )
-        await interaction.edit_original_response(view=lobby_view)
+        # Handing off from a classic embed message to a Components V2
+        # LayoutView on the same message: discord.py only touches fields you
+        # pass explicitly, so the old embed must be nulled out here or it
+        # lingers alongside the new IS_COMPONENTS_V2 flag and Discord 400s.
+        await interaction.edit_original_response(
+            content=None, embed=None, attachments=[], view=lobby_view
+        )
         lobby_view.message = await interaction.original_response()
         self._processing = False
         self.stop()

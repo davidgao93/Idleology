@@ -1,7 +1,7 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
 from core.codex.mechanics import apply_signature_modifier, select_run_chapters
 from core.codex.views.run_view import (
     CodexRunView,
@@ -10,13 +10,28 @@ from core.codex.views.run_view import (
 )
 from core.codex.views.tomes_view import CodexTomsView
 from core.combat import jewel_engine as _je
+from core.combat import ui as combat_ui
 from core.combat.turns import engine
 from core.images import SERAPHINE_PORTRAIT, SERAPHINE_THUMBNAIL
 from core.npc_voices import get_quip
 from core.models import Player
 
 
-class CodexMenuView(BaseView):
+class CodexMenuRow(discord.ui.ActionRow["CodexMenuView"]):
+    @discord.ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖")
+    async def begin_run_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_begin_run(interaction)
+
+    @discord.ui.button(label="Tomes", style=ButtonStyle.primary, emoji="📚")
+    async def tomes_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_view_tomes(interaction)
+
+    @discord.ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
+    async def close_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_close(interaction)
+
+
+class CodexMenuView(BaseLayoutView):
     def __init__(
         self,
         bot,
@@ -29,6 +44,7 @@ class CodexMenuView(BaseView):
         antique_tomes: int = 0,
         server_id: str = "",
         saved_run: dict | None = None,
+        player_avatar_url: str | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.player = player
@@ -38,10 +54,16 @@ class CodexMenuView(BaseView):
         self.chapter_history = chapter_history
         self.antique_tomes = antique_tomes
         self.saved_run = saved_run
+        self.player_avatar_url = player_avatar_url
         self._processing = False
+
+        self.row = CodexMenuRow()
         if saved_run is not None:
-            self.begin_run.label = "Resume Run"
-            self.begin_run.emoji = "▶️"
+            self.row.begin_run_btn.label = "Resume Run"
+            self.row.begin_run_btn.emoji = "▶️"
+
+        self.add_item(combat_ui.embed_to_container(self.build_embed()))
+        self.add_item(self.row)
 
     def build_embed(self) -> discord.Embed:
         tomes = self.player.codex_tomes
@@ -91,8 +113,7 @@ class CodexMenuView(BaseView):
         )
         return embed
 
-    @ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="📖", row=0)
-    async def begin_run(self, interaction: Interaction, button: ui.Button):
+    async def _on_begin_run(self, interaction: Interaction):
         if self._processing:
             await interaction.response.defer()
             return
@@ -109,11 +130,11 @@ class CodexMenuView(BaseView):
                 self.player,
                 saved,
                 server_id=self.server_id,
+                player_avatar_url=self.player_avatar_url,
             )
-            embed = view._combat_embed()
             self.stop()
-            msg = await interaction.edit_original_response(embed=embed, view=view)
-            view._message_ref = msg
+            msg = await interaction.edit_original_response(view=view)
+            view.message = msg
             return
 
         current_tomes = await self.bot.database.users.get_currency(
@@ -156,6 +177,7 @@ class CodexMenuView(BaseView):
             start_logs,
             chapter_wave_baseline=wave_baseline,
             server_id=self.server_id,
+            player_avatar_url=self.player_avatar_url,
         )
 
         # Atomic entry: the Tome is only spent together with the initial
@@ -169,13 +191,11 @@ class CodexMenuView(BaseView):
                 self.user_id, self.server_id, view.to_snapshot()
             )
 
-        embed = view._combat_embed()
         self.stop()
-        msg = await interaction.edit_original_response(embed=embed, view=view)
-        view._message_ref = msg
+        msg = await interaction.edit_original_response(view=view)
+        view.message = msg
 
-    @ui.button(label="Tomes", style=ButtonStyle.primary, emoji="📚", row=0)
-    async def view_tomes(self, interaction: Interaction, button: ui.Button):
+    async def _on_view_tomes(self, interaction: Interaction):
         tomes_view = CodexTomsView(
             self.bot,
             self.user_id,
@@ -184,14 +204,13 @@ class CodexMenuView(BaseView):
             self.pages,
             self.rerolls,
             self.chapter_history,
+            server_id=self.server_id,
+            player_avatar_url=self.player_avatar_url,
         )
         self.stop()
-        await interaction.response.edit_message(
-            embed=tomes_view._build_embed(), view=tomes_view
-        )
+        await interaction.response.edit_message(view=tomes_view)
 
-    @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=0)
-    async def exit_btn(self, interaction: Interaction, button: ui.Button):
+    async def _on_close(self, interaction: Interaction):
         # No clear_active here: the /codex cog never calls set_active for the browsing
         # menu (only begin_run does, and it clears on every exit path of CodexRunView).
         # Clearing here could wipe an unrelated feature's active state if the user

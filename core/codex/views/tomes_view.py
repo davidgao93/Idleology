@@ -1,7 +1,8 @@
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.base_view import BaseView
+from core.base_layout_view import BaseLayoutView
+from core.combat import ui as combat_ui
 from core.images import CODEX_TOME
 from core.models import Player
 from database.repositories.codex import (
@@ -34,7 +35,7 @@ def _tome_field(tome) -> tuple[str, str]:
     return name_tmpl, f"Tier {tome.tier}/5 — {stat_str}"
 
 
-class CodexTomsView(BaseView):
+class CodexTomsView(BaseLayoutView):
     """Shows a player's 5 tome slots and allows upgrading/rerolling."""
 
     def __init__(
@@ -46,19 +47,24 @@ class CodexTomsView(BaseView):
         pages: int,
         rerolls: int,
         chapter_history: dict,
+        server_id: str = "",
+        player_avatar_url: str | None = None,
     ):
-        super().__init__(bot, user_id)
+        super().__init__(bot, user_id, server_id)
         self.player = player
         self.fragments = fragments
         self.pages = pages
         self.rerolls = rerolls
         self.chapter_history = chapter_history
+        self.player_avatar_url = player_avatar_url
         self.selected_slot: int | None = None
         self._processing = False
         self._rebuild()
 
     def _rebuild(self):
         self.clear_items()
+        self.add_item(combat_ui.embed_to_container(self._build_embed()))
+
         tomes = self.player.codex_tomes
         slots = len(tomes)
 
@@ -71,25 +77,28 @@ class CodexTomsView(BaseView):
                 )
                 for t in tomes
             ]
-            select = ui.Select(
-                placeholder="Select a tome slot...", options=options, row=0
-            )
+            select_row = ui.ActionRow()
+            select = ui.Select(placeholder="Select a tome slot...", options=options)
             select.callback = self._on_slot_select
-            self.add_item(select)
+            select_row.add_item(select)
+            self.add_item(select_row)
 
         can_unlock = slots < 5 and self.pages > 0
+        unlock_row = ui.ActionRow()
         unlock_btn = ui.Button(
             label=f"Unlock Slot ({self.pages} page{'s' if self.pages != 1 else ''})",
             style=ButtonStyle.success,
             disabled=not can_unlock,
-            row=1,
         )
         unlock_btn.callback = self._on_unlock
-        self.add_item(unlock_btn)
+        unlock_row.add_item(unlock_btn)
+        self.add_item(unlock_row)
 
         if self.selected_slot is not None:
             tome = next((t for t in tomes if t.slot == self.selected_slot), None)
             if tome:
+                actions_row = ui.ActionRow()
+
                 can_upgrade = (
                     tome.tier < 5 and self.fragments >= TOME_UPGRADE_COSTS[tome.tier]
                 )
@@ -99,10 +108,9 @@ class CodexTomsView(BaseView):
                     label=f"Upgrade T{tome.tier}→T{tome.tier + 1} ({upgrade_cost}🔷 + {upgrade_gold // 1_000_000}m💰)",
                     style=ButtonStyle.primary,
                     disabled=not can_upgrade,
-                    row=2,
                 )
                 upgrade_btn.callback = self._on_upgrade
-                self.add_item(upgrade_btn)
+                actions_row.add_item(upgrade_btn)
 
                 reroll_val_cost = get_reroll_cost(tome.tier)
                 reroll_val_gold = get_reroll_gold_cost(tome.tier)
@@ -111,26 +119,26 @@ class CodexTomsView(BaseView):
                     label=f"Reroll Value ({reroll_val_cost}🔷 + {reroll_val_gold // 1_000_000}m💰)",
                     style=ButtonStyle.secondary,
                     disabled=not can_reroll_val,
-                    row=2,
                 )
                 reroll_val_btn.callback = self._on_reroll_value
-                self.add_item(reroll_val_btn)
+                actions_row.add_item(reroll_val_btn)
 
                 can_reroll_type = self.pages > 0
                 reroll_type_btn = ui.Button(
                     label="Reroll Type (1📄)",
                     style=ButtonStyle.danger,
                     disabled=not can_reroll_type,
-                    row=2,
                 )
                 reroll_type_btn.callback = self._on_reroll_type
-                self.add_item(reroll_type_btn)
+                actions_row.add_item(reroll_type_btn)
 
-        exit_btn = ui.Button(
-            label="Back", style=ButtonStyle.secondary, emoji="⬅️", row=3
-        )
+                self.add_item(actions_row)
+
+        exit_row = ui.ActionRow()
+        exit_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
         exit_btn.callback = self._on_exit
-        self.add_item(exit_btn)
+        exit_row.add_item(exit_btn)
+        self.add_item(exit_row)
 
     def _build_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -178,7 +186,7 @@ class CodexTomsView(BaseView):
 
     async def _refresh(self, interaction: Interaction):
         self._rebuild()
-        await interaction.response.edit_message(embed=self._build_embed(), view=self)
+        await interaction.response.edit_message(view=self)
 
     async def _on_slot_select(self, interaction: Interaction):
         self.selected_slot = int(interaction.data["values"][0])
@@ -203,7 +211,7 @@ class CodexTomsView(BaseView):
         self.selected_slot = tome.slot
         self._rebuild()
         self._processing = False
-        await interaction.edit_original_response(embed=self._build_embed(), view=self)
+        await interaction.edit_original_response(view=self)
 
     async def _on_upgrade(self, interaction: Interaction):
         if self._processing:
@@ -247,7 +255,7 @@ class CodexTomsView(BaseView):
             )
         self._rebuild()
         self._processing = False
-        await interaction.edit_original_response(embed=self._build_embed(), view=self)
+        await interaction.edit_original_response(view=self)
 
     async def _on_reroll_value(self, interaction: Interaction):
         if self._processing:
@@ -291,7 +299,7 @@ class CodexTomsView(BaseView):
             )
         self._rebuild()
         self._processing = False
-        await interaction.edit_original_response(embed=self._build_embed(), view=self)
+        await interaction.edit_original_response(view=self)
 
     async def _on_reroll_type(self, interaction: Interaction):
         if self._processing:
@@ -316,7 +324,7 @@ class CodexTomsView(BaseView):
             )
         self._rebuild()
         self._processing = False
-        await interaction.edit_original_response(embed=self._build_embed(), view=self)
+        await interaction.edit_original_response(view=self)
 
     async def _on_exit(self, interaction: Interaction):
         # Back navigation to CodexMenuView — no clear_active (neither view owns active state).
@@ -335,5 +343,7 @@ class CodexTomsView(BaseView):
             self.rerolls,
             self.chapter_history,
             antique_tomes=antique_tomes,
+            server_id=self.server_id,
+            player_avatar_url=self.player_avatar_url,
         )
-        await interaction.response.edit_message(embed=menu.build_embed(), view=menu)
+        await interaction.response.edit_message(view=menu)

@@ -282,6 +282,29 @@ async def freeze_and_handoff(
     return new_message
 
 
+async def handoff_to_layout(
+    message: discord.Message, next_view: discord.ui.LayoutView
+) -> discord.Message:
+    """Sends `next_view` (a BaseLayoutView) as a NEW message, points
+    `next_view.message` at it, then deletes `message`.
+
+    Mirror of `freeze_and_handoff` for the opposite direction: editing a
+    message that currently has embeds/content into one carrying the
+    IS_COMPONENTS_V2 flag is rejected by Discord's API unless every legacy
+    field (content/embed/embeds/attachments) is explicitly nulled out, so a
+    classic BaseView screen handing back to a LayoutView (e.g. an Uber boss
+    lobby's "Back" button returning to UberHubView) must land on a fresh
+    message instead of editing the old one.
+    """
+    new_message = await message.channel.send(view=next_view)
+    next_view.message = new_message
+    try:
+        await message.delete()
+    except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+        pass
+    return new_message
+
+
 # Discord caps combined TextDisplay content at 4000 characters across the
 # *whole* Components V2 message (not per-component). Classic embeds had far
 # more headroom (6000 across title/description/fields), so content built for

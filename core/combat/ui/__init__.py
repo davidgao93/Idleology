@@ -12,6 +12,7 @@ from core.combat.ui.combat_embed import (  # noqa: F401
     embed_to_container,
     freeze_and_handoff,
     get_hp_display,
+    handoff_to_layout,
     static_layout_view,
 )
 from core.combat.ui.defeat_screen import create_defeat_embed  # noqa: F401
@@ -25,6 +26,7 @@ __all__ = [
     "embed_to_container",
     "static_layout_view",
     "freeze_and_handoff",
+    "handoff_to_layout",
     "create_victory_embed",
     "create_defeat_embed",
 ]

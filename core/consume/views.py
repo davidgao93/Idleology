@@ -5,7 +5,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
-from core.emojis import CONSUME_ICON, MONSTER_CHEEK
+from core.emojis import CONSUME_ICON, HEMATURGY_ICON, MONSTER_CHEEK
 from core.images import (
     CONSUME_EGG,
     CONSUME_HUB,
@@ -563,7 +563,7 @@ class ConsumeView(BaseView):
     def build_embed(self) -> discord.Embed:
         return _build_main_embed(self.player, self.inventory)
 
-    @ui.button(label="Hematurgy", style=ButtonStyle.primary, emoji="🩸", row=1)
+    @ui.button(label="Hematurgy", style=ButtonStyle.primary, emoji=HEMATURGY_ICON, row=1)
     async def hematurgy(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         passives = await self.bot.database.hematurgy.get_all_passives(self.user_id)

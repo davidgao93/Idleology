@@ -101,28 +101,63 @@ class ApexMechanics:
         Constructs a Monster from an ApexMonsterDef scaled to the player's level.
         Returns a fully populated Monster instance.
         """
-        from core.combat.mobgen.modifier_data import make_modifier
+        from core.combat.mobgen.modifier_data import (
+            BOSS_MOD_NAMES,
+            COMMON_MOD_NAMES,
+            RARE_TIERED_MOD_NAMES,
+            make_modifier,
+        )
         from core.combat.models import Monster
 
         # Apex hunts are endgame content (unlock at 90): monsters sit well above the player
         monster_level = max(100, player_level + random.randint(30, 50))
 
         # Stats: noticeably stronger than normal mobs at the same level.
-        # ATK/DEF carry a +20% difficulty tuning pass on top of the base multiplier.
-        hp_base = int(monster_level * 140 * random.uniform(0.9, 1.1))
-        atk_base = int(monster_level * 8.5 * 1.2 * random.uniform(0.9, 1.1))
-        def_base = int(monster_level * 4.5 * 1.2 * random.uniform(0.9, 1.1))
-        xp_base = int(monster_level * 55)
+        # ATK/DEF carry a +20% difficulty tuning pass, plus a further +30% apex
+        # tuning pass. HP and XP both carry a +500% apex tuning pass (6x) —
+        # these hunts are meant to be lengthy, high-value fights, not quick
+        # kills, and the payout scales with the added length/danger.
+        hp_base = int(monster_level * 140 * 6.0 * random.uniform(0.9, 1.1))
+        atk_base = int(monster_level * 8.5 * 1.2 * 1.3 * random.uniform(0.9, 1.1))
+        def_base = int(monster_level * 4.5 * 1.2 * 1.3 * random.uniform(0.9, 1.1))
+        xp_base = int(monster_level * 55 * 6.0)
 
-        # Build modifiers — use the monster's defined modifier names
+        # Build modifiers — start with the monster's defined signature modifiers,
+        # then layer on 5 random modifiers (common/rare_tiered, same 72/28 mix
+        # used elsewhere in combat gen) plus 1 guaranteed boss-pool modifier,
+        # so every apex encounter carries real threat beyond its signature kit.
         modifiers = []
+        used_names: set = set()
         for mod_name in set(apex_def.modifiers):  # deduplicate
             try:
                 mod = make_modifier(mod_name, monster_level)
                 if mod:
                     modifiers.append(mod)
+                    used_names.add(mod_name)
             except Exception:
                 pass  # Silently skip unknown/invalid modifiers
+
+        boss_candidates = [n for n in BOSS_MOD_NAMES if n not in used_names]
+        if boss_candidates:
+            name = random.choice(boss_candidates)
+            modifiers.append(make_modifier(name, monster_level))
+            used_names.add(name)
+
+        added = 0
+        attempts = 0
+        while added < 5 and attempts < 50:
+            attempts += 1
+            pool_type = random.choices(
+                ["common", "rare_tiered"], weights=[72, 28], k=1
+            )[0]
+            pool = COMMON_MOD_NAMES if pool_type == "common" else RARE_TIERED_MOD_NAMES
+            candidates = [n for n in pool if n not in used_names]
+            if not candidates:
+                continue
+            name = random.choice(candidates)
+            modifiers.append(make_modifier(name, monster_level))
+            used_names.add(name)
+            added += 1
 
         return Monster(
             name=apex_def.name,

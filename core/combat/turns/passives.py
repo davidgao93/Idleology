@@ -2,7 +2,7 @@ import random
 from typing import Dict
 
 from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
-from core.emojis import GOLD_COIN, STAT_ATK, STAT_DEF, STAT_PDR, STAT_WARD
+from core.emojis import GOLD_COIN, HEMATURGY_ICON, STAT_ATK, STAT_DEF, STAT_PDR, STAT_WARD
 from core.models import Monster, Player
 
 
@@ -378,7 +378,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         hema_log: list[str] = []
         apply_hematurgy_start(player, monster, hema_log)
         if hema_log:
-            logs["🩸 Hematurgy"] = "\n".join(hema_log)
+            logs[f"{HEMATURGY_ICON} Hematurgy"] = "\n".join(hema_log)
 
     # --- Soul Stone combat-start passives ---
     if player.soul_stone:

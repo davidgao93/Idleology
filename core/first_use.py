@@ -29,6 +29,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import HEMATURGY_ICON
 from core.images import (
     AMARA_AUTHOR,
     ARBITER_PORTRAIT,
@@ -470,7 +471,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.dark_red(),
     },
     "hematurgy": {
-        "title": "🩸 Hematurgy",
+        "title": f"{HEMATURGY_ICON} Hematurgy",
         "author": "Valdris the Sanguine",
         "author_icon": VALDRIS_PORTRAIT,
         "description": (

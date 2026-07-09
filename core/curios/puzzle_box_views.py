@@ -17,7 +17,11 @@ from core.emojis import CURIO, PUZZLE_BOX
 
 class PuzzleBoxView(BaseView):
     def __init__(self, bot, user_id: str, server_id: str):
-        super().__init__(bot=bot, user_id=user_id, server_id=server_id)
+        # timeout=60 is load-bearing: it's what makes discord.py actually call
+        # on_timeout() after 60s, which is what performs the auto-claim. Every
+        # dispatched interaction (e.g. a reroll) refreshes this window, mirrored
+        # below by restarting the display countdown in _restart_countdown().
+        super().__init__(bot=bot, user_id=user_id, server_id=server_id, timeout=60)
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
@@ -27,7 +31,7 @@ class PuzzleBoxView(BaseView):
         self._reward_lines: list[str] = []
         self._remaining_seconds: int = 60
         self._build_buttons()
-        asyncio.create_task(self._countdown_loop())
+        self._countdown_task = asyncio.create_task(self._countdown_loop())
 
     def _build_buttons(self):
         self.clear_items()
@@ -58,15 +62,23 @@ class PuzzleBoxView(BaseView):
         self.add_item(btn_claim)
 
     async def _countdown_loop(self):
-        for i in range(5):
+        for i in range(6):
             await asyncio.sleep(10)
-            self._remaining_seconds = 60 - (i + 1) * 10
+            self._remaining_seconds = max(0, 60 - (i + 1) * 10)
             if self.claimed or not self.message:
                 return
             try:
                 await self.message.edit(embed=self.build_embed())
             except Exception:
                 return
+
+    def _restart_countdown(self):
+        """Keeps the displayed countdown in sync with discord.py's real timeout,
+        which silently refreshes to a fresh 60s window on every dispatched
+        interaction (see discord.ui.View._scheduled_task)."""
+        self._countdown_task.cancel()
+        self._remaining_seconds = 60
+        self._countdown_task = asyncio.create_task(self._countdown_loop())
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
@@ -110,6 +122,7 @@ class PuzzleBoxView(BaseView):
 
         used = {rtype for i, (rtype, _) in enumerate(self.slots) if i != slot_index}
         self.slots[slot_index] = roll_slot(exclude=used)
+        self._restart_countdown()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def _claim(self, interaction: Interaction):
@@ -123,18 +136,46 @@ class PuzzleBoxView(BaseView):
 
         await interaction.response.defer()
         await self._do_claim()
+        claimed_view = _ClaimedPuzzleBoxView(self.bot, self.user_id, self.server_id)
         await interaction.edit_original_response(
-            embed=self.build_claimed_embed(), view=self
+            embed=self.build_claimed_embed(), view=claimed_view
         )
-        self.message = await interaction.original_response()
+        claimed_view.message = await interaction.original_response()
+        self.stop()
 
     async def _do_claim(self):
         self.claimed = True
+        self._countdown_task.cancel()
         self._reward_lines = await claim_rewards(
             self.bot, self.user_id, self.server_id, self.slots
         )
         self.bot.state_manager.clear_active(self.user_id)
-        self.clear_items()
+
+    async def on_timeout(self):
+        if self.claimed or not self.message:
+            # Already claimed or no message reference; let BaseView do normal cleanup.
+            await super().on_timeout()
+            return
+        try:
+            await self._do_claim()
+            # By the time this runs, discord.py has already marked `self` as
+            # finished and dropped it from the interaction dispatch store (see
+            # View._dispatch_timeout), so reusing `self` here would render a
+            # "Back to Curios" button that looks clickable but silently fails.
+            # A fresh view is required to actually be dispatchable.
+            claimed_view = _ClaimedPuzzleBoxView(self.bot, self.user_id, self.server_id)
+            await self.message.edit(embed=self.build_claimed_embed(), view=claimed_view)
+            claimed_view.message = self.message
+        except (discord.NotFound, discord.HTTPException):
+            pass
+        self.stop()
+
+
+class _ClaimedPuzzleBoxView(BaseView):
+    """Shown after a puzzle box has been claimed, manually or via auto-claim timeout."""
+
+    def __init__(self, bot, user_id: str, server_id: str):
+        super().__init__(bot=bot, user_id=user_id, server_id=server_id)
         btn_back = ui.Button(
             label="Back to Curios", style=ButtonStyle.secondary, emoji=CURIO, row=0
         )
@@ -171,17 +212,3 @@ class PuzzleBoxView(BaseView):
         view = CurioView(self.bot, user_id, server_id, curio_count, puzzle_box_count)
         await interaction.response.edit_message(embed=view.build_hub_embed(), view=view)
         view.message = await interaction.original_response()
-
-    async def on_timeout(self):
-        if self.claimed or not self.message:
-            # Already claimed or no message reference; let BaseView do normal cleanup.
-            await super().on_timeout()
-            return
-        try:
-            await self._do_claim()
-            await self.message.edit(embed=self.build_claimed_embed(), view=self)
-        except (discord.NotFound, discord.HTTPException):
-            pass
-        # Do NOT call super().on_timeout() here — it would overwrite the claimed embed
-        # with view=None, stripping the "Back to Curios" button we just added.
-        self.stop()

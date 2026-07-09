@@ -44,6 +44,7 @@ class ApexCombatView(CombatView):
         zone_key: str,
         initial_logs: dict,
         title_override: str | None = None,
+        player_avatar_url: str | None = None,
     ):
         super().__init__(
             bot,
@@ -53,6 +54,7 @@ class ApexCombatView(CombatView):
             monster,
             initial_logs,
             title_override=title_override,
+            player_avatar_url=player_avatar_url,
         )
         self.zone_key = zone_key
 
@@ -334,6 +336,7 @@ class _PostApexView(BaseLayoutView):
             self.zone_key,
             start_logs,
             title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
+            player_avatar_url=user_row["appearance"],
         )
 
         await interaction.edit_original_response(view=view)

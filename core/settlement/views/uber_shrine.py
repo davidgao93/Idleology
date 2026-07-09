@@ -668,9 +668,9 @@ class UberShrineView(SettlementBaseView):
         embed.add_field(
             name="📖 About",
             value=(
-                "Each slot houses a shrine statue dedicated to a vanquished uber boss. "
-                "Construct statues to boost sigil drop chances during uber encounters. "
-                "Upgrade statues to raise their worker cap and effectiveness."
+                "Each slot houses a shrine statue dedicated to the gods. "
+                "Construct statues to boost sigil drop chances during boss encounters. "
+                "Upgrade the shrine to raise their worker cap and effectiveness."
             ),
             inline=False,
         )

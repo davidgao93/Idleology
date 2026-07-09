@@ -38,6 +38,7 @@ from core.emojis import (
     DODGE_EVASION,
     GLOVE_SLOT,
     HELMET_SLOT,
+    HEMATURGY_ICON,
     INFERNAL_ENGRAM,
     STAT_BLOCK,
     VOID_ENGRAM,
@@ -594,7 +595,7 @@ class General(commands.Cog, name="general"):
                 for pid, defn in MUTATIVE_POOL.items()
             ]
 
-            embed.title = "🩸 Hematurgy Passives"
+            embed.title = f"{HEMATURGY_ICON} Hematurgy Passives"
             embed.description = (
                 "Hematurgy passives are unlocked with **Primordial Blood** and upgraded with "
                 f"**Evolutionary Blood** up to T{EVO_MAX_TIER}, then **Mutative Blood** up to "

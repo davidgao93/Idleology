@@ -394,6 +394,7 @@ class ApexLobbyView(BaseLayoutView):
             zone_key,
             start_logs,
             title_override=f"{zone.emoji} Apex Hunt — {zone.name}",
+            player_avatar_url=user_row["appearance"],
         )
 
         await interaction.edit_original_response(view=view)

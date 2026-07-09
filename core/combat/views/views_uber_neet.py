@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.combat import ui as combat_ui
 from core.combat.mobgen.gen_mob import generate_uber_neet
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
@@ -98,8 +99,7 @@ class UberNEETLobbyView(BaseView):
         hub = UberHubView(
             self.bot, self.user_id, self.server_id, self.player, uber_data
         )
-        await interaction.edit_original_response(view=hub)
-        hub.message = await interaction.original_response()
+        await combat_ui.handoff_to_layout(interaction.message, hub)
         self.stop()
 
     async def start_uber(self, interaction: Interaction):
