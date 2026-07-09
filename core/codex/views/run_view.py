@@ -1064,6 +1064,7 @@ class CodexRunView(BaseView):
         elif self.monster.hp <= 0:
             await self._handle_wave_clear(interaction, message)
         else:
+            self._update_full_send_state()
             await self._refresh_ui(interaction, message)
 
     # ------------------------------------------------------------------

@@ -17,7 +17,7 @@ from core.models import Monster, Player
 
 
 def get_hp_display(current: int, max_hp: int, ward: int) -> str:
-    """Formats HP string, e.g., '100/100 ❤️ (50 🔮)' or '100/100 ❤️ (~1.2k 🔮)'"""
+    """Formats HP string, e.g., '100/100 [hp] (50 [ward])' or '100/100 [hp] (~1.2k [ward])'"""
     display = f"{current}/{max_hp} {STAT_HP}"
     if ward > 0:
         ward_str = _format_ward(ward)
@@ -136,7 +136,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         )
     if player.alchemy_barrier_turns > 0:
         lines.append(
-            f"🔮 Barrier  +{player.alchemy_barrier_ward_per_turn:,} Ward/turn"
+            f"{STAT_WARD} Barrier  +{player.alchemy_barrier_ward_per_turn:,} Ward/turn"
             f"  · {player.alchemy_barrier_turns}t"
         )
     if player.alchemy_blood_tithe_hits > 0:

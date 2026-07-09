@@ -4,7 +4,7 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from core.emojis import GOLD_COIN
+from core.emojis import GOLD_COIN, RARITY
 from core.images import HARLAN_AUTHOR, UPGRADE_REFINE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
@@ -192,7 +192,7 @@ class RefineView(BaseUpgradeView):
                 f"{get_quip('refine')}\n\n"
                 f"**Gains:** {res_str}\n"
                 f"**Refinement:** +{self.item.refinement_lvl}\n\n"
-                f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
+                f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | {RARITY} {self.item.rarity}%"
             )
 
             self.clear_items()
@@ -424,7 +424,7 @@ class RefineView(BaseUpgradeView):
             f"**Stopped Because:** {stop_reason}\n\n"
             f"**Total Gains:** {gains_str}\n"
             f"**Refinement Level:** +{self.item.refinement_lvl}\n\n"
-            f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
+            f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | {RARITY} {self.item.rarity}%"
         )
 
         self.clear_items()
@@ -677,7 +677,7 @@ class RefineView(BaseUpgradeView):
             f"**Stopped Because:** {stop_reason}\n\n"
             f"**Total Gains:** {gains_str}\n"
             f"**Refinement Level:** +{self.item.refinement_lvl}\n\n"
-            f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | ✨ {self.item.rarity}%"
+            f"**New Stats:**\n⚔️ {self.item.attack} | 🛡️ {self.item.defence} | {RARITY} {self.item.rarity}%"
         )
         if quest_msgs:
             embed.add_field(

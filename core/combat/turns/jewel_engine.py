@@ -10,6 +10,7 @@ import random
 from typing import TYPE_CHECKING
 
 from core.combat.calc.ward_system import _add_ward
+from core.emojis import STAT_WARD
 from core.paradise import mechanics as M
 from core.paradise.data import SKILL_JEWELS
 
@@ -116,7 +117,7 @@ def _unleash_wardforge(player: "Player", data: dict, log: list[str]) -> None:
     bonus_dmg = int(player.combat_ward * 0.30)
     player.jewel_wardforge_bonus_dmg = bonus_dmg
     log.append(
-        f"🛡️ **Wardforge** erupts: +🔮 **{added}** ward!"
+        f"🛡️ **Wardforge** erupts: +{STAT_WARD} **{added}** ward!"
         f" Next attack gains **{bonus_dmg}** bonus damage from ward!"
     )
 
@@ -157,7 +158,7 @@ def _unleash_siphon(player: "Player", data: dict, log: list[str]) -> int:
         added = _add_ward(player, ward_from_heal, log, "Siphon")
         log.append(
             f"💚 **Siphon** restores 💚 **{actual_hp_heal}** HP"
-            f" and generates 🔮 **{added}** ward!"
+            f" and generates {STAT_WARD} **{added}** ward!"
         )
     else:
         log.append(f"💚 **Siphon** restores 💚 **{actual_hp_heal}** HP!")
@@ -197,7 +198,7 @@ def _unleash_draught(player: "Player", data: dict, log: list[str]) -> None:
     if overflow > 0:
         ward_gain = overflow * 200
         added = _add_ward(player, ward_gain, log, "Draught overflow")
-        parts.append(f"Overflow → 🔮 **{added}** ward!")
+        parts.append(f"Overflow → {STAT_WARD} **{added}** ward!")
     log.append(" ".join(parts))
 
 

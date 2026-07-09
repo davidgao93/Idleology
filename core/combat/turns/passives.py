@@ -2,7 +2,7 @@ import random
 from typing import Dict
 
 from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
-from core.emojis import GOLD_COIN
+from core.emojis import GOLD_COIN, STAT_ATK, STAT_DEF, STAT_PDR, STAT_WARD
 from core.models import Monster, Player
 
 
@@ -266,18 +266,18 @@ def _apply_partner_combat_start(
                 if i == 0:
                     bonus = int(player.flat_atk * 0.15)
                     player.bonus_atk += bonus
-                    buff_msgs.append(f"⚔️ +{bonus} ATK")
+                    buff_msgs.append(f"{STAT_ATK} +{bonus} ATK")
                 elif i == 1:
                     ward = int(player.total_max_hp * 0.15)
                     player.combat_ward += ward
-                    buff_msgs.append(f"🔮 +{ward} Ward")
+                    buff_msgs.append(f"{STAT_WARD} +{ward} Ward")
                 elif i == 2:
                     bonus = int(player.flat_def * 0.15)
                     player.bonus_def += bonus
-                    buff_msgs.append(f"🛡️ +{bonus} DEF")
+                    buff_msgs.append(f"{STAT_DEF} +{bonus} DEF")
                 elif i == 3:
                     player.lucifer_pdr_burst += 10
-                    buff_msgs.append("🛡️ +10% PDR burst")
+                    buff_msgs.append(f"{STAT_PDR} +10% PDR burst")
             parts.append(
                 f"💀 **Essence Communion Lv.{sig_lvl}** — "
                 f"{n} essence buff(s): {', '.join(buff_msgs)}"

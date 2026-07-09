@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 import random
 
+from core.emojis import STAT_WARD
 from core.models import Monster, Player
 
 _DMG_VARIANCE_CEIL = 1.35
@@ -730,11 +731,13 @@ def apply_damage_to_monster(
         if damage <= monster.ward:
             monster.ward -= damage
             log.append(
-                f"Your attack is absorbed by the monster's 🔮 ward! ({damage} absorbed)"
+                f"Your attack is absorbed by the monster's {STAT_WARD} ward! ({damage} absorbed)"
             )
             damage = 0
         else:
-            log.append(f"You shatter the monster's 🔮 ward! ({monster.ward} absorbed)")
+            log.append(
+                f"You shatter the monster's {STAT_WARD} ward! ({monster.ward} absorbed)"
+            )
             damage -= monster.ward
             monster.ward = 0
 

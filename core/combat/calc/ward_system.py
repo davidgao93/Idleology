@@ -14,6 +14,7 @@ _add_ward                          # backward-compat alias used by engine.py re-
 
 from __future__ import annotations
 
+from core.emojis import STAT_WARD
 from core.models import Player
 
 
@@ -32,7 +33,7 @@ def add_ward(player: Player, amount: int, log: list, label: str = "") -> int:
         amount *= 2
         if label:
             log.append(
-                f"🌑 **Void Resonance** doubles ward gain! ({label}: +{amount} 🔮)"
+                f"🌑 **Void Resonance** doubles ward gain! ({label}: +{amount} {STAT_WARD})"
             )
 
     # Hematurgy hook: may redirect to damage buffer (Ward Inoculation) or heal (Vital Resonance)
@@ -72,7 +73,9 @@ def generate_player_ward_on_hit(
         ward = int(glove_lvl * 25)
         if ward > 0:
             added = add_ward(player, ward, log)
-            log.append(f"**Ward-Touched ({glove_lvl})** generates 🔮 **{added}** ward!")
+            log.append(
+                f"**Ward-Touched ({glove_lvl})** generates {STAT_WARD} **{added}** ward!"
+            )
             _je.process_jewel_trigger(player, None, "ward", added, log)
     elif is_hit and not is_crit:
         # Soul stone: ward-touched — 1:1 tier match to glove lvl.
@@ -82,7 +85,7 @@ def generate_player_ward_on_hit(
             if ward > 0:
                 added = add_ward(player, ward, log)
                 log.append(
-                    f"**Soul Ward-Touched T{_ss_wt}** generates 🔮 **{added}** ward!"
+                    f"**Soul Ward-Touched T{_ss_wt}** generates {STAT_WARD} **{added}** ward!"
                 )
                 _je.process_jewel_trigger(player, None, "ward", added, log)
 
@@ -90,7 +93,9 @@ def generate_player_ward_on_hit(
         ward = int(glove_lvl * 50)
         if ward > 0:
             added = add_ward(player, ward, log)
-            log.append(f"**Ward-Fused ({glove_lvl})** generates 🔮 **{added}** ward!")
+            log.append(
+                f"**Ward-Fused ({glove_lvl})** generates {STAT_WARD} **{added}** ward!"
+            )
             _je.process_jewel_trigger(player, None, "ward", added, log)
     elif is_crit:
         # Soul stone: ward-fused — 1:1 tier match to glove lvl.
@@ -100,7 +105,7 @@ def generate_player_ward_on_hit(
             if ward > 0:
                 added = add_ward(player, ward, log)
                 log.append(
-                    f"**Soul Ward-Fused T{_ss_wf}** generates 🔮 **{added}** ward!"
+                    f"**Soul Ward-Fused T{_ss_wf}** generates {STAT_WARD} **{added}** ward!"
                 )
                 _je.process_jewel_trigger(player, None, "ward", added, log)
 
@@ -111,6 +116,6 @@ def generate_player_ward_on_hit(
             added = add_ward(player, arcane_ward, log)
             if added > 0:
                 log.append(
-                    f"🔮 **{fmt_weapon_passive(name)}** — the weapon pulses, generating **{added}** Ward!"
+                    f"{STAT_WARD} **{fmt_weapon_passive(name)}** — the weapon pulses, generating **{added}** Ward!"
                 )
                 _je.process_jewel_trigger(player, None, "ward", added, log)

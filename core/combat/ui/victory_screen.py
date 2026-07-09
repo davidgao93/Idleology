@@ -233,7 +233,7 @@ def create_victory_embed(
 
     embed.add_field(
         name="✨__Loot__✨",
-        value="\n" + ("\n".join(loot_lines) if loot_lines else "None"),
+        value="\n".join(loot_lines) if loot_lines else "None",
         inline=False,
     )
     embed.add_field(name=f"{GOLD_COIN} Gold", value=f"{rewards.get('gold', 0):,} GP", inline=True)

@@ -7,7 +7,7 @@ from core.combat.calc.damage_calc import roll_monster_damage as _roll_monster_da
 from core.combat.calc.hit_calc import calculate_monster_hit_chance
 from core.combat.calc.ward_system import _add_ward
 from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
-from core.emojis import GOLD_COIN
+from core.emojis import GOLD_COIN, STAT_WARD
 from core.models import Monster, Player
 
 
@@ -155,7 +155,7 @@ def process_monster_turn(
                 heal_amt = max(1, siphon_amt // 2)
                 monster.hp = min(monster.max_hp, monster.hp + heal_amt)
                 log.append(
-                    f"💜 **Soul Siphon** drains **{siphon_amt}** 🔮 ward, healing {monster.name} for **{heal_amt}** HP!"
+                    f"💜 **Soul Siphon** drains **{siphon_amt}** {STAT_WARD} ward, healing {monster.name} for **{heal_amt}** HP!"
                 )
                 # skip in compact — ward change visible in HP bar
 
@@ -258,7 +258,7 @@ def process_monster_turn(
         if drained > 0:
             player.combat_ward = 0
             log.append(
-                f"{GOLD_COIN} **Tempted Fate** — fortune's price is paid! All **{drained}** 🔮 Ward drained!"
+                f"{GOLD_COIN} **Tempted Fate** — fortune's price is paid! All **{drained}** {STAT_WARD} Ward drained!"
             )
     capture_compact_events(log, clog, start)
 
@@ -534,7 +534,7 @@ def process_monster_turn(
                 ward_gain = helmet_lvl * 10
                 added = _add_ward(player, ward_gain, log)
                 log.append(
-                    f"**Ghosted ({helmet_lvl})** manifests **{added}** 🔮 Ward from the movement!"
+                    f"**Ghosted ({helmet_lvl})** manifests **{added}** {STAT_WARD} Ward from the movement!"
                 )
                 # skip in compact — ward visible in HP bar
             else:
@@ -544,7 +544,7 @@ def process_monster_turn(
                     ward_gain = ss_ghosted * 10
                     added = _add_ward(player, ward_gain, log)
                     log.append(
-                        f"**Soul Ghosted T{ss_ghosted}** manifests **{added}** 🔮 Ward from the movement!"
+                        f"**Soul Ghosted T{ss_ghosted}** manifests **{added}** {STAT_WARD} Ward from the movement!"
                     )
 
         elif is_blocked:
@@ -723,10 +723,10 @@ def process_monster_turn(
                 if not is_blocked:
                     log.append(
                         f"{monster.name} {monster.flavor}.\n"
-                        f"**Twin Balance** reduces and splits the blow (−20%) — 🔮 {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
+                        f"**Twin Balance** reduces and splits the blow (−20%) — {STAT_WARD} {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
                     )
                     clog.append(
-                        f"⚖️ Twin Balance: 🔮 {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
+                        f"⚖️ Twin Balance: {STAT_WARD} {ward_absorbed} to ward, 💔 {hp_half} bleeds through!"
                     )
                 total_damage = hp_half
 
@@ -736,18 +736,18 @@ def process_monster_turn(
                     player.combat_ward -= total_damage
                     if not is_blocked:
                         log.append(
-                            f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {total_damage} damage!"
+                            f"{monster.name} {monster.flavor}.\nYour ward absorbs {STAT_WARD} {total_damage} damage!"
                         )
-                        clog.append(f"🔮 Ward absorbs {total_damage}!")
+                        clog.append(f"{STAT_WARD} Ward absorbs {total_damage}!")
                     total_damage = 0
                 else:
                     damage_dealt = player.combat_ward
                     if not is_blocked:
                         log.append(
-                            f"{monster.name} {monster.flavor}.\nYour ward absorbs 🔮 {player.combat_ward} damage, but shatters!"
+                            f"{monster.name} {monster.flavor}.\nYour ward absorbs {STAT_WARD} {player.combat_ward} damage, but shatters!"
                         )
                         clog.append(
-                            f"🔮 Ward shatters! ({player.combat_ward} absorbed)"
+                            f"{STAT_WARD} Ward shatters! ({player.combat_ward} absorbed)"
                         )
                     total_damage -= player.combat_ward
                     player.combat_ward = 0
@@ -789,7 +789,7 @@ def process_monster_turn(
                     ward_gain = int(player.total_max_hp * 0.5)
                     added = _add_ward(player, ward_gain, log)
                     player.celestial_vow_used = True
-                    _vow_msg = f"✨ **Celestial Vow** activates! You survive the fatal blow and gain {added} 🔮 Ward!"
+                    _vow_msg = f"✨ **Celestial Vow** activates! You survive the fatal blow and gain {added} {STAT_WARD} Ward!"
                     log.append(f"\n{_vow_msg}")
                     clog.append(_vow_msg)
                 else:

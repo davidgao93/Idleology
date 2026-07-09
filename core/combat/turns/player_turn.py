@@ -22,7 +22,7 @@ from core.combat.calc.damage_calc import (
 from core.combat.calc.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
 from core.combat.calc.ward_system import _add_ward, generate_player_ward_on_hit
 from core.combat.turns.helpers import PlayerTurnResult, capture_compact_events
-from core.emojis import QUENCH
+from core.emojis import QUENCH, STAT_WARD
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -134,7 +134,7 @@ def process_heal(player: Player, monster=None) -> str:
             divine_overheal = int(excess * helmet_lvl)
             if divine_overheal > 0:
                 added = _add_ward(player, divine_overheal, [], "Divine")
-                msg += f"\n**Divine** converts **{added}** overheal into 🔮 Ward!"
+                msg += f"\n**Divine** converts **{added}** overheal into {STAT_WARD} Ward!"
         else:
             # Soul stone: divine — 1:1 tier match to helmet lvl.
             ss_divine = player.get_soul_stone_passive("divine")
@@ -142,7 +142,7 @@ def process_heal(player: Player, monster=None) -> str:
                 ss_overheal = int(excess * ss_divine)
                 if ss_overheal > 0:
                     added = _add_ward(player, ss_overheal, [], "Divine")
-                    msg += f"\n**Soul Divine T{ss_divine}** converts **{added}** overheal into 🔮 Ward!"
+                    msg += f"\n**Soul Divine T{ss_divine}** converts **{added}** overheal into {STAT_WARD} Ward!"
 
     # ------------------------------------------------------------------
     # POWERFUL DISTILLED PASSIVES (11-passive system)
@@ -260,7 +260,7 @@ def process_heal(player: Player, monster=None) -> str:
         ward_per_turn = max(1, int(heal_amount * (barrier / 100.0)))
         player.alchemy_barrier_ward_per_turn = ward_per_turn
         player.alchemy_barrier_turns = max(player.alchemy_barrier_turns, dur)
-        msg += f"\n🔮 **Barrier** — +{ward_per_turn:,} Ward/turn for **{dur}** turns!"
+        msg += f"\n{STAT_WARD} **Barrier** — +{ward_per_turn:,} Ward/turn for **{dur}** turns!"
 
     painkiller = potion_passives_by_type.get("painkiller", 0)
     if painkiller:
@@ -423,7 +423,7 @@ def _pt_partner_effects(
             added = _add_ward(player, ward_gain, [])
             if added > 0:
                 parts.append(
-                    f"🔮 **Ward Regen Lv.{lvl}** — {partner.name} restores **{added}** Ward!"
+                    f"{STAT_WARD} **Ward Regen Lv.{lvl}** — {partner.name} restores **{added}** Ward!"
                 )
                 _je.process_jewel_trigger(player, monster, "ward", added, parts)
         elif key == "co_ward_leech" and (is_hit or is_crit) and damage_dealt > 0:
@@ -431,7 +431,7 @@ def _pt_partner_effects(
             added = _add_ward(player, leech_base, [])
             if added > 0:
                 parts.append(
-                    f"🔮 **Ward Leech Lv.{lvl}** — {partner.name} siphons **{added}** Ward!"
+                    f"{STAT_WARD} **Ward Leech Lv.{lvl}** — {partner.name} siphons **{added}** Ward!"
                 )
                 _je.process_jewel_trigger(player, monster, "ward", added, parts)
         elif key == "co_execute" and monster.hp > 0:
@@ -574,7 +574,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         added = _barrier_add_ward(player, player.alchemy_barrier_ward_per_turn, [])
         if added > 0:
             log.append(
-                f"🔮 **Barrier** adds **{added}** Ward! "
+                f"{STAT_WARD} **Barrier** adds **{added}** Ward! "
                 f"({player.alchemy_barrier_turns - 1} turn{'s' if player.alchemy_barrier_turns - 1 != 1 else ''} left)"
             )
         player.alchemy_barrier_turns -= 1
@@ -794,7 +794,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     if player.get_celestial_armor_passive() == "celestial_ghostreaver":
         _gr_regen = random.randint(50, 200)
         _gr_added = _add_ward(player, _gr_regen, log)
-        log.append(f"✨ **Celestial Ghostreaver** restores **{_gr_added}** 🔮 Ward!")
+        log.append(f"✨ **Celestial Ghostreaver** restores **{_gr_added}** {STAT_WARD} Ward!")
         _je.process_jewel_trigger(player, monster, "ward", _gr_added, log)
 
     # --- Hematurgy: post-hit and post-miss passives ---
