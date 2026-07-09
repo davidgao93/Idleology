@@ -10,7 +10,7 @@ from discord import ButtonStyle, Interaction
 from core.base_view import BaseView
 from core.images import QUEST_SHOP, QUEST_SHOP_AUTHOR
 from core.npc_voices import get_quip
-from core.quests.data import TOKEN_SHOP_ITEMS
+from core.quests.data import SHOP_CATEGORIES, TOKEN_SHOP_ITEMS
 
 _SHOP_COLOR = 0xF0A500
 
@@ -22,21 +22,28 @@ class TokenShopView(BaseView):
         self._selected_item_id: str | None = None
         self._tokens = tokens
         self._player_level = player_level
+        self._active_category = next(iter(SHOP_CATEGORIES))
         self._build_components()
 
     def _visible_items(self) -> list:
-        """Return shop items visible at this player's level."""
+        """Return shop items visible at this player's level in the active category."""
         out = []
         for item in TOKEN_SHOP_ITEMS:
             if item["id"] == "key_cache" and self._player_level < 50:
+                continue
+            if item["category"] != self._active_category:
                 continue
             out.append(item)
         return out
 
     def build_embed(self) -> discord.Embed:
+        cat = SHOP_CATEGORIES[self._active_category]
         embed = discord.Embed(
             title="Quest Token Shop",
-            description=f"{get_quip('quest_shop')}\n\n🎫 **Your Tokens: {self._tokens}**",
+            description=(
+                f"{get_quip('quest_shop')}\n\n🎫 **Your Tokens: {self._tokens}**\n\n"
+                f"**{cat['emoji']} {cat['label']}**"
+            ),
             color=_SHOP_COLOR,
         )
         embed.set_author(name="Lira", icon_url=QUEST_SHOP_AUTHOR)
@@ -65,28 +72,49 @@ class TokenShopView(BaseView):
                     description=item["description"][:50],
                 )
             )
-        sel = _ShopItemSelect(options, row=0)
-        self.add_item(sel)
+        if options:
+            sel = _ShopItemSelect(options, row=0)
+            self.add_item(sel)
+
+        # Category tab buttons
+        for cat_id, cat in SHOP_CATEGORIES.items():
+            style = (
+                ButtonStyle.primary
+                if cat_id == self._active_category
+                else ButtonStyle.secondary
+            )
+            tab_btn = discord.ui.Button(
+                label=cat["label"], emoji=cat["emoji"], style=style, row=1
+            )
+            tab_btn.callback = lambda i, c=cat_id: self.switch_category(i, c)
+            self.add_item(tab_btn)
 
         # Confirm button (disabled until item selected)
         confirm = discord.ui.Button(
             label="Confirm Purchase",
             style=ButtonStyle.primary,
             disabled=True,
-            row=1,
+            row=2,
         )
         confirm.callback = self._on_confirm
         self.confirm_btn = confirm
         self.add_item(confirm)
 
         # Back button
-        back = discord.ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
+        back = discord.ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
         back.callback = self._on_back
         self.add_item(back)
 
     def set_selected(self, item_id: str) -> None:
         self._selected_item_id = item_id
         self.confirm_btn.disabled = False
+
+    async def switch_category(self, interaction: Interaction, category: str) -> None:
+        await interaction.response.defer()
+        self._active_category = category
+        self._selected_item_id = None
+        self._build_components()
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def _on_confirm(self, interaction: Interaction) -> None:
         if self._processing:
@@ -251,6 +279,18 @@ class TokenShopView(BaseView):
                 self.user_id, "extra_slot_unlocked", 1
             )
             return "Contract Extension unlocked! 4th slot available."
+
+        elif item_id == "auto_rest":
+            await self.bot.database.quests.set_meta_field(
+                self.user_id, "auto_rest_unlocked", 1
+            )
+            return "Auto-Pay Rest unlocked! Enable it in `/player_settings`."
+
+        elif item_id == "auto_reload":
+            await self.bot.database.quests.set_meta_field(
+                self.user_id, "auto_reload_unlocked", 1
+            )
+            return "Auto-Reload Potions unlocked! Enable it in `/player_settings`."
 
         return "Purchase applied."
 

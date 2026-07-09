@@ -73,7 +73,9 @@ class QuestsRepository(BaseRepository):
                 enrichment_unlocked INTEGER DEFAULT 0,
                 prospector_unlocked INTEGER DEFAULT 0,
                 streak INTEGER DEFAULT 0,
-                board_had_abandon INTEGER DEFAULT 0
+                board_had_abandon INTEGER DEFAULT 0,
+                auto_rest_unlocked INTEGER DEFAULT 0,
+                auto_reload_unlocked INTEGER DEFAULT 0
             )
             """
         )
@@ -83,6 +85,8 @@ class QuestsRepository(BaseRepository):
             ("prospector_unlocked", "0"),
             ("streak", "0"),
             ("board_had_abandon", "0"),
+            ("auto_rest_unlocked", "0"),
+            ("auto_reload_unlocked", "0"),
         ):
             try:
                 await self.connection.execute(
@@ -114,7 +118,8 @@ class QuestsRepository(BaseRepository):
         cursor = await self.connection.execute(
             "SELECT user_id, tokens, veteran_unlocked, extra_slot_unlocked, "
             "horizon_boost_uses, checkin_day, checkin_last_time, "
-            "enrichment_unlocked, prospector_unlocked, streak, board_had_abandon "
+            "enrichment_unlocked, prospector_unlocked, streak, board_had_abandon, "
+            "auto_rest_unlocked, auto_reload_unlocked "
             "FROM quest_meta WHERE user_id = ?",
             (user_id,),
         )
@@ -132,6 +137,8 @@ class QuestsRepository(BaseRepository):
                 "prospector_unlocked": 0,
                 "streak": 0,
                 "board_had_abandon": 0,
+                "auto_rest_unlocked": 0,
+                "auto_reload_unlocked": 0,
             }
         return {
             "user_id": row["user_id"],
@@ -145,6 +152,8 @@ class QuestsRepository(BaseRepository):
             "prospector_unlocked": row["prospector_unlocked"],
             "streak": row["streak"],
             "board_had_abandon": row["board_had_abandon"],
+            "auto_rest_unlocked": row["auto_rest_unlocked"],
+            "auto_reload_unlocked": row["auto_reload_unlocked"],
         }
 
     async def add_tokens(self, user_id: str, amount: int) -> None:
@@ -175,6 +184,8 @@ class QuestsRepository(BaseRepository):
             "prospector_unlocked",
             "streak",
             "board_had_abandon",
+            "auto_rest_unlocked",
+            "auto_reload_unlocked",
         }
         if field not in allowed:
             raise ValueError(f"Invalid meta field: {field}")

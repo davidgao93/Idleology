@@ -95,7 +95,13 @@ CREATE TABLE IF NOT EXISTS `player_currencies` (
   `codex_rerolls`          INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_imperfect` INTEGER NOT NULL DEFAULT 0,
   `mirage_runes_perfected` INTEGER NOT NULL DEFAULT 0,
-  `companion_pet_xp`       INTEGER NOT NULL DEFAULT 0
+  `companion_pet_xp`       INTEGER NOT NULL DEFAULT 0,
+  -- Rite of Convergence entry keys (fully tradeable)
+  `rite_key_apex_of_dreams`          INTEGER NOT NULL DEFAULT 0,
+  `rite_key_corruption_of_memories`  INTEGER NOT NULL DEFAULT 0,
+  `rite_key_scales_of_judgment`      INTEGER NOT NULL DEFAULT 0,
+  `rite_key_devoid_of_thoughts`      INTEGER NOT NULL DEFAULT 0,
+  `rite_key_zenith_of_nightmares`    INTEGER NOT NULL DEFAULT 0
 );
 
 
@@ -680,6 +686,24 @@ CREATE TABLE IF NOT EXISTS codex_runs (
   server_id  TEXT NOT NULL,
   data       TEXT NOT NULL,
   started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, server_id)
+);
+
+-- Rite of Convergence run save state (room-boundary snapshots; `data` is a JSON blob:
+-- attempts_remaining, wings_cleared, room_entry_hp/potions, writ_selection, total_turns)
+CREATE TABLE IF NOT EXISTS rite_runs (
+  user_id    TEXT NOT NULL,
+  server_id  TEXT NOT NULL,
+  data       TEXT NOT NULL,
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, server_id)
+);
+
+-- Permanent per-player unlock flag: writs are locked until the first full Rite clear.
+CREATE TABLE IF NOT EXISTS rite_progress (
+  user_id          TEXT NOT NULL,
+  server_id        TEXT NOT NULL,
+  has_first_clear  INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (user_id, server_id)
 );
 

@@ -145,6 +145,7 @@ class TradeRootView(BaseView):
         # Categorized Select
         options = [
             SelectOption(label="Keys & Curios", value="keys", emoji="🗝️"),
+            SelectOption(label="Rite Keys", value="rite_keys", emoji="🕯️"),
             SelectOption(label="Runes", value="runes", emoji="📜"),
             SelectOption(label="Mining Mats", value="mining", emoji="⛏️"),
             SelectOption(label="Woodcutting Mats", value="wood", emoji="🪓"),
@@ -185,6 +186,14 @@ class TradeRootView(BaseView):
                 "Codex Fragment",
                 "Codex Page",
                 "Codex Reroll",
+            ]
+        elif cat == "rite_keys":
+            keys = [
+                "Apex of Dreams",
+                "Corruption of Memories",
+                "Scales of Judgment",
+                "Devoid of Thoughts",
+                "Zenith of Nightmares",
             ]
         elif cat == "runes":
             keys = [k for k in TradeManager.RESOURCE_MAP if "Rune" in k]

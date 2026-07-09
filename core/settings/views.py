@@ -48,6 +48,8 @@ class SettingsView(BaseView):
         player_level: int = 1,
         corrupted_status: bool = True,
         auto_potion_reload: bool = False,
+        auto_rest_unlocked: bool = False,
+        auto_reload_unlocked: bool = False,
     ):
         super().__init__(bot, user_id)
         self.doors_status = doors_status
@@ -57,6 +59,8 @@ class SettingsView(BaseView):
         self.player_level = player_level
         self.corrupted_status = corrupted_status
         self.auto_potion_reload = auto_potion_reload
+        self.auto_rest_unlocked = auto_rest_unlocked
+        self.auto_reload_unlocked = auto_reload_unlocked
         self._processing = False
         self.rebuild_buttons()
 
@@ -91,24 +95,46 @@ class SettingsView(BaseView):
         exp_btn.callback = self.toggle_exp_protection
         self.add_item(exp_btn)
 
-        rest_lbl = (
-            "Disable Auto-Pay Rest" if self.auto_rest_pay else "Enable Auto-Pay Rest"
-        )
-        rest_style = ButtonStyle.danger if self.auto_rest_pay else ButtonStyle.success
-        rest_btn = ui.Button(label=rest_lbl, style=rest_style, emoji=GOLD_COIN, row=1)
-        rest_btn.callback = self.toggle_auto_rest_pay
+        if self.auto_rest_unlocked:
+            rest_lbl = (
+                "Disable Auto-Pay Rest" if self.auto_rest_pay else "Enable Auto-Pay Rest"
+            )
+            rest_style = (
+                ButtonStyle.danger if self.auto_rest_pay else ButtonStyle.success
+            )
+            rest_btn = ui.Button(label=rest_lbl, style=rest_style, emoji=GOLD_COIN, row=1)
+            rest_btn.callback = self.toggle_auto_rest_pay
+        else:
+            rest_btn = ui.Button(
+                label="Auto-Pay Rest (Unlock: Quest Shop, 10🎫)",
+                style=ButtonStyle.secondary,
+                emoji="🔒",
+                row=1,
+                disabled=True,
+            )
         self.add_item(rest_btn)
 
-        reload_lbl = (
-            "Disable Auto-Reload Potions"
-            if self.auto_potion_reload
-            else "Enable Auto-Reload Potions"
-        )
-        reload_style = (
-            ButtonStyle.danger if self.auto_potion_reload else ButtonStyle.success
-        )
-        reload_btn = ui.Button(label=reload_lbl, style=reload_style, emoji="🧪", row=1)
-        reload_btn.callback = self.toggle_auto_potion_reload
+        if self.auto_reload_unlocked:
+            reload_lbl = (
+                "Disable Auto-Reload Potions"
+                if self.auto_potion_reload
+                else "Enable Auto-Reload Potions"
+            )
+            reload_style = (
+                ButtonStyle.danger if self.auto_potion_reload else ButtonStyle.success
+            )
+            reload_btn = ui.Button(
+                label=reload_lbl, style=reload_style, emoji="🧪", row=1
+            )
+            reload_btn.callback = self.toggle_auto_potion_reload
+        else:
+            reload_btn = ui.Button(
+                label="Auto-Reload Potions (Unlock: Quest Shop, 25🎫)",
+                style=ButtonStyle.secondary,
+                emoji="🔒",
+                row=1,
+                disabled=True,
+            )
         self.add_item(reload_btn)
 
         if self.player_level >= 100:
@@ -199,9 +225,17 @@ class SettingsView(BaseView):
             corrupted=("🟢 ENABLED" if self.corrupted_status else "🔴 DISABLED"),
             exp=exp_str,
             gold=GOLD_COIN,
-            rest=("🟢 ENABLED" if self.auto_rest_pay else "🔴 DISABLED"),
+            rest=(
+                ("🟢 ENABLED" if self.auto_rest_pay else "🔴 DISABLED")
+                if self.auto_rest_unlocked
+                else "🔒 LOCKED — unlock for 10🎫 in the Quest Shop (`/quests`)"
+            ),
             potion=POTION,
-            reload=("🟢 ENABLED" if self.auto_potion_reload else "🔴 DISABLED"),
+            reload=(
+                ("🟢 ENABLED" if self.auto_potion_reload else "🔴 DISABLED")
+                if self.auto_reload_unlocked
+                else "🔒 LOCKED — unlock for 25🎫 in the Quest Shop (`/quests`)"
+            ),
         )
 
         if self.player_level >= 100:

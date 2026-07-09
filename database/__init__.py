@@ -29,6 +29,7 @@ from .repositories.partners import PartnerRepository
 from .repositories.prestige import PrestigeRepository
 from .repositories.settings import SettingsRepository
 from .repositories.plots import PlotRepository
+from .repositories.rite import RiteRepository
 from .repositories.settlement import SettlementRepository
 from .repositories.settlement_materials import SettlementMaterialsRepository
 from .repositories.skills import SkillRepository
@@ -79,6 +80,7 @@ class DatabaseManager:
         self.codes = CodesRepository(connection)
         self.loadouts = LoadoutRepository(connection)
         self.nether_market = NetherMarketRepository(connection)
+        self.rite = RiteRepository(connection)
 
     @asynccontextmanager
     async def transaction(self):

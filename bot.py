@@ -219,6 +219,12 @@ class DiscordBot(commands.Bot):
                 "ALTER TABLE users ADD COLUMN auto_potion_reload INTEGER NOT NULL DEFAULT 0",
                 # Prestige rework: emoji "Emblem" cosmetic (replaces title/flair catalogues).
                 "ALTER TABLE users ADD COLUMN prestige_emblem TEXT DEFAULT NULL",
+                # Rite of Convergence: 5 tradeable entry keys.
+                "ALTER TABLE player_currencies ADD COLUMN rite_key_apex_of_dreams INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE player_currencies ADD COLUMN rite_key_corruption_of_memories INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE player_currencies ADD COLUMN rite_key_scales_of_judgment INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE player_currencies ADD COLUMN rite_key_devoid_of_thoughts INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE player_currencies ADD COLUMN rite_key_zenith_of_nightmares INTEGER NOT NULL DEFAULT 0",
             ]:
                 try:
                     await db.execute(stmt)

@@ -25,6 +25,7 @@ from core.combat.mobgen.gen_mob import (
     generate_prestige_leviathan,
 )
 from core.combat.turns import engine
+from core.combat.ui.combat_embed import freeze_and_handoff
 from core.combat.views.views import CombatView
 from core.combat.views.warning_views import (
     CorruptedEncounterGateView,
@@ -298,6 +299,17 @@ class Combat(commands.Cog, name="combat"):
         player,
     ):
         """The actual combat generation and UI loading logic. Called directly or via the Warning View."""
+        # `screen_msg` tracks whichever message is currently displaying this
+        # combat flow. It's normally the interaction's own response, but a
+        # rematch launched from PostCombatView's Fight Again button starts on
+        # a Components V2 message — that flag can never be removed, so any
+        # classic embed screen shown mid-flow (corrupted gate, boss door) must
+        # hand off to a brand new message instead of editing embeds into it.
+        # Once that happens screen_msg is a plain message no longer tied to
+        # the interaction, so every later update below goes through
+        # screen_msg.edit(...) rather than interaction.edit_original_response(...).
+        screen_msg = await interaction.original_response()
+
         # Consume 1 stamina. Use consume_stamina (SQL MAX(0, val-1)) so over-cap
         # values (e.g. 12.5 from War Camp) drain correctly without being truncated.
         current_stamina = existing_user["combat_stamina"]
@@ -336,16 +348,20 @@ class Combat(commands.Cog, name="combat"):
             )
             if random.random() < corrupted_chance:
                 gate_view = CorruptedEncounterGateView(self.bot, user_id)
-                await interaction.edit_original_response(
-                    content=None,
-                    embed=gate_view.build_embed(),
-                    view=gate_view,
-                )
+                if screen_msg.flags.components_v2:
+                    screen_msg = await freeze_and_handoff(
+                        screen_msg, gate_view.build_embed(), gate_view
+                    )
+                else:
+                    screen_msg = await screen_msg.edit(
+                        content=None, embed=gate_view.build_embed(), view=gate_view
+                    )
+                    gate_view.message = screen_msg
                 await gate_view.wait()
                 is_corrupted = gate_view.accepted
                 if not is_corrupted:
                     # Player fled — clear gate message, fall through to boss door check
-                    await interaction.edit_original_response(
+                    screen_msg = await screen_msg.edit(
                         content="*The corrupted presence fades... for now.*",
                         embed=None,
                         view=None,
@@ -381,9 +397,13 @@ class Combat(commands.Cog, name="combat"):
                 embed.set_footer(text=f"Cost: {details['cost_str']}")
 
                 view = DoorPromptView(self.bot, user_id, cost_dict, boss_type)
-                await interaction.edit_original_response(
-                    content=None, embed=embed, view=view
-                )
+                if screen_msg.flags.components_v2:
+                    screen_msg = await freeze_and_handoff(screen_msg, embed, view)
+                else:
+                    screen_msg = await screen_msg.edit(
+                        content=None, embed=embed, view=view
+                    )
+                    view.message = screen_msg
                 await view.wait()
 
                 if view.accepted:
@@ -397,7 +417,7 @@ class Combat(commands.Cog, name="combat"):
                         description="*You turn away from the ominous presence... Live to fight another day.*",
                         color=discord.Color.dark_grey(),
                     )
-                    await interaction.edit_original_response(
+                    screen_msg = await screen_msg.edit(
                         content=None, embed=turn_embed, view=None
                     )
                     await asyncio.sleep(1.0)
@@ -563,11 +583,11 @@ class Combat(commands.Cog, name="combat"):
             title_override=title,
         )
 
-        if interaction.response.is_done():
-            await interaction.edit_original_response(embed=None, view=view)
+        if screen_msg.flags.components_v2:
+            screen_msg = await screen_msg.edit(embed=None, view=view)
         else:
-            await interaction.response.send_message(view=view)
-        view.message = await interaction.original_response()
+            screen_msg = await screen_msg.edit(content=None, embed=None, view=view)
+        view.message = screen_msg
 
     @app_commands.command(
         name="dojo", description="Test your DPS against a customizable dummy."

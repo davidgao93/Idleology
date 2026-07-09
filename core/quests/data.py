@@ -370,6 +370,11 @@ CHECKIN_DAY_LABELS = {
 # Token Shop
 # ---------------------------------------------------------------------------
 
+SHOP_CATEGORIES = {
+    "consumables": {"label": "Consumables & Utility", "emoji": "🎒"},
+    "upgrades": {"label": "Permanent Upgrades", "emoji": "⭐"},
+}
+
 TOKEN_SHOP_ITEMS = [
     # ── Consumables ──────────────────────────────────────────────────────────
     {
@@ -377,24 +382,28 @@ TOKEN_SHOP_ITEMS = [
         "label": "Curio",
         "cost": 3,
         "description": "Purchase one Curious Curio.",
+        "category": "consumables",
     },
     {
         "id": "equip_cache",
         "label": "Equipment Cache",
         "cost": 10,
         "description": "Receive 1 random equipment item at your level (capped at ilvl 100).",
+        "category": "consumables",
     },
     {
         "id": "rune_cache",
         "label": "Rune Cache",
         "cost": 10,
         "description": "Receive 1–5 random Runes (Refinement, Potential, or Shatter).",
+        "category": "consumables",
     },
     {
         "id": "key_cache",
         "label": "Boss Key Cache",
         "cost": 10,
         "description": "Receive 1–5 random Boss Keys.",
+        "category": "consumables",
     },
     # ── Utility ───────────────────────────────────────────────────────────────
     {
@@ -402,6 +411,7 @@ TOKEN_SHOP_ITEMS = [
         "label": "Board Reset",
         "cost": 5,
         "description": "Clear the 20-hour contract cooldown immediately.",
+        "category": "consumables",
     },
     # ── Permanent Upgrades ───────────────────────────────────────────────────
     {
@@ -411,6 +421,7 @@ TOKEN_SHOP_ITEMS = [
         "description": "Permanently increase quest gold rewards by 50%. One-time unlock.",
         "one_time": True,
         "unlock_field": "enrichment_unlocked",
+        "category": "upgrades",
     },
     {
         "id": "prospector_license",
@@ -419,6 +430,7 @@ TOKEN_SHOP_ITEMS = [
         "description": "Receive a free gathering materials cache on every quest turn-in. One-time unlock.",
         "one_time": True,
         "unlock_field": "prospector_unlocked",
+        "category": "upgrades",
     },
     {
         "id": "quest_veteran",
@@ -427,6 +439,7 @@ TOKEN_SHOP_ITEMS = [
         "description": "Permanently award +1 bonus token on every quest completion. One-time unlock.",
         "one_time": True,
         "unlock_field": "veteran_unlocked",
+        "category": "upgrades",
     },
     {
         "id": "extra_slot",
@@ -435,6 +448,25 @@ TOKEN_SHOP_ITEMS = [
         "description": "Permanently unlock a 4th daily contract slot. One-time unlock.",
         "one_time": True,
         "unlock_field": "extra_slot_unlocked",
+        "category": "upgrades",
+    },
+    {
+        "id": "auto_rest",
+        "label": "Auto-Pay Rest",
+        "cost": 10,
+        "description": "Unlocks the Auto-Pay Rest option in `/player_settings`. One-time unlock.",
+        "one_time": True,
+        "unlock_field": "auto_rest_unlocked",
+        "category": "upgrades",
+    },
+    {
+        "id": "auto_reload",
+        "label": "Auto-Reload Potions",
+        "cost": 25,
+        "description": "Unlocks the Auto-Reload Potions option in `/player_settings`. One-time unlock.",
+        "one_time": True,
+        "unlock_field": "auto_reload_unlocked",
+        "category": "upgrades",
     },
 ]
 

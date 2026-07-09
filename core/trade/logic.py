@@ -18,6 +18,12 @@ class TradeManager:
         "Codex Fragment": ("users", "codex_fragments"),
         "Codex Page": ("users", "codex_pages"),
         "Codex Reroll": ("users", "codex_rerolls"),
+        # Rite of Convergence entry keys
+        "Apex of Dreams": ("users", "rite_key_apex_of_dreams"),
+        "Corruption of Memories": ("users", "rite_key_corruption_of_memories"),
+        "Scales of Judgment": ("users", "rite_key_scales_of_judgment"),
+        "Devoid of Thoughts": ("users", "rite_key_devoid_of_thoughts"),
+        "Zenith of Nightmares": ("users", "rite_key_zenith_of_nightmares"),
         # Runes
         "Rune of Refinement": ("users", "refinement_runes"),
         "Rune of Potential": ("users", "potential_runes"),

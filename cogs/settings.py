@@ -33,6 +33,24 @@ class Settings(commands.Cog, name="player_settings"):
             user_id
         )
 
+        meta = await self.bot.database.quests.get_meta(user_id)
+        auto_rest_unlocked = bool(meta.get("auto_rest_unlocked"))
+        auto_reload_unlocked = bool(meta.get("auto_reload_unlocked"))
+
+        # Grandfather in players who already had these enabled before the quest-shop gate
+        if auto_rest_pay and not auto_rest_unlocked:
+            await self.bot.database.quests.ensure_meta(user_id)
+            await self.bot.database.quests.set_meta_field(
+                user_id, "auto_rest_unlocked", 1
+            )
+            auto_rest_unlocked = True
+        if auto_potion_reload and not auto_reload_unlocked:
+            await self.bot.database.quests.ensure_meta(user_id)
+            await self.bot.database.quests.set_meta_field(
+                user_id, "auto_reload_unlocked", 1
+            )
+            auto_reload_unlocked = True
+
         view = SettingsView(
             self.bot,
             user_id,
@@ -43,6 +61,8 @@ class Settings(commands.Cog, name="player_settings"):
             player_level,
             corrupted_status,
             auto_potion_reload,
+            auto_rest_unlocked,
+            auto_reload_unlocked,
         )
         await interaction.response.send_message(
             embed=view.build_embed(), view=view, ephemeral=False
