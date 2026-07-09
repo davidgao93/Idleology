@@ -376,12 +376,11 @@ TUTORIALS: dict[str, dict] = {
             "from your best gear. "
             "Slot two or more passives from the same category and they **Resonate** — granting combat "
             "multipliers that compound in your favor.\n\n"
-            "You have **3 charges**. One regenerates every 8 hours. "
+            "You have **5 charges**. One regenerates every 2 hours. "
             "Don't waste them on zones you haven't prepared for."
         ),
         "tips": [
             "Each zone has a **zone effect** active during the hunt — read it before you commit.",
-            "Extract passives from **max-rank gear** only; quality in determines quality out.",
             "Two or more **matching passive categories** trigger Resonance.",
         ],
         "image": LUCIEN_THUMBNAIL,
@@ -475,7 +474,7 @@ TUTORIALS: dict[str, dict] = {
         "author": "Valdris the Sanguine",
         "author_icon": VALDRIS_PORTRAIT,
         "description": (
-            "*Oh — oh you actually came. Wonderful. Sit down, don't touch that, and do NOT open the jar on the left shelf.*\n\n"
+            "*Oh — oh you actually came. Wonderful. Sit down, don't touch that, and do NOT open the jar on the left.*\n\n"
             "Hematurgy is a **permanent passive upgrade system** — living power, encoded directly into your blood. "
             "To begin, you need **Primordial Blood**, the raw substrate that opens a passive channel in your body. "
             "Once unlocked, you tier it up with **Evolutionary Blood** (T1–T5) — controlled adaptation, very elegant — "
@@ -509,7 +508,7 @@ TUTORIALS: dict[str, dict] = {
             "Settlement's Uber Shrine. Repeat victories yield the rare materials that power the most "
             "significant upgrades for your gear. You will need to return many times.\n\n"
             "*I do not grant access to those who are unprepared. "
-            "If you are here, I have judged you ready. Do not prove me wrong.*"
+            "If you are here, I have judged you ready. Although is that a new entity approaching?.. oh my...*"
         ),
         "tips": [
             "Each boss has a distinct combat style — review their modifiers before entering.",

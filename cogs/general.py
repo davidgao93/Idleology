@@ -6,17 +6,6 @@ from discord import ButtonStyle, Interaction, app_commands, ui
 from discord.ext import commands
 
 from core.base_view import BaseView
-from core.character.profile_hub import ProfileHubView
-from core.character.profile_ui import ProfileBuilder
-from core.combat.calc.calcs import (
-    WEAPON_PASSIVE_DEFS,
-)
-from core.combat.mobgen.modifier_data import (
-    BOSS_MOD_NAMES,
-    COMMON_MOD_NAMES,
-    RARE_TIERED_MOD_NAMES,
-    make_modifier,
-)
 from core.character.passive_data import (
     _ACCESSORY_PASSIVE_FUNCS,
     _ARMOR_PASSIVE_DESC,
@@ -28,6 +17,17 @@ from core.character.passive_data import (
     _INFERNAL_PASSIVE_DESC,
     _VOID_PASSIVE_DESC,
     _WEAPON_PASSIVE_DESC,
+)
+from core.character.profile_hub import ProfileHubView
+from core.character.profile_ui import ProfileBuilder
+from core.combat.calc.calcs import (
+    WEAPON_PASSIVE_DEFS,
+)
+from core.combat.mobgen.modifier_data import (
+    BOSS_MOD_NAMES,
+    COMMON_MOD_NAMES,
+    RARE_TIERED_MOD_NAMES,
+    make_modifier,
 )
 from core.emojis import (
     ACCESSORY_SLOT,
@@ -46,7 +46,6 @@ from core.emojis import (
 )
 from core.images import AMARA_AUTHOR, AMARA_PORTRAIT
 from core.slayer.mechanics import SLAYER_PASSIVE_DEFS, SLAYER_PASSIVE_NAMES
-
 
 # ---------------------------------------------------------------------------
 # Monster modifier detail view — paginates Common vs Rare & Boss
@@ -678,21 +677,21 @@ class General(commands.Cog, name="general"):
             "🐾 Companions": [
                 ("companions", "Manage your companion roster"),
                 ("partner", "Recruit and manage partners"),
-                ("consume", "Equip monster parts for permanent Max HP"),
             ],
             "⚔️ Combat": [
                 ("combat", "Fight monsters for XP and loot"),
                 ("dojo", "Test your DPS against a customizable dummy"),
-                ("ascent", "Tower of Ascension (Lvl 100+)"),
-                ("codex", "Tome of Power (Lvl 80+)"),
                 ("duel", "PvP against another player"),
-                ("uber", "Challenge the pinnacle of power"),
-                ("maw", "Challenge the Maw of Infinity"),
-                ("apex", "Apex Hunt lobby (Lvl 90+)"),
-                ("soul", "Open your Soul Stone directly"),
+                ("maw", "Challenge the Maw of Infinity (Lvl 20+)"),
+                ("hatchery", "Incubate and release monsters (Lvl 50+)"),
                 ("paradise", "Manage your Jewel of Paradise (Lvl 70+)"),
+                ("uber", "Challenge the pinnacle of power (Lvl 70+)"),
+                ("codex", "Tome of Power (Lvl 80+)"),
+                ("apex", "Apex Hunt lobby (Lvl 90+)"),
+                ("ascent", "Tower of Ascension (Lvl 100+)"),
+                ("rite", "Challenge the utmost pinnacle (Lvl 100+)"),
             ],
-            "🎒 Equipment": [
+            "🎒 Equipment & Loot": [
                 ("weapons", "Manage weapons"),
                 ("armor", "Manage armor"),
                 ("accessory", "Manage accessories"),
@@ -700,36 +699,36 @@ class General(commands.Cog, name="general"):
                 ("boots", "Manage boots"),
                 ("helmets", "Manage helmets"),
                 ("gear", "Manage gear"),
+                ("consume", "Equip monster parts for permanent Max HP"),
+                ("curios", "Open a curio or puzzle box"),
             ],
-            "🌲 Skills": [
+            "🌲 Gathering & Skills": [
                 ("gather", "Manage mining, fishing, and woodcutting"),
                 ("delve", "Mining mini-game"),
-                ("delve_shop", "Upgrade your delve equipment"),
                 ("fish", "Fishing mini-game"),
                 ("chop", "Woodcutting mini-game"),
                 ("slayer", "Manage your slayer task and emblem"),
-                ("alchemy", "Manage your alchemy skill"),
-                ("hematurgy", "Manage your Hematurgy blood passives"),
+                ("alchemy", "Manage your alchemy skill (Lvl 30+)"),
+                ("hematurgy", "Manage your Hematurgy blood passives (Lvl 50+)"),
+                ("soul", "Manage your Soul passives (Lvl 90+)"),
             ],
             "🏙️ Social & Economy": [
                 ("shop", "Buy potions"),
-                ("settlement", "Manage your settlement"),
-                ("hatchery", "Incubate monster eggs"),
-                ("black_market", "Open your settlement's Black Market"),
                 ("resources", "Check your settlement resources"),
-                ("quests", "View your quest board and horizon path"),
-                ("checkin", "Daily reward"),
                 ("rest", "Heal up at the tavern"),
                 ("ideology", "View server ideologies"),
                 ("propagate", "Spread your ideology"),
                 ("leaderboard", "View top players"),
-                ("curios", "Open a curio or puzzle box"),
-                ("prestige", "Cosmetics, titles, and monuments"),
                 ("redeem_code", "Redeem a code for rewards"),
+                ("quests", "View your quest board and horizon path (Lvl 10+)"),
+                ("checkin", "Daily reward (Lvl 10+)"),
+                ("settlement", "Manage your settlement (Lvl 10+)"),
+                ("black_market", "Open your settlement's Black Market (Lvl 10+)"),
+                ("nether", "Buy, sell, and plunder curiosities (Lvl 10+)"),
+                ("prestige", "Cosmetics, titles, and monuments"),
             ],
             "📦 Trading": [
                 ("trade", "Send Items/Gold to another player"),
-                ("nether", "Buy, sell, and plunder curiosities"),
             ],
             "🎉 Fun": [
                 ("gamble", "Play casino games and win gold"),
@@ -769,8 +768,8 @@ class General(commands.Cog, name="general"):
             value=(
                 "**1. Register:** `/register <name>`\n"
                 "**2. Fight:** `/combat` (Every 10m)\n"
-                "**3. Gear Up:** Check `/weapons`, `/armor`, etc.\n"
-                "**4. Skills:** `/gather`, `/alchemy`, `/slayer`\n"
+                "**3. Gear Up:** Check `/weapons`, etc.\n"
+                "**4. Guide:** `/journey`\n"
                 "**5. Help menu:** `/help` for a full list of commands."
             ),
             inline=False,

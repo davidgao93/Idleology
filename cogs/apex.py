@@ -93,7 +93,7 @@ class Apex(commands.Cog, name="apex"):
 
     @app_commands.command(
         name="soul",
-        description="Open your Soul Stone directly.",
+        description="Open your Soul Stone directly. (Lvl 90+)",
     )
     async def soul(self, interaction: Interaction):
         user_id = str(interaction.user.id)
