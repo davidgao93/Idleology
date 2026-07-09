@@ -69,7 +69,11 @@ def generate_player_ward_on_hit(
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
 
-    if is_hit and not is_crit and glove_passive == "ward-touched" and glove_lvl > 0:
+    # Corrupted Insignia (Artefact): on crit, 50% chance for this normally
+    # non-crit-only passive to fire anyway.
+    _ward_touched_crit_ok = not is_crit or player.roll_corrupted_insignia()
+
+    if is_hit and _ward_touched_crit_ok and glove_passive == "ward-touched" and glove_lvl > 0:
         ward = int(glove_lvl * 25)
         if ward > 0:
             added = add_ward(player, ward, log)
@@ -77,7 +81,7 @@ def generate_player_ward_on_hit(
                 f"**Ward-Touched ({glove_lvl})** generates {STAT_WARD} **{added}** ward!"
             )
             _je.process_jewel_trigger(player, None, "ward", added, log)
-    elif is_hit and not is_crit:
+    elif is_hit and _ward_touched_crit_ok:
         # Soul stone: ward-touched — 1:1 tier match to glove lvl.
         _ss_wt = player.get_soul_stone_passive("ward-touched")
         if _ss_wt:

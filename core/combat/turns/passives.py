@@ -298,6 +298,24 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
     player.is_invulnerable_this_combat = False
     logs: Dict[str, str] = {}
 
+    # Artefact: Sad One's Gamble — d6 rolled once at combat start.
+    if player.has_artefact("sad_ones_gamble"):
+        import random as _random
+
+        player.gamble_roll = _random.randint(1, 6)
+        if player.gamble_roll == 1:
+            logs["Artefact"] = "🎲 **Sad One's Gamble** rolls a 1 — no effect this combat."
+        elif player.gamble_roll == 6:
+            logs["Artefact"] = (
+                "🎲 **Sad One's Gamble** rolls a 6 — Unlucky effects become Lucky, "
+                "and Lucky effects roll 3x!"
+            )
+        else:
+            logs["Artefact"] = (
+                f"🎲 **Sad One's Gamble** rolls a {player.gamble_roll} — "
+                "Unlucky effects become Lucky!"
+            )
+
     def _dispatch(registry, key, log_key):
         handler = registry.get(key)
         if handler and (msg := handler(player, monster)):

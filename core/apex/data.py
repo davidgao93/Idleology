@@ -16,17 +16,11 @@ Contains:
 from dataclasses import dataclass
 
 from core.emojis import (
-    BULWARK_SHARD,
     CONDENSED_BLOOD,
     ENGORGED_HEART,
-    FORTUNE_SHARD,
     PRIMAL_ESSENCE,
-    PYRE_SHARD,
-    RIFT_SHARD,
     SHARPENED_FANG,
     SOUL_VESSEL,
-    TEMPEST_SHARD,
-    VERDANT_SHARD,
 )
 from core.images import (  # Apex monster combat images
     APEX_ASHFALL_COLOSSUS,
@@ -82,7 +76,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "ashen": ZoneDef(
         key="ashen",
         name="Ashen Wastes",
-        emoji=PYRE_SHARD,
+        emoji="🔥",
         shard_type="pyre",
         modifier_key="scorched",
         modifier_name="Scorched",
@@ -95,7 +89,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "storm": ZoneDef(
         key="storm",
         name="Storm Reach",
-        emoji=TEMPEST_SHARD,
+        emoji="⚡",
         shard_type="tempest",
         modifier_key="tempest",
         modifier_name="Tempest",
@@ -108,7 +102,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "citadel": ZoneDef(
         key="citadel",
         name="Iron Citadel",
-        emoji=BULWARK_SHARD,
+        emoji="🏰",
         shard_type="bulwark",
         modifier_key="siege_grounds",
         modifier_name="Siege Grounds",
@@ -121,7 +115,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "grove": ZoneDef(
         key="grove",
         name="Eternal Grove",
-        emoji=VERDANT_SHARD,
+        emoji="🌿",
         shard_type="verdant",
         modifier_key="living_battlefield",
         modifier_name="Living Battlefield",
@@ -134,7 +128,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "vault": ZoneDef(
         key="vault",
         name="Golden Vault",
-        emoji=FORTUNE_SHARD,
+        emoji="💰",
         shard_type="fortune",
         modifier_key="tempted_fate",
         modifier_name="Tempted Fate",
@@ -147,7 +141,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "shattered": ZoneDef(
         key="shattered",
         name="Shattered Realm",
-        emoji=RIFT_SHARD,
+        emoji="🌀",
         shard_type="rift",
         modifier_key="reality_fracture",
         modifier_name="Reality Fracture",

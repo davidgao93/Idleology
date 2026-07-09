@@ -962,6 +962,20 @@ def process_monster_turn(
                     )
                     # skip in compact — subtle buff
 
+            # Artefact: Seal of Duality — on ward break, DEF +15-35% for the
+            # rest of combat (rolled on drop).
+            if (
+                player.has_artefact("seal_of_duality")
+                and not player.seal_of_duality_triggered
+                and player.combat_ward == 0
+                and previous_ward > 0
+            ):
+                player.seal_of_duality_triggered = True
+                log.append(
+                    f"🏺 **Seal of Duality** — ward broken, gaining "
+                    f"**+{int(player.artefact.roll_1)}% DEF** for the rest of combat!"
+                )
+
             # Vampiric: heals X% of max HP per successful hit
             if monster.has_modifier("Vampiric") and damage_dealt > 0:
                 # sqrt scaling: same heal at 10k HP, tapers naturally above that

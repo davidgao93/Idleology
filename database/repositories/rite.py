@@ -65,3 +65,38 @@ class RiteRepository:
             (user_id, server_id),
         )
         await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # Artefact slot (single equipped item, overwritten on each new drop)
+    # ------------------------------------------------------------------
+
+    async def get_artefact(self, user_id: str, server_id: str) -> dict | None:
+        async with self.connection.execute(
+            "SELECT artefact_key, roll_1, roll_2, roll_3 FROM player_artefacts "
+            "WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def set_artefact(
+        self,
+        user_id: str,
+        server_id: str,
+        artefact_key: str,
+        roll_1: float = 0.0,
+        roll_2: float = 0.0,
+        roll_3: float = 0.0,
+    ) -> None:
+        """Equips a newly-dropped artefact, overwriting whatever was equipped before."""
+        await self.connection.execute(
+            """INSERT INTO player_artefacts (user_id, server_id, artefact_key, roll_1, roll_2, roll_3)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(user_id, server_id) DO UPDATE SET
+                   artefact_key = excluded.artefact_key,
+                   roll_1 = excluded.roll_1,
+                   roll_2 = excluded.roll_2,
+                   roll_3 = excluded.roll_3""",
+            (user_id, server_id, artefact_key, roll_1, roll_2, roll_3),
+        )
+        await self.connection.commit()

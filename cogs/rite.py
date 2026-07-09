@@ -137,6 +137,40 @@ class Rite(commands.Cog, name="rite"):
         await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
+    @app_commands.command(
+        name="artefact",
+        description="View your equipped Rite of Convergence Artefact.",
+    )
+    async def artefact(self, interaction: Interaction):
+        from core.rite.loot import ARTEFACT_TABLE, describe_artefact
+
+        user_id = str(interaction.user.id)
+        server_id = str(interaction.guild.id)
+
+        existing_user = await self.bot.database.users.get(user_id, server_id)
+        if not await self.bot.check_user_registered(interaction, existing_user):
+            return
+
+        row = await self.bot.database.rite.get_artefact(user_id, server_id)
+        if not row or not row["artefact_key"]:
+            return await interaction.response.send_message(
+                "You haven't found an Artefact yet — they only drop from a "
+                "completed Rite of Convergence run.",
+                ephemeral=True,
+            )
+
+        key = row["artefact_key"]
+        name, source, req_dp, _weight = ARTEFACT_TABLE[key]
+        embed = discord.Embed(
+            title=f"🏺 {name}",
+            description=(
+                f"*Thematic source: {source}*\n\n"
+                f"{describe_artefact(key, row['roll_1'])}"
+            ),
+            color=discord.Color.dark_gold(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(Rite(bot))

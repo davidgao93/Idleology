@@ -98,7 +98,7 @@ def calculate_crit_chance(player: Player) -> float:
     idx, _ = get_weapon_tier(player, "piercing")
     chance = player.get_current_crit_chance() + ((idx + 1) * 5 if idx >= 0 else 0)
     if player.get_weapon_infernal() == "voracious" and player.voracious_stacks > 0:
-        chance += player.voracious_stacks * 5
+        chance += player.voracious_stacks * 5 * player.get_infernal_strength_mult()
     if player.active_partner:
         for key, lvl in player.active_partner.combat_skills:
             if key == "co_crit_rate":

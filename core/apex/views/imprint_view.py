@@ -440,7 +440,7 @@ class ImprintView(BaseView):
             inline=True,
         )
         embed.add_field(
-            name="🔮 Shard Type", value=f"{shard_emoji} {shard_type.title()}", inline=True
+            name="Shard Type", value=f"{shard_emoji} {shard_type.title()}", inline=True
         )
         embed.add_field(name="⚡ Category", value=cat.capitalize(), inline=True)
         embed.add_field(name="📍 Target Slot", value=f"Slot {first_empty}", inline=True)

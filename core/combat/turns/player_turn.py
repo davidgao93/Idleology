@@ -635,9 +635,21 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             player, monster, attack_multiplier, log, calc, clog=clog
         )
 
+    # Artefact: The Final Edict — per-hit chance for the whole hit to become
+    # true damage, bypassing monster DR (Ironclad/Protection/etc.) and ward.
+    final_edict_triggered = (
+        (is_hit or is_crit)
+        and player.has_artefact("the_final_edict")
+        and random.random() < (player.artefact.roll_1 / 100)
+    )
+
     # Monster DR — capture in compact (explains why damage was reduced)
     start = len(log)
-    actual_damage = apply_monster_damage_reduction(monster, raw_damage, log, calc)
+    if final_edict_triggered:
+        actual_damage = raw_damage
+        log.append("🏺 **The Final Edict** — the strike bypasses all mitigation!")
+    else:
+        actual_damage = apply_monster_damage_reduction(monster, raw_damage, log, calc)
     capture_compact_events(log, clog, start)
 
     # --- Undying Resolve: block all player damage while immune ---
@@ -669,7 +681,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     # Apply damage to monster ward+HP — capture Time Lord / ward shatter events
     start = len(log)
-    final_hit = apply_damage_to_monster(player, monster, actual_damage, log)
+    final_hit = apply_damage_to_monster(
+        player, monster, actual_damage, log, bypass_ward=final_edict_triggered
+    )
     capture_compact_events(log, clog, start)
 
     # --- Post-damage modifier triggers ---

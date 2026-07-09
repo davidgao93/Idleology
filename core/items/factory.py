@@ -422,6 +422,16 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         print(f"[load_player] soul stone failed for {user_id}: {e}")
         player.soul_stone = None
 
+    # --- Fetch Rite of Convergence Artefact ---
+    try:
+        art_row = await database.rite.get_artefact(user_id, server_id)
+        from core.rite.models import artefact_from_db
+
+        player.artefact = artefact_from_db(art_row)
+    except Exception as e:
+        print(f"[load_player] artefact failed for {user_id}: {e}")
+        player.artefact = None
+
     # --- Fetch Stat Investments (passive_point allocations) ---
     try:
         stat_inv = await database.users.get_stat_investments(user_id)

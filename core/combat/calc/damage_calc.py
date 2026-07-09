@@ -337,6 +337,18 @@ def calc_crit_damage(
             f"**{fmt_weapon_passive(shock_name)}** surges with ⚡ lightning, ensuring solid impact!"
         )
 
+    # Corrupted Insignia (Artefact): on crit, 50% chance for Adroit (normally
+    # a normal-hit-only floor) to also apply.
+    if player.get_glove_passive() == "adroit" and player.roll_corrupted_insignia():
+        _ci_glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
+        if _ci_glove_lvl > 0:
+            adroit_min = int(base_max * (_ci_glove_lvl * 0.02))
+            base_min = max(base_min, adroit_min)
+            calc_dmg_notes.append(f"corrupted_insignia_adroit_min={base_min}")
+            log.append(
+                f"🏺 **Corrupted Insignia** triggers **Adroit ({_ci_glove_lvl})** on the crit!"
+            )
+
     # Deftness: crit-exclusive roll floor (complement to Adroit for normal hits)
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
@@ -407,9 +419,21 @@ def calc_crit_damage(
     damage = int(base_dmg * attack_multiplier)
     calc_dmg_notes.append(f"×mult={attack_multiplier:.4f}={damage}")
 
+    # Corrupted Insignia (Artefact): on crit, 50% chance for Echo (normally a
+    # normal-hit-only extra hit) to also apply.
+    if player.roll_corrupted_insignia():
+        from core.combat.calc.calcs import get_weapon_tier as _ci_get_weapon_tier
+
+        echo_idx, _ = _ci_get_weapon_tier(player, "echo")
+        if echo_idx >= 0:
+            echo_damage = int(damage * (echo_idx + 1) * 0.10)
+            damage += echo_damage
+            calc_dmg_notes.append(f"corrupted_insignia_echo+{echo_damage}")
+            log.append("🏺 **Corrupted Insignia** triggers **Echo** on the crit!")
+
     infernal = player.get_weapon_infernal()
     if infernal == "last_rites" and monster.hp > 0:
-        bonus = int(monster.hp * 0.05)
+        bonus = int(monster.hp * 0.05 * player.get_infernal_strength_mult())
         damage += bonus
         calc_dmg_notes.append(f"+last_rites={bonus}")
         log.append(f"**Last Rites** seals {monster.name}'s fate! (+{bonus})")
@@ -588,7 +612,9 @@ def calc_miss_damage(
 
     infernal = player.get_weapon_infernal()
     if infernal == "perdition" and player.equipped_weapon:
-        perdition_dmg = int(player.equipped_weapon.attack * 0.75)
+        perdition_dmg = int(
+            player.equipped_weapon.attack * 0.75 * player.get_infernal_strength_mult()
+        )
         if perdition_dmg > 0:
             damage += perdition_dmg
             miss_parts.append(f"**Perdition** tears through for 🔥 **{perdition_dmg}**")
@@ -723,11 +749,13 @@ def apply_monster_damage_reduction(
 
 
 def apply_damage_to_monster(
-    player: Player, monster: Monster, damage: int, log: list[str]
+    player: Player, monster: Monster, damage: int, log: list[str],
+    *, bypass_ward: bool = False,
 ) -> int:
     """Phase 7 — apply damage to monster ward then HP, respecting Time Lord.
-    Returns damage actually dealt."""
-    if monster.ward > 0 and damage > 0:
+    Returns damage actually dealt. bypass_ward=True (The Final Edict artefact)
+    skips ward absorption entirely, applying straight to HP."""
+    if not bypass_ward and monster.ward > 0 and damage > 0:
         if damage <= monster.ward:
             monster.ward -= damage
             log.append(

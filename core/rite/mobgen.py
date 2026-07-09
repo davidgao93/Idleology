@@ -16,8 +16,15 @@ from core.combat.mobgen.gen_mob import (
     calculate_monster_stats,
     finalize_monster_spawn,
 )
-from core.combat.mobgen.modifier_data import make_modifier
+from core.combat.mobgen.modifier_data import (
+    BOSS_MOD_NAMES,
+    COMMON_MOD_NAMES,
+    RARE_TIERED_MOD_NAMES,
+    make_modifier,
+)
 from core.images import (
+    ARBITER_PORTRAIT,
+    ARBITER_THUMBNAIL,
     MONSTER_APHRODITE,
     MONSTER_EVELYNN,
     MONSTER_EVELYNN_PRECURSOR,
@@ -278,4 +285,99 @@ def generate_wing_evelynn(player, monster: "Monster", *, delirious: bool = False
     _apply_spawn_modifiers(monster)
     apply_rite_difficulty_overlay(monster, level=4 if delirious else 3)
     finalize_monster_spawn(monster)
+    return monster
+
+
+# =========================================================
+# The Arbiter — 6-phase finale
+# =========================================================
+
+ARBITER_PHASE_NAMES = [
+    "Left Wing of the Heavens",
+    "Right Wing of the Nine Hells",
+    "Left Arm of Ultimate Balance",
+    "Right Arm of the Infinite Void",
+    "Amalgam of Flesh, Dreams, and Nightmares",
+    "Arbiter, the Last Edict",
+]
+
+
+def arbiter_ref_level(player) -> int:
+    return player.level + player.ascension + 20
+
+
+def get_arbiter_phases(player) -> list[dict]:
+    """Builds the 6-phase combat_phases list, matching the shape
+    EncounterManager.get_boss_phases returns (a dict per phase) so it slots
+    into CombatView's existing combat_phases plumbing untouched."""
+    ref_level = arbiter_ref_level(player)
+    return [
+        {"name": name, "level": ref_level, "tier": i + 1}
+        for i, name in enumerate(ARBITER_PHASE_NAMES)
+    ]
+
+
+def _arbiter_fixed_hp(ref_level: int) -> int:
+    """Deterministic HP shared by all 6 Arbiter phases — no random jitter, so
+    every phase call reproduces the identical value without needing to
+    thread state between phase generations."""
+    return int(10 * (ref_level**1.7) * 4.0)
+
+
+def generate_arbiter_phase(player, phase_data: dict, phase_index: int) -> "Monster":
+    """Generates the Monster for one Arbiter phase (0-indexed).
+
+    Phases 1-5 (index 0-4): all common + rare-tiered modifiers at the phase's
+    tier, no boss modifiers. Phase 6 (index 5): Delirious stat overlay + every
+    modifier at Tier 5 + every boss modifier at Tier 5 — the hardest single
+    encounter in the game.
+
+    HP is pinned identically across all 6 phases (RAID-DESIGN.md: "equal HP
+    pools across all phases"), overriding whatever the modifier list (e.g.
+    Titanic) would otherwise produce.
+    """
+    ref_level = phase_data["level"]
+    tier = phase_data["tier"]
+
+    monster = Monster(
+        name=phase_data["name"],
+        level=ref_level,
+        hp=0, max_hp=0, xp=150000, attack=0, defence=0,
+        modifiers=[], image=ARBITER_PORTRAIT, image2=ARBITER_THUMBNAIL,
+        flavor="watches, unmoved by anything you can do",
+        species="???",
+        is_boss=True,
+    )
+    monster = calculate_monster_stats(monster)
+    monster.base_attack += int(monster.level * 0.75)
+    monster.base_defence += int(monster.level * 0.75)
+    monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
+
+    monster.modifiers = [
+        make_modifier(name, monster.level, force_tier=tier)
+        for name in (COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES)
+    ]
+    if phase_index == 5:
+        monster.modifiers += [
+            make_modifier(name, monster.level, force_max_tier=True)
+            for name in BOSS_MOD_NAMES
+        ]
+
+    _apply_spawn_modifiers(monster)
+
+    if phase_index == 5:
+        apply_rite_difficulty_overlay(monster, level=4)  # Delirious
+
+    # Equal-HP override: applied AFTER _apply_spawn_modifiers (which may have
+    # set bonus_max_hp_pct via Titanic) and again after finalize_monster_spawn
+    # below (which would otherwise recompute max_hp from that bonus pool).
+    fixed_hp = _arbiter_fixed_hp(ref_level)
+    monster.base_max_hp = fixed_hp
+    monster.hp = fixed_hp
+    monster.max_hp = fixed_hp
+
+    finalize_monster_spawn(monster)
+    monster.hp = fixed_hp
+    monster.max_hp = fixed_hp
     return monster

@@ -25,7 +25,7 @@ from core.apex.models import (
 )
 from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
-from core.emojis import SOUL_FRAGMENT
+from core.emojis import APEX_SHARD_EMOJI, SOUL_FRAGMENT
 from core.images import APEX_HUB, LUCIEN_PORTRAIT, LUCIEN_THUMBNAIL
 from core.npc_voices import get_quip
 
@@ -127,7 +127,10 @@ def _build_zone_confirm_embed(
         ),
         color=zone.color,
     )
-    embed.add_field(name="🔮 Shard Type", value=zone.shard_type.title(), inline=True)
+    shard_emoji = APEX_SHARD_EMOJI.get(zone.shard_type, "🔮")
+    embed.add_field(
+        name="Shard Type", value=f"{shard_emoji} {zone.shard_type.title()}", inline=True
+    )
     embed.add_field(name="📊 Your Record", value=f"W: {w} / L: {losses}", inline=True)
     embed.add_field(
         name="⚡ Charges After",

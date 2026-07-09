@@ -42,6 +42,14 @@ class CombatState:
     gaze_stacks: int = 0
     hunger_stacks: int = 0
     lucifer_pdr_burst: int = 0
+    # Artefact: Seal of Duality — on ward break, DEF +15-35% for the rest of combat
+    seal_of_duality_triggered: bool = False
+    # Artefact: Sad One's Gamble — d6 rolled at combat start (0 = not rolled/
+    # inactive this combat, 1 = no effect, 2-5 = Unlucky effects become Lucky,
+    # 6 = also Lucky effects roll 3x). No passive in the current registry is
+    # tagged Lucky/Unlucky yet, so this is the roll primitive only — a future
+    # Lucky/Unlucky-tagged passive would read player.gamble_roll to resolve.
+    gamble_roll: int = 0
     equilibrium_bonus_xp_pending: int = 0
     plundering_bonus_gold_pending: int = 0
     # Alchemy potion transients
@@ -470,6 +478,9 @@ class Player:
     # Soul Stone — loaded at session start, None if not yet created
     soul_stone: Optional[Any] = None  # core.apex.models.SoulStone | None
 
+    # Rite of Convergence Artefact — loaded at session start, None if not owned
+    artefact: Optional[Any] = None  # core.rite.models.Artefact | None
+
     # Stat investments (passive_point allocations, 0.1% bonus per point)
     stat_invest_atk: int = 0
     stat_invest_def: int = 0
@@ -562,6 +573,22 @@ class Player:
     @lucifer_pdr_burst.setter
     def lucifer_pdr_burst(self, v: int) -> None:
         self.cs.lucifer_pdr_burst = v
+
+    @property
+    def seal_of_duality_triggered(self) -> bool:
+        return self.cs.seal_of_duality_triggered
+
+    @seal_of_duality_triggered.setter
+    def seal_of_duality_triggered(self, v: bool) -> None:
+        self.cs.seal_of_duality_triggered = v
+
+    @property
+    def gamble_roll(self) -> int:
+        return self.cs.gamble_roll
+
+    @gamble_roll.setter
+    def gamble_roll(self, v: int) -> None:
+        self.cs.gamble_roll = v
 
     @property
     def equilibrium_bonus_xp_pending(self) -> int:
@@ -893,6 +920,14 @@ class Player:
         if not self.soul_stone:
             return None
         return self.soul_stone.get_passive_tier(key)
+
+    # -----------------------------------------------------------------------
+    # Rite of Convergence Artefact helper
+    # -----------------------------------------------------------------------
+
+    def has_artefact(self, key: str) -> bool:
+        """True if the equipped Artefact (single slot) is the given key."""
+        return bool(self.artefact) and self.artefact.key == key
 
     @property
     def jewel_cataclysm_primed(self) -> bool:
@@ -1333,6 +1368,11 @@ class Player:
         if self.alchemy_def_boost_pct > 0:
             pct_pool += self.alchemy_def_boost_pct
 
+        # Artefact: Seal of Duality — DEF +15-35% for the rest of combat once
+        # the player's ward has broken at least once (see monster_turn.py).
+        if self.seal_of_duality_triggered and self.artefact:
+            pct_pool += self.artefact.roll_1 / 100
+
         # Slayer Tree hu_2 "Hunter's Resolve" — +18% DEF vs the assigned task
         # species. Lives in pct_pool (not a damage-taken multiplier) so it sums
         # with every other DEF% source instead of compounding on top of them.
@@ -1401,6 +1441,11 @@ class Player:
             self.equipped_armor and self.equipped_armor.passive == "Impregnable"
         ) or bool(ss_impregnable)
         cap = 90 if has_impregnable else 80
+
+        # Artefact: Blessed Bulwark — PDR cap raised by a fixed 2-8% rolled on drop.
+        if self.has_artefact("blessed_bulwark"):
+            cap += int(self.artefact.roll_1)
+
         return int(max(0, total)), cap
 
     def get_total_pdr(self) -> int:
@@ -1574,6 +1619,27 @@ class Player:
 
     def get_weapon_infernal(self) -> str:
         return self.equipped_weapon.infernal_passive if self.equipped_weapon else "none"
+
+    def roll_corrupted_insignia(self) -> bool:
+        """Artefact: Corrupted Insignia — on crit, 50% chance for on-hit-only
+        passives to also apply. Confirmed on-hit-only passives in the current
+        registry: echo (weapon), adroit (glove), ward-touched (glove).
+        Shocking was audited and found to already apply on crits (see
+        calc_crit_damage), so it is unaffected by this artefact."""
+        if not self.has_artefact("corrupted_insignia"):
+            return False
+        import random as _random
+
+        return _random.random() < 0.5
+
+    def get_infernal_strength_mult(self) -> float:
+        """Artefact: Brand of Ruin — the weapon's infernal passive is 15-30%
+        stronger (rolled on drop). Applied at each infernal passive's numeric
+        formula; passives with no scalable strength (binary effects like
+        Soulreap/Inverted Edge) are unaffected."""
+        if self.has_artefact("brand_of_ruin"):
+            return 1.0 + self.artefact.roll_1 / 100
+        return 1.0
 
     def get_weapon_passive(self) -> str:
         return self.equipped_weapon.passive if self.equipped_weapon else "none"

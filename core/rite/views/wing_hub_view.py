@@ -3,10 +3,10 @@
 Run structure: [Entry] -> Choose Wing -> Fight -> Respite -> Choose Wing ->
 Fight -> Respite -> (x5 wings) -> [Arbiter Reveal] -> Final Boss (6 phases).
 
-The Arbiter finale (6-phase boss) is not built yet (Milestone 5) — clearing
-all 5 wings currently shows a placeholder instead of the real reveal. Writs
-and Devotion Points (Milestone 4) are fully wired: see core/rite/data.py for
-the writ table and core/rite/views/writ_select_view.py for the pre-run picker.
+Clearing the 5th wing hands off to core/rite/views/reveal_view.py, which
+transitions straight into the Arbiter's 6-phase finale
+(core/rite/views/arbiter_view.py). See core/rite/data.py for the writ table
+and core/rite/views/writ_select_view.py for the pre-run picker.
 """
 
 import discord
@@ -26,7 +26,7 @@ from core.images import (
 )
 from core.models import Monster, Player
 from core.rite import mobgen
-from core.rite.data import WRITS, compute_devotion_points
+from core.rite.data import WRITS
 from core.rite.run_state import RiteRunState
 from core.rite.views.respite_view import POWER_ATK_DEF_MULT, RespiteView
 
@@ -296,24 +296,14 @@ class WingHubView(BaseLayoutView):
                 )
 
                 if run_state.is_run_complete:
-                    view.bot.state_manager.clear_active(view.user_id)
-                    dp = compute_devotion_points(run_state.writs, run_state.total_turns)
-                    embed = discord.Embed(
-                        title="✨ All 5 Wings Cleared",
-                        description=(
-                            "The Arbiter's essences begin to converge...\n\n"
-                            f"**Total turns:** {run_state.total_turns}  •  "
-                            f"**Devotion Points:** {dp}\n\n"
-                            "*(Milestone 4 scaffolding — the real Reveal narrative "
-                            "and the 6-phase Arbiter finale land in Milestone 5, "
-                            "including the actual DP-scaled loot payout. Your run "
-                            "is saved; close and resume with `/rite` once it's ready.)*"
-                        ),
-                        color=discord.Color.gold(),
+                    # Lazy import: arbiter_view (via reveal_view) imports this
+                    # module for RiteEndView, so a module-level import here
+                    # would be circular.
+                    from core.rite.views.reveal_view import trigger_reveal_and_arbiter
+
+                    await trigger_reveal_and_arbiter(
+                        view.bot, view.user_id, view.server_id, view.player, run_state, message
                     )
-                    end_view = RiteEndView(view.bot, view.user_id, view.server_id, embed)
-                    await message.edit(view=end_view)
-                    end_view.message = message
                     view.stop()
                     return
 

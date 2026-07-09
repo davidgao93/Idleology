@@ -707,6 +707,20 @@ CREATE TABLE IF NOT EXISTS rite_progress (
   PRIMARY KEY (user_id, server_id)
 );
 
+-- The Rite of Convergence's single Artefact slot. A new drop overwrites
+-- whatever was previously equipped (no separate inventory — see
+-- core/rite/models.py). roll_1-3 hold the artefact's randomized stat value(s);
+-- unused for artefacts with no variable roll.
+CREATE TABLE IF NOT EXISTS player_artefacts (
+  user_id      TEXT NOT NULL,
+  server_id    TEXT NOT NULL,
+  artefact_key TEXT NOT NULL,
+  roll_1       REAL NOT NULL DEFAULT 0,
+  roll_2       REAL NOT NULL DEFAULT 0,
+  roll_3       REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, server_id)
+);
+
 CREATE TABLE IF NOT EXISTS synthesis_queue (
   user_id    TEXT PRIMARY KEY,
   item_type  TEXT NOT NULL,
