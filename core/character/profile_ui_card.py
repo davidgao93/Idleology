@@ -46,19 +46,34 @@ class CardProfileBuilder:
             value=f"{user['level']} (Ascension {user['ascension']})",
             inline=True,
         )
-        _lvl, _exp = user["level"], user["experience"]
+        _lvl, _exp, _asc = user["level"], user["experience"], user["ascension"]
         try:
             _exp_path = os.path.join(
                 os.path.dirname(__file__), "..", "..", "assets", "exp.json"
             )
             with open(_exp_path, encoding="utf-8") as _f:
                 _exp_table = json.load(_f)["levels"]
-            _needed = _exp_table.get(str(_lvl), 0)
-            if _lvl >= 100 or _needed <= 0:
-                _exp_str = f"{_exp:,} *(MAX)*"
+            if _lvl >= 100:
+                # Mirrors ExperienceManager.add_experience's ascension threshold:
+                # exp_table["100"] scaled by the current ascension bracket.
+                _base = _exp_table.get("100", 0)
+                if _base <= 0:
+                    _exp_str = f"{_exp:,} *(MAX)*"
+                else:
+                    _bracket = (_asc // 100) + 1
+                    _needed = _base * _bracket
+                    _pct = min(99.9, _exp / _needed * 100)
+                    _exp_str = (
+                        f"{_exp:,} / {_needed:,}\n"
+                        f"*({_pct:.1f}% to Ascension {_asc + 1})*"
+                    )
             else:
-                _pct = min(99.9, _exp / _needed * 100)
-                _exp_str = f"{_exp:,} / {_needed:,}\n*({_pct:.1f}% to Lv.{_lvl + 1})*"
+                _needed = _exp_table.get(str(_lvl), 0)
+                if _needed <= 0:
+                    _exp_str = f"{_exp:,} *(MAX)*"
+                else:
+                    _pct = min(99.9, _exp / _needed * 100)
+                    _exp_str = f"{_exp:,} / {_needed:,}\n*({_pct:.1f}% to Lv.{_lvl + 1})*"
         except Exception:
             _exp_str = f"{_exp:,}"
         embed.add_field(name="Experience", value=_exp_str, inline=True)

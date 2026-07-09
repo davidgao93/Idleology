@@ -62,10 +62,18 @@ def _load_exp_table() -> dict:
     return _EXP_TABLE
 
 
-def _exp_progress_str(level: int, exp: int) -> str:
-    if level >= 100:
-        return "MAX"
+def _exp_progress_str(level: int, exp: int, ascension: int = 0) -> str:
     table = _load_exp_table()
+    if level >= 100:
+        # Mirrors ExperienceManager.add_experience's ascension threshold:
+        # exp_table["100"] scaled by the current ascension bracket.
+        base = table.get("100", 0)
+        if base <= 0:
+            return "MAX"
+        bracket = (ascension // 100) + 1
+        needed = base * bracket
+        pct = min(99.9, exp / needed * 100)
+        return f"{pct:.1f}% to Ascension {ascension + 1}"
     needed = table.get(str(level), 0)
     if needed <= 0:
         return ""
@@ -109,7 +117,7 @@ def create_victory_embed(
     if rewards.get("msgs"):
         embed.add_field(name="Bonus", value="\n".join(rewards["msgs"]), inline=False)
 
-    _xp_progress = _exp_progress_str(player.level, player.exp)
+    _xp_progress = _exp_progress_str(player.level, player.exp, player.ascension)
     _xp_suffix = f"\n*{_xp_progress}*" if _xp_progress else ""
     embed.add_field(
         name="📚 Experience",
