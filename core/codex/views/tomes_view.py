@@ -1,12 +1,26 @@
+import asyncio
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
-from core.images import CODEX_TOME
-from core.models import Player
+from core.emojis import (
+    HEMATURGY_ICON,
+    RARITY,
+    STAT_ATK,
+    STAT_BLOCK,
+    STAT_DEF,
+    STAT_FDR,
+    STAT_HP,
+    STAT_PDR,
+)
+from core.images import CODEX_TOME, SERAPHINE_PORTRAIT, SERAPHINE_THUMBNAIL
+from core.models import CodexTome, Player
+from core.npc_voices import get_quip
 from database.repositories.codex import (
     TOME_GOLD_COSTS,
+    TOME_TIER_RANGES,
     TOME_UPGRADE_COSTS,
     get_reroll_cost,
     get_reroll_gold_cost,
@@ -25,14 +39,64 @@ _PASSIVE_LABELS = {
     "resilience": ("Resilience", "+{v:.0f} FDR"),
 }
 
+# Icon shown next to each passive's name — reuses existing stat/material
+# emoji where the passive maps directly onto a stat; 🗡️/👑 for the two
+# without an existing dedicated asset (Insight/Affluence).
+_PASSIVE_EMOJI = {
+    "vitality": STAT_HP,
+    "wrath": STAT_ATK,
+    "bastion": STAT_DEF,
+    "tenacity": STAT_BLOCK,
+    "bloodthirst": HEMATURGY_ICON,
+    "providence": RARITY,
+    "precision": "🗡️",
+    "affluence": "👑",
+    "bulwark": STAT_PDR,
+    "resilience": STAT_FDR,
+}
+
+
+def _passive_display_name(passive_type: str) -> str:
+    """Emoji-prefixed display name for contexts that render custom emoji
+    tags inline (embed text) — NOT for SelectOption labels, which only
+    show plain text and need the emoji passed via their own `emoji=` kwarg."""
+    name, _ = _PASSIVE_LABELS.get(passive_type, (passive_type, ""))
+    emoji = _PASSIVE_EMOJI.get(passive_type)
+    return f"{emoji} {name}" if emoji else name
+
+_PASSIVE_DESCRIPTIONS = {
+    "vitality": "Hardens your body, permanently raising your maximum HP.",
+    "wrath": "Channels fury, converting a portion of your Defence into Attack.",
+    "bastion": "Anchors your stance, converting a portion of your Attack into Defence.",
+    "tenacity": "Grit under fire — a chance to halve incoming damage.",
+    "bloodthirst": "Feeds on violence, healing you on critical hits.",
+    "providence": "Favour of fortune, boosting your total drop rarity.",
+    "precision": "Sharpens your eye, raising your flat Crit Chance.",
+    "affluence": "Draws in wealth, boosting XP and Gold earned in combat.",
+    "bulwark": "Reinforces your guard, raising your Percent Damage Reduction.",
+    "resilience": "Toughens your hide, raising your Flat Damage Reduction.",
+}
+
 
 def _tome_field(tome) -> tuple[str, str]:
     """Returns (name, value) for an embed field showing a tome slot."""
-    name_tmpl, val_tmpl = _PASSIVE_LABELS.get(
-        tome.passive_type, (tome.passive_type, "{v:.1f}")
-    )
+    _, val_tmpl = _PASSIVE_LABELS.get(tome.passive_type, (tome.passive_type, "{v:.1f}"))
     stat_str = val_tmpl.format(v=tome.value) if tome.value > 0 else "Not upgraded"
-    return name_tmpl, f"Tier {tome.tier}/5 — {stat_str}"
+    return _passive_display_name(tome.passive_type), f"Tier {tome.tier}/5 — {stat_str}"
+
+
+def _passive_range_text(passive_type: str) -> str:
+    """Formats the tier-1 and tier-5 (max) value ranges for a passive type,
+    so a freshly unlocked slot's growth potential is clear at a glance."""
+    _, val_tmpl = _PASSIVE_LABELS.get(passive_type, (passive_type, "{v:.1f}"))
+    ranges = TOME_TIER_RANGES.get(passive_type)
+    if not ranges:
+        return "Unknown"
+    t1_lo, t1_hi = ranges[0]
+    t5_lo, t5_hi = ranges[4]
+    t1 = f"{val_tmpl.format(v=t1_lo)} – {val_tmpl.format(v=t1_hi)}"
+    t5 = f"{val_tmpl.format(v=t5_lo)} – {val_tmpl.format(v=t5_hi)}"
+    return f"**Tier 1:** {t1}\n**Tier 5 (max):** {t5}"
 
 
 class CodexTomsView(BaseLayoutView):
@@ -74,6 +138,7 @@ class CodexTomsView(BaseLayoutView):
                     label=f"Slot {t.slot + 1}: {_PASSIVE_LABELS.get(t.passive_type, (t.passive_type, ''))[0]}",
                     value=str(t.slot),
                     description=f"Tier {t.tier}/5",
+                    emoji=_PASSIVE_EMOJI.get(t.passive_type),
                 )
                 for t in tomes
             ]
@@ -161,7 +226,7 @@ class CodexTomsView(BaseLayoutView):
             for tome in tomes:
                 name, value = _tome_field(tome)
                 embed.add_field(
-                    name=f"Slot {tome.slot + 1}: {name}", value=value, inline=True
+                    name=f"Slot {tome.slot + 1}: {name}", value=value, inline=False
                 )
             unlocked = len(tomes)
             if unlocked < 5:
@@ -169,7 +234,7 @@ class CodexTomsView(BaseLayoutView):
                     embed.add_field(
                         name=f"Slot {i + 1}: 🔒 Locked",
                         value="Requires a Codex Page",
-                        inline=True,
+                        inline=False,
                     )
 
         if self.selected_slot is not None:
@@ -209,9 +274,41 @@ class CodexTomsView(BaseLayoutView):
         self.pages -= 1
         self.player.codex_tomes = await self.bot.database.codex.get_tomes(self.user_id)
         self.selected_slot = tome.slot
+
+        await self._show_unlock_reveal(interaction, tome)
+
         self._rebuild()
         self._processing = False
         await interaction.edit_original_response(view=self)
+
+    async def _show_unlock_reveal(self, interaction: Interaction, tome: CodexTome):
+        """Brief fanfare screen shown when a new tome slot is unlocked —
+        reveals the rolled passive, what it does, and its growth potential."""
+        name = _passive_display_name(tome.passive_type)
+        description = _PASSIVE_DESCRIPTIONS.get(
+            tome.passive_type, "A new power stirs within the tome."
+        )
+
+        embed = discord.Embed(
+            title=f"📖 A New Skill Awakens — {name}",
+            description=(
+                f"*{get_quip('codex_tome_unlock')}*\n\n**{name}** — {description}"
+            ),
+            color=discord.Color.gold(),
+        )
+        embed.set_author(name="Seraphine", icon_url=SERAPHINE_PORTRAIT)
+        embed.set_thumbnail(url=SERAPHINE_THUMBNAIL)
+        embed.add_field(
+            name="Growth Potential", value=_passive_range_text(tome.passive_type), inline=False
+        )
+        embed.set_footer(
+            text=f"Slot {tome.slot + 1} unlocked — upgrade it with Codex Fragments."
+        )
+
+        self.clear_items()
+        self.add_item(combat_ui.embed_to_container(embed))
+        await interaction.edit_original_response(view=self)
+        await asyncio.sleep(3.5)
 
     async def _on_upgrade(self, interaction: Interaction):
         if self._processing:

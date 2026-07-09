@@ -25,6 +25,14 @@ from core.quests.mechanics import (
 )
 
 _BOARD_COLOR = 0x5865F2
+_WARNING_COLOR = 0xFF6600
+
+
+def _build_warning_embed(title: str, description: str) -> discord.Embed:
+    embed = discord.Embed(title=title, description=description, color=_WARNING_COLOR)
+    embed.set_author(name="Guildmaster Amara", icon_url=AMARA_AUTHOR)
+    embed.set_thumbnail(url=QUEST_BOARD)
+    return embed
 
 
 def _fmt_td(td: timedelta) -> str:
@@ -686,9 +694,13 @@ class QuestBoardView(BaseView):
             confirm = _HorizonSwitchConfirmView(
                 self.bot, self, path_id, path_def["name"]
             )
+            embed = _build_warning_embed(
+                "⚠️ Switch Horizon Path?",
+                f"Switch to **{path_def['name']}**? Your progress on the current path will be lost.",
+            )
             await interaction.response.edit_message(
-                content=f"⚠️ Switch to **{path_def['name']}**? Your progress on the current path will be lost.",
-                embed=None,
+                content=None,
+                embed=embed,
                 view=confirm,
             )
         else:
@@ -795,9 +807,13 @@ class _AbandonSelect(discord.ui.Select):
         )
         quest_label = quest_def["label"] if quest_def else f"Slot {slot}"
         confirm = _AbandonConfirmView(self.view.bot, self.view, slot, quest_label)
+        embed = _build_warning_embed(
+            "⚠️ Abandon Contract?",
+            f"Abandon **{quest_label}**? Your progress on this contract will be lost.",
+        )
         await interaction.response.edit_message(
-            content=f"⚠️ Abandon **{quest_label}**? Your progress on this contract will be lost.",
-            embed=None,
+            content=None,
+            embed=embed,
             view=confirm,
         )
 

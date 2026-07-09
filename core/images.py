@@ -80,6 +80,13 @@ BOSS_NEET = "https://cdn.discordapp.com/attachments/1334637411363323996/15005128
 BOSS_GEMINI = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512848458027189/boss_gemini.png?ex=69f8b4fd&is=69f7637d&hm=ef0070f97a24cb04cf1a99d42df1ee1b6a86d8e09d1c9e93210471102524ec97&"  # uber-entry portrait
 BOSS_GEMINI_PET = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512849221521588/boss_gemini_pet.jpeg?ex=69f8b4fd&is=69f7637d&hm=324393488026d621c611a02de84f23e24fec964a3b332579e99378f8bc007f7c&"  # in-combat pet
 
+# Animated variants used as Section/Thumbnail accessories in UberHubView (one per boss slot).
+BOSS_APHRODITE_ANIM = "https://cdn.discordapp.com/attachments/1334637411363323996/1524772570417598494/uber_aphro_anim.gif?ex=6a50f69d&is=6a4fa51d&hm=2ae9d28381fc52854690ce909799095f6d9a8e0c70081e41774d945920bc1812&"
+BOSS_EVELYNN_ANIM = "https://cdn.discordapp.com/attachments/1334637411363323996/1524772578743554200/uber_eve_anim.gif?ex=6a50f69f&is=6a4fa51f&hm=0d9950ce96948c9a5da1e3fceb40ca15ac9c60385e8a61dd25bd7dcbc089f2b6&"
+BOSS_GEMINI_ANIM = "https://cdn.discordapp.com/attachments/1334637411363323996/1524772586456748155/uber_gemini_anim.gif?ex=6a50f6a1&is=6a4fa521&hm=7b8598fa14a9a155d86a6c71e847a896bee8ef84239c35a8a5f063b4a267b8f8&"
+BOSS_NEET_ANIM = "https://cdn.discordapp.com/attachments/1334637411363323996/1524772594660933652/uber_neet_anim.gif?ex=6a50f6a3&is=6a4fa523&hm=a1b160a531ec79cc399ab584dcd3fb2e2d346e2eb94eaefa593469e155aca478&"
+BOSS_LUCIFER_ANIM = "https://cdn.discordapp.com/attachments/1334637411363323996/1524773647863255081/uber_lucifer_anim.gif?ex=6a50f79e&is=6a4fa61e&hm=0853f4e90611c77faef04cf48f5c06414b4de30d89790f02caaa738f369be015&"
+
 # ── BOSS MONSTER IMAGES (set on Monster.image, shown in combat embeds) ────────
 MONSTER_APHRODITE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512849729032354/monster_aphrodite.jpeg?ex=69f8b4fd&is=69f7637d&hm=9e8d92508b4afa68ed37ae90b215ef84543abf46e77888b2bd9dd245c5383140&"
 MONSTER_LUCIFER = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512850135744654/monster_lucifer.jpeg?ex=69f8b4fd&is=69f7637d&hm=e02fcc19942992b88f1b7b3ba32a2aa2e04e393131e913668cb4ea4bcffe431d&"

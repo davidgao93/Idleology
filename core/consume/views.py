@@ -170,6 +170,7 @@ class BulkDiscardModal(ui.Modal, title="Bulk Discard Parts"):
         self.parent.inventory_parts = [
             create_monster_part(r) for r in self.parent.inventory
         ]
+        self.parent._rebuild_select()
         embed = _build_main_embed(self.parent.player, self.parent.inventory)
         embed.set_footer(
             text=f"Discarded {count} part{'s' if count != 1 else ''} below ilvl {threshold}."

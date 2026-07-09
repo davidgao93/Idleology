@@ -10,7 +10,15 @@ from core.emojis import (
     INFERNAL_SIGIL,
     VOID_SIGIL,
 )
-from core.images import ARBITER_PORTRAIT, ARBITER_THUMBNAIL
+from core.images import (
+    ARBITER_PORTRAIT,
+    ARBITER_THUMBNAIL,
+    BOSS_APHRODITE_ANIM,
+    BOSS_EVELYNN_ANIM,
+    BOSS_GEMINI_ANIM,
+    BOSS_LUCIFER_ANIM,
+    BOSS_NEET_ANIM,
+)
 from core.models import Player
 from core.npc_voices import get_quip
 
@@ -128,9 +136,80 @@ class UberHubView(BaseLayoutView):
 
     def _sync_items(self):
         self.clear_items()
-        self.add_item(combat_ui.embed_to_container(self.build_embed()))
+        self.add_item(self._build_container())
         for row in self._build_rows():
             self.add_item(row)
+
+    def _build_container(self) -> discord.ui.Container:
+        """Builds the hub body directly as Components V2 (rather than via
+        embed_to_container) so each boss can get its own Section+Thumbnail —
+        a single embed thumbnail can't be split per-field like that."""
+        lvl = self.player.level
+
+        def _boss_section(
+            title: str, flavor: str, key_text: str, req_lvl: int, thumb_url: str
+        ) -> discord.ui.Section:
+            if lvl >= req_lvl:
+                text = f"### {title}\n{flavor}\n**Keys:** {key_text}"
+            else:
+                text = f"### {title}\n🔒 Unlocks at Level {req_lvl}"
+            return discord.ui.Section(
+                text, accessory=discord.ui.Thumbnail(thumb_url, description=title)
+            )
+
+        sep = lambda: discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
+
+        children: list = [
+            discord.ui.Section(
+                "## ⚔️ Uber Encounters\n"
+                f"**The Arbiter:** *{get_quip('uber')}*\n\n"
+                "These are the most powerful beings in existence. "
+                "Only the truly prepared dare to challenge them.\n\n"
+                "Select a boss to view your readiness and available keys.",
+                accessory=discord.ui.Thumbnail(ARBITER_THUMBNAIL, description="The Arbiter"),
+            ),
+            sep(),
+            _boss_section(
+                "Aphrodite, Celestial Sovereign",
+                "Aphrodite's fury has been unleashed.",
+                f"{CELESTIAL_SIGIL} {self.uber_data['celestial_sigils']} Celestial Sigils *(costs 3)*",
+                self._BOSS_LEVELS["aphrodite"],
+                BOSS_APHRODITE_ANIM,
+            ),
+            sep(),
+            _boss_section(
+                "Lucifer, Infernal Sovereign",
+                "Lucifer's fury knows no bounds.",
+                f"{INFERNAL_SIGIL} {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*",
+                self._BOSS_LEVELS["lucifer"],
+                BOSS_LUCIFER,
+            ),
+            sep(),
+            _boss_section(
+                "Gemini, Bound Sovereigns",
+                "The Gemini's balance is absolute.",
+                f"{BOUND_SIGIL} {self.uber_data['gemini_sigils']} Bound Sigils *(costs 3)*",
+                self._BOSS_LEVELS["gemini"],
+                BOSS_GEMINI_ANIM,
+            ),
+            sep(),
+            _boss_section(
+                "NEET, Void Sovereign",
+                "NEET's pain has no known depths.",
+                f"{VOID_SIGIL} {self.uber_data['void_shards']} Void Sigils *(costs 3)*",
+                self._BOSS_LEVELS["neet"],
+                BOSS_NEET_ANIM,
+            ),
+            sep(),
+            _boss_section(
+                "Evelynn, the Primordial Corruptor",
+                "The source of all corruption stirs.",
+                f"{CORRUPTION_SIGIL} {self.uber_data['corruption_sigils']} Sigils of Corruption *(costs 3)*",
+                self._BOSS_LEVELS["evelynn"],
+                BOSS_EVELYNN_ANIM,
+            ),
+        ]
+        return discord.ui.Container(*children, accent_color=discord.Color.dark_gold())
 
     def build_embed(self) -> discord.Embed:
         lvl = self.player.level

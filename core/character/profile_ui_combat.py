@@ -308,11 +308,15 @@ class CombatProfileBuilder:
             if combined_more_pct > 0 and gear_rarity > 0:
                 after_more = int(gear_rarity * (1 + combined_more_pct / 100))
                 gain = after_more - gear_rarity
-                rar_val += f"\n↳ +{combined_more_pct:.1f}% more (+{gain})"
-                if comp_rarity_pct > 0:
+                if comp_rarity_pct > 0 and prov_pct > 0:
+                    # Two sources — show the combined total plus a per-source breakdown.
+                    rar_val += f"\n↳ +{combined_more_pct:.1f}% more (+{gain})"
                     rar_val += f"\n  ↳ Companion: {comp_rarity_pct:.1f}%"
-                if prov_pct > 0:
                     rar_val += f"\n  ↳ Providence: {prov_pct:.1f}%"
+                elif comp_rarity_pct > 0:
+                    rar_val += f"\n↳ Companion: +{comp_rarity_pct:.1f}% more (+{gain})"
+                else:
+                    rar_val += f"\n↳ Providence: +{prov_pct:.1f}% more (+{gain})"
             else:
                 after_more = gear_rarity
             codex_bonus = total_rarity - after_more

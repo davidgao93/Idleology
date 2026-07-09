@@ -190,6 +190,13 @@ _VOICES: dict[str, list[str]] = {
         "Don't underestimate the tomes. They compound. So does your potential.",
         "A scholar does not fear difficulty. They study it. Welcome back.",
     ],
+    "codex_tome_unlock": [
+        "Nice work. Another page surrenders its secrets — the Codex has imparted a new skill upon you.",
+        "You've earned this page's trust. I can already feel the knowledge settling into your bones.",
+        "A new slot opens. The Codex doesn't give lightly — treasure what it's just shown you.",
+        "Well done. The page dissolves into insight. Let's see what it's left behind.",
+        "Another secret catalogued. This one, it seems, chose you specifically.",
+    ],
     "apex": [
         "The Apex zones are no place for the unprepared. Choose your hunt wisely.",
         "Each zone shapes you differently. The shards you carry are proof of that.",
