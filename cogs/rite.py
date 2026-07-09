@@ -3,8 +3,10 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from core.items.factory import load_player
+from core.rite.data import starting_attempts
 from core.rite.run_state import RiteRunState
 from core.rite.views.wing_hub_view import WingHubView
+from core.rite.views.writ_select_view import WritSelectView
 
 _RITE_KEY_COLUMNS = [
     ("Apex of Dreams", "rite_key_apex_of_dreams"),
@@ -16,12 +18,55 @@ _RITE_KEY_COLUMNS = [
 
 
 class Rite(commands.Cog, name="rite"):
-    """The Rite of Convergence. Writs/Devotion Points (Milestone 4) and the
-    Arbiter finale (Milestone 5) are not built yet — see wing_hub_view.py.
+    """The Rite of Convergence. The Arbiter finale (Milestone 5) is not
+    built yet — see wing_hub_view.py.
     """
 
     def __init__(self, bot):
         self.bot = bot
+
+    async def _begin_run(
+        self, interaction: Interaction, user_id: str, server_id: str, player, writ_keys: list[str]
+    ):
+        """Checks + consumes the 5 entry keys atomically, creates a fresh run
+        (with writ-driven starting attempts), and shows the wing hub. Shared
+        by the writ-selection confirm/skip buttons and the no-writs-available
+        fast path."""
+        balances = {
+            col: await self.bot.database.users.get_currency(user_id, col)
+            for _, col in _RITE_KEY_COLUMNS
+        }
+        missing = [name for name, col in _RITE_KEY_COLUMNS if balances[col] < 1]
+        if missing:
+            self.bot.state_manager.clear_active(user_id)
+            await interaction.edit_original_response(
+                content=(
+                    "You need all 5 Rite keys to enter, held simultaneously:\n"
+                    + "\n".join(f"- {name}" for name in missing)
+                    + "\n\nMissing the above."
+                ),
+                embed=None,
+                view=None,
+            )
+            return
+
+        async with self.bot.database.transaction():
+            for _name, col in _RITE_KEY_COLUMNS:
+                ok = await self.bot.database.users.deduct_currency_atomic(user_id, col, 1)
+                if not ok:
+                    raise RuntimeError(
+                        f"Rite key balance changed mid-transaction for {user_id} ({col})"
+                    )
+
+        run_state = RiteRunState(
+            attempts_remaining=starting_attempts(writ_keys), writs=writ_keys
+        )
+        await self.bot.database.rite.upsert_run(user_id, server_id, run_state.to_snapshot())
+
+        view = WingHubView(self.bot, user_id, server_id, player, run_state)
+        self.bot.state_manager.set_active(user_id, "rite")
+        await interaction.edit_original_response(embed=None, view=view)
+        view.message = await interaction.original_response()
 
     @app_commands.command(
         name="rite",
@@ -42,39 +87,29 @@ class Rite(commands.Cog, name="rite"):
         saved_run = await self.bot.database.rite.get_run(user_id, server_id)
         if saved_run:
             run_state = RiteRunState.from_snapshot(saved_run)
-        else:
-            balances = {
-                col: await self.bot.database.users.get_currency(user_id, col)
-                for _, col in _RITE_KEY_COLUMNS
-            }
-            missing = [name for name, col in _RITE_KEY_COLUMNS if balances[col] < 1]
-            if missing:
-                return await interaction.response.send_message(
-                    "You need all 5 Rite keys to enter, held simultaneously:\n"
-                    + "\n".join(f"- {name}" for name in missing)
-                    + "\n\nMissing the above.",
-                    ephemeral=True,
-                )
+            view = WingHubView(self.bot, user_id, server_id, player, run_state)
+            self.bot.state_manager.set_active(user_id, "rite")
+            await interaction.response.send_message(view=view)
+            view.message = await interaction.original_response()
+            return
 
-            async with self.bot.database.transaction():
-                for _name, col in _RITE_KEY_COLUMNS:
-                    ok = await self.bot.database.users.deduct_currency_atomic(
-                        user_id, col, 1
-                    )
-                    if not ok:
-                        raise RuntimeError(
-                            f"Rite key balance changed mid-transaction for {user_id} ({col})"
-                        )
+        has_first_clear = await self.bot.database.rite.has_first_clear(user_id, server_id)
+        if has_first_clear:
+            async def _on_writs_confirmed(inner_interaction: Interaction, writ_keys: list[str]):
+                await self._begin_run(inner_interaction, user_id, server_id, player, writ_keys)
 
-            run_state = RiteRunState()
-            await self.bot.database.rite.upsert_run(
-                user_id, server_id, run_state.to_snapshot()
-            )
+            view = WritSelectView(self.bot, user_id, server_id, player, _on_writs_confirmed)
+            self.bot.state_manager.set_active(user_id, "rite")
+            await interaction.response.send_message(view=view)
+            view.message = await interaction.original_response()
+            return
 
-        view = WingHubView(self.bot, user_id, server_id, player, run_state)
+        # First-ever run: writs are locked, skip straight to entry.
+        await interaction.response.send_message(
+            "Consuming your 5 Rite keys...", ephemeral=False
+        )
         self.bot.state_manager.set_active(user_id, "rite")
-        await interaction.response.send_message(view=view)
-        view.message = await interaction.original_response()
+        await self._begin_run(interaction, user_id, server_id, player, [])
 
     @app_commands.command(
         name="rite_debug",

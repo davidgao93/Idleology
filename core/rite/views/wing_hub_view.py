@@ -3,10 +3,10 @@
 Run structure: [Entry] -> Choose Wing -> Fight -> Respite -> Choose Wing ->
 Fight -> Respite -> (x5 wings) -> [Arbiter Reveal] -> Final Boss (6 phases).
 
-The Arbiter finale (6-phase boss) and Writs/Devotion Points are not built
-yet (Milestones 4-5) — clearing all 5 wings currently shows a placeholder
-instead of the real reveal, and writs always contribute nothing (run_state.writs
-stays empty, so e.g. Devout's Burden never trims the respite options).
+The Arbiter finale (6-phase boss) is not built yet (Milestone 5) — clearing
+all 5 wings currently shows a placeholder instead of the real reveal. Writs
+and Devotion Points (Milestone 4) are fully wired: see core/rite/data.py for
+the writ table and core/rite/views/writ_select_view.py for the pre-run picker.
 """
 
 import discord
@@ -26,6 +26,7 @@ from core.images import (
 )
 from core.models import Monster, Player
 from core.rite import mobgen
+from core.rite.data import WRITS, compute_devotion_points
 from core.rite.run_state import RiteRunState
 from core.rite.views.respite_view import POWER_ATK_DEF_MULT, RespiteView
 
@@ -96,6 +97,7 @@ async def _build_wing_combat_view(
     """Generates a fresh encounter for `wing_key` and wraps it in a CombatView.
     Shared by the initial wing-select launch and death retries of the same wing."""
     _key, name, _subtitle, generate_fn, _thumb = _WING_BY_KEY[wing_key]
+    writs = run_state.writs
 
     # Wing hub reuses the same Player object across fights (same reason Uber
     # lobbies do — see start_uber() precedent), so leftover combat stacks/
@@ -113,7 +115,29 @@ async def _build_wing_combat_view(
         name="", level=0, hp=0, max_hp=0, xp=0, attack=0, defence=0,
         modifiers=[], image="", flavor="",
     )
-    monster = generate_fn(player, monster)
+
+    # Writs that change a wing's own generation logic (not just a stat overlay)
+    # are passed as generator kwargs; the rest are layered on afterward below.
+    if wing_key == "gemini":
+        pct = 0.90 if "fracture_of_balance" in writs else 0.80
+        monster = generate_fn(player, monster, true_reckoning_pct=pct)
+    elif wing_key == "neet":
+        rate = 0.03 if "hungering_void" in writs else 0.015
+        monster = generate_fn(player, monster, void_drain_rate=rate)
+    elif wing_key == "evelynn":
+        monster = generate_fn(player, monster, delirious="abyssal_embrace" in writs)
+    else:
+        monster = generate_fn(player, monster)
+
+    if wing_key == "aphrodite" and "unyielding_guardian" in writs:
+        monster.difficulty_dr += 0.30
+    if wing_key == "lucifer" and "wrathful_reckoner" in writs:
+        monster.bonus_attack_pct += 0.30
+        monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+    if "trials_fury" in writs:
+        monster.bonus_attack_pct += 1.0
+        monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
+
     player.combat_ward = player.get_combat_ward_value()
     engine.apply_stat_effects(player, monster)
     start_logs = engine.apply_combat_start_passives(player, monster)
@@ -128,6 +152,7 @@ async def _build_wing_combat_view(
         start_logs,
         combat_phases=None,
         rite_callback=rite_callback,
+        disable_potions="trials_drought" in writs,
         title_override=f"🕯️ RITE OF CONVERGENCE — {name.upper()}",
         player_avatar_url=user_row["appearance"] if user_row else None,
     )
@@ -159,6 +184,10 @@ class WingHubView(BaseLayoutView):
         sep = lambda: discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
 
         hp_pct = int(100 * self.player.current_hp / max(1, self.player.total_max_hp))
+        writs_line = ""
+        if self.run_state.writs:
+            names = ", ".join(WRITS[k].name for k in self.run_state.writs)
+            writs_line = f"\n📜 **Active Writs:** {names}"
         children: list = [
             discord.ui.TextDisplay(
                 "## 🕯️ The Rite of Convergence — Wing Select\n"
@@ -167,6 +196,7 @@ class WingHubView(BaseLayoutView):
                 f"**HP:** {self.player.current_hp:,}/{self.player.total_max_hp:,} ({hp_pct}%)  •  "
                 f"**Potions:** {self.player.potions}"
                 + ("\n⚔️ **Power** is active for your next fight." if self.run_state.pending_power_buff else "")
+                + writs_line
             ),
             sep(),
         ]
@@ -248,6 +278,12 @@ class WingHubView(BaseLayoutView):
             run_state = self.run_state
             won = view.monster.hp <= 0 and view.player.current_hp > 0
 
+            # Turn counter spans every wing fight and (Milestone 5) Arbiter
+            # phase, excluding respite screens — monster.combat_round is
+            # incremented once per monster turn, i.e. once per round of this
+            # fight, so it's an accurate per-fight turn count to accumulate.
+            run_state.total_turns += view.monster.combat_round
+
             await view.bot.database.users.update_from_player_object(view.player)
             await _je.save_jewel_state(view.bot, view.user_id, view.player)
 
@@ -261,14 +297,17 @@ class WingHubView(BaseLayoutView):
 
                 if run_state.is_run_complete:
                     view.bot.state_manager.clear_active(view.user_id)
+                    dp = compute_devotion_points(run_state.writs, run_state.total_turns)
                     embed = discord.Embed(
                         title="✨ All 5 Wings Cleared",
                         description=(
                             "The Arbiter's essences begin to converge...\n\n"
-                            "*(Milestone 3 scaffolding — the real Reveal narrative "
-                            "and the 6-phase Arbiter finale land in Milestone 5. "
-                            "Your run is saved; close and resume with `/rite` once "
-                            "it's ready.)*"
+                            f"**Total turns:** {run_state.total_turns}  •  "
+                            f"**Devotion Points:** {dp}\n\n"
+                            "*(Milestone 4 scaffolding — the real Reveal narrative "
+                            "and the 6-phase Arbiter finale land in Milestone 5, "
+                            "including the actual DP-scaled loot payout. Your run "
+                            "is saved; close and resume with `/rite` once it's ready.)*"
                         ),
                         color=discord.Color.gold(),
                     )

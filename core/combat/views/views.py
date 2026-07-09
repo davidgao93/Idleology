@@ -264,6 +264,7 @@ class CombatView(BaseLayoutView):
         combat_streak: int = 0,
         crisis_callback=None,
         rite_callback=None,
+        disable_potions: bool = False,
         player_avatar_url: str | None = None,
         title_override: str | None = None,
     ):
@@ -284,6 +285,9 @@ class CombatView(BaseLayoutView):
         # with) and the Uber-specific reward path. Signature: async fn(view, message,
         # interaction) -> None; the callback owns the entire end-of-fight flow.
         self.rite_callback = rite_callback
+        # The Rite of Convergence's Trial's Drought writ: forces the Heal button
+        # off for the whole fight regardless of potion count.
+        self.disable_potions = disable_potions
         self.hard_mode = (
             hard_mode  # int: 0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious
         )
@@ -393,6 +397,7 @@ class CombatView(BaseLayoutView):
         if (
             self.player.potions <= 0
             or self.player.current_hp >= self.player.get_effective_max_hp()
+            or self.disable_potions
         ):
             row1.heal_btn.disabled = True
 
@@ -416,7 +421,7 @@ class CombatView(BaseLayoutView):
         # Re-enable heal normally if combat is ongoing and player isn't locked by a snare.
         row1.heal_btn.label = f"Heal ({self.player.potions}/20)"
         if not is_over and not self._auto_running and not snare_locks_combat:
-            row1.heal_btn.disabled = self.player.potions <= 0
+            row1.heal_btn.disabled = self.player.potions <= 0 or self.disable_potions
 
     def _do_monster_turn(self, *, context_note: str = "") -> str:
         hp_before = self.player.current_hp

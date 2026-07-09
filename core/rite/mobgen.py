@@ -25,7 +25,7 @@ from core.images import (
     MONSTER_LUCIFER,
     MONSTER_NEET,
 )
-from core.models import Monster
+from core.models import Monster, MonsterModifier
 
 # Nightmarish (3) / Delirious (4) overlays, reused for Wing 5 and (in Milestone 5)
 # the Arbiter's final phase. Mirrors cogs/combat.py's difficulty-setting math
@@ -144,8 +144,14 @@ def generate_wing_lucifer(player, monster: "Monster") -> "Monster":
     return monster
 
 
-def generate_wing_gemini(player, monster: "Monster") -> "Monster":
-    """Wing 3 — Gemini Reborn (Sustain Test): True Reckoning damage split."""
+def generate_wing_gemini(
+    player, monster: "Monster", *, true_reckoning_pct: float = 0.80
+) -> "Monster":
+    """Wing 3 — Gemini Reborn (Sustain Test): True Reckoning damage split.
+
+    true_reckoning_pct defaults to 80% per RAID-DESIGN.md; the Fracture of
+    Balance writ (Milestone 4) overrides this to 90%.
+    """
     ref_level = player.level + player.ascension + 20
     monster.level = ref_level
 
@@ -182,7 +188,12 @@ def generate_wing_gemini(player, monster: "Monster") -> "Monster":
             "Soul Siphon",
         ],
     )
-    monster.modifiers.append(make_modifier("True Reckoning", monster.level))
+    # make_modifier's "uber" pool branch always uses the modifier's default
+    # tier-0 value regardless of force flags, so a non-default percentage
+    # (Fracture of Balance) needs to be constructed directly.
+    monster.modifiers.append(
+        MonsterModifier(name="True Reckoning", tier=0, value=true_reckoning_pct, difficulty=0.0)
+    )
 
     _apply_spawn_modifiers(monster)
     finalize_monster_spawn(monster)
