@@ -23,10 +23,15 @@ from core.apex.models import MetaShardInventory, ShardInventory, SoulStone
 from core.base_view import BaseView
 from core.emojis import (
     ACCESSORY_SLOT,
+    APEX_IMPRINT_EMOJI,
+    APEX_SHARD_EMOJI,
     ARMOR_SLOT,
     BOOT_SLOT,
     GLOVE_SLOT,
     HELMET_SLOT,
+    PRIMAL_ESSENCE,
+    SHARPENED_FANG,
+    SOUL_VESSEL,
     WEAPON_SLOT,
 )
 from core.images import APEX_IMPRINT
@@ -327,7 +332,7 @@ class ImprintView(BaseView):
         confirm = Button(
             label="Extract",
             style=ButtonStyle.danger,
-            emoji="🔏",
+            emoji=APEX_IMPRINT_EMOJI,
             row=0,
             disabled=not has_shard,
         )
@@ -342,7 +347,8 @@ class ImprintView(BaseView):
         if self.meta.sharpened_fang:
             style = ButtonStyle.success if self._use_fang else ButtonStyle.secondary
             fang_btn = Button(
-                label=f"🦷 Fang ({'ON' if self._use_fang else 'OFF'})",
+                label=f"Fang: {self.meta.sharpened_fang} ({'ON' if self._use_fang else 'OFF'})",
+                emoji=SHARPENED_FANG,
                 style=style,
                 row=1,
             )
@@ -352,7 +358,8 @@ class ImprintView(BaseView):
         if self.meta.primal_essence:
             style = ButtonStyle.success if self._use_primal else ButtonStyle.secondary
             primal_btn = Button(
-                label=f"✨ Primal ({'ON' if self._use_primal else 'OFF'})",
+                label=f"Primal: {self.meta.primal_essence} ({'ON' if self._use_primal else 'OFF'})",
+                emoji=PRIMAL_ESSENCE,
                 style=style,
                 row=1,
             )
@@ -362,7 +369,8 @@ class ImprintView(BaseView):
         if self.meta.soul_vessel:
             style = ButtonStyle.success if self._use_vessel else ButtonStyle.secondary
             vessel_btn = Button(
-                label=f"🏺 Vessel ({'ON' if self._use_vessel else 'OFF'})",
+                label=f"Vessel: {self.meta.soul_vessel} ({'ON' if self._use_vessel else 'OFF'})",
+                emoji=SOUL_VESSEL,
                 style=style,
                 row=1,
             )
@@ -393,7 +401,7 @@ class ImprintView(BaseView):
         embed = InventoryUI.get_item_details_embed(
             self._selected_item, is_equipped=False
         )
-        embed.title = f"🔏 Extract {passive_display} — {embed.title}"
+        embed.title = f"{APEX_IMPRINT_EMOJI} Extract {passive_display} — {embed.title}"
         embed.color = 0x9900CC
         embed.set_thumbnail(url=APEX_IMPRINT)
 
@@ -425,12 +433,15 @@ class ImprintView(BaseView):
         )
 
         shard_owned = self.shards.get(shard_type)
+        shard_emoji = APEX_SHARD_EMOJI.get(shard_type, "🔮")
         embed.add_field(
             name="💰 Cost",
-            value=f"1x {shard_type.title()} Shard (Owned: {shard_owned})",
+            value=f"{shard_emoji} 1x {shard_type.title()} Shard (Owned: {shard_owned})",
             inline=True,
         )
-        embed.add_field(name="🔮 Shard Type", value=shard_type.title(), inline=True)
+        embed.add_field(
+            name="🔮 Shard Type", value=f"{shard_emoji} {shard_type.title()}", inline=True
+        )
         embed.add_field(name="⚡ Category", value=cat.capitalize(), inline=True)
         embed.add_field(name="📍 Target Slot", value=f"Slot {first_empty}", inline=True)
 
@@ -442,7 +453,7 @@ class ImprintView(BaseView):
             )
 
         destruction_note = (
-            "🏺 **Soul Vessel active** — the item is preserved regardless of outcome."
+            f"{SOUL_VESSEL} **Soul Vessel active** — the item is preserved regardless of outcome."
             if vessel
             else "⚠️ **The item will be destroyed** on the extraction attempt."
         )
@@ -578,7 +589,7 @@ class ImprintView(BaseView):
             result_desc = (
                 f"**{passive_display}** (T1) has been imprinted into Slot {first_empty}!\n"
                 + (
-                    "🏺 Soul Vessel preserved the item."
+                    f"{SOUL_VESSEL} Soul Vessel preserved the item."
                     if vessel
                     else "⚠️ The item was destroyed."
                 )
@@ -589,7 +600,7 @@ class ImprintView(BaseView):
             result_desc = (
                 "The passive could not be extracted.\n"
                 + (
-                    "🏺 Soul Vessel preserved the item."
+                    f"{SOUL_VESSEL} Soul Vessel preserved the item."
                     if vessel
                     else "⚠️ The item was destroyed."
                 )
@@ -689,7 +700,7 @@ class ImprintView(BaseView):
     def build_browse_embed(self) -> discord.Embed:
         if not self._by_type:
             embed = discord.Embed(
-                title="🔏 Imprint — No Eligible Passives",
+                title=f"{APEX_IMPRINT_EMOJI} Imprint — No Eligible Passives",
                 description=(
                     "None of your un-equipped items have passives at the required max rank for "
                     "extraction, or all eligible passives are already imprinted in your Soul Stone.\n\n"
@@ -706,7 +717,7 @@ class ImprintView(BaseView):
             return embed
 
         embed = discord.Embed(
-            title="🔏 Imprint",
+            title=f"{APEX_IMPRINT_EMOJI} Imprint",
             description=(
                 "Choose an item type, then a specific **un-equipped** item to extract its "
                 "max-rank passive into the Soul Stone.\n\n"

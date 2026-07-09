@@ -102,8 +102,8 @@ SPECIAL_DROP_BASE_CHANCE: float = 0.01
 
 # Drop-specific base rates that differ from the generic baseline.
 SPIRIT_STONE_BASE_CHANCE: float = 0.01
-SOUL_CORE_BASE_CHANCE: float = 0.06  # +2% from 0.03
-VOID_FRAG_BASE_CHANCE: float = 0.04  # +2% from 0.02
+SOUL_CORE_BASE_CHANCE: float = 0.04  # +2% from 0.03
+VOID_FRAG_BASE_CHANCE: float = 0.02  # +2% from 0.02
 
 # Boss key drop rates (each raised +2% from the generic SPECIAL_DROP_BASE_CHANCE baseline).
 DRACONIC_KEY_BASE_CHANCE: float = 0.02

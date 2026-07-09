@@ -137,6 +137,40 @@ CORRUPTION_SIGIL = "<:corruption_sigil:1524443380699107449>"
 CORRUPTION_CORE = "<:corruption_core:1524449916989214791>"
 CORRUPTION_ENGRAM = "<:corruption_engram:1524443381776777238>"
 
+# ── Apex Hunt materials (zone shards, meta shards, soul fragments) ─────────
+PYRE_SHARD = "<:pyre_shard:1524798356965167125>"
+TEMPEST_SHARD = "<:tempest_shard:1524798351223291924>"
+BULWARK_SHARD = "<:bulwark_shard:1524798362493386863>"
+VERDANT_SHARD = "<:verdant_shard:1524798350430437536>"
+FORTUNE_SHARD = "<:fortune_shard:1524798359003594883>"
+RIFT_SHARD = "<:rift_shard:1524798356629491772>"
+SOUL_FRAGMENT = "<:soul_fragment:1524798353173643355>"
+SHARPENED_FANG = "<:sharpened_fang:1524798355421790319>"
+ENGORGED_HEART = "<:engorged_heart:1524798359640998131>"
+CONDENSED_BLOOD = "<:condensed_blood:1524798360249438298>"
+PRIMAL_ESSENCE = "<:primal_essence:1524798358282305547>"
+SOUL_VESSEL = "<:soul_vessel:1524798361318850600>"
+# NOTE: named _EMOJI to avoid colliding with core.images.APEX_IMPRINT (a thumbnail URL)
+APEX_IMPRINT_EMOJI = "<:apex_imprint:1524798361838817471>"
+
+APEX_SHARD_EMOJI: dict[str, str] = {
+    "pyre": PYRE_SHARD,
+    "tempest": TEMPEST_SHARD,
+    "bulwark": BULWARK_SHARD,
+    "verdant": VERDANT_SHARD,
+    "fortune": FORTUNE_SHARD,
+    "rift": RIFT_SHARD,
+    "soul_fragments": SOUL_FRAGMENT,
+}
+
+APEX_META_SHARD_EMOJI: dict[str, str] = {
+    "sharpened_fang": SHARPENED_FANG,
+    "engorged_heart": ENGORGED_HEART,
+    "condensed_blood": CONDENSED_BLOOD,
+    "primal_essence": PRIMAL_ESSENCE,
+    "soul_vessel": SOUL_VESSEL,
+}
+
 # ── RESOURCE_EMOJI ─────────────────────────────────────────────────────────
 # Single source of truth for gathering/settlement/Black Market material icons.
 # Several views used to hardcode their own emoji per resource key (and
@@ -316,4 +350,18 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "dodge_evasion": ("Evasion", DODGE_EVASION),
     "potion": ("Potion", POTION),
     "cosmic_dust": ("Cosmic Dust", COSMIC_DUST),
+    # Appended for the Apex Hunt shard/meta-shard emoji batch.
+    "pyre_shard": ("Pyre Shard", PYRE_SHARD),
+    "tempest_shard": ("Tempest Shard", TEMPEST_SHARD),
+    "bulwark_shard": ("Bulwark Shard", BULWARK_SHARD),
+    "verdant_shard": ("Verdant Shard", VERDANT_SHARD),
+    "fortune_shard": ("Fortune Shard", FORTUNE_SHARD),
+    "rift_shard": ("Rift Shard", RIFT_SHARD),
+    "soul_fragment": ("Soul Fragment", SOUL_FRAGMENT),
+    "sharpened_fang": ("Sharpened Fang", SHARPENED_FANG),
+    "engorged_heart": ("Engorged Heart", ENGORGED_HEART),
+    "condensed_blood": ("Condensed Blood", CONDENSED_BLOOD),
+    "primal_essence": ("Primal Essence", PRIMAL_ESSENCE),
+    "soul_vessel": ("Soul Vessel", SOUL_VESSEL),
+    "apex_imprint": ("Apex Imprint", APEX_IMPRINT_EMOJI),
 }

@@ -182,7 +182,7 @@ class UberHubView(BaseLayoutView):
                 "Lucifer's fury knows no bounds.",
                 f"{INFERNAL_SIGIL} {self.uber_data['infernal_sigils']} Infernal Sigils *(costs 3)*",
                 self._BOSS_LEVELS["lucifer"],
-                BOSS_LUCIFER,
+                BOSS_LUCIFER_ANIM,
             ),
             sep(),
             _boss_section(

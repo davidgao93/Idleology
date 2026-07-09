@@ -22,6 +22,7 @@ from core.base_layout_view import BaseLayoutView
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.economy.config import XP_LOSS_ON_DEFEAT
+from core.emojis import SOUL_FRAGMENT
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
 from core.combat.views.views import CombatView
@@ -97,7 +98,7 @@ class ApexCombatView(CombatView):
                 self.player, self.monster, xp_loss, killing_blow=self.killing_blow
             )
             embed.add_field(
-                name="🔘 Consolation",
+                name=f"{SOUL_FRAGMENT} Consolation",
                 value=f"You received **{frags}** Soul Fragment{'s' if frags > 1 else ''} for your effort.",
                 inline=False,
             )

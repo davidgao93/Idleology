@@ -352,6 +352,32 @@ def _apply_spawn_modifiers(monster) -> None:
         monster.hp = monster.max_hp
 
 
+def _add_uber_random_modifiers(monster, count: int = 5) -> None:
+    """Layers `count` additional random modifiers onto an Uber boss's
+    already-built signature modifier list — same common/rare_tiered 72/28
+    mix, deduplicated against names already on the monster, that Apex uses
+    for its 5 extra random modifiers (see ApexMechanics.build_apex_monster).
+
+    Must run before finalize_monster_spawn: applies any spawn-time stat
+    effects (Empowered/Fortified/Titanic/Veiled) rolled among the new names.
+    """
+    used_names = {m.name for m in monster.modifiers}
+    added = 0
+    attempts = 0
+    while added < count and attempts < 50:
+        attempts += 1
+        pool_type = random.choices(["common", "rare_tiered"], weights=[72, 28], k=1)[0]
+        pool = COMMON_MOD_NAMES if pool_type == "common" else RARE_TIERED_MOD_NAMES
+        candidates = [n for n in pool if n not in used_names]
+        if not candidates:
+            continue
+        name = random.choice(candidates)
+        monster.modifiers.append(make_modifier(name, monster.level))
+        used_names.add(name)
+        added += 1
+    _apply_spawn_modifiers(monster)
+
+
 def finalize_monster_spawn(monster: "Monster") -> "Monster":
     """Centralized final step for Phase 2+ spawn logic.
 
@@ -769,6 +795,8 @@ async def generate_uber_lucifer(player, monster):
     random.shuffle(boss_pool)
     monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
 
+    _add_uber_random_modifiers(monster)
+
     finalize_monster_spawn(monster)
     return monster
 
@@ -804,6 +832,8 @@ def generate_uber_neet(player, monster):
     boss_pool = [n for n in BOSS_MOD_NAMES]
     random.shuffle(boss_pool)
     monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
+
+    _add_uber_random_modifiers(monster)
 
     finalize_monster_spawn(monster)
     return monster
@@ -842,6 +872,8 @@ def generate_uber_gemini(player, monster):
     boss_pool = [n for n in BOSS_MOD_NAMES]
     random.shuffle(boss_pool)
     monster.modifiers.append(make_modifier(boss_pool[0], monster.level))
+
+    _add_uber_random_modifiers(monster)
 
     finalize_monster_spawn(monster)
     return monster
@@ -885,6 +917,15 @@ def generate_uber_evelynn(player, monster):
     monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
     monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
 
+    # No _add_uber_random_modifiers call here: apply_all_corrupted_modifiers
+    # above already applies every COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES
+    # entry (at forced tier 5), so there are no unused names left to draw —
+    # Evelynn already exceeds the "+5 random" treatment the other bosses get.
+    # She previously never ran _apply_spawn_modifiers/finalize_monster_spawn
+    # though, so Empowered/Fortified/Titanic/Veiled among that full set were
+    # silently inert; run them now so her modifiers actually take effect.
+    _apply_spawn_modifiers(monster)
+    finalize_monster_spawn(monster)
     return monster
 
 
@@ -920,6 +961,8 @@ async def generate_uber_aphrodite(player, monster):
 
     monster.attack = int(monster.base_attack * (1 + monster.bonus_attack_pct))
     monster.defence = int(monster.base_defence * (1 + monster.bonus_defence_pct))
+
+    _add_uber_random_modifiers(monster)
 
     finalize_monster_spawn(monster)
     return monster

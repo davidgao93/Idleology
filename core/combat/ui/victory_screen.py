@@ -14,6 +14,7 @@ import discord
 from core.character.prestige_display import format_prestige_name
 from core.emojis import (
     ANGEL_KEY,
+    APEX_SHARD_EMOJI,
     BLESSED_BISMUTH,
     CAPRICIOUS_CARP,
     COSMIC_DUST,
@@ -36,6 +37,7 @@ from core.emojis import (
     RUNE_REGRET,
     RUNE_SHATTER,
     SOUL_CORE,
+    SOUL_FRAGMENT,
     SPARKLING_SPRIG,
     SPIRIT_SHARD,
     SPIRIT_STONE,
@@ -181,17 +183,9 @@ def create_victory_embed(
 
     # 5. Apex Shard drops (from apex hunt victory)
     if rewards.get("apex_shards"):
-        _SHARD_EMOJIS = {
-            "pyre": "🔥",
-            "tempest": "⚡",
-            "bulwark": "🏰",
-            "verdant": "🌿",
-            "fortune": "💰",
-            "rift": "🌀",
-        }
         shard_type = rewards["apex_shards"]["shard_type"]
         shard_amt = rewards["apex_shards"]["shard_amount"]
-        emoji = _SHARD_EMOJIS.get(shard_type, "💎")
+        emoji = APEX_SHARD_EMOJI.get(shard_type, "💎")
         loot_lines.append(
             f"{emoji} **{shard_amt}x {shard_type.title()} Shard{'s' if shard_amt > 1 else ''}**"
         )
@@ -206,7 +200,9 @@ def create_victory_embed(
                 loot_lines.append(display_name)
     if rewards.get("soul_fragments"):
         frags = rewards["soul_fragments"]
-        loot_lines.append(f"🔘 **{frags}x Soul Fragment{'s' if frags > 1 else ''}**")
+        loot_lines.append(
+            f"{SOUL_FRAGMENT} **{frags}x Soul Fragment{'s' if frags > 1 else ''}**"
+        )
 
     # 6. Monster Egg Drop
     if rewards.get("egg"):

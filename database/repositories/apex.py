@@ -90,6 +90,20 @@ class ApexRepository(BaseRepository):
         )
         await self.connection.commit()
 
+    async def add_charge(
+        self, user_id: str, server_id: str, amount: int, max_charges: int
+    ) -> int:
+        """Increments hunt_charges by `amount`, capped at `max_charges`.
+        Returns the new charge count. Used by the Soul Fragment conversion."""
+        profile = await self.get_or_create_profile(user_id, server_id)
+        new_charges = min(max_charges, profile["hunt_charges"] + amount)
+        await self.connection.execute(
+            "UPDATE apex_hunt_profiles SET hunt_charges = ? WHERE user_id = ? AND server_id = ?",
+            (new_charges, user_id, server_id),
+        )
+        await self.connection.commit()
+        return new_charges
+
     async def record_win(self, user_id: str, server_id: str, zone_key: str) -> None:
         await self.get_or_create_profile(user_id, server_id)
         col = f"{zone_key}_wins"

@@ -181,7 +181,7 @@ class CombatProfileBuilder:
         else:
             hit_val = f"**Total: {hit_total}%**\n↳ Weapon: {hit_weapon_pct}%"
             if hit_bonuses:
-                hit_val += f"\n↳ Bonuses: +{hit_bonuses} flat"
+                hit_val += f"\n↳ Bonuses: +{hit_bonuses}%"
         embed.add_field(name="🎯 Hit Chance", value=hit_val, inline=True)
 
         # ── Crit Chance ──────────────────────────────────────────────────────
@@ -205,9 +205,9 @@ class CombatProfileBuilder:
         stat_crit = p.get_current_crit_chance()
         crit_bonuses = stat_crit - crit_equip - crit_weapon_template
         total_crit_display = stat_crit + crit_weapon_piercing
-        crit_val = f"**Total: {total_crit_display}**\n↳ Weapon: {crit_weapon}\n↳ Equipment: {crit_equip}"
+        crit_val = f"**Total: {total_crit_display}%**\n↳ Weapon: {crit_weapon}%\n↳ Equipment: {crit_equip}%"
         if crit_bonuses:
-            crit_val += f"\n↳ Bonuses: {crit_bonuses:+}"
+            crit_val += f"\n↳ Bonuses: {crit_bonuses:+}%"
         if cb["crit"]:
             crit_val += f"\n↳ Combat start: {cb['crit']:+}"
         embed.add_field(name="🗡️ Crit Chance", value=crit_val, inline=True)
@@ -314,9 +314,9 @@ class CombatProfileBuilder:
                     rar_val += f"\n  ↳ Companion: {comp_rarity_pct:.1f}%"
                     rar_val += f"\n  ↳ Providence: {prov_pct:.1f}%"
                 elif comp_rarity_pct > 0:
-                    rar_val += f"\n↳ Companion: +{comp_rarity_pct:.1f}% more (+{gain})"
+                    rar_val += f"\n↳ Companion: {gain}%"
                 else:
-                    rar_val += f"\n↳ Providence: +{prov_pct:.1f}% more (+{gain})"
+                    rar_val += f"\n↳ Providence: {gain}%"
             else:
                 after_more = gear_rarity
             codex_bonus = total_rarity - after_more

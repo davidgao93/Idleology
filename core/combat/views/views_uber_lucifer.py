@@ -122,6 +122,14 @@ class UberLuciferLobbyView(BaseView):
 
         await interaction.response.defer()
 
+        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
+
+        # Uber lobbies reuse the same Player object across the hub<->lobby<->
+        # combat loop rather than reloading fresh from DB, so leftover stacks/
+        # buffs from a previous Uber fight (or a different boss entirely) must
+        # be explicitly cleared before generating the new encounter.
+        self.player.reset_combat_state()
+
         monster = Monster(
             name="",
             level=0,
@@ -152,6 +160,7 @@ class UberLuciferLobbyView(BaseView):
             combat_phases=None,
             post_combat_view=return_view,
             title_override="🔥 UBER ENCOUNTER",
+            player_avatar_url=user_row["appearance"],
         )
 
         await self.bot.database.uber.increment_infernal_sigils(

@@ -16,6 +16,7 @@ from core.apex.data import PASSIVE_SHARD_MAP, UPGRADE_COSTS
 from core.apex.mechanics import ApexMechanics
 from core.apex.models import MetaShardInventory, ShardInventory, SoulStone
 from core.base_view import BaseView
+from core.emojis import APEX_SHARD_EMOJI, CONDENSED_BLOOD, ENGORGED_HEART, RIFT_SHARD
 from core.images import APEX_UPGRADE
 
 
@@ -131,7 +132,8 @@ class UpgradeView(BaseView):
 
         if self.meta.engorged_heart:
             heart_btn = Button(
-                label="❤️ Engorged Heart",
+                label=f"Engorged Heart (have {self.meta.engorged_heart})",
+                emoji=ENGORGED_HEART,
                 style=ButtonStyle.success if self._use_heart else ButtonStyle.secondary,
                 row=1,
             )
@@ -140,7 +142,8 @@ class UpgradeView(BaseView):
 
         if self.meta.condensed_blood:
             blood_btn = Button(
-                label="🩸 Condensed Blood",
+                label=f"Condensed Blood (have {self.meta.condensed_blood})",
+                emoji=CONDENSED_BLOOD,
                 style=ButtonStyle.success if self._use_blood else ButtonStyle.secondary,
                 row=1,
             )
@@ -190,11 +193,14 @@ class UpgradeView(BaseView):
         embed.set_thumbnail(url=APEX_UPGRADE)
 
         # Cost
+        shard_emoji = APEX_SHARD_EMOJI.get(shard_type, "🔮")
         cost_lines = [
-            f"🔮 {matching_cost}x {shard_type.title()} Shard (have: **{have_matching}**)"
+            f"{shard_emoji} {matching_cost}x {shard_type.title()} Shard (have: **{have_matching}**)"
         ]
         if rift_cost > 0:
-            cost_lines.append(f"🌀 {rift_cost}x Rift Shard (have: **{have_rift}**)")
+            cost_lines.append(
+                f"{RIFT_SHARD} {rift_cost}x Rift Shard (have: **{have_rift}**)"
+            )
         if not can_afford:
             cost_lines.append("⚠️ **Insufficient shards!**")
         embed.add_field(name="💰 Cost", value="\n".join(cost_lines), inline=False)
@@ -213,13 +219,13 @@ class UpgradeView(BaseView):
         # Active meta shards (reflect current toggle state)
         if heart:
             embed.add_field(
-                name="❤️ Engorged Heart",
+                name=f"{ENGORGED_HEART} Engorged Heart (have: {self.meta.engorged_heart})",
                 value="Lucky upgrade — success odds boosted!",
                 inline=True,
             )
         if blood:
             embed.add_field(
-                name="🩸 Condensed Blood",
+                name=f"{CONDENSED_BLOOD} Condensed Blood (have: {self.meta.condensed_blood})",
                 value="Downgrade prevented on failure.",
                 inline=True,
             )
@@ -311,9 +317,9 @@ class UpgradeView(BaseView):
         embed.set_thumbnail(url=APEX_UPGRADE)
         consumed_parts = []
         if heart:
-            consumed_parts.append("❤️ Engorged Heart")
+            consumed_parts.append(f"{ENGORGED_HEART} Engorged Heart")
         if blood:
-            consumed_parts.append("🩸 Condensed Blood")
+            consumed_parts.append(f"{CONDENSED_BLOOD} Condensed Blood")
         if consumed_parts:
             embed.add_field(
                 name="🔘 Consumed",
@@ -395,9 +401,9 @@ class UpgradeView(BaseView):
                 slot.tier, heart, blood
             )
 
-            cost_str = f"{matching_cost}x {shard_type.title()}"
+            cost_str = f"{APEX_SHARD_EMOJI.get(shard_type, '🔮')} {matching_cost}x {shard_type.title()}"
             if rift_cost > 0:
-                cost_str += f" + {rift_cost}x Rift"
+                cost_str += f" + {RIFT_SHARD} {rift_cost}x Rift"
             have_matching = self.shards.get(shard_type)
             can_afford = have_matching >= matching_cost and (
                 rift_cost == 0 or self.shards.rift >= rift_cost
@@ -418,9 +424,13 @@ class UpgradeView(BaseView):
         if heart or blood:
             meta_lines = []
             if heart:
-                meta_lines.append("❤️ Engorged Heart — Lucky success odds")
+                meta_lines.append(
+                    f"{ENGORGED_HEART} Engorged Heart (have {self.meta.engorged_heart}) — Lucky success odds"
+                )
             if blood:
-                meta_lines.append("🩸 Condensed Blood — No downgrade on failure")
+                meta_lines.append(
+                    f"{CONDENSED_BLOOD} Condensed Blood (have {self.meta.condensed_blood}) — No downgrade on failure"
+                )
             embed.add_field(
                 name="🔮 Active Meta Bonuses",
                 value="\n".join(meta_lines),

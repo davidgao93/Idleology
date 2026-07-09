@@ -1,6 +1,7 @@
 BASE_LEVEL = 100
 LEVEL_PER_FLOOR = 1
 NORMAL_MOD_EVERY = 20
+NORMAL_MOD_BASE = 3
 BOSS_MOD_EVERY = 50
 STARTING_OFFSET = 5
 
@@ -34,8 +35,17 @@ class AscentMechanics:
 
     @staticmethod
     def get_floor_modifier_counts(floor: int) -> tuple[int, int]:
-        """Returns (normal_mods, boss_mods) for the given floor."""
-        return floor // NORMAL_MOD_EVERY, floor // BOSS_MOD_EVERY
+        """Returns (normal_mods, boss_mods) for the given floor.
+
+        Ascent floor 1 is already level 100 (BASE_LEVEL), the level at which
+        regular combat encounters have accumulated multiple modifier tiers
+        (level-gated at 20/40/60/80/100) — so normal mods start at
+        NORMAL_MOD_BASE instead of 0 to match that baseline difficulty.
+        """
+        return (
+            NORMAL_MOD_BASE + floor // NORMAL_MOD_EVERY,
+            floor // BOSS_MOD_EVERY,
+        )
 
     @staticmethod
     def calculate_starting_floor(best_floor: int) -> int:

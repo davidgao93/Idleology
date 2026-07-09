@@ -24,6 +24,7 @@ from core.apex.models import (
     soul_stone_from_db,
 )
 from core.base_view import BaseView
+from core.emojis import APEX_IMPRINT_EMOJI, APEX_SHARD_EMOJI, SOUL_FRAGMENT
 from core.images import APEX_SOUL_STONE
 
 _CAT_EMOJI: dict[str, str] = {
@@ -34,15 +35,6 @@ _CAT_EMOJI: dict[str, str] = {
 }
 _ALL_CATEGORIES = ("offensive", "defensive", "mixed", "utility")
 
-_SHARD_EMOJIS: dict[str, str] = {
-    "pyre": "🔥",
-    "tempest": "⚡",
-    "bulwark": "🏰",
-    "verdant": "🌿",
-    "fortune": "💰",
-    "rift": "🌀",
-}
-
 
 def add_shard_inventory_field(embed: discord.Embed, shards: ShardInventory) -> None:
     """Adds a '💠 Shard Inventory' field listing every shard type count.
@@ -50,10 +42,12 @@ def add_shard_inventory_field(embed: discord.Embed, shards: ShardInventory) -> N
     Shared by ImprintView and UpgradeView — the Soul Stone hub itself no longer
     shows this (only relevant once you're spending shards)."""
     shard_parts = []
-    for key, emoji in _SHARD_EMOJIS.items():
+    for key, emoji in APEX_SHARD_EMOJI.items():
+        if key == "soul_fragments":
+            continue
         count = shards.get(key)
         shard_parts.append(f"{emoji} {key.title()}: **{count}**")
-    shard_parts.append(f"🔘 Soul Fragments: **{shards.soul_fragments}**")
+    shard_parts.append(f"{SOUL_FRAGMENT} Soul Fragments: **{shards.soul_fragments}**")
     embed.add_field(
         name="💠 Shard Inventory", value="\n".join(shard_parts), inline=True
     )
@@ -228,7 +222,9 @@ class SoulStoneView(BaseView):
             meta_shards_from_db(meta_row),
         )
 
-    @discord.ui.button(label="Imprint", style=ButtonStyle.primary, emoji="🔏", row=0)
+    @discord.ui.button(
+        label="Imprint", style=ButtonStyle.primary, emoji=APEX_IMPRINT_EMOJI, row=0
+    )
     async def imprint_btn(self, interaction: Interaction, button: Button):
         if self._processing:
             await interaction.response.defer()

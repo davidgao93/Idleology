@@ -686,17 +686,21 @@ class QuestBoardView(BaseView):
         switching_active = (
             current is not None
             and not current.get("turned_in")
-            and not current.get("completed")
             and current.get("path_id") != path_id
-            and current.get("progress", 0) > 0
+            and (current.get("progress", 0) > 0 or current.get("completed"))
         )
         if switching_active:
             confirm = _HorizonSwitchConfirmView(
                 self.bot, self, path_id, path_def["name"]
             )
+            loss_desc = (
+                "your unclaimed reward will be lost"
+                if current.get("completed")
+                else "your progress on the current path will be lost"
+            )
             embed = _build_warning_embed(
                 "⚠️ Switch Horizon Path?",
-                f"Switch to **{path_def['name']}**? Your progress on the current path will be lost.",
+                f"Switch to **{path_def['name']}**? {loss_desc.capitalize()}.",
             )
             await interaction.response.edit_message(
                 content=None,

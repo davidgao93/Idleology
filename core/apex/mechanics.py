@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 CHARGE_REGEN_SECONDS: float = 2 * 3600  # 2 hours per charge
 MAX_CHARGES: int = 5
+FRAGMENT_CHARGE_COST: int = 10  # Soul Fragments spent to buy 1 hunt charge
 
 
 class ApexMechanics:

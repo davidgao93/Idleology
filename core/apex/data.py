@@ -15,6 +15,19 @@ Contains:
 
 from dataclasses import dataclass
 
+from core.emojis import (
+    BULWARK_SHARD,
+    CONDENSED_BLOOD,
+    ENGORGED_HEART,
+    FORTUNE_SHARD,
+    PRIMAL_ESSENCE,
+    PYRE_SHARD,
+    RIFT_SHARD,
+    SHARPENED_FANG,
+    SOUL_VESSEL,
+    TEMPEST_SHARD,
+    VERDANT_SHARD,
+)
 from core.images import (  # Apex monster combat images
     APEX_ASHFALL_COLOSSUS,
     APEX_BASTION_WRAITH,
@@ -69,7 +82,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "ashen": ZoneDef(
         key="ashen",
         name="Ashen Wastes",
-        emoji="🔥",
+        emoji=PYRE_SHARD,
         shard_type="pyre",
         modifier_key="scorched",
         modifier_name="Scorched",
@@ -82,7 +95,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "storm": ZoneDef(
         key="storm",
         name="Storm Reach",
-        emoji="⚡",
+        emoji=TEMPEST_SHARD,
         shard_type="tempest",
         modifier_key="tempest",
         modifier_name="Tempest",
@@ -95,7 +108,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "citadel": ZoneDef(
         key="citadel",
         name="Iron Citadel",
-        emoji="🏰",
+        emoji=BULWARK_SHARD,
         shard_type="bulwark",
         modifier_key="siege_grounds",
         modifier_name="Siege Grounds",
@@ -108,7 +121,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "grove": ZoneDef(
         key="grove",
         name="Eternal Grove",
-        emoji="🌿",
+        emoji=VERDANT_SHARD,
         shard_type="verdant",
         modifier_key="living_battlefield",
         modifier_name="Living Battlefield",
@@ -121,7 +134,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "vault": ZoneDef(
         key="vault",
         name="Golden Vault",
-        emoji="💰",
+        emoji=FORTUNE_SHARD,
         shard_type="fortune",
         modifier_key="tempted_fate",
         modifier_name="Tempted Fate",
@@ -134,7 +147,7 @@ ZONE_DEFS: dict[str, ZoneDef] = {
     "shattered": ZoneDef(
         key="shattered",
         name="Shattered Realm",
-        emoji="🌀",
+        emoji=RIFT_SHARD,
         shard_type="rift",
         modifier_key="reality_fracture",
         modifier_name="Reality Fracture",
@@ -550,17 +563,26 @@ SOUL_STONE_TIER_VALUES: dict[str, list] = {
 }
 
 META_SHARD_DISPLAY: dict[str, tuple[str, str]] = {
-    "sharpened_fang": ("🦷 Sharpened Fang", "Lucky extraction chance (25% → ~44%)"),
-    "engorged_heart": ("❤️ Engorged Heart", "Lucky upgrade chance (better odds)"),
+    "sharpened_fang": (
+        f"{SHARPENED_FANG} Sharpened Fang",
+        "Lucky extraction chance (25% → ~44%)",
+    ),
+    "engorged_heart": (
+        f"{ENGORGED_HEART} Engorged Heart",
+        "Lucky upgrade chance (better odds)",
+    ),
     "condensed_blood": (
-        "🩸 Condensed Blood",
+        f"{CONDENSED_BLOOD} Condensed Blood",
         "Prevents tier downgrade on failed upgrade",
     ),
     "primal_essence": (
-        "✨ Primal Essence",
+        f"{PRIMAL_ESSENCE} Primal Essence",
         "Counts extracted passives as +1 (improves extraction chance)",
     ),
-    "soul_vessel": ("🏺 Soul Vessel", "Extract a passive without destroying the item"),
+    "soul_vessel": (
+        f"{SOUL_VESSEL} Soul Vessel",
+        "Extract a passive without destroying the item",
+    ),
 }
 
 # Map Apex monster name → combat image constant

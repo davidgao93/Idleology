@@ -373,6 +373,12 @@ class AscentCombatRow(discord.ui.ActionRow["AscentView"]):
     async def auto_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_auto(interaction)
 
+    @discord.ui.button(
+        label="Full Send", style=ButtonStyle.danger, emoji="💀", disabled=True
+    )
+    async def full_send_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_full_send(interaction)
+
     @discord.ui.button(label="Retreat", style=ButtonStyle.secondary, emoji="🏃")
     async def retreat_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_retreat(interaction)
@@ -409,6 +415,7 @@ class AscentView(BaseLayoutView):
 
         self.row = AscentCombatRow()
         self._update_heal_btn()
+        self._update_full_send_state()
         self._sync_items(self._combat_layout())
 
     async def on_timeout(self):
@@ -425,6 +432,22 @@ class AscentView(BaseLayoutView):
     def _update_heal_btn(self):
         self.row.heal_btn.label = f"Heal ({self.player.potions}/20)"
         self.row.heal_btn.disabled = self.player.potions <= 0
+
+    def _update_full_send_state(self):
+        """Full Send unlocks once HP is at/below Auto's low-HP protection threshold (20%)."""
+        self.row.full_send_btn.disabled = not (
+            0 < self.player.current_hp <= self.player.total_max_hp * 0.2
+        )
+
+    def _update_buttons(self):
+        """Re-enables every combat button, then re-applies Heal's potion-gated
+        lock and Full Send's HP-gated lock. Called after any state change that
+        might have left buttons disabled mid-loop (Auto/Full Send) or stale
+        from a previous floor."""
+        for child in self.row.children:
+            child.disabled = False
+        self._update_heal_btn()
+        self._update_full_send_state()
 
     def _combat_layout(self) -> discord.ui.Container:
         return combat_ui.create_combat_layout(
@@ -443,9 +466,14 @@ class AscentView(BaseLayoutView):
             self.add_item(self.row)
 
     async def _refresh(
-        self, interaction: Interaction = None, message: discord.Message = None
+        self,
+        interaction: Interaction = None,
+        message: discord.Message = None,
+        *,
+        update_heal: bool = True,
     ):
-        self._update_heal_btn()
+        if update_heal:
+            self._update_heal_btn()
         self._sync_items(self._combat_layout())
         if interaction and not interaction.response.is_done():
             await interaction.response.edit_message(view=self)
@@ -507,7 +535,7 @@ class AscentView(BaseLayoutView):
             if self.monster.hp > 0 and self.player.current_hp > (
                 self.player.total_max_hp * 0.2
             ):
-                await self._refresh(message=message)
+                await self._refresh(message=message, update_heal=False)
                 await asyncio.sleep(1.0)
             else:
                 break
@@ -517,16 +545,47 @@ class AscentView(BaseLayoutView):
             and self.monster.hp > 0
         ):
             # Low HP pause — re-enable buttons so the player can act
-            for child in self.row.children:
-                child.disabled = False
+            self._update_buttons()
             self.logs["Auto-Battle"] = "🛑 Paused: Low HP protection!"
             await self._refresh(message=message)
             await message.channel.send(
-                f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused!",
+                f"<@{self.user_id}> ⚠️ Low HP Protection triggered — auto paused! "
+                "**Full Send** is now available if you want to gamble on finishing the fight.",
                 delete_after=15,
             )
         else:
             await self._check_state(interaction, message)
+
+    async def _on_full_send(self, interaction: Interaction):
+        """Unlocked at low HP (same threshold Auto warns on). Repeats attacks with
+        no HP floor until the monster is defeated or the player dies."""
+        await interaction.response.defer()
+        message = interaction.message
+
+        for child in self.row.children:
+            child.disabled = True
+        await message.edit(view=self)
+
+        while self.player.current_hp > 0 and self.monster.hp > 0:
+            for _ in range(10):
+                if self.player.current_hp <= 0 or self.monster.hp <= 0:
+                    break
+                p_log = engine.process_player_turn(self.player, self.monster)
+                self.combat_logger.log_player_turn(p_log, self.monster)
+                m_log = (
+                    engine.process_monster_turn(self.player, self.monster)
+                    if self.monster.hp > 0
+                    else ""
+                )
+                if m_log:
+                    self.combat_logger.log_monster_turn(m_log, self.player)
+                self.logs = {self.player.name: p_log, self.monster.name: m_log}
+
+            if self.player.current_hp > 0 and self.monster.hp > 0:
+                await self._refresh(message=message, update_heal=False)
+                await asyncio.sleep(1.0)
+
+        await self._check_state(message=message)
 
     async def _on_retreat(self, interaction: Interaction):
         await self._end_run(interaction, retreated=True)
@@ -541,6 +600,7 @@ class AscentView(BaseLayoutView):
         elif self.monster.hp <= 0:
             await self._handle_floor_clear(interaction, message)
         else:
+            self._update_full_send_state()
             await self._refresh(interaction, message)
 
     async def _handle_floor_clear(
@@ -555,11 +615,14 @@ class AscentView(BaseLayoutView):
             await self.bot.database.ascension.update_highest_floor(self.user_id, floor)
 
         # Milestone rewards (every 5 floors)
+        milestone_rewards = None
         if floor % 5 == 0:
-            rewards = await _grant_milestone_rewards(
+            milestone_rewards = await _grant_milestone_rewards(
                 self.bot, self.user_id, self.server_id, self.player, floor
             )
-            self.milestone_log.append(f"**Floor {floor}:\n** " + "\n".join(rewards))
+            self.milestone_log.append(
+                f"**Floor {floor}:\n** " + "\n".join(milestone_rewards)
+            )
 
         # Pinnacle unlock
         pinnacle_gained = None
@@ -596,8 +659,8 @@ class AscentView(BaseLayoutView):
             color=discord.Color.green(),
         )
         lines = []
-        if floor % 5 == 0 and self.milestone_log:
-            lines.append("📦 Milestone rewards granted!")
+        if milestone_rewards:
+            lines.append("📦 **Milestone Rewards:**\n" + "\n".join(milestone_rewards))
         if pinnacle_gained:
             lines.append(f"✨ **Pinnacle Unlock:** {pinnacle_gained}")
         if skiller_msg:
@@ -654,9 +717,7 @@ class AscentView(BaseLayoutView):
         self.combat_logger = CombatLogger(self.player, self.monster)
         self.combat_logger.log_combat_start(self.player, self.monster)
 
-        for child in self.row.children:
-            child.disabled = False
-        self._update_heal_btn()
+        self._update_buttons()
         self._sync_items(self._combat_layout())
 
         msg_obj = message if message else (await interaction.original_response())

@@ -15,7 +15,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.apex.data import ZONE_DEFS
-from core.apex.mechanics import MAX_CHARGES, ApexMechanics
+from core.apex.mechanics import FRAGMENT_CHARGE_COST, MAX_CHARGES, ApexMechanics
 from core.apex.models import (
     ApexHuntProfile,
     meta_shards_from_db,
@@ -25,6 +25,7 @@ from core.apex.models import (
 )
 from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
+from core.emojis import SOUL_FRAGMENT
 from core.images import APEX_HUB, LUCIEN_PORTRAIT, LUCIEN_THUMBNAIL
 from core.npc_voices import get_quip
 
@@ -240,14 +241,8 @@ class ApexLobbyView(BaseLayoutView):
             self.add_item(row)
 
     def _make_zone_callback(self, zone_key: str):
-        async def _callback(interaction: Interaction):
-            if self._processing:
-                await interaction.response.defer()
-                return
-            self._processing = True
-            await interaction.response.defer()
-            self._selected_zone = zone_key
-
+        async def _show_zone_confirm(interaction: Interaction):
+            """(Re)builds and displays the zone confirmation screen for zone_key."""
             # Re-fetch charges to show fresh state
             profile_row = await self.bot.database.apex.get_or_create_profile(
                 self.user_id, self.server_id
@@ -278,6 +273,23 @@ class ApexLobbyView(BaseLayoutView):
                     ),
                     inline=False,
                 )
+                shards_row = await self.bot.database.apex.get_or_create_shards(
+                    self.user_id, self.server_id
+                )
+                fragments = shards_row.get("soul_fragments", 0)
+                embed.add_field(
+                    name=f"{SOUL_FRAGMENT} Soul Fragments",
+                    value=f"You have **{fragments}** Soul Fragment{'s' if fragments != 1 else ''}.",
+                    inline=False,
+                )
+                if fragments >= FRAGMENT_CHARGE_COST:
+                    convert_btn = Button(
+                        label=f"Convert {FRAGMENT_CHARGE_COST} Fragments → 1 Charge",
+                        style=ButtonStyle.primary,
+                        emoji=SOUL_FRAGMENT,
+                    )
+                    convert_btn.callback = _convert_fragments
+                    row.add_item(convert_btn)
             else:
                 confirm_btn = Button(
                     label="Confirm Hunt",
@@ -295,8 +307,42 @@ class ApexLobbyView(BaseLayoutView):
             self.add_item(combat_ui.embed_to_container(embed))
             self.add_item(row)
 
-            self._processing = False
             await interaction.edit_original_response(view=self)
+
+        async def _callback(interaction: Interaction):
+            if self._processing:
+                await interaction.response.defer()
+                return
+            self._processing = True
+            await interaction.response.defer()
+            self._selected_zone = zone_key
+            await _show_zone_confirm(interaction)
+            self._processing = False
+
+        async def _convert_fragments(interaction: Interaction):
+            if self._processing:
+                await interaction.response.defer()
+                return
+            self._processing = True
+            await interaction.response.defer()
+
+            shards_row = await self.bot.database.apex.get_or_create_shards(
+                self.user_id, self.server_id
+            )
+            if shards_row.get("soul_fragments", 0) >= FRAGMENT_CHARGE_COST:
+                async with self.bot.database.transaction():
+                    await self.bot.database.apex.modify_shard(
+                        self.user_id,
+                        self.server_id,
+                        "soul_fragments",
+                        -FRAGMENT_CHARGE_COST,
+                    )
+                    await self.bot.database.apex.add_charge(
+                        self.user_id, self.server_id, 1, MAX_CHARGES
+                    )
+
+            await _show_zone_confirm(interaction)
+            self._processing = False
 
         return _callback
 

@@ -119,6 +119,14 @@ class UberAphroditeLobbyView(BaseView):
 
         await interaction.response.defer()
 
+        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
+
+        # Uber lobbies reuse the same Player object across the hub<->lobby<->
+        # combat loop rather than reloading fresh from DB, so leftover stacks/
+        # buffs from a previous Uber fight (or a different boss entirely) must
+        # be explicitly cleared before generating the new encounter.
+        self.player.reset_combat_state()
+
         # Build the entire encounter in-memory before spending sigils so that
         # a generation or Discord API failure cannot consume the entry cost.
         monster = Monster(
@@ -151,6 +159,7 @@ class UberAphroditeLobbyView(BaseView):
             combat_phases=None,
             post_combat_view=return_view,
             title_override="UBER ENCOUNTER",
+            player_avatar_url=user_row["appearance"],
         )
 
         # Spend sigils and commit the encounter. Refund on any failure so the
