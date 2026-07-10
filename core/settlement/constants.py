@@ -371,9 +371,16 @@ BM_ITEM_VALUES: dict[str, int] = {
     "curios": 200_000,
 }
 
-# Processing turn formula: turns = BM_TURNS_BASE + (value / BM_TURNS_PER_VALUE)
-BM_TURNS_BASE = 5
-BM_TURNS_PER_VALUE = 10_000  # every 10k value ≈ +1 turn
+# Processing turn formula: a saturating curve, not a linear one.
+# Below BM_TURNS_SCALE_START, turns stay flat at BM_TURNS_MIN. Above it, turns
+# rise along a hyperbolic curve toward BM_TURNS_MAX, reaching the midpoint of
+# the range once "excess" value (value - BM_TURNS_SCALE_START) equals
+# BM_TURNS_HALF_SATURATION. Even extreme offers (billions in value) top out
+# near the cap instead of scaling forever.
+BM_TURNS_MIN = 5
+BM_TURNS_MAX = 100
+BM_TURNS_SCALE_START = 500_000
+BM_TURNS_HALF_SATURATION = 10_000_000
 
 # ---------------------------------------------------------------------------
 # Black Market — base loot table
@@ -406,28 +413,17 @@ BM_GOLD_MAX = 350_000
 # key → {name, description, branch, max_level, idlem_costs: list[int per level]}
 BM_TREE_NODES: dict[str, dict] = {
     # Branch 1: Efficiency
-    "efficiency_1": {
-        "name": "Processing I",
-        "description": "−10% deal processing turns.",
+    # A single progressive node — each level replaces the last rather than
+    # stacking, since the UI only ever lets you buy the next level in order.
+    "efficiency": {
+        "name": "Processing",
+        "description": "−10% / −20% / −35% deal processing turns (by level; does not stack — each level replaces the last).",
         "branch": "efficiency",
-        "max_level": 1,
-        "idlem_costs": [50],
+        "max_level": 3,
+        "idlem_costs": [50, 120, 250],
+        "reductions": [0.10, 0.20, 0.35],
     },
-    "efficiency_2": {
-        "name": "Processing II",
-        "description": "−20% deal processing turns.",
-        "branch": "efficiency",
-        "max_level": 1,
-        "idlem_costs": [120],
-    },
-    "efficiency_3": {
-        "name": "Swift Commerce",
-        "description": "−35% deal processing turns.",
-        "branch": "efficiency",
-        "max_level": 1,
-        "idlem_costs": [250],
-    },
-    "efficiency_4": {
+    "instant_deals": {
         "name": "Instant Deals",
         "description": "Small deals (≤ 5 turns) complete instantly.",
         "branch": "efficiency",

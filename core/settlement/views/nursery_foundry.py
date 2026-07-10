@@ -92,8 +92,8 @@ class NurseryView(SettlementBaseView):
 class IdlemFoundryView(SettlementBaseView):
     """
     Detail view for the Idlem Foundry building.
-    Each "Produce Idlem" click queues a 1-turn project.
-    On Next Turn, the project completes and grants Idlem.
+    Workers assigned to the Foundry automatically produce Idlem every
+    Development Turn — no manual queueing required.
     """
 
     def __init__(self, bot, user_id: str, server_id: str, building, parent_view):
@@ -107,43 +107,32 @@ class IdlemFoundryView(SettlementBaseView):
     def _build_ui(self) -> None:
         self.clear_items()
 
-        produce_btn = ui.Button(
-            label="Queue Idlem Production",
-            style=ButtonStyle.blurple,
-            emoji="⚗️",
-            row=0,
-        )
-        produce_btn.callback = self._on_queue
-        self.add_item(produce_btn)
-
         back_btn = ui.Button(
             label="Back",
             style=ButtonStyle.secondary,
             emoji="⬅️",
-            row=1,
+            row=0,
         )
         back_btn.callback = self._on_back
         self.add_item(back_btn)
 
     def _idlem_per_turn(self) -> float:
-        """Base Idlem per turn, scaled by workers assigned (per 100, flat rate). Variance applied on completion."""
+        """Average Idlem output per turn, scaling with worker assignment (flat rate per 100 workers)."""
         workers = self.building.workers_assigned
         base = IDLEM_PER_TURN_BASE
-        return base * (
-            workers / 100
-        )  # stored as base; actual grant has +0/+1 variance on completion
+        return base * (workers / 100)
 
-    def build_embed(
-        self, projects: list | None = None, idlem: int = 0
-    ) -> discord.Embed:
+    def build_embed(self, idlem: int = 0) -> discord.Embed:
         embed = discord.Embed(
             title="⚗️ Idlem Foundry",
             description=(
-                "The Idlem Foundry distills the settlement's ambient energy "
-                "into **Idlem** — the scarce resource powering the Black Market "
-                "passive tree.\n\n"
-                f"**Output per turn:** ~{self._idlem_per_turn():.1f} Idlem\n"
+                "The Idlem Foundry automatically distills the settlement's "
+                "ambient energy into **Idlem** every Development Turn — the "
+                "scarce resource powering the Black Market passive tree — "
+                "scaled by the workers assigned here, no queueing needed.\n\n"
+                f"**Output per turn:** ~{self._idlem_per_turn():.1f} Idlem (+0-1 variance)\n"
                 f"**Tier:** {self.building.tier} | "
+                f"**Workers assigned:** {self.building.workers_assigned:,} | "
                 f"**Your Idlem:** {idlem:,}"
             ),
             color=discord.Color.purple(),
@@ -154,67 +143,7 @@ class IdlemFoundryView(SettlementBaseView):
             )
         )
 
-        if projects:
-            foundry_proj = [p for p in projects if p["project_type"] == "foundry_idlem"]
-            if foundry_proj:
-                embed.add_field(
-                    name="🏗️ Production Queue",
-                    value=f"{len(foundry_proj)} batch(es) queued — advance turns to collect.",
-                    inline=False,
-                )
-            else:
-                embed.add_field(
-                    name="🏗️ Production Queue",
-                    value="No batches queued. Click **Queue Idlem Production** to start one.",
-                    inline=False,
-                )
-
         return embed
-
-    async def _on_queue(self, interaction: Interaction) -> None:
-        if self._processing:
-            await interaction.response.defer()
-            return
-        if self.building.is_disabled:
-            return await interaction.response.send_message(
-                "This Idlem Foundry is disabled — repair it before queueing production.",
-                ephemeral=True,
-            )
-        if self.building.workers_assigned <= 0:
-            return await interaction.response.send_message(
-                "Assign workers to the Idlem Foundry before queueing production.",
-                ephemeral=True,
-            )
-        self._processing = True
-        await interaction.response.defer()
-
-        try:
-            idlem_this_turn = self._idlem_per_turn()
-
-            await self.bot.database.settlement.upsert_project(
-                user_id=self.user_id,
-                server_id=self.server_id,
-                project_type="foundry_idlem",
-                target_id=None,
-                required_turns=1,
-                data={"idlem_per_turn": idlem_this_turn},
-            )
-
-            zeal_data = await self.bot.database.settlement.get_zeal_data(
-                self.user_id, self.server_id
-            )
-            projects = await self.bot.database.settlement.get_projects(
-                self.user_id, self.server_id
-            )
-            embed = self.build_embed(projects=projects, idlem=zeal_data.get("idlem", 0))
-            embed.add_field(
-                name="✅ Queued",
-                value="Idlem production batch queued! Advance **1 Development Turn** to collect.",
-                inline=False,
-            )
-            await interaction.edit_original_response(embed=embed, view=self)
-        finally:
-            self._processing = False
 
     async def _on_back(self, interaction: Interaction) -> None:
         if self._processing:

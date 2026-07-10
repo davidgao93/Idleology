@@ -139,7 +139,6 @@ class CodexTomsView(BaseLayoutView):
                     label=f"Slot {t.slot + 1}: {_PASSIVE_LABELS.get(t.passive_type, (t.passive_type, ''))[0]}",
                     value=str(t.slot),
                     description=f"Tier {t.tier}/5",
-                    emoji=_PASSIVE_EMOJI.get(t.passive_type),
                 )
                 for t in tomes
             ]

@@ -396,7 +396,7 @@ class EssenceSelectView(BaseView):
 
         options = []
         for etype, qty in applicable:
-            e_name, emoji = ESSENCE_DISPLAY.get(etype, (etype.title(), "💠"))
+            e_name, _emoji = ESSENCE_DISPLAY.get(etype, (etype.title(), "💠"))
             brief = _get_essence_brief(etype, hub.item_type)
             label = f"{e_name} ×{qty}"
             options.append(
@@ -404,7 +404,6 @@ class EssenceSelectView(BaseView):
                     label=label[:100],
                     value=etype,
                     description=brief[:100],
-                    emoji=emoji,
                 )
             )
 

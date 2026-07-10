@@ -26,6 +26,15 @@ class PotentialView(BaseUpgradeView):
         self._processing = False
         # 1. Determine Item Type & Bonus
         is_accessory = isinstance(self.item, Accessory)
+        itype = (
+            "accessory"
+            if is_accessory
+            else (
+                "glove"
+                if isinstance(self.item, Glove)
+                else ("boot" if isinstance(self.item, Boot) else "helmet")
+            )
+        )
         if is_accessory:
             cost = EquipmentMechanics.calculate_potential_cost(self.item.passive_lvl)
             max_lvl = 10
@@ -46,8 +55,21 @@ class PotentialView(BaseUpgradeView):
         has_attempts = self.item.potential_remaining > 0
         base_rate = max(75 - (self.item.passive_lvl * 5), 30)
 
+        current_passive = getattr(self.item, "passive", "none")
+        if current_passive and current_passive != "none":
+            passive_desc = get_scaled_passive_description(
+                itype, current_passive, self.item.passive_lvl
+            )
+            passive_line = (
+                f"**Passive:** {current_passive.replace('_', ' ').title()}"
+                + (f"\n*{passive_desc}*" if passive_desc else "")
+            )
+        else:
+            passive_line = "**Passive:** None *(unlocked on first success)*"
+
         desc = (
             f"{get_quip('enchant')}\n\n"
+            f"{passive_line}\n\n"
             f"**Current Level:** {self.item.passive_lvl}/{max_lvl}\n"
             f"**Attempts Left:** {self.item.potential_remaining}\n"
             f"**Success Rate:** {base_rate}%\n"
@@ -57,6 +79,7 @@ class PotentialView(BaseUpgradeView):
 
         self.cost = cost
         self.rune_bonus = rune_bonus
+        self.itype = itype
 
         embed = discord.Embed(
             title=f"Enchant {self.item.name}",
@@ -138,15 +161,7 @@ class PotentialView(BaseUpgradeView):
         )
 
         # DB Updates
-        itype = (
-            "accessory"
-            if isinstance(self.item, Accessory)
-            else (
-                "glove"
-                if isinstance(self.item, Glove)
-                else ("boot" if isinstance(self.item, Boot) else "helmet")
-            )
-        )
+        itype = self.itype
 
         self.item.potential_remaining -= 1
         await self.bot.database.equipment.update_counter(
@@ -172,7 +187,7 @@ class PotentialView(BaseUpgradeView):
                     self.item.item_id, itype, "passive_lvl", 1
                 )
                 passive_desc = get_scaled_passive_description(itype, new_p, 1)
-                msg = f"Unlocked **{new_p}**!" + (
+                msg = f"Unlocked **{new_p.replace('_', ' ').title()}**!" + (
                     f"\n*{passive_desc}*" if passive_desc else ""
                 )
             else:
@@ -180,15 +195,35 @@ class PotentialView(BaseUpgradeView):
                 await self.bot.database.equipment.update_counter(
                     self.item.item_id, itype, "passive_lvl", self.item.passive_lvl
                 )
-                msg = f"Upgraded to Level **{self.item.passive_lvl}**!"
+                passive_desc = get_scaled_passive_description(
+                    itype, self.item.passive, self.item.passive_lvl
+                )
+                msg = (
+                    f"**{self.item.passive.replace('_', ' ').title()}** "
+                    f"upgraded to Level **{self.item.passive_lvl}**!"
+                    + (f"\n*{passive_desc}*" if passive_desc else "")
+                )
 
             result_embed.color = discord.Color.gold()
             result_embed.description = (
                 f"{get_quip('enchant')}\n\n✨ **Success!**\n{msg}"
             )
         else:
+            if self.item.passive != "none":
+                passive_desc = get_scaled_passive_description(
+                    itype, self.item.passive, self.item.passive_lvl
+                )
+                passive_line = (
+                    f"\n\n**{self.item.passive.replace('_', ' ').title()}** "
+                    f"remains at Level **{self.item.passive_lvl}**."
+                    + (f"\n*{passive_desc}*" if passive_desc else "")
+                )
+            else:
+                passive_line = ""
             result_embed.color = discord.Color.dark_grey()
-            result_embed.description = "💔 **Failed.**\nThe magic failed to take hold."
+            result_embed.description = (
+                f"💔 **Failed.**\nThe magic failed to take hold.{passive_line}"
+            )
 
         if quest_msgs:
             result_embed.add_field(

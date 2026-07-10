@@ -122,7 +122,18 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
     (
         "settlement",
         "🏗️ Settlement",
-        ["timber", "stone", "magma_core", "life_root", "spirit_shard"],
+        [
+            "timber",
+            "stone",
+            "magma_core",
+            "life_root",
+            "spirit_shard",
+            "celestial_stone",
+            "infernal_cinder",
+            "void_crystal",
+            "bound_crystal",
+            "corrupted_core",
+        ],
     ),
     (
         "mining",
@@ -181,11 +192,6 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
             "soul_cores",
             "balance_fragment",
             "void_frags",
-            "celestial_stone",
-            "infernal_cinder",
-            "void_crystal",
-            "bound_crystal",
-            "corrupted_core",
         ],
     ),
     (
@@ -637,7 +643,6 @@ class OfferBuilderView(SettlementBaseView):
                     label=label,
                     value=key,
                     description=f"Owned: {qty:,} | {unit_val:,}/unit",
-                    emoji=RESOURCE_EMOJI.get(key),
                 )
             )
         return options[:25]
@@ -663,39 +668,40 @@ class OfferBuilderView(SettlementBaseView):
             )
         self.add_item(sel)
 
-        # Row 1: category filter buttons
-        for cat_id, cat_label, _ in _BM_CATEGORIES:
+        # Row 1 + 2: category filter buttons (max 5 per row; overflow to row 2)
+        half = -(-len(_BM_CATEGORIES) // 2)  # ceil split so row 1 fills first
+        for i, (cat_id, cat_label, _) in enumerate(_BM_CATEGORIES):
             btn = ui.Button(
                 label=cat_label,
                 style=ButtonStyle.blurple
                 if cat_id == self._current_category
                 else ButtonStyle.secondary,
-                row=1,
+                row=1 if i < half else 2,
             )
             btn.callback = self._make_category_switch(cat_id)
             self.add_item(btn)
 
-        # Row 2: action buttons
+        # Row 3: action buttons
         if self._offer:
             submit_btn = ui.Button(
-                label="Submit Offer", style=ButtonStyle.success, emoji="✅", row=2
+                label="Submit Offer", style=ButtonStyle.success, emoji="✅", row=3
             )
             submit_btn.callback = self._on_submit
             self.add_item(submit_btn)
 
             clear_btn = ui.Button(
-                label="Clear Offer", style=ButtonStyle.danger, emoji="🗑️", row=2
+                label="Clear Offer", style=ButtonStyle.danger, emoji="🗑️", row=3
             )
             clear_btn.callback = self._on_clear
             self.add_item(clear_btn)
 
         cancel_btn = ui.Button(
-            label="Cancel", style=ButtonStyle.secondary, emoji="❌", row=2
+            label="Cancel", style=ButtonStyle.secondary, emoji="❌", row=3
         )
         cancel_btn.callback = self._on_cancel
         self.add_item(cancel_btn)
 
-        # Row 3: bias toggles (unlocked nodes only, max 5)
+        # Row 4: bias toggles (unlocked nodes only, max 5)
         bias_count = 0
         for node_key, node in BM_TREE_NODES.items():
             if node.get("branch") != "bias":
@@ -708,7 +714,7 @@ class OfferBuilderView(SettlementBaseView):
             btn = ui.Button(
                 label=f"{'✅' if toggled else '○'} {node['name']}",
                 style=ButtonStyle.blurple if toggled else ButtonStyle.secondary,
-                row=3,
+                row=4,
             )
             btn.callback = self._make_bias_toggle(node_key)
             self.add_item(btn)
@@ -872,7 +878,7 @@ class OfferBuilderView(SettlementBaseView):
             if result.get("instant"):
                 rewards = result["rewards"]
                 summary_text = (
-                    rewards["summary_lines"][0]
+                    " | ".join(rewards["summary_lines"])
                     if rewards["summary_lines"]
                     else "Nothing"
                 )

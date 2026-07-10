@@ -526,11 +526,8 @@ class BuildingDetailView(SettlementBaseView):
         view = IdlemFoundryView(
             self.bot, self.user_id, self.parent.server_id, self.building, self.parent
         )
-        projects = await self.bot.database.settlement.get_projects(
-            self.user_id, self.parent.server_id
-        )
         await interaction.edit_original_response(
-            embed=view.build_embed(projects=projects, idlem=zeal_data.get("idlem", 0)),
+            embed=view.build_embed(idlem=zeal_data.get("idlem", 0)),
             view=view,
         )
 

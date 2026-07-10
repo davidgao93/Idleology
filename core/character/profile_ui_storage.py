@@ -59,6 +59,11 @@ from core.emojis import (
     PUZZLE_BOX,
     REGULAR_BONES,
     REINFORCED_BONES,
+    RITE_KEY_CELESTIAL,
+    RITE_KEY_CORRUPT,
+    RITE_KEY_GEMINI,
+    RITE_KEY_INFERNAL,
+    RITE_KEY_VOID,
     RUNE_GENERIC,
     RUNE_IMBUE,
     RUNE_MIRAGE_IMPERFECT,
@@ -169,18 +174,6 @@ class StorageProfileBuilder:
         )
 
         embed.add_field(
-            name="🕯️ **Rite of Convergence**",
-            value=(
-                f"🌌 Apex of Dreams: {rite_apex}\n"
-                f"🩸 Corruption of Memories: {rite_corruption}\n"
-                f"⚖️ Scales of Judgment: {rite_scales}\n"
-                f"⬛ Devoid of Thoughts: {rite_devoid}\n"
-                f"👁️ Zenith of Nightmares: {rite_zenith}"
-            ),
-            inline=True,
-        )
-
-        embed.add_field(
             name="⚗️ **Alchemy**",
             value=(
                 f"{COSMIC_DUST} Cosmic Dust: {cosmic_dust:,}\n"
@@ -200,6 +193,18 @@ class StorageProfileBuilder:
                 f"☣️ Mutative: {blood['mutative']:,}"
             ),
             inline=True,
+        )
+
+        embed.add_field(
+            name="🕯️ **Rite of Convergence**",
+            value=(
+                f"{RITE_KEY_CELESTIAL} Apex of Dreams: {rite_apex}\n"
+                f"{RITE_KEY_INFERNAL} Corruption of Memories: {rite_corruption}\n"
+                f"{RITE_KEY_GEMINI} Scales of Judgment: {rite_scales}\n"
+                f"{RITE_KEY_VOID} Devoid of Thoughts: {rite_devoid}\n"
+                f"{RITE_KEY_CORRUPT} Zenith of Nightmares: {rite_zenith}"
+            ),
+            inline=False,
         )
 
         return embed

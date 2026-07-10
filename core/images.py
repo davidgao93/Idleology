@@ -95,6 +95,30 @@ MONSTER_GEMINI = "https://cdn.discordapp.com/attachments/1334637411363323996/150
 MONSTER_EVELYNN_PRECURSOR = "https://cdn.discordapp.com/attachments/1334637411363323996/1501338062142181548/evelynn_precursor.jpg?ex=69fbb587&is=69fa6407&hm=37b45bd41af8c58c63e5e07a2e049a4dea8a566463fdc612fd59a5a30a6824da&"
 MONSTER_EVELYNN = "https://cdn.discordapp.com/attachments/1334637411363323996/1501338061878071466/evelynn.jpg?ex=69fbb587&is=69fa6407&hm=70291f73eba57fc7f170babfd0cbe37b8a8507c98a2687b8af8231c13265bd90&"
 
+# ── THE RITE OF CONVERGENCE — WING MONSTER IMAGES (Monster.image per wing) ─────
+MONSTER_APHRODITE_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915640782028871/aphro_reborn.jpg?ex=6a517bdc&is=6a502a5c&hm=ca0bb635b7f07e46e65d76eab6553181e56d7dcf720dabf1b4bbfe07b40aa50c&"
+MONSTER_LUCIFER_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915643344879656/lucifer_reborn.jpg?ex=6a517bdc&is=6a502a5c&hm=d7c89b6ab52f25110ea2f14d240077f0088acc4ee1e5ab70d4e5bc41a6bbc900&"
+MONSTER_GEMINI_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915643059535982/gemini_reborn.jpg?ex=6a517bdc&is=6a502a5c&hm=dfdb3a9fe6b060c5515c29aeda37f18715ffb05bcbe056ee0a0a1a0270a82bc4&"
+MONSTER_NEET_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915651528097865/neet_reborn.jpg?ex=6a517bde&is=6a502a5e&hm=4c970deb94dacfb9befd5858eb4efcb16ab65426de4422a53962de2e5d88279a&"
+MONSTER_EVELYNN_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915642757681202/eve_reborn.jpg?ex=6a517bdc&is=6a502a5c&hm=ac1b51b53240043ead6076bec96a0cedea8db52197765b13f0a203152d1f3f67&"
+
+# ── THE RITE OF CONVERGENCE — ARBITER PHASE IMAGES (phases 1-5, phase 6 final) ─
+ARBITER_PHASE_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915660910493786/raid_p1.jpg?ex=6a517be1&is=6a502a61&hm=b4c5422585f39f7dfeb3032181c89432a803a7db4423c20bc04a40fc4f77783f&"
+ARBITER_PHASE_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915662605254656/raid_p2.jpg?ex=6a517be1&is=6a502a61&hm=21e7479745efbe22aa31e32f646a3f185cb91c12fd6dfc6930ae2a7ac8e469cf&"
+ARBITER_PHASE_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915663074754701/raid_p3.jpg?ex=6a517be1&is=6a502a61&hm=4238c2f8611c946252a59b1f495e8803d23ec7c3a703a2e0d5b95989009e07ee&"
+ARBITER_PHASE_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915663502577675/raid_p4.jpg?ex=6a517be1&is=6a502a61&hm=4f5d0533dec0f5ba1f5da15a85f42ad5495469b1ea10562392f907eae6cd9ca9&"
+ARBITER_PHASE_5 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915663897100428/raid_p5.jpg?ex=6a517be1&is=6a502a61&hm=308e38902ddcb5507bdcf248c517fed940c27e92520204d0c06465987dd18614&"
+ARBITER_PHASE_FINAL = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915641084149790/arbiter_final.jpg?ex=6a517bdc&is=6a502a5c&hm=b1eb9804ee07f0f3571a3ce7e772bfa5e066bf7cdd6e32c92454bcd92c33c8b5&"
+
+# ── THE RITE OF CONVERGENCE — ARTEFACT ICONS ────────────────────────────────────
+# NOTE: no dedicated Gemini-themed asset has been provided yet for Seal of
+# Duality — it currently falls back to MONSTER_GEMINI_REBORN in loot.py.
+ARTEFACT_BLESSED_BULWARK = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915641352589372/artefact_aphro.jpg?ex=6a517bdc&is=6a502a5c&hm=79f5face03af8b40c13c018a24808de31c26907e3f70bb2f4e4a0a7994c8c6bd&"
+ARTEFACT_BRAND_OF_RUIN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915642224869458/artefact_lucifer.jpg?ex=6a517bdc&is=6a502a5c&hm=08103f9ae4ca11aab795120593ae9ef99fabfe4242c242c0cce7ff391f9adaff&"
+ARTEFACT_SAD_ONES_GAMBLE = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915642459881472/artefact_neet.jpg?ex=6a517bdc&is=6a502a5c&hm=68a81d4ff462b2c43317d90114babaccf852abd25bca58e6225e2952fab2448e&"
+ARTEFACT_CORRUPTED_INSIGNIA = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915641943986421/artefact_evelynn.jpg?ex=6a517bdc&is=6a502a5c&hm=19ae6d50e1dc8112b2c2d4c693a3395e11f1995ed7e6f199a2828b24f17363d7&"
+ARTEFACT_THE_FINAL_EDICT = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915641637933140/artefact_edict.jpg?ex=6a517bdc&is=6a502a5c&hm=2b026046dbc3202f13cf2dc2def513bb4a160b0580b930a7c42907951f44f866&"
+
 # ── ENCOUNTER GATE IMAGES ─────────────────────────────────────────────────────
 ENCOUNTER_ANGELIC_DRAGON = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512863390011623/encounter_angelic_dragon.png?ex=69f8b500&is=69f76380&hm=601ea2e1dc4f39e8259a8c513a2910922f696cc6777f2a95d0ba518de78baa93&"
 ENCOUNTER_SOUL_CORE = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512864002375872/encounter_soul_core.png?ex=69f8b500&is=69f76380&hm=80b9a61f0d6fe219bc23864f2856e8577d985c433eede16e58db74f2a4119d9d&"

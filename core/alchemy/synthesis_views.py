@@ -433,7 +433,6 @@ class _DisenchantItemSelect(ui.Select):
                 label=d["name"][:100],
                 description=d["select_desc"][:100],
                 value=d["col"],
-                emoji=d["emoji"],
             )
             for d in options_data
             if d["owned"] > 0
@@ -719,7 +718,6 @@ class _SynthesizeItemSelect(ui.Select):
                 label=d["name"][:100],
                 description=d["select_desc"][:100],
                 value=d["col"],
-                emoji=d["emoji"],
             )
             for d in options_data
         ]

@@ -432,13 +432,12 @@ class EmblemGalleryView(BaseView):
         page_keys = self._page_keys()
         options = []
         for key in page_keys:
-            label, emoji = EMBLEM_CATALOG[key]
+            label, _emoji = EMBLEM_CATALOG[key]
             owned = key in self.owned_emblems
             options.append(
                 discord.SelectOption(
                     label=label,
                     value=key,
-                    emoji=emoji,
                     description="Owned — free to equip"
                     if owned
                     else f"{EMBLEM_COST:,}g",

@@ -193,10 +193,9 @@ class ImprintView(BaseView):
             discord.SelectOption(
                 label=f"{label} ({len(entries)} eligible)",
                 value=label,
-                emoji=emoji,
                 default=(label == self._selected_type),
             )
-            for label, _db, emoji in _TYPE_DEFS
+            for label, _db, _emoji in _TYPE_DEFS
             if (entries := self._by_type.get(label))
         ]
         type_select = Select(

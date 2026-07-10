@@ -516,6 +516,29 @@ TUTORIALS: dict[str, dict] = {
         "image": ARBITER_THUMBNAIL,
         "color": discord.Color.gold(),
     },
+    "rite": {
+        "title": "🕯️ The Rite of Convergence",
+        "author": "The Arbiter",
+        "author_icon": ARBITER_PORTRAIT,
+        "description": (
+            "*You come seeking passage into the Rite of Convergence. "
+            "I am merely the one who watches the door.*\n\n"
+            "Beyond it wait five faces you may recognize — old horrors, "
+            "reborn wrong. What you beat before will not help you here. "
+            "They have had a long time to change.\n\n"
+            "No one passes through carrying half a key. And nothing that "
+            "happens beyond this door can be undone once you've stepped "
+            "through it — win, lose, or turn back, the door does not "
+            "open twice."
+        ),
+        "tips": [
+            "Enter only when you're ready. There is no stepping out for supplies partway through.",
+            "What aid the road offers is offered once per respite — choose deliberately.",
+            "The five are not equally forgiving. Some builds will find one crueler than the rest.",
+        ],
+        "image": ARBITER_THUMBNAIL,
+        "color": discord.Color.dark_purple(),
+    },
     "paradise": {
         "title": "💎 Paradise Jewel",
         "author": "Tessara the Lapidary",

@@ -254,6 +254,16 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
     if monster.has_modifier("Undying Resolve") and monster.undying_immune_turns > 0:
         lines.append(f"💀 Undying  immune {monster.undying_immune_turns}t")
 
+    if monster.has_modifier("Unbreakable"):
+        threshold = int(monster.get_modifier_value("Unbreakable"))
+        lines.append(
+            f"💥 Unbreakable  {monster.unbreakable_charges}/{threshold}"
+        )
+
+    if monster.has_modifier("Judgment"):
+        threshold = int(monster.get_modifier_value("Judgment"))
+        lines.append(f"⚖️ Judgment  {monster.judgment_charges}/{threshold}")
+
     return "\n".join(lines)
 
 
@@ -550,7 +560,7 @@ def create_combat_layout(
     )
     monster_text = (
         f"### 🐲 {monster.name}\n"
-        f"{monster.hp:,}/{monster.max_hp:,} {STAT_HP}\n"
+        f"{get_hp_display(monster.hp, monster.max_hp, monster.ward)}\n"
         f"{STAT_ATK} {m_atk:,} | {STAT_DEF} {monster.effective_defence:,} | 🎯 ~{m_hit}%"
     )
     # Round 0 is the opening encounter frame, before any turn has resolved —

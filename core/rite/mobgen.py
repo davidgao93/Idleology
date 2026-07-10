@@ -23,29 +23,34 @@ from core.combat.mobgen.modifier_data import (
     make_modifier,
 )
 from core.images import (
-    ARBITER_PORTRAIT,
-    ARBITER_THUMBNAIL,
-    MONSTER_APHRODITE,
-    MONSTER_EVELYNN,
-    MONSTER_EVELYNN_PRECURSOR,
-    MONSTER_GEMINI,
-    MONSTER_LUCIFER,
-    MONSTER_NEET,
+    ARBITER_PHASE_1,
+    ARBITER_PHASE_2,
+    ARBITER_PHASE_3,
+    ARBITER_PHASE_4,
+    ARBITER_PHASE_5,
+    ARBITER_PHASE_FINAL,
+    MONSTER_APHRODITE_REBORN,
+    MONSTER_EVELYNN_REBORN,
+    MONSTER_GEMINI_REBORN,
+    MONSTER_LUCIFER_REBORN,
+    MONSTER_NEET_REBORN,
 )
 from core.models import Monster, MonsterModifier
 
-# Nightmarish (3) / Delirious (4) overlays, reused for Wing 5 and (in Milestone 5)
-# the Arbiter's final phase. Mirrors cogs/combat.py's difficulty-setting math
+# Extreme (2) / Nightmarish (3) / Delirious (4) overlays — Wings 2 and 4 use
+# Extreme, Wing 5 and (in Milestone 5) the Arbiter's final phase use
+# Nightmarish/Delirious. Mirrors cogs/combat.py's difficulty-setting math
 # exactly — additive bonus_pct stacking + flat DR + difficulty_level for the
 # surplus/crit/hit-chance tables — applied directly to a specific encounter
 # rather than through the player's difficulty setting.
-_DIFFICULTY_ATK_MULT = {3: 3.0, 4: 4.0}
-_DIFFICULTY_DR = {3: 0.10, 4: 0.25}
+_DIFFICULTY_ATK_MULT = {2: 2.5, 3: 3.0, 4: 4.0}
+_DIFFICULTY_DR = {2: 0.0, 3: 0.10, 4: 0.25}
 
 
 def apply_rite_difficulty_overlay(monster: "Monster", level: int) -> None:
-    """Overlays Nightmarish (level=3) or Delirious (level=4) scaling onto an
-    already-generated monster, on top of whatever bonus_*_pct it already has."""
+    """Overlays Extreme (level=2), Nightmarish (level=3), or Delirious
+    (level=4) scaling onto an already-generated monster, on top of whatever
+    bonus_*_pct it already has."""
     mult = _DIFFICULTY_ATK_MULT[level]
     monster.bonus_attack_pct += mult - 1.0
     monster.bonus_defence_pct += mult - 1.0
@@ -73,7 +78,7 @@ def generate_wing_aphrodite(player, monster: "Monster") -> "Monster":
     monster.xp = 75000
 
     monster.name = "Aphrodite Reborn"
-    monster.image = MONSTER_APHRODITE
+    monster.image = MONSTER_APHRODITE_REBORN
     monster.flavor = "radiates an unbreakable, converging aura"
     monster.species = "Celestial"
     monster.is_boss = True
@@ -111,14 +116,16 @@ def generate_wing_lucifer(player, monster: "Monster") -> "Monster":
 
     monster = calculate_monster_stats(monster)
 
+    # Balance pass: base 2x HP boosted by a further 300% (×4) — Lucifer was
+    # dying too fast to matter. ×8 total.
     base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
-    monster.base_max_hp = int(base_hp * 2)
+    monster.base_max_hp = int(base_hp * 2 * 4.0)
     monster.hp = monster.base_max_hp
     monster.max_hp = monster.base_max_hp
     monster.xp = 75000
 
     monster.name = "Lucifer Reborn"
-    monster.image = MONSTER_LUCIFER
+    monster.image = MONSTER_LUCIFER_REBORN
     monster.flavor = "exudes a judging, all-consuming killing intent"
     monster.species = "Demon"
     monster.is_boss = True
@@ -147,6 +154,8 @@ def generate_wing_lucifer(player, monster: "Monster") -> "Monster":
     monster.modifiers.append(make_modifier("Judgment", monster.level))
 
     _apply_spawn_modifiers(monster)
+    # Balance pass: bumped to Extreme combat difficulty (×2.5 ATK/DEF).
+    apply_rite_difficulty_overlay(monster, level=2)
     finalize_monster_spawn(monster)
     return monster
 
@@ -164,14 +173,16 @@ def generate_wing_gemini(
 
     monster = calculate_monster_stats(monster)
 
+    # Balance pass: base 2x HP boosted by a further 200% (×3) — combat
+    # difficulty is left untouched, this wing only needed more sustain time.
     base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
-    monster.base_max_hp = int(base_hp * 2)
+    monster.base_max_hp = int(base_hp * 2 * 3.0)
     monster.hp = monster.base_max_hp
     monster.max_hp = monster.base_max_hp
     monster.xp = 75000
 
     monster.name = "Castor & Pollux Reborn"
-    monster.image = MONSTER_GEMINI
+    monster.image = MONSTER_GEMINI_REBORN
     monster.flavor = "move in perfect, inescapable synchrony"
     monster.species = "Celestial"
     monster.is_boss = True
@@ -222,14 +233,16 @@ def generate_wing_neet(
 
     monster = calculate_monster_stats(monster)
 
+    # Balance pass: base 2x HP boosted by a further 300% (×4) — NEET was
+    # dying too fast to matter. ×8 total.
     base_hp = random.randint(0, 9) + int(10 * (monster.level**1.4))
-    monster.base_max_hp = int(base_hp * 2)
+    monster.base_max_hp = int(base_hp * 2 * 4.0)
     monster.hp = monster.base_max_hp
     monster.max_hp = monster.base_max_hp
     monster.xp = 75000
 
     monster.name = "NEET Reborn"
-    monster.image = MONSTER_NEET
+    monster.image = MONSTER_NEET_REBORN
     monster.flavor = "radiates an entropic, unraveling void"
     monster.species = "Void"
     monster.is_boss = True
@@ -244,6 +257,8 @@ def generate_wing_neet(
     monster.void_drain_rate = void_drain_rate
 
     _apply_spawn_modifiers(monster)
+    # Balance pass: bumped to Extreme combat difficulty (×2.5 ATK/DEF).
+    apply_rite_difficulty_overlay(monster, level=2)
     finalize_monster_spawn(monster)
     return monster
 
@@ -267,8 +282,10 @@ def generate_wing_evelynn(
     monster.xp = 75000
 
     monster.name = "Evelynn Reborn"
-    monster.image = MONSTER_EVELYNN_PRECURSOR
-    monster.image2 = MONSTER_EVELYNN
+    # Only one dedicated asset provided for this wing (no separate precursor/
+    # reveal pair like Uber Evelynn has) — used for both image slots.
+    monster.image = MONSTER_EVELYNN_REBORN
+    monster.image2 = MONSTER_EVELYNN_REBORN
     monster.flavor = "casts a writhing, converging black mass"
     monster.species = "Corrupted"
     monster.is_boss = True
@@ -305,6 +322,15 @@ ARBITER_PHASE_NAMES = [
     "Right Arm of the Infinite Void",
     "Amalgam of Flesh, Dreams, and Nightmares",
     "Arbiter, the Last Edict",
+]
+
+ARBITER_PHASE_IMAGES = [
+    ARBITER_PHASE_1,
+    ARBITER_PHASE_2,
+    ARBITER_PHASE_3,
+    ARBITER_PHASE_4,
+    ARBITER_PHASE_5,
+    ARBITER_PHASE_FINAL,
 ]
 
 
@@ -354,8 +380,11 @@ def generate_arbiter_phase(player, phase_data: dict, phase_index: int) -> "Monst
         attack=0,
         defence=0,
         modifiers=[],
-        image=ARBITER_PORTRAIT,
-        image2=ARBITER_THUMBNAIL,
+        # No image2 — each phase keeps its own art for the whole phase.
+        # CombatView._apply_phase_image_transition swaps to image2 once HP
+        # drops below 50%; leaving it set to ARBITER_PORTRAIT was replacing
+        # the correct phase art with the generic portrait mid-fight.
+        image=ARBITER_PHASE_IMAGES[phase_index],
         flavor="watches, unmoved by anything you can do",
         species="???",
         is_boss=True,

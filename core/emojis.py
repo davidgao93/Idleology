@@ -137,6 +137,13 @@ CORRUPTION_SIGIL = "<:corruption_sigil:1524443380699107449>"
 CORRUPTION_CORE = "<:corruption_core:1524449916989214791>"
 CORRUPTION_ENGRAM = "<:corruption_engram:1524443381776777238>"
 
+# ── The Rite of Convergence entry keys ──────────────────────────────────────
+RITE_KEY_CELESTIAL = "<:celestial_raid_key:1524874694438682792>"  # Apex of Dreams (Aphrodite)
+RITE_KEY_INFERNAL = "<:infernal_raid_key:1524874697580347452>"  # Corruption of Memories (Lucifer)
+RITE_KEY_GEMINI = "<:gemini_raid_key:1524874695390920874>"  # Scales of Judgment (Gemini)
+RITE_KEY_VOID = "<:void_raid_key:1524874696066203687>"  # Devoid of Thoughts (NEET)
+RITE_KEY_CORRUPT = "<:corrupt_raid_key:1524874693767856340>"  # Zenith of Nightmares (Evelynn)
+
 # ── Apex Hunt materials (zone shards, meta shards, soul fragments) ─────────
 PYRE_SHARD = "<:pyre_shard:1524798356965167125>"
 TEMPEST_SHARD = "<:tempest_shard:1524798351223291924>"
@@ -246,6 +253,11 @@ RESOURCE_EMOJI: dict[str, str] = {
     "heartwood_shards": HEARTWOOD_SHARD,
     "geode_cores": GEODE_CORE,
     "development_contracts": DEVELOPMENT_CONTRACT,
+    "rite_key_apex_of_dreams": RITE_KEY_CELESTIAL,
+    "rite_key_corruption_of_memories": RITE_KEY_INFERNAL,
+    "rite_key_scales_of_judgment": RITE_KEY_GEMINI,
+    "rite_key_devoid_of_thoughts": RITE_KEY_VOID,
+    "rite_key_zenith_of_nightmares": RITE_KEY_CORRUPT,
 }
 
 # ── EMBLEM_CATALOG ───────────────────────────────────────────────────────────

@@ -224,7 +224,6 @@ MILESTONES = [
             "/slayer",
             "/curios",
             "/delve",
-            "/delve_shop",
             "/consume",
             "/gamble",
             "/sheet",

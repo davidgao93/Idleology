@@ -22,8 +22,10 @@ from core.settlement.constants import (
     BM_ITEM_VALUES,
     BM_ROLLS_PER_VALUE,
     BM_TREE_NODES,
-    BM_TURNS_BASE,
-    BM_TURNS_PER_VALUE,
+    BM_TURNS_HALF_SATURATION,
+    BM_TURNS_MAX,
+    BM_TURNS_MIN,
+    BM_TURNS_SCALE_START,
     IDLEM_PER_TURN_BASE,
     PASSIVE_ZEAL_PER_HOUR_BASE,
     PROJECT_CONSTRUCTION_DT,
@@ -197,6 +199,23 @@ async def process_next_turn(
             await bot.database.social.update_followers(ideology_name, current + workers)
         summary["workers_from_nursery"] = workers
         summary["nursery_ideology"] = ideology_name
+
+    # 2c. Idlem Foundry: automatically produce Idlem each DT if staffed
+    foundry_building = await bot.database.settlement.get_building_by_type(
+        user_id, server_id, "idlem_foundry"
+    )
+    if (
+        foundry_building
+        and foundry_building.workers_assigned > 0
+        and not foundry_building.is_disabled
+    ):
+        idlem_mult = event_effects.get("idlem_mult", 1.0)
+        idlem = int(
+            IDLEM_PER_TURN_BASE * (foundry_building.workers_assigned / 100) * idlem_mult
+        )
+        idlem += random.randint(0, 1)
+        await bot.database.settlement.add_idlem(user_id, server_id, idlem)
+        summary["idlem_from_foundry"] += idlem
 
     # 3. Advance pending Black Market deal
     deal = await bot.database.settlement.get_pending_deal(user_id, server_id)
@@ -782,23 +801,32 @@ def compute_processing_turns(
     bm_tier: int,
     tree_nodes: dict[str, int],
 ) -> int:
-    """Returns the number of Development Turns required to process a deal."""
-    raw = (BM_TURNS_BASE + value / BM_TURNS_PER_VALUE) * 1.5
+    """Returns the number of Development Turns required to process a deal.
+
+    Turns stay at BM_TURNS_MIN below BM_TURNS_SCALE_START value, then rise
+    along a saturating curve that approaches BM_TURNS_MAX as value grows —
+    so even extreme offers (billions in value) top out near the cap instead
+    of scaling linearly forever.
+    """
+    excess = max(0.0, value - BM_TURNS_SCALE_START)
+    turn_range = BM_TURNS_MAX - BM_TURNS_MIN
+    raw = BM_TURNS_MIN + turn_range * excess / (excess + BM_TURNS_HALF_SATURATION)
 
     # Tier reduction (T5 = −30%)
     tier_reduction = (bm_tier - 1) * 0.075  # 0% T1 → 30% T5
     raw *= max(0.0, 1.0 - tier_reduction)
 
-    # Efficiency tree nodes
-    eff_reductions = {"efficiency_1": 0.10, "efficiency_2": 0.20, "efficiency_3": 0.35}
-    for key, red in eff_reductions.items():
-        if key in tree_nodes:
-            raw *= 1.0 - red
+    # Efficiency tree node: levels don't stack — only the current level's
+    # reduction applies.
+    eff_level = tree_nodes.get("efficiency", 0)
+    if eff_level > 0:
+        reductions = BM_TREE_NODES["efficiency"]["reductions"]
+        raw *= 1.0 - reductions[min(eff_level, len(reductions)) - 1]
 
     turns = max(1, int(raw))
 
     # Instant deals node: if ≤ 5 turns, complete immediately
-    if "efficiency_4" in tree_nodes and turns <= 5:
+    if "instant_deals" in tree_nodes and turns <= 5:
         turns = 0
 
     return turns
@@ -868,7 +896,7 @@ def roll_bm_rewards(
         "gold": int,
         "currencies": {currency_key: qty},
         "items": [{"type": "weapon"|"armor"|etc., "level": int}],
-        "summary_lines": [str],  # human-readable, joined as one line for display
+        "summary_lines": [str],  # one human-readable entry per reward type
       }
     """
     base_rolls = max(1, math.floor(value / BM_ROLLS_PER_VALUE))
@@ -1113,9 +1141,10 @@ def roll_bm_rewards(
         ]
         parts.append(f"⚔️ {', '.join(gear_parts)}")
 
-    # Store as a single summary line (wrapped in a list for backward compat)
-    if parts:
-        result["summary_lines"] = [" | ".join(parts)]
+    # One reward type per entry — callers join/slice as needed so a single
+    # extreme-value deal (thousands of currency units) can't produce one
+    # unbounded mega-string that blows past Discord's 1024-char field cap.
+    result["summary_lines"] = parts
 
     if bm_logger:
         bm_logger.log_summary(result)

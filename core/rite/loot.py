@@ -8,6 +8,14 @@ uses (core/settlement/turn_engine.py: complete_bm_deal_instant).
 
 import random
 
+from core.images import (
+    ARTEFACT_BLESSED_BULWARK,
+    ARTEFACT_BRAND_OF_RUIN,
+    ARTEFACT_CORRUPTED_INSIGNIA,
+    ARTEFACT_SAD_ONES_GAMBLE,
+    ARTEFACT_THE_FINAL_EDICT,
+    MONSTER_GEMINI_REBORN,
+)
 from core.settlement.turn_engine import complete_bm_deal_instant
 
 BASE_LOOT_VALUE = 300_000
@@ -22,14 +30,16 @@ ARTEFACT_TIER_3_DP = 350
 # (see RAID-DESIGN.md's "Non-artefact loot distribution" TBD note).
 ARTEFACT_DROP_CHANCE = 0.20
 
-# key -> (display name, thematic source, dp required to enter the pool, weight)
-ARTEFACT_TABLE: dict[str, tuple[str, str, int, int]] = {
-    "blessed_bulwark": ("Blessed Bulwark", "Aphrodite", ARTEFACT_TIER_1_DP, 25),
-    "brand_of_ruin": ("Brand of Ruin", "Lucifer", ARTEFACT_TIER_1_DP, 25),
-    "seal_of_duality": ("Seal of Duality", "Gemini", ARTEFACT_TIER_1_DP, 25),
-    "sad_ones_gamble": ("Sad One's Gamble", "NEET", ARTEFACT_TIER_2_DP, 10),
-    "corrupted_insignia": ("Corrupted Insignia", "Evelynn", ARTEFACT_TIER_2_DP, 10),
-    "the_final_edict": ("The Final Edict", "Arbiter", ARTEFACT_TIER_3_DP, 5),
+# key -> (display name, thematic source, dp required to enter the pool, weight, image)
+# NOTE: Seal of Duality has no dedicated artefact asset yet — falls back to
+# MONSTER_GEMINI_REBORN until one is provided.
+ARTEFACT_TABLE: dict[str, tuple[str, str, int, int, str]] = {
+    "blessed_bulwark": ("Blessed Bulwark", "Aphrodite", ARTEFACT_TIER_1_DP, 25, ARTEFACT_BLESSED_BULWARK),
+    "brand_of_ruin": ("Brand of Ruin", "Lucifer", ARTEFACT_TIER_1_DP, 25, ARTEFACT_BRAND_OF_RUIN),
+    "seal_of_duality": ("Seal of Duality", "Gemini", ARTEFACT_TIER_1_DP, 25, MONSTER_GEMINI_REBORN),
+    "sad_ones_gamble": ("Sad One's Gamble", "NEET", ARTEFACT_TIER_2_DP, 10, ARTEFACT_SAD_ONES_GAMBLE),
+    "corrupted_insignia": ("Corrupted Insignia", "Evelynn", ARTEFACT_TIER_2_DP, 10, ARTEFACT_CORRUPTED_INSIGNIA),
+    "the_final_edict": ("The Final Edict", "Arbiter", ARTEFACT_TIER_3_DP, 5, ARTEFACT_THE_FINAL_EDICT),
 }
 
 
@@ -49,7 +59,7 @@ def roll_artefact_key(total_dp: int) -> str | None:
     whatever tiers `total_dp` has unlocked. Returns None on no drop."""
     eligible = [
         (key, weight)
-        for key, (_name, _source, req_dp, weight) in ARTEFACT_TABLE.items()
+        for key, (_name, _source, req_dp, weight, _image) in ARTEFACT_TABLE.items()
         if total_dp >= req_dp
     ]
     if not eligible or random.random() > ARTEFACT_DROP_CHANCE:
@@ -112,12 +122,14 @@ async def grant_run_completion_rewards(
 
     artefact_key = roll_artefact_key(total_dp)
     artefact_name = None
+    artefact_image = None
     if artefact_key:
         roll_1, roll_2, roll_3 = roll_artefact_stats(artefact_key)
         await bot.database.rite.set_artefact(
             user_id, server_id, artefact_key, roll_1, roll_2, roll_3
         )
         artefact_name = ARTEFACT_TABLE[artefact_key][0]
+        artefact_image = ARTEFACT_TABLE[artefact_key][4]
 
     return {
         "value": value,
@@ -125,4 +137,5 @@ async def grant_run_completion_rewards(
         "bm_rewards": bm_rewards,
         "artefact_key": artefact_key,
         "artefact_name": artefact_name,
+        "artefact_image": artefact_image,
     }

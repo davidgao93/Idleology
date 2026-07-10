@@ -266,9 +266,23 @@ def _skewed_roll(min_val: float, max_val: float) -> float:
     return round(min_val + biased * (max_val - min_val), 1)
 
 
-def roll_passive_type() -> str:
-    """Randomly pick a passive type from the weighted pool."""
-    return random.choice(REROLL_TYPE_POOL)
+def _used_passive_types(data: dict, exclude_slot: Optional[int] = None) -> set[str]:
+    """Passive types already occupying a slot (optionally excluding one slot index)."""
+    return {
+        slot["type"]
+        for i, slot in enumerate(data.get("passive_slots", []))
+        if i != exclude_slot
+    }
+
+
+def roll_passive_type(exclude: Optional[set[str]] = None) -> str:
+    """Randomly pick a passive type from the weighted pool, avoiding excluded types."""
+    pool = REROLL_TYPE_POOL
+    if exclude:
+        filtered = [p for p in pool if p not in exclude]
+        if filtered:
+            pool = filtered
+    return random.choice(pool)
 
 
 def roll_passive_value(passive_key: str) -> float:
@@ -277,9 +291,9 @@ def roll_passive_value(passive_key: str) -> float:
     return _skewed_roll(defn.min_value, defn.max_value)
 
 
-def roll_new_passive() -> dict:
-    """Returns a new {'type': ..., 'value': ...} passive dict."""
-    p_type = roll_passive_type()
+def roll_new_passive(data: dict) -> dict:
+    """Returns a new {'type': ..., 'value': ...} passive dict with a type not already in use."""
+    p_type = roll_passive_type(_used_passive_types(data))
     return {"type": p_type, "value": roll_passive_value(p_type)}
 
 
@@ -326,7 +340,7 @@ def consume_jewel_invest_passive(data: dict) -> tuple[bool, str]:
     new_count = get_passive_slot_count(data)
     if new_count > passive_count:
         # A new slot opened — roll a random passive for it
-        new_passive = roll_new_passive()
+        new_passive = roll_new_passive(data)
         data.setdefault("passive_slots", []).append(new_passive)
         return (
             True,
@@ -364,13 +378,9 @@ def reroll_passive_type(data: dict, slot_index: int) -> tuple[bool, str, int]:
     slots = data.get("passive_slots", [])
     if slot_index < 0 or slot_index >= len(slots):
         return False, "Invalid slot.", cost
-    old_type = slots[slot_index]["type"]
-    new_type = roll_passive_type()
-    # Re-roll until different type (cap at 10 attempts)
-    for _ in range(10):
-        if new_type != old_type:
-            break
-        new_type = roll_passive_type()
+    # Exclude every type currently in use (including this slot's own) so the
+    # reroll both changes the type and can never collide with another slot.
+    new_type = roll_passive_type(_used_passive_types(data))
     new_value = roll_passive_value(new_type)
     slots[slot_index] = {"type": new_type, "value": new_value}
     name = PASSIVES[new_type].name

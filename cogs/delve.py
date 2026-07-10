@@ -1,11 +1,9 @@
-import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.delve.delve_views import DelveEntryView, DelveUpgradeView, DelveView
+from core.delve.delve_views import DelveEntryView, DelveView
 from core.delve.mechanics import DelveMechanics, DelveState
 from core.first_use import TutorialGateView
-from core.images import DELVE_HUB
 
 
 class Delve(commands.Cog):
@@ -95,33 +93,6 @@ class Delve(commands.Cog):
         )
         await interaction.response.send_message(embed=view.build_embed(), view=view)
         view.message = await interaction.original_response()
-
-    @app_commands.command(
-        name="delve_shop", description="Upgrade your delve equipment."
-    )
-    async def delve_shop(self, interaction: Interaction):
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-
-        existing_user = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, existing_user):
-            return
-
-        delve_stats = await self.bot.database.delve.get_profile(user_id, server_id)
-
-        embed = discord.Embed(
-            title="🛠️ Delve Workshop", color=discord.Color.dark_orange()
-        )
-        embed.set_thumbnail(url=DELVE_HUB)
-        embed.description = f"💎 **Obsidian Shards:** {delve_stats['shards']}"
-        embed.add_field(
-            name="Upgrades",
-            value="Use Shards to improve your specialized equipment.",
-            inline=False,
-        )
-
-        view = DelveUpgradeView(self.bot, user_id, server_id, delve_stats)
-        await interaction.response.send_message(embed=embed, view=view)
 
 
 async def setup(bot):

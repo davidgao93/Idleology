@@ -19,7 +19,7 @@ from core.rite import mobgen
 from core.rite.data import compute_devotion_points
 from core.rite.loot import grant_run_completion_rewards
 from core.rite.run_state import RiteRunState
-from core.rite.views.respite_view import POWER_ATK_DEF_MULT
+from core.rite.views.respite_view import POWER_ATK_DEF_INCREMENT
 
 
 def _apply_arbiter_writ_overlays(monster, writs: list[str]) -> None:
@@ -34,9 +34,10 @@ async def build_arbiter_combat_view(
     """Builds Phase 1's CombatView. Shared by the initial reveal transition
     and death retries, which always restart the whole Arbiter from Phase 1."""
     player.reset_combat_state()
-    if run_state.pending_power_buff:
-        player.cs.atk_multiplier = POWER_ATK_DEF_MULT
-        player.cs.def_multiplier = POWER_ATK_DEF_MULT
+    if run_state.power_stacks > 0:
+        power_mult = 1.0 + POWER_ATK_DEF_INCREMENT * run_state.power_stacks
+        player.cs.atk_multiplier = power_mult
+        player.cs.def_multiplier = power_mult
 
     phases = mobgen.get_arbiter_phases(player)
     monster = mobgen.generate_arbiter_phase(player, phases[0], 0)
@@ -59,6 +60,24 @@ async def build_arbiter_combat_view(
         disable_potions="trials_drought" in run_state.writs,
         title_override=f"🕯️ THE ARBITER — PHASE 1: {monster.name.upper()}",
         player_avatar_url=user_row["appearance"] if user_row else None,
+    )
+
+
+async def enter_arbiter_fight(
+    bot, user_id: str, server_id: str, player, run_state: RiteRunState
+) -> CombatView:
+    """Snapshots room-entry state and builds Phase 1's CombatView. Shared by
+    the first-time reveal confirm (reveal_view.ArbiterConfrontView) and by
+    re-entry from the wing hub's "Challenge the Arbiter" button after a
+    flee/death — both start a fresh Phase 1 attempt the same way."""
+    run_state.current_wing = "arbiter"
+    run_state.room_entry_hp = player.current_hp
+    run_state.room_entry_potions = player.potions
+    await bot.database.rite.upsert_run(user_id, server_id, run_state.to_snapshot())
+
+    arbiter_callback = make_arbiter_end_state_callback(run_state)
+    return await build_arbiter_combat_view(
+        bot, user_id, server_id, player, run_state, arbiter_callback
     )
 
 
@@ -87,6 +106,8 @@ def _build_victory_embed(
             value=f"**{rewards['artefact_name']}** — equipped to your Artefact slot!",
             inline=False,
         )
+        if rewards.get("artefact_image"):
+            embed.set_thumbnail(url=rewards["artefact_image"])
     return embed
 
 
@@ -140,14 +161,15 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
         # Turn counter spans every wing fight and every Arbiter phase,
         # excluding respite/reveal screens.
         run_state.total_turns += view.monster.combat_round
-        won = view.monster.hp <= 0 and view.player.current_hp > 0
+        fled = getattr(view, "fled", False)
+        won = not fled and view.monster.hp <= 0 and view.player.current_hp > 0
 
         await view.bot.database.users.update_from_player_object(view.player)
         await _je.save_jewel_state(view.bot, view.user_id, view.player)
 
         # Lazy import: wing_hub_view imports this module to trigger the
         # reveal, so a module-level import here would be circular.
-        from core.rite.views.wing_hub_view import RiteEndView
+        from core.rite.views.wing_hub_view import RiteEndView, WingHubView
 
         if won:
             view.bot.state_manager.clear_active(view.user_id)
@@ -165,40 +187,55 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
             view.stop()
             return
 
-        # --- Defeat: retry the whole Arbiter from Phase 1, or fail the run ---
+        # --- Not won: fled or died. Both return to the wing lobby with -1
+        # attempt — the lobby offers "Challenge the Arbiter" again since all
+        # 5 wings are already cleared (see WingHubView._on_challenge_arbiter). ---
         run_state.attempts_remaining -= 1
+        run_state.current_wing = None
 
-        if run_state.attempts_remaining > 0:
+        if not fled:
+            # Show the fatal turn and give the player a moment to read it
+            # before returning to the lobby — see the matching comment in
+            # wing_hub_view.py's defeat branch (Fast Auto never renders a
+            # final frame on its own otherwise).
+            view.update_buttons()
+            view._sync_items(view._build_layout(), interactive=False)
+            await message.edit(view=view)
+            await asyncio.sleep(2.5)
+
             view.player.current_hp = run_state.room_entry_hp
             await view.bot.database.users.update_from_player_object(view.player)
+
+        # Neutralize the old view — see the matching comment in
+        # wing_hub_view.py's defeat branch.
+        view.monster.hp = 0
+        view._auto_running = False
+        view._stop_auto = True
+
+        if run_state.attempts_remaining > 0:
             await view.bot.database.rite.upsert_run(
                 view.user_id, view.server_id, run_state.to_snapshot()
             )
-
-            retry_view = await build_arbiter_combat_view(
-                view.bot,
-                view.user_id,
-                view.server_id,
-                view.player,
-                run_state,
-                make_arbiter_end_state_callback(run_state),
+            hub = WingHubView(
+                view.bot, view.user_id, view.server_id, view.player, run_state
             )
-            await message.edit(embed=None, view=retry_view)
-            retry_view.message = message
+            view.bot.state_manager.set_active(view.user_id, "rite")
+            await message.edit(embed=None, view=hub)
+            hub.message = message
             view.stop()
             return
 
         view.bot.state_manager.clear_active(view.user_id)
         await view.bot.database.rite.delete_run(view.user_id, view.server_id)
-        embed = discord.Embed(
-            title="💀 The Rite Ends — The Arbiter Prevails",
-            description=(
-                f'*"{get_quip("arbiter_defeat")}"*\n\n'
-                "No attempts remain. The Rite of Convergence has ended; "
-                "your keys are spent."
-            ),
-            color=discord.Color.red(),
+        title = (
+            "🏃 The Rite Ends — You Fled"
+            if fled
+            else "💀 The Rite Ends — The Arbiter Prevails"
         )
+        description = (
+            "" if fled else f'*"{get_quip("arbiter_defeat")}"*\n\n'
+        ) + "No attempts remain. The Rite of Convergence has ended; your keys are spent."
+        embed = discord.Embed(title=title, description=description, color=discord.Color.red())
         end_view = RiteEndView(view.bot, view.user_id, view.server_id, embed)
         await message.edit(view=end_view)
         end_view.message = message

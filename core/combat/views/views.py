@@ -312,6 +312,7 @@ class CombatView(BaseLayoutView):
         )
         self._stop_auto = False  # Signals auto loop to exit (flee during auto)
         self._turn_count = 0  # Hard cap: exhaustion draw at 600 turns
+        self.fled = False  # The Rite of Convergence: distinguishes flee from defeat
 
         self.combat_logger = CombatLogger(player, monster)
         self.combat_logger.log_combat_start(player, monster)
@@ -621,6 +622,14 @@ class CombatView(BaseLayoutView):
                         await self.crisis_callback(False)
                     except Exception:
                         pass
+
+                # The Rite of Convergence: fleeing returns to the wing lobby
+                # with -1 attempt rather than silently ending the view.
+                if self.rite_callback:
+                    self.fled = True
+                    await self.rite_callback(self, message, interaction)
+                    return
+
                 self.stop()
                 return
 
@@ -692,6 +701,13 @@ class CombatView(BaseLayoutView):
                 await self.crisis_callback(False)
             except Exception:
                 pass
+
+        # The Rite of Convergence: fleeing returns to the wing lobby with
+        # -1 attempt rather than silently ending the view (see rite_callback).
+        if self.rite_callback:
+            self.fled = True
+            await self.rite_callback(self, interaction.message, interaction)
+            return
 
         self.stop()
 

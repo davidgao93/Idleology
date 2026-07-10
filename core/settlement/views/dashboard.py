@@ -423,7 +423,16 @@ class SettlementDashboardView(SettlementBaseView):
                 reward_parts = (turn_summary.get("deal_rewards") or {}).get(
                     "summary_lines", []
                 )
-                reward_text = reward_parts[0] if reward_parts else ""
+                reward_text = " | ".join(reward_parts)
+                # Extreme-value deals can roll dozens of reward types — keep the
+                # embed line short and let on_next_turn send the full breakdown
+                # as a separate ephemeral message instead of blowing past
+                # Discord's 1024-char field limit.
+                if len(reward_text) > 300:
+                    reward_text = (
+                        f"{len(reward_parts)} reward types — full breakdown sent "
+                        "in a follow-up message."
+                    )
                 lines.append(
                     "🎁 **Black Market deal returned!**"
                     + (f" {reward_text}" if reward_text else "")
@@ -574,9 +583,14 @@ class SettlementDashboardView(SettlementBaseView):
                     lines.append("🏭 **Buildings produced:**")
                     lines.extend(res_lines[:10])
             if lines:
+                summary_text = "\n".join(lines[:15])
+                # Belt-and-braces: no single field may exceed Discord's 1024-char
+                # cap, regardless of what produced the overflow.
+                if len(summary_text) > 1024:
+                    summary_text = summary_text[:1000] + "\n…(truncated)"
                 embed.add_field(
                     name=f"📜 Turn {total_turns} Summary",
-                    value="\n".join(lines[:15]),
+                    value=summary_text,
                     inline=False,
                 )
 
@@ -1292,8 +1306,40 @@ class SettlementDashboardView(SettlementBaseView):
             except Exception:
                 if self.message:
                     await self.message.edit(embed=embed, view=self)
+
+            # Extreme-value deals can roll far more reward types than fit in an
+            # embed field — send the untruncated breakdown ephemerally instead.
+            reward_parts = (summary.get("deal_rewards") or {}).get(
+                "summary_lines", []
+            )
+            full_reward_text = " | ".join(reward_parts)
+            if len(full_reward_text) > 300:
+                await self._send_chunked_ephemeral(
+                    interaction,
+                    "🎁 **Full Black Market Deal Rewards:**",
+                    reward_parts,
+                )
         finally:
             self._processing = False
+
+    async def _send_chunked_ephemeral(
+        self, interaction: Interaction, header: str, parts: list[str]
+    ) -> None:
+        """Sends `parts` joined by ' | ' as one or more ephemeral followups,
+        each kept under Discord's 2000-char message content limit."""
+        messages: list[str] = []
+        current = header
+        for part in parts:
+            candidate = f"{current}\n{part}" if current == header else f"{current} | {part}"
+            if len(candidate) > 1900:
+                messages.append(current)
+                current = part
+            else:
+                current = candidate
+        messages.append(current)
+
+        for msg in messages:
+            await interaction.followup.send(content=msg, ephemeral=True)
 
     async def on_gather_zeal(self, interaction: Interaction):
         """Collects accumulated passive Zeal into the player's Zeal balance."""

@@ -14,9 +14,11 @@ from core.npc_voices import get_quip
 from core.rite.run_state import RiteRunState
 
 RESPITE_HEAL_PCT = 0.40
-RESPITE_POTIONS = 2
+RESPITE_POTIONS = 3
 EMERGENCY_POTIONS = 1
-POWER_ATK_DEF_MULT = 1.30
+# Additive per-stack ATK/DEF bonus for Respite's "Power" choice — cumulative
+# and permanent for the rest of the run (see RiteRunState.power_stacks).
+POWER_ATK_DEF_INCREMENT = 0.30
 
 
 class RespiteView(BaseLayoutView):
@@ -42,6 +44,9 @@ class RespiteView(BaseLayoutView):
 
     def _build_container(self) -> discord.ui.Container:
         hp_pct = int(100 * self.player.current_hp / max(1, self.player.total_max_hp))
+        lives = "🧠" * self.run_state.attempts_remaining + "⚪" * (
+            self.run_state.max_attempts - self.run_state.attempts_remaining
+        )
         lines = [
             "## 🕯️ The Arbiter's Aid",
             f'*"{self._quip}"*',
@@ -49,7 +54,7 @@ class RespiteView(BaseLayoutView):
             f"**HP:** {self.player.current_hp:,}/{self.player.total_max_hp:,} ({hp_pct}%)  •  "
             f"**Potions:** {self.player.potions}",
             f"**Wings cleared:** {len(self.run_state.wings_cleared)}/5  •  "
-            f"**Attempts remaining:** {self.run_state.attempts_remaining}",
+            f"**Lives:** {lives}",
             "",
         ]
         if self._omitted_option:
@@ -58,8 +63,14 @@ class RespiteView(BaseLayoutView):
             )
             lines.append("")
         if self._omitted_option != "power":
+            cur_pct = int(self.run_state.power_stacks * POWER_ATK_DEF_INCREMENT * 100)
+            next_pct = int(
+                (self.run_state.power_stacks + 1) * POWER_ATK_DEF_INCREMENT * 100
+            )
             lines.append(
-                f"⚔️ **Power** — +{int((POWER_ATK_DEF_MULT - 1) * 100)}% ATK and DEF for the next fight only"
+                f"⚔️ **Power** — +{int(POWER_ATK_DEF_INCREMENT * 100)}% ATK and DEF, "
+                f"permanently, for the rest of the run "
+                f"(currently +{cur_pct}% → +{next_pct}%)"
             )
         if self._omitted_option != "respite":
             lines.append(
@@ -124,7 +135,7 @@ class RespiteView(BaseLayoutView):
             return
         self._processing = True
         await interaction.response.defer()
-        self.run_state.pending_power_buff = True
+        self.run_state.power_stacks += 1
         await self._apply_and_continue(interaction)
 
     async def _on_respite(self, interaction: Interaction):

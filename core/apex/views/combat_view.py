@@ -22,10 +22,10 @@ from core.base_layout_view import BaseLayoutView
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.economy.config import XP_LOSS_ON_DEFEAT
-from core.emojis import SOUL_FRAGMENT
 from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
 from core.combat.views.views import CombatView
+from core.emojis import SOUL_FRAGMENT
 from core.models import Monster, Player
 
 
@@ -285,6 +285,7 @@ class _PostApexView(BaseLayoutView):
             h, rem = divmod(secs, 3600)
             m = rem // 60
             time_str = f"{h}h {m}m" if h > 0 else f"{m}m"
+            self.row.challenge_again.disabled = True
             self.clear_items()
             self.add_item(
                 discord.ui.Container(
@@ -293,9 +294,9 @@ class _PostApexView(BaseLayoutView):
                     )
                 )
             )
+            self.add_item(self.row)
+            self._processing = False
             await interaction.edit_original_response(view=self)
-            self.bot.state_manager.clear_active(self.user_id)
-            self.stop()
             return
 
         # Consume 1 charge

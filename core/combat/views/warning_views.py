@@ -95,12 +95,9 @@ class LowHealthWarningView(BaseView):
         self.stop()
 
     async def flee(self, interaction: Interaction):
-        await interaction.response.edit_message(
-            content="You back away from the danger. Live to fight another day.",
-            embed=None,
-            view=None,
-        )
+        await interaction.response.defer()
         self.bot.state_manager.clear_active(self.user_id)
+        await interaction.delete_original_response()
         self.stop()
 
 
