@@ -63,12 +63,14 @@ class RespiteView(BaseLayoutView):
             )
             lines.append("")
         if self._omitted_option != "power":
-            cur_pct = int(self.run_state.power_stacks * POWER_ATK_DEF_INCREMENT * 100)
-            next_pct = int(
+            # round(), not int() — float multiplication (e.g. 3 * 0.30 * 100
+            # == 89.99999999999999) truncates wrong under plain int().
+            cur_pct = round(self.run_state.power_stacks * POWER_ATK_DEF_INCREMENT * 100)
+            next_pct = round(
                 (self.run_state.power_stacks + 1) * POWER_ATK_DEF_INCREMENT * 100
             )
             lines.append(
-                f"⚔️ **Power** — +{int(POWER_ATK_DEF_INCREMENT * 100)}% ATK and DEF, "
+                f"⚔️ **Power** — +{round(POWER_ATK_DEF_INCREMENT * 100)}% ATK and DEF, "
                 f"permanently, for the rest of the run "
                 f"(currently +{cur_pct}% → +{next_pct}%)"
             )

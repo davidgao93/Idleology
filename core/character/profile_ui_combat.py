@@ -77,12 +77,15 @@ class CombatProfileBuilder:
             gear_atk += p.equipped_glove.attack
         if p.equipped_boot:
             gear_atk += p.equipped_boot.attack
+        essence_atk = 0
         for _item in (p.equipped_glove, p.equipped_boot):
             if _item:
-                gear_atk += compute_essence_stat_bonus(_item).get("attack", 0)
+                essence_atk += compute_essence_stat_bonus(_item).get("attack", 0)
         total_atk = p.get_total_attack()
-        atk_bonuses = total_atk - p.base_attack - gear_atk
+        atk_bonuses = total_atk - p.base_attack - gear_atk - essence_atk
         atk_val = f"**Total: {total_atk:,}**\n↳ Base: {p.base_attack:,}\n↳ Equipment: {gear_atk:,}"
+        if essence_atk:
+            atk_val += f"\n↳ Essences: +{essence_atk:,}"
         if atk_bonuses:
             atk_val += f"\n↳ Bonuses: {atk_bonuses:+,}"
         if cb["atk"]:
@@ -101,12 +104,15 @@ class CombatProfileBuilder:
             gear_def += p.equipped_boot.defence
         if p.equipped_helmet:
             gear_def += p.equipped_helmet.defence
+        essence_def = 0
         for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
             if _item:
-                gear_def += compute_essence_stat_bonus(_item).get("defence", 0)
+                essence_def += compute_essence_stat_bonus(_item).get("defence", 0)
         total_def = p.get_total_defence()
-        def_bonuses = total_def - p.base_defence - gear_def
+        def_bonuses = total_def - p.base_defence - gear_def - essence_def
         def_val = f"**Total: {total_def:,}**\n↳ Base: {p.base_defence:,}\n↳ Equipment: {gear_def:,}"
+        if essence_def:
+            def_val += f"\n↳ Essences: +{essence_def:,}"
         if def_bonuses:
             def_val += f"\n↳ Bonuses: {def_bonuses:+,}"
         if cb["def"]:
@@ -114,12 +120,40 @@ class CombatProfileBuilder:
         embed.add_field(name=f"{STAT_DEF} Defence", value=def_val, inline=True)
 
         # ── HP ───────────────────────────────────────────────────────────────
-        total_hp = p.total_max_hp
+        vitality_pct = p.get_tome_bonus("vitality")
+        hearty_pct = 0
+        if p.equipped_boot and p.equipped_boot.passive == "hearty":
+            hearty_pct = p.equipped_boot.passive_lvl * 5
+        ss_hearty = p.get_soul_stone_passive("hearty")
+        if ss_hearty:
+            hearty_pct += ss_hearty * 5
+        asc_hp = p.get_ascension_bonuses()["hp"] if p.ascension_unlocks else 0
         parts_hp = (
             sum(v["hp"] for v in p.equipped_parts.values()) if p.equipped_parts else 0
         )
-        other_hp_bonuses = total_hp - p.max_hp - parts_hp
+        hp_pre_pct = p.max_hp + p.run_max_hp_bonus + p.bonus_max_hp + asc_hp + parts_hp
+        hp_total_pct = vitality_pct + hearty_pct
+        hp_post_pct = (
+            int(hp_pre_pct * (1 + hp_total_pct / 100))
+            if hp_total_pct > 0
+            else hp_pre_pct
+        )
+        gluttony_pct = sum(
+            compute_essence_stat_bonus(item).get("max_hp_pct", 0)
+            for item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet)
+            if item
+        )
+        hp_post_gluttony = (
+            int(hp_post_pct * (1 + gluttony_pct / 100))
+            if gluttony_pct > 0
+            else hp_post_pct
+        )
+        essence_hp = hp_post_gluttony - hp_post_pct
+        total_hp = p.total_max_hp
+        other_hp_bonuses = total_hp - p.max_hp - parts_hp - essence_hp
         hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}\n↳ Parts: {parts_hp:,}"
+        if essence_hp:
+            hp_val += f"\n↳ Essences: +{essence_hp:,}"
         if other_hp_bonuses:
             hp_val += f"\n↳ Bonuses: {other_hp_bonuses:+,}"
         if cb["hp"]:
@@ -138,18 +172,19 @@ class CombatProfileBuilder:
             ward_equip += p.equipped_boot.ward
         if p.equipped_helmet:
             ward_equip += p.equipped_helmet.ward
+        essence_ward = 0
         for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
             if _item:
-                ward_equip += compute_essence_stat_bonus(_item).get("ward", 0)
+                essence_ward += compute_essence_stat_bonus(_item).get("ward", 0)
         ward_other = p._get_companion_bonus("ward")
-        total_ward = ward_equip + ward_other
+        total_ward = ward_equip + essence_ward + ward_other
         if total_ward > 0:
             ward_hp = p.get_combat_ward_value()
-            embed.add_field(
-                name=f"{STAT_WARD} Ward",
-                value=f"**{total_ward}%** (= {ward_hp:,} Ward)\n↳ Equipment: {ward_equip}%\n↳ Other: {ward_other}%",
-                inline=True,
-            )
+            ward_val = f"**{total_ward}%** (= {ward_hp:,} Ward)\n↳ Equipment: {ward_equip}%"
+            if essence_ward:
+                ward_val += f"\n↳ Essences: +{essence_ward}%"
+            ward_val += f"\n↳ Other: {ward_other}%"
+            embed.add_field(name=f"{STAT_WARD} Ward", value=ward_val, inline=True)
 
         # ── Hit Chance ───────────────────────────────────────────────────────
         _HIT_BASE_PCT = 60
@@ -158,6 +193,10 @@ class CombatProfileBuilder:
             if p.equipped_weapon
             else _HIT_BASE_PCT
         )
+        hit_essence = 0
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                hit_essence += compute_essence_stat_bonus(_item).get("hit_pct", 0)
         hit_ascension = p.get_ascension_bonuses()["hit"] if p.ascension_unlocks else 0
         hit_deadeye = 0
         if p.equipped_weapon:
@@ -175,11 +214,13 @@ class CombatProfileBuilder:
         hit_companion = p._get_companion_bonus("hit")
         hit_accuracy_emblem = p.get_emblem_bonus("accuracy") * 2
         hit_bonuses = hit_deadeye + hit_ascension + hit_companion + hit_accuracy_emblem
-        hit_total = hit_weapon_pct + hit_bonuses
+        hit_total = hit_weapon_pct + hit_essence + hit_bonuses
         if p.get_glove_corrupted_essence() == "neet":
             hit_val = "**Total: 0%**\n↳ *(NEET Glove — always misses)*"
         else:
             hit_val = f"**Total: {hit_total}%**\n↳ Weapon: {hit_weapon_pct}%"
+            if hit_essence:
+                hit_val += f"\n↳ Essences: +{hit_essence}%"
             if hit_bonuses:
                 hit_val += f"\n↳ Bonuses: +{hit_bonuses}%"
         embed.add_field(name="🎯 Hit Chance", value=hit_val, inline=True)
@@ -199,13 +240,16 @@ class CombatProfileBuilder:
                     crit_weapon_piercing += _get_piercing_crit_bonus(_passive.lower())
         crit_weapon = crit_weapon_template + crit_weapon_piercing
         crit_equip = p.equipped_accessory.crit if p.equipped_accessory else 0
+        essence_crit = 0
         for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
             if _item:
-                crit_equip += compute_essence_stat_bonus(_item).get("crit", 0)
+                essence_crit += compute_essence_stat_bonus(_item).get("crit", 0)
         stat_crit = p.get_current_crit_chance()
-        crit_bonuses = stat_crit - crit_equip - crit_weapon_template
+        crit_bonuses = stat_crit - crit_equip - essence_crit - crit_weapon_template
         total_crit_display = stat_crit + crit_weapon_piercing
         crit_val = f"**Total: {total_crit_display}%**\n↳ Weapon: {crit_weapon}%\n↳ Equipment: {crit_equip}%"
+        if essence_crit:
+            crit_val += f"\n↳ Essences: +{essence_crit}%"
         if crit_bonuses:
             crit_val += f"\n↳ Bonuses: {crit_bonuses:+}%"
         if cb["crit"]:
@@ -215,8 +259,18 @@ class CombatProfileBuilder:
         # ── Crit Multiplier ──────────────────────────────────────────────────
         weapon_base_multi = p.equipped_weapon.crit_multi if p.equipped_weapon else 2.0
         crit_multi_total = p.get_weapon_crit_multi()
+        essence_multi = 0.0
+        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
+            if _item:
+                essence_multi += compute_essence_stat_bonus(_item).get(
+                    "crit_multi", 0.0
+                )
         cm_val = f"**{crit_multi_total:.2f}×**\n↳ Weapon: {weapon_base_multi:.2f}×"
-        crit_multi_bonus = round(crit_multi_total - weapon_base_multi, 4)
+        if essence_multi:
+            cm_val += f"\n↳ Essences: +{essence_multi:.2f}×"
+        crit_multi_bonus = round(
+            crit_multi_total - weapon_base_multi - essence_multi, 4
+        )
         if crit_multi_bonus > 0:
             cm_val += f"\n↳ Bonuses: +{crit_multi_bonus:.2f}×"
         embed.add_field(name=f"{CRIT_MULTI} Crit Multiplier", value=cm_val, inline=True)
@@ -231,22 +285,23 @@ class CombatProfileBuilder:
             pdr_equip += p.equipped_boot.pdr
         if p.equipped_helmet:
             pdr_equip += p.equipped_helmet.pdr
+        essence_pdr = 0
         for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
             if _item:
-                pdr_equip += compute_essence_stat_bonus(_item).get("pdr", 0)
+                essence_pdr += compute_essence_stat_bonus(_item).get("pdr", 0)
         pdr_other = p._get_companion_bonus("pdr") + int(p.get_tome_bonus("bulwark"))
         if p.ascension_unlocks:
             pdr_other += p.get_ascension_bonuses()["pdr"]
-        raw_pdr = pdr_equip + pdr_other
+        raw_pdr = pdr_equip + essence_pdr + pdr_other
         capped_pdr = min(80, raw_pdr)
         pdr_str = f"**{capped_pdr}%**" + (
             f" ({raw_pdr}% uncapped)" if raw_pdr > 80 else ""
         )
-        embed.add_field(
-            name=f"{STAT_PDR} PDR",
-            value=f"{pdr_str}\n↳ Equipment: {pdr_equip}%\n↳ Other: {pdr_other}%",
-            inline=True,
-        )
+        pdr_val = f"{pdr_str}\n↳ Equipment: {pdr_equip}%"
+        if essence_pdr:
+            pdr_val += f"\n↳ Essences: +{essence_pdr}%"
+        pdr_val += f"\n↳ Other: {pdr_other}%"
+        embed.add_field(name=f"{STAT_PDR} PDR", value=pdr_val, inline=True)
 
         # ── FDR ──────────────────────────────────────────────────────────────
         fdr_equip = 0
@@ -258,15 +313,18 @@ class CombatProfileBuilder:
             fdr_equip += p.equipped_boot.fdr
         if p.equipped_helmet:
             fdr_equip += p.equipped_helmet.fdr
+        essence_fdr = 0
         for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
             if _item:
-                fdr_equip += compute_essence_stat_bonus(_item).get("fdr", 0)
+                essence_fdr += compute_essence_stat_bonus(_item).get("fdr", 0)
         fdr_other = p._get_companion_bonus("fdr") + int(p.get_tome_bonus("resilience"))
         if p.ascension_unlocks:
             fdr_other += p.get_ascension_bonuses()["fdr"]
-        total_fdr = int(fdr_equip + fdr_other)
+        total_fdr = int(fdr_equip + essence_fdr + fdr_other)
         if total_fdr > 0:
             fdr_val = f"**{total_fdr:,}**\n↳ Equipment: {fdr_equip}"
+            if essence_fdr:
+                fdr_val += f"\n↳ Essences: +{essence_fdr}"
             if fdr_other > 0:
                 fdr_val += f"\n↳ Other: {fdr_other}"
             embed.add_field(name=f"{STAT_FDR} FDR", value=fdr_val, inline=True)

@@ -81,7 +81,7 @@ class CompanionRepository:
         Slot caps (pass the result of get_companion_slot_cap):
           level >= 40        → 1 slot
           level >= 80        → 2 slots
-          ascension >= 20    → 3 slots
+          level >= 100       → 3 slots
         """
         if active:
             # Check current active count against the caller-supplied cap

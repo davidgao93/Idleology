@@ -267,6 +267,38 @@ _VOICES: dict[str, list[str]] = {
         "The Rite does not forgive weakness, only reward its absence. Come back stronger.",
         "You lasted longer than most. That is either a compliment or a warning. Take your pick.",
     ],
+    # Still guide-mode: spoken the moment the 5th wing falls, before anything
+    # feels wrong. The mask is still fully on here.
+    "arbiter_congratulate": [
+        "Congratulations, adventurer. Five gods, broken by your own hand. Few ever see this moment.",
+        "Well fought. Truly. I did not expect you to still be standing.",
+        "You've done what I built five gods to prevent. That deserves acknowledgment, at least.",
+        "Five wings, five falls. I confess — I'm almost impressed.",
+    ],
+    # Screen 2 of the reveal: the Arbiter has just vanished from the player's
+    # side and speaks again from within the converging amalgam.
+    "arbiter_amalgam_taunt": [
+        "Great... guess I'll have to do this myself.",
+        "Subtlety was never going to get me this far anyway.",
+        "Fine. If the puppets won't finish you, I will.",
+        "No sense delaying the inevitable any further, is there?",
+    ],
+    # The phase 5 -> phase 6 transition: the amalgam's flesh peels away to
+    # reveal the true Arbiter had been standing behind it the whole time.
+    "arbiter_toying": [
+        "You didn't really think I'd let a puppet of flesh do all the work, did you?",
+        "That was merely a costume. Let's see how you fare against the tailor.",
+        "Amusing — you actually hurt it. Now let's find out if you can hurt me.",
+        "The amalgam was a rehearsal. This is the performance.",
+    ],
+    # Spoken by the Arbiter upon its own defeat — the true final victory,
+    # not to be confused with arbiter_defeat (the player losing).
+    "arbiter_true_defeat": [
+        "...Huh. Didn't see that coming. This isn't the end, adventurer — only the beginning. See you soon.",
+        "Splendid. Truly. I have not lost in longer than you'd believe. Rest — you'll want your strength for what comes next.",
+        "So it ends. For tonight. Until we meet again, adventurer.",
+        "A fair result, I suppose. Don't get comfortable — I always come back.",
+    ],
     # ── Upgrade Smiths ───────────────────────────────────────────────────────
     "forge": [
         "Another blade that needs real work. Hand it over — I'll make it sing.",

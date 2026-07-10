@@ -9,8 +9,6 @@ transitions straight into the Arbiter's 6-phase finale
 and core/rite/views/writ_select_view.py for the pre-run picker.
 """
 
-import asyncio
-
 import discord
 from discord import ButtonStyle, Interaction, ui
 
@@ -139,6 +137,89 @@ class RiteEndView(BaseLayoutView):
         super().__init__(bot, user_id, server_id)
         self.add_item(combat_ui.embed_to_container(embed))
         self.add_item(RiteEndRow())
+
+
+def build_rite_defeat_embed(
+    player: Player, monster: Monster, killing_blow: int, run_state: RiteRunState, *, title: str
+) -> discord.Embed:
+    """Defeat acknowledgment shown whenever the player dies mid-Rite (a wing
+    or an Arbiter phase) — mirrors the game's standard defeat screen
+    (killing blow, damage dealt) instead of an instant cut back to the lobby."""
+    from core.character.prestige_display import format_prestige_name
+
+    prestige_name = format_prestige_name(
+        player.name, player.prestige_title, player.prestige_emblem
+    )
+    total_damage_dealt = max(0, monster.max_hp - monster.hp)
+    killing_blow_str = (
+        f" (**{killing_blow:,}** killing blow)" if killing_blow > 0 else ""
+    )
+    lives = "🧠" * run_state.attempts_remaining + "⚪" * (
+        run_state.max_attempts - run_state.attempts_remaining
+    )
+    embed = discord.Embed(
+        title=title,
+        description=(
+            f"The **{monster.name}** deals a fatal blow{killing_blow_str}!\n"
+            f"{prestige_name} dealt **{total_damage_dealt:,}** damage before falling — "
+            f"it walks away with **{monster.hp:,}** health remaining.\n\n"
+            f"**Lives:** {lives}"
+        ),
+        color=discord.Color.red(),
+    )
+    if monster.image:
+        embed.set_thumbnail(url=monster.image)
+    return embed
+
+
+class RiteDefeatRow(discord.ui.ActionRow["RiteDefeatView"]):
+    @discord.ui.button(label="Return to Lobby", style=ButtonStyle.secondary, emoji="↩️")
+    async def return_to_lobby(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_return(interaction)
+
+
+class RiteDefeatView(BaseLayoutView):
+    """Static defeat acknowledgment for a death mid-Rite (wing or Arbiter
+    phase) — shown in place of the old auto-timed frozen-frame transition, so
+    a death is never an instant cut straight back to the lobby. HP is only
+    restored to the room-entry snapshot once the player explicitly clicks
+    Return to Lobby, not automatically."""
+
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        server_id: str,
+        player: Player,
+        run_state: RiteRunState,
+        embed: discord.Embed,
+    ):
+        super().__init__(bot, user_id, server_id)
+        self.player = player
+        self.run_state = run_state
+        self._processing = False
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(RiteDefeatRow())
+
+    async def _on_return(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        self.player.current_hp = self.run_state.room_entry_hp
+        await self.bot.database.users.update_from_player_object(self.player)
+        await self.bot.database.rite.upsert_run(
+            self.user_id, self.server_id, self.run_state.to_snapshot()
+        )
+        hub = WingHubView(
+            self.bot, self.user_id, self.server_id, self.player, self.run_state
+        )
+        self.bot.state_manager.set_active(self.user_id, "rite")
+        await interaction.edit_original_response(embed=None, view=hub)
+        hub.message = await interaction.original_response()
+        self.stop()
 
 
 class RiteExitConfirmRow(discord.ui.ActionRow["RiteExitConfirmView"]):
@@ -315,7 +396,10 @@ class WingHubView(BaseLayoutView):
                 f"**HP:** {self.player.current_hp:,}/{self.player.total_max_hp:,} ({hp_pct}%)  •  "
                 f"**Potions:** {self.player.potions}"
                 + (
-                    f"\n⚔️ **Power:** +{int(self.run_state.power_stacks * POWER_ATK_DEF_INCREMENT * 100)}% "
+                    # round(), not int() — float multiplication (e.g.
+                    # 3 * 0.30 * 100 == 89.99999999999999) truncates wrong
+                    # under plain int().
+                    f"\n⚔️ **Power:** +{round(self.run_state.power_stacks * POWER_ATK_DEF_INCREMENT * 100)}% "
                     f"ATK/DEF (stacked {self.run_state.power_stacks}×)"
                     if self.run_state.power_stacks > 0
                     else ""
@@ -457,13 +541,18 @@ class WingHubView(BaseLayoutView):
                     # Lazy import: arbiter_view (via reveal_view) imports this
                     # module for RiteEndView, so a module-level import here
                     # would be circular.
-                    from core.rite.views.reveal_view import ArbiterConfrontView
+                    from core.rite.views.reveal_view import ArbiterMaterializesView
 
-                    confront = ArbiterConfrontView(
-                        view.bot, view.user_id, view.server_id, view.player, run_state
+                    materialize = ArbiterMaterializesView(
+                        view.bot,
+                        view.user_id,
+                        view.server_id,
+                        view.player,
+                        run_state,
+                        view.monster.name,
                     )
-                    await message.edit(embed=None, view=confront)
-                    confront.message = message
+                    await message.edit(embed=None, view=materialize)
+                    materialize.message = message
                     view.stop()
                     return
 
@@ -475,30 +564,12 @@ class WingHubView(BaseLayoutView):
                 view.stop()
                 return
 
-            # --- Not won: fled or died. Both return to the wing lobby with
-            # -1 attempt; neither retries nor clears this wing — the player
-            # picks their next move freely, including tackling a different
-            # wing first to bank a Respite buff before coming back. ---
+            # --- Not won: fled or died. Both cost an attempt; neither
+            # retries nor clears this wing — the player picks their next
+            # move freely, including tackling a different wing first to
+            # bank a Respite buff before coming back. ---
             run_state.attempts_remaining -= 1
             run_state.current_wing = None
-
-            if not fled:
-                # Show the fatal turn (e.g. an Unbreakable/Judgment true-
-                # damage kill) and give the player a moment to actually read
-                # it before swapping back to the lobby — Fast Auto in
-                # particular never renders a final frame on its own, and
-                # even the normal paths render it immediately before this
-                # callback runs, too fast to notice without a pause here.
-                view.update_buttons()
-                view._sync_items(view._build_layout(), interactive=False)
-                await message.edit(view=view)
-                await asyncio.sleep(2.5)
-
-                # HP restores to the room-entry snapshot so the player isn't
-                # stuck at 0 HP back in the lobby; potions do not (any used
-                # this attempt stay spent).
-                view.player.current_hp = run_state.room_entry_hp
-                await view.bot.database.users.update_from_player_object(view.player)
 
             # Neutralize the old view so an in-flight auto-battle loop (if
             # Auto was running) can't keep processing turns against this
@@ -507,33 +578,67 @@ class WingHubView(BaseLayoutView):
             view._auto_running = False
             view._stop_auto = True
 
-            if run_state.attempts_remaining > 0:
+            if fled:
+                if run_state.attempts_remaining > 0:
+                    await view.bot.database.rite.upsert_run(
+                        view.user_id, view.server_id, run_state.to_snapshot()
+                    )
+                    hub = WingHubView(
+                        view.bot, view.user_id, view.server_id, view.player, run_state
+                    )
+                    view.bot.state_manager.set_active(view.user_id, "rite")
+                    await message.edit(embed=None, view=hub)
+                    hub.message = message
+                    view.stop()
+                    return
+
+                view.bot.state_manager.clear_active(view.user_id)
+                await view.bot.database.rite.delete_run(view.user_id, view.server_id)
+                embed = discord.Embed(
+                    title="🏃 The Rite Ends — You Fled",
+                    description=(
+                        "No attempts remain. The Rite of Convergence has ended; "
+                        "your keys are spent."
+                    ),
+                    color=discord.Color.red(),
+                )
+                end_view = RiteEndView(view.bot, view.user_id, view.server_id, embed)
+                await message.edit(view=end_view)
+                end_view.message = message
+                view.stop()
+                return
+
+            # --- Died: a static defeat acknowledgment (killing blow, damage
+            # dealt, lives remaining) instead of an instant cut to the lobby.
+            # HP only restores to the room-entry snapshot once the player
+            # clicks Return to Lobby — see RiteDefeatView. ---
+            can_retry = run_state.attempts_remaining > 0
+            defeat_title = (
+                "💀 You Have Fallen..."
+                if can_retry
+                else f"💀 The Rite Ends — Defeated by {view.monster.name}"
+            )
+            embed = build_rite_defeat_embed(
+                view.player, view.monster, view.killing_blow, run_state, title=defeat_title
+            )
+
+            if can_retry:
                 await view.bot.database.rite.upsert_run(
                     view.user_id, view.server_id, run_state.to_snapshot()
                 )
-                hub = WingHubView(
-                    view.bot, view.user_id, view.server_id, view.player, run_state
+                defeat_view = RiteDefeatView(
+                    view.bot, view.user_id, view.server_id, view.player, run_state, embed
                 )
-                view.bot.state_manager.set_active(view.user_id, "rite")
-                await message.edit(embed=None, view=hub)
-                hub.message = message
+                await message.edit(embed=None, view=defeat_view)
+                defeat_view.message = message
                 view.stop()
                 return
 
             view.bot.state_manager.clear_active(view.user_id)
             await view.bot.database.rite.delete_run(view.user_id, view.server_id)
-            title = (
-                "🏃 The Rite Ends — You Fled"
-                if fled
-                else f"💀 The Rite Ends — Defeated by {view.monster.name}"
-            )
-            embed = discord.Embed(
-                title=title,
-                description=(
-                    "No attempts remain. The Rite of Convergence has ended; "
-                    "your keys are spent."
-                ),
-                color=discord.Color.red(),
+            embed.description += (
+                "\n\nNo attempts remain. The Rite of Convergence has ended; "
+                "your keys are spent."
             )
             end_view = RiteEndView(view.bot, view.user_id, view.server_id, embed)
             await message.edit(view=end_view)
