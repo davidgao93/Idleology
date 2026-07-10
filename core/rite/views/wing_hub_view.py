@@ -35,7 +35,11 @@ from core.models import Monster, Player
 from core.rite import mobgen
 from core.rite.data import WRITS
 from core.rite.run_state import RiteRunState
-from core.rite.views.respite_view import POWER_ATK_DEF_INCREMENT, RespiteView
+from core.rite.views.respite_view import (
+    POWER_ATK_DEF_INCREMENT,
+    RespiteView,
+    apply_power_stacks,
+)
 
 # (key, display name, generator fn, thumbnail, entry-key emoji) — mechanic
 # descriptions are computed dynamically by _wing_mechanic_text() below since
@@ -130,8 +134,8 @@ class RiteEndRow(discord.ui.ActionRow["RiteEndView"]):
 
 
 class RiteEndView(BaseLayoutView):
-    """Terminal screen: run failed (0 attempts left), or the 5-wing reveal
-    placeholder pending the real Arbiter finale (Milestone 5)."""
+    """Terminal screen for the run: victory, or failure with 0 attempts
+    remaining (from a wing defeat, an Arbiter defeat, or fleeing)."""
 
     def __init__(self, bot, user_id: str, server_id: str, embed: discord.Embed):
         super().__init__(bot, user_id, server_id)
@@ -240,6 +244,9 @@ class RiteExitConfirmView(BaseLayoutView):
     def __init__(self, bot, hub: "WingHubView"):
         super().__init__(bot, parent=hub)
         self.hub = hub
+        lives = "🧠" * hub.run_state.attempts_remaining + "⚪" * (
+            hub.run_state.max_attempts - hub.run_state.attempts_remaining
+        )
         embed = discord.Embed(
             title="⚠️ Abandon the Rite of Convergence?",
             description=(
@@ -247,7 +254,7 @@ class RiteExitConfirmView(BaseLayoutView):
                 "to save and resume. Wings cleared, attempts spent, and your "
                 "5 consumed Rite keys are gone for good.\n\n"
                 f"**Wings cleared:** {len(hub.run_state.wings_cleared)}/5  •  "
-                f"**Attempts remaining:** {hub.run_state.attempts_remaining}"
+                f"**Lives:** {lives}"
             ),
             color=discord.Color.red(),
         )
@@ -290,10 +297,7 @@ async def _build_wing_combat_view(
     # Respite's "Power" choice is additive and cumulative for the rest of
     # the run — every stack picked adds another +30% ATK/DEF, applied fresh
     # at the start of every wing attempt (never reset on clear or defeat).
-    if run_state.power_stacks > 0:
-        power_mult = 1.0 + POWER_ATK_DEF_INCREMENT * run_state.power_stacks
-        player.cs.atk_multiplier = power_mult
-        player.cs.def_multiplier = power_mult
+    apply_power_stacks(player, run_state)
 
     monster = Monster(
         name="",
@@ -491,9 +495,7 @@ class WingHubView(BaseLayoutView):
             # Room-entry snapshot: on death-with-attempts-remaining, HP resets
             # to this value (potions do not — any spent during a failed
             # attempt stay spent, per RAID-DESIGN.md).
-            self.run_state.current_wing = wing_key
             self.run_state.room_entry_hp = self.player.current_hp
-            self.run_state.room_entry_potions = self.player.potions
             await self.bot.database.rite.upsert_run(
                 self.user_id, self.server_id, self.run_state.to_snapshot()
             )
@@ -521,8 +523,8 @@ class WingHubView(BaseLayoutView):
             fled = getattr(view, "fled", False)
             won = not fled and view.monster.hp <= 0 and view.player.current_hp > 0
 
-            # Turn counter spans every wing fight and (Milestone 5) Arbiter
-            # phase, excluding respite screens — monster.combat_round is
+            # Turn counter spans every wing fight and every Arbiter phase,
+            # excluding respite/reveal screens — monster.combat_round is
             # incremented once per monster turn, i.e. once per round of this
             # fight, so it's an accurate per-fight turn count to accumulate.
             run_state.total_turns += view.monster.combat_round
@@ -532,7 +534,6 @@ class WingHubView(BaseLayoutView):
 
             if won:
                 run_state.wings_cleared.add(wing_key)
-                run_state.current_wing = None
                 await view.bot.database.rite.upsert_run(
                     view.user_id, view.server_id, run_state.to_snapshot()
                 )
@@ -569,14 +570,11 @@ class WingHubView(BaseLayoutView):
             # move freely, including tackling a different wing first to
             # bank a Respite buff before coming back. ---
             run_state.attempts_remaining -= 1
-            run_state.current_wing = None
 
             # Neutralize the old view so an in-flight auto-battle loop (if
             # Auto was running) can't keep processing turns against this
             # now-discarded CombatView.
-            view.monster.hp = 0
-            view._auto_running = False
-            view._stop_auto = True
+            view.neutralize()
 
             if fled:
                 if run_state.attempts_remaining > 0:

@@ -671,6 +671,17 @@ RARE_FLAT_MOD_NAMES = [
 ]
 BOSS_MOD_NAMES = [k for k, v in MODIFIER_DEFINITIONS.items() if v.pool == "boss"]
 
+_TIER_NUMERALS = ["I", "II", "III", "IV", "V"]
+
+
+def omnipotent_label(tier: int, name: str = "Omnipotent") -> str:
+    """Display label for a monster carrying an entire modifier pool at one
+    uniform tier — see Monster.omnipotent_display. Used instead of listing
+    every individual modifier name (all-corrupted-mods monsters, the Rite of
+    Convergence's Amalgam/Arbiter phases)."""
+    idx = max(1, min(tier, len(_TIER_NUMERALS))) - 1
+    return f"{name} {_TIER_NUMERALS[idx]}"
+
 
 def roll_tier(monster_level: int, mod_def: ModifierDef) -> int:
     """Returns a 1-based tier index for a tiered modifier given monster.level.

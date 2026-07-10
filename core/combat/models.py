@@ -200,6 +200,17 @@ class Monster:
     incubated_egg_tier: str = ""
     ward: int = 0
 
+    # When a monster carries an entire modifier pool at one uniform tier
+    # (all-corrupted-mods monsters, Rite of Convergence Amalgam/Arbiter
+    # phases), listing every individual modifier is unreadable noise.
+    # omnipotent_display holds the single consolidated entry to show instead
+    # (e.g. "Omnipotent V"); omnipotent_names lists which modifier names it
+    # subsumes so display_modifiers can filter them out of the normal list.
+    # The real MonsterModifier entries stay in `modifiers` untouched — only
+    # the display collapses, not the underlying stat math.
+    omnipotent_display: str = ""
+    omnipotent_names: frozenset = frozenset()
+
     # --- Apex zone fields ---
     is_apex: bool = False  # True for apex hunt encounters
     apex_zone: Optional[str] = None  # active zone key
@@ -309,7 +320,11 @@ class Monster:
     @property
     def display_modifiers(self) -> list:
         result = []
+        if self.omnipotent_display:
+            result.append(self.omnipotent_display)
         for m in self.modifiers:
+            if m.name in self.omnipotent_names:
+                continue
             if m.name == "Ascended":
                 result.append(f"Ascended +{int(m.value)}")
             else:

@@ -373,6 +373,18 @@ class CombatView(BaseLayoutView):
         self.combat_logger.log_combat_end(self.player, self.monster, "timeout")
         await super().on_timeout()
 
+    def neutralize(self) -> None:
+        """Marks this fight as over and stops any in-flight auto-battle loop
+        from continuing to process turns against stale state. `.stop()`
+        alone does not interrupt an already-running coroutine — callers
+        that are about to discard this view for a fresh CombatView (e.g.
+        the Rite's death/flee/phase-transition handling) must call this
+        first, or the old loop keeps fighting in the background and
+        double-processes the end state."""
+        self.monster.hp = 0
+        self._auto_running = False
+        self._stop_auto = True
+
     def update_buttons(self):
         # Toggle buttons based on current state (Enabled if both alive, Disabled if one dead)
         is_over = self.player.current_hp <= 0 or self.monster.hp <= 0

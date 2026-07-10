@@ -8,6 +8,7 @@ from core.combat.mobgen.modifier_data import (
     MODIFIER_DEFINITIONS,
     RARE_TIERED_MOD_NAMES,
     make_modifier,
+    omnipotent_label,
 )
 from core.images import (
     COMBAT_DUMMY,
@@ -598,6 +599,11 @@ def apply_all_corrupted_modifiers(monster, force_tier: int = 2) -> None:
         monster.modifiers.append(
             make_modifier(name, monster.level, force_tier=force_tier)
         )
+    # Collapse the wall of individual modifier names into one consolidated
+    # display entry — the real MonsterModifier entries above still drive
+    # the actual stat math untouched.
+    monster.omnipotent_display = omnipotent_label(force_tier)
+    monster.omnipotent_names = frozenset(all_names)
 
 
 # Corrupted monster display names derived from CORRUPTED_MONSTERS keys.

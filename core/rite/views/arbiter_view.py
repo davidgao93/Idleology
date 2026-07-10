@@ -22,7 +22,7 @@ from core.rite import mobgen
 from core.rite.data import compute_devotion_points
 from core.rite.loot import grant_run_completion_rewards
 from core.rite.run_state import RiteRunState
-from core.rite.views.respite_view import POWER_ATK_DEF_INCREMENT
+from core.rite.views.respite_view import apply_power_stacks
 
 # Phases 1-5 (index 0-4) are the converged, escalating "Amalgam"; the true
 # Arbiter (index 5, "Arbiter, the Last Edict") only reveals itself once the
@@ -70,10 +70,7 @@ async def build_arbiter_combat_view(
     """Builds Phase 1's CombatView. Shared by the initial reveal transition
     and death retries, which always restart the whole Arbiter from Phase 1."""
     player.reset_combat_state()
-    if run_state.power_stacks > 0:
-        power_mult = 1.0 + POWER_ATK_DEF_INCREMENT * run_state.power_stacks
-        player.cs.atk_multiplier = power_mult
-        player.cs.def_multiplier = power_mult
+    apply_power_stacks(player, run_state)
 
     phases = mobgen.get_arbiter_phases(player)
     monster = mobgen.generate_arbiter_phase(player, phases[0], 0)
@@ -113,10 +110,7 @@ async def _enter_final_phase(
     falls. Ward and any accumulated Power stacks carry over from Phase 5
     since the fight is still continuous (no respite between phases)."""
     reset_for_phase_transition(player)
-    if run_state.power_stacks > 0:
-        power_mult = 1.0 + POWER_ATK_DEF_INCREMENT * run_state.power_stacks
-        player.cs.atk_multiplier = power_mult
-        player.cs.def_multiplier = power_mult
+    apply_power_stacks(player, run_state)
 
     phases = mobgen.get_arbiter_phases(player)
     monster = mobgen.generate_arbiter_phase(player, phases[_FINAL_PHASE_INDEX], _FINAL_PHASE_INDEX)
@@ -194,9 +188,7 @@ async def enter_arbiter_fight(
     the first-time reveal confirm (reveal_view.ArbiterConfrontView) and by
     re-entry from the wing hub's "Challenge the Arbiter" button after a
     flee/death — both start a fresh Phase 1 attempt the same way."""
-    run_state.current_wing = "arbiter"
     run_state.room_entry_hp = player.current_hp
-    run_state.room_entry_potions = player.potions
     await bot.database.rite.upsert_run(user_id, server_id, run_state.to_snapshot())
 
     arbiter_callback = make_arbiter_end_state_callback(run_state)
@@ -261,12 +253,10 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
             # "Face the Arbiter" button, not an auto-timed transition.
             if upcoming_phase_index == _FINAL_PHASE_INDEX:
                 # Neutralize this view before handing off to a fresh one for
-                # Phase 6 — same reasoning as the death-retry zombie-loop
-                # fix: an in-flight auto-battle loop on this object must not
-                # keep running once we've moved on to a different CombatView.
-                view.monster.hp = 0
-                view._auto_running = False
-                view._stop_auto = True
+                # Phase 6 — an in-flight auto-battle loop on this object
+                # must not keep running once we've moved on to a different
+                # CombatView (see CombatView.neutralize()).
+                view.neutralize()
 
                 trans_embed = discord.Embed(
                     title="🕯️ The Mask Slips",
@@ -298,10 +288,7 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
             # cs.atk_multiplier/def_multiplier back to 1.0 every phase — the
             # Power stacking buff (applied once at Phase 1 start) would
             # otherwise be silently lost from Phase 2 onward.
-            if run_state.power_stacks > 0:
-                power_mult = 1.0 + POWER_ATK_DEF_INCREMENT * run_state.power_stacks
-                view.player.cs.atk_multiplier = power_mult
-                view.player.cs.def_multiplier = power_mult
+            apply_power_stacks(view.player, run_state)
             view.monster = mobgen.generate_arbiter_phase(
                 view.player, next_phase_data, view.current_phase_index
             )
@@ -398,13 +385,8 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
         # wing lobby, which offers "Challenge the Arbiter" again since all 5
         # wings are already cleared (see WingHubView._on_challenge_arbiter). ---
         run_state.attempts_remaining -= 1
-        run_state.current_wing = None
 
-        # Neutralize the old view — see the matching comment in
-        # wing_hub_view.py's defeat branch.
-        view.monster.hp = 0
-        view._auto_running = False
-        view._stop_auto = True
+        view.neutralize()
 
         if fled:
             if run_state.attempts_remaining > 0:

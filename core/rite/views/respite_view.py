@@ -21,6 +21,18 @@ EMERGENCY_POTIONS = 1
 POWER_ATK_DEF_INCREMENT = 0.30
 
 
+def apply_power_stacks(player, run_state: RiteRunState) -> None:
+    """Applies the accumulated Power buff to player.cs — must be called
+    fresh at the start of every wing attempt and every Arbiter phase, since
+    reset_combat_state()/reset_combat_bonus() both zero cs.atk_multiplier/
+    def_multiplier back to 1.0. No-op if no Power has been picked yet."""
+    if run_state.power_stacks <= 0:
+        return
+    power_mult = 1.0 + POWER_ATK_DEF_INCREMENT * run_state.power_stacks
+    player.cs.atk_multiplier = power_mult
+    player.cs.def_multiplier = power_mult
+
+
 class RespiteView(BaseLayoutView):
     def __init__(
         self,

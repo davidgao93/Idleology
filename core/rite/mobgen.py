@@ -21,6 +21,7 @@ from core.combat.mobgen.modifier_data import (
     COMMON_MOD_NAMES,
     RARE_TIERED_MOD_NAMES,
     make_modifier,
+    omnipotent_label,
 )
 from core.images import (
     ARBITER_PHASE_1,
@@ -38,8 +39,8 @@ from core.images import (
 from core.models import Monster, MonsterModifier
 
 # Extreme (2) / Nightmarish (3) / Delirious (4) overlays — Wings 2 and 4 use
-# Extreme, Wing 5 and (in Milestone 5) the Arbiter's final phase use
-# Nightmarish/Delirious. Mirrors cogs/combat.py's difficulty-setting math
+# Extreme, Wing 5 and the Arbiter's final phase use Nightmarish/Delirious.
+# Mirrors cogs/combat.py's difficulty-setting math
 # exactly — additive bonus_pct stacking + flat DR + difficulty_level for the
 # surplus/crit/hit-chance tables — applied directly to a specific encounter
 # rather than through the player's difficulty setting.
@@ -166,7 +167,7 @@ def generate_wing_gemini(
     """Wing 3 — Gemini Reborn (Sustain Test): True Reckoning damage split.
 
     true_reckoning_pct defaults to 80% per RAID-DESIGN.md; the Fracture of
-    Balance writ (Milestone 4) overrides this to 90%.
+    Balance writ overrides this to 90%.
     """
     ref_level = player.level + player.ascension + 20
     monster.level = ref_level
@@ -226,7 +227,7 @@ def generate_wing_neet(
     """Wing 4 — NEET Reborn (Void Drain): stat-pool attrition test.
 
     void_drain_rate defaults to 1.5%/round per RAID-DESIGN.md; the Hungering
-    Void writ (Milestone 4) will override this to 3.0%.
+    Void writ overrides this to 3.0%.
     """
     ref_level = player.level + player.ascension + 20
     monster.level = ref_level
@@ -267,8 +268,7 @@ def generate_wing_evelynn(
     player, monster: "Monster", *, delirious: bool = False
 ) -> "Monster":
     """Wing 5 — Evelynn Reborn (All Modifiers): every common/rare mod at T5,
-    scaled to Nightmarish difficulty (Delirious under the Abyssal Embrace writ,
-    Milestone 4).
+    scaled to Nightmarish difficulty (Delirious under the Abyssal Embrace writ).
     """
     ref_level = player.level + player.ascension + 20
     monster.level = ref_level
@@ -404,6 +404,17 @@ def generate_arbiter_phase(player, phase_data: dict, phase_index: int) -> "Monst
             make_modifier(name, monster.level, force_max_tier=True)
             for name in BOSS_MOD_NAMES
         ]
+        # The true Arbiter carries every common, rare, and boss modifier at
+        # max tier — a wall of dozens of names. Collapse it into one bespoke
+        # entry instead of the generic "Omnipotent V" every other omnipotent
+        # monster gets.
+        monster.omnipotent_display = "∞ The Mind's End ∞"
+        monster.omnipotent_names = frozenset(
+            COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + BOSS_MOD_NAMES
+        )
+    else:
+        monster.omnipotent_display = omnipotent_label(tier)
+        monster.omnipotent_names = frozenset(COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES)
 
     _apply_spawn_modifiers(monster)
 
