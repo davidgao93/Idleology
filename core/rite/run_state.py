@@ -25,6 +25,9 @@ class RiteRunState:
     # Respite's "Power" choice: +30% ATK/DEF per pick, additive, cumulative
     # for the rest of the run (never reset on wing clear or retry).
     power_stacks: int = 0
+    # Respite's "Respite" choice: +30% Max HP per pick, additive, cumulative
+    # for the rest of the run — same persistence rules as power_stacks.
+    respite_hp_stacks: int = 0
 
     @property
     def is_run_complete(self) -> bool:
@@ -39,4 +42,5 @@ class RiteRunState:
             "total_turns": self.total_turns,
             "writs": self.writs,
             "power_stacks": self.power_stacks,
+            "respite_hp_stacks": self.respite_hp_stacks,
         }

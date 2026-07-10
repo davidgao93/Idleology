@@ -367,29 +367,15 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
             except Exception:
                 pass
 
-            await self._view.bot.database.alchemy.transmute(
-                self._view.user_id,
-                self._view.server_id,
-                opt["skill"],
-                opt["src_col"],
-                -(ratio * qty),
-                opt["dst_col"],
+            confirm_view = _TransmuteConfirmView(
+                self._view,
+                opt,
+                qty,
+                ratio,
+                total_gold,
                 dst_delta,
+                bonus_qty=dst_delta - qty,
             )
-            await self._view.bot.database.users.modify_gold(
-                self._view.user_id, -total_gold
-            )
-            self._view.player_gold = max(0, self._view.player_gold - total_gold)
-
-            bonus_text = (
-                f" (+{dst_delta - qty} from Druidic Ritual)" if dst_delta > qty else ""
-            )
-            await interaction.response.send_message(
-                f"✅ Transmuted **{ratio * qty}×** {opt['src_name']} → **{dst_delta}×** {opt['dst_name']}!{bonus_text} "
-                f"(-{GOLD_COIN} {total_gold:,})",
-                ephemeral=True,
-            )
-
         else:  # downgrade
             src_amt = await self._view.bot.database.alchemy.get_resource_amount(
                 self._view.user_id, self._view.server_id, opt["skill"], opt["src_col"]
@@ -401,24 +387,145 @@ class _TransmuteQuantityModal(ui.Modal, title="How many to transmute?"):
                     ephemeral=True,
                 )
                 return
-            await self._view.bot.database.alchemy.transmute(
-                self._view.user_id,
-                self._view.server_id,
-                opt["skill"],
-                opt["src_col"],
-                -qty,
-                opt["dst_col"],
-                ratio * qty,
+
+            confirm_view = _TransmuteConfirmView(
+                self._view, opt, qty, ratio, total_gold, ratio * qty
             )
-            await self._view.bot.database.users.modify_gold(
-                self._view.user_id, -total_gold
-            )
-            self._view.player_gold = max(0, self._view.player_gold - total_gold)
-            await interaction.response.send_message(
-                f"✅ Broke down **{qty}×** {opt['src_name']} → **{ratio * qty}×** {opt['dst_name']}! "
-                f"(-{GOLD_COIN} {total_gold:,})",
+
+        embed = confirm_view.build_embed()
+        await interaction.response.edit_message(embed=embed, view=confirm_view)
+
+
+# ---------------------------------------------------------------------------
+# Transmute View — confirmation step
+# ---------------------------------------------------------------------------
+
+
+class _TransmuteConfirmView(BaseView):
+    """Preview + confirm/cancel step shown after the quantity modal, before
+    any resources are actually spent."""
+
+    def __init__(
+        self,
+        transmute_view: "AlchemyTransmuteView",
+        opt: dict,
+        qty: int,
+        ratio: int,
+        total_gold: int,
+        dst_qty: int,
+        bonus_qty: int = 0,
+    ):
+        super().__init__(
+            transmute_view.bot, transmute_view.user_id, transmute_view.server_id
+        )
+        self._transmute_view = transmute_view
+        self._opt = opt
+        self._qty = qty
+        self._ratio = ratio
+        self._total_gold = total_gold
+        self._dst_qty = dst_qty
+        self._bonus_qty = bonus_qty
+        self._processing = False
+
+    def _src_needed(self) -> int:
+        return self._ratio * self._qty if self._opt["type"] == "upgrade" else self._qty
+
+    def build_embed(self) -> discord.Embed:
+        opt = self._opt
+        verb = "Upgrade" if opt["type"] == "upgrade" else "Downgrade"
+        bonus_text = (
+            f" *(+{self._bonus_qty} from Druidic Ritual)*"
+            if self._bonus_qty > 0
+            else ""
+        )
+        embed = discord.Embed(
+            title=f"🔄 Confirm {verb}",
+            description=(
+                f"**{self._src_needed():,}× {opt['src_name']}**  ➜  "
+                f"**{self._dst_qty:,}× {opt['dst_name']}**{bonus_text}\n\n"
+                f"**Gold Cost:** {GOLD_COIN} {self._total_gold:,}\n\n"
+                "*Review the transaction above, then confirm or go back.*"
+            ),
+            color=discord.Color.blurple(),
+        )
+        embed.set_author(name="Master Alchemist Elyndra", icon_url=ELYNDRA_PORTRAIT)
+        embed.set_thumbnail(url=ELYNDRA_THUMBNAIL)
+        return embed
+
+    @ui.button(label="Confirm", style=ButtonStyle.green, emoji="✅")
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        opt = self._opt
+        total_gold = self._total_gold
+        src_needed = self._src_needed()
+
+        # Re-validate at confirm time in case resources changed since the preview.
+        user_row = await self.bot.database.users.get(self.user_id, self.server_id)
+        current_gold = user_row["gold"] if user_row else 0
+        if current_gold < total_gold:
+            self._processing = False
+            await interaction.followup.send(
+                f"Not enough gold anymore (need {GOLD_COIN} {total_gold:,}, have {GOLD_COIN} {current_gold:,}).",
                 ephemeral=True,
             )
+            return
+
+        src_amt = await self.bot.database.alchemy.get_resource_amount(
+            self.user_id, self.server_id, opt["skill"], opt["src_col"]
+        )
+        if src_amt < src_needed:
+            self._processing = False
+            await interaction.followup.send(
+                f"Not enough **{opt['src_name']}** anymore (need {src_needed:,}, have {src_amt:,}).",
+                ephemeral=True,
+            )
+            return
+
+        await self.bot.database.alchemy.transmute(
+            self.user_id,
+            self.server_id,
+            opt["skill"],
+            opt["src_col"],
+            -src_needed,
+            opt["dst_col"],
+            self._dst_qty,
+        )
+        await self.bot.database.users.modify_gold(self.user_id, -total_gold)
+        self._transmute_view.player_gold = max(
+            0, self._transmute_view.player_gold - total_gold
+        )
+
+        verb = "Transmuted" if opt["type"] == "upgrade" else "Broke down"
+        bonus_text = (
+            f" (+{self._bonus_qty} from Druidic Ritual)" if self._bonus_qty > 0 else ""
+        )
+        embed = await self._transmute_view.build_embed()
+        embed.colour = discord.Color.gold()
+        embed.title = f"✅ {verb}!"
+        embed.description = (
+            f"**{src_needed:,}× {opt['src_name']}** → **{self._dst_qty:,}× {opt['dst_name']}**{bonus_text} "
+            f"(-{GOLD_COIN} {total_gold:,})\n\n"
+        ) + (embed.description or "")
+        self.stop()
+        msg = await interaction.edit_original_response(
+            embed=embed, view=self._transmute_view
+        )
+        self._transmute_view.message = msg
+
+    @ui.button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
+    async def cancel(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.defer()
+        embed = await self._transmute_view.build_embed()
+        self.stop()
+        msg = await interaction.edit_original_response(
+            embed=embed, view=self._transmute_view
+        )
+        self._transmute_view.message = msg
 
 
 class _TransmuteSelect(ui.Select):

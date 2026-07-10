@@ -543,8 +543,6 @@ def create_combat_layout(
     children: list = [discord.ui.TextDisplay(f"## {title}\n{description}")]
 
     m_atk = monster.effective_attack
-    if player.alchemy_enfeeble_pct > 0 and player.alchemy_enfeeble_turns > 0:
-        m_atk = int(m_atk * (1.0 - player.alchemy_enfeeble_pct))
 
     _mit_parts = []
     if p_pdr > 0:
@@ -714,8 +712,6 @@ def create_combat_embed(
     embed.set_image(url=monster.image)
 
     m_atk = monster.effective_attack
-    if player.alchemy_enfeeble_pct > 0 and player.alchemy_enfeeble_turns > 0:
-        m_atk = int(m_atk * (1.0 - player.alchemy_enfeeble_pct))
     embed.add_field(
         name=f"🐲 {monster.name}",
         value=(

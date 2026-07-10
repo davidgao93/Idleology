@@ -16,6 +16,7 @@ from core.images import (
     ARTEFACT_THE_FINAL_EDICT,
     MONSTER_GEMINI_REBORN,
 )
+from core.rite.data import max_devotion_points
 from core.settlement.turn_engine import complete_bm_deal_instant
 
 BASE_LOOT_VALUE = 300_000
@@ -25,10 +26,14 @@ ARTEFACT_TIER_2_DP = 130
 ARTEFACT_TIER_3_DP = 350
 
 # RAID-DESIGN.md doesn't specify an overall "does an artefact drop at all"
-# chance — only the relative weights BETWEEN artefacts once eligible. This
-# flat per-run chance is a placeholder pending real balance/playtesting
-# (see RAID-DESIGN.md's "Non-artefact loot distribution" TBD note).
-ARTEFACT_DROP_CHANCE = 0.20
+# chance — only the relative weights BETWEEN artefacts once eligible. The
+# drop chance scales with DP: ARTEFACT_DROP_CHANCE_BASE at the Tier 1
+# threshold (the minimum to be eligible at all), ramping linearly up to
+# ARTEFACT_DROP_CHANCE_CAP at the maximum DP achievable with every writ
+# picked — pushing DP doesn't just widen the artefact pool, it also raises
+# the odds of hitting it at all. See artefact_drop_chance() below.
+ARTEFACT_DROP_CHANCE_BASE = 0.20
+ARTEFACT_DROP_CHANCE_CAP = 0.40
 
 # key -> (display name, thematic source, dp required to enter the pool, weight, image)
 # NOTE: Seal of Duality has no dedicated artefact asset yet — falls back to
@@ -54,6 +59,21 @@ def effective_loot_value(total_dp: int) -> int:
     return int(BASE_LOOT_VALUE * (1 + excess_dp_bonus_pct(total_dp) / 100))
 
 
+def artefact_drop_chance(total_dp: int) -> float:
+    """Linearly scales the artefact drop chance from ARTEFACT_DROP_CHANCE_BASE
+    (at ARTEFACT_TIER_1_DP, the minimum to be eligible at all) up to
+    ARTEFACT_DROP_CHANCE_CAP (at max_devotion_points(), i.e. every writ
+    picked). Below the Tier 1 threshold this is moot — roll_artefact_key
+    already returns None before the chance is ever checked."""
+    span = max_devotion_points() - ARTEFACT_TIER_1_DP
+    if span <= 0 or total_dp <= ARTEFACT_TIER_1_DP:
+        return ARTEFACT_DROP_CHANCE_BASE
+    progress = min(1.0, (total_dp - ARTEFACT_TIER_1_DP) / span)
+    return ARTEFACT_DROP_CHANCE_BASE + (
+        ARTEFACT_DROP_CHANCE_CAP - ARTEFACT_DROP_CHANCE_BASE
+    ) * progress
+
+
 def roll_artefact_key(total_dp: int) -> str | None:
     """Rolls whether an artefact drops and, if so, which one — weighted among
     whatever tiers `total_dp` has unlocked. Returns None on no drop."""
@@ -62,7 +82,7 @@ def roll_artefact_key(total_dp: int) -> str | None:
         for key, (_name, _source, req_dp, weight, _image) in ARTEFACT_TABLE.items()
         if total_dp >= req_dp
     ]
-    if not eligible or random.random() > ARTEFACT_DROP_CHANCE:
+    if not eligible or random.random() > artefact_drop_chance(total_dp):
         return None
     keys, weights = zip(*eligible)
     return random.choices(keys, weights=weights, k=1)[0]

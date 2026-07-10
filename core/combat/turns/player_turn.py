@@ -199,7 +199,17 @@ def process_heal(player: Player, monster=None) -> str:
     enfeeble = potion_passives_by_type.get("enfeeble", 0)
     if enfeeble:
         dur = max(2, int(potion_durations_by_type.get("enfeeble", 2.0)))
-        player.alchemy_enfeeble_pct = max(player.alchemy_enfeeble_pct, enfeeble / 100.0)
+        new_pct = enfeeble / 100.0
+        if monster is not None and new_pct > player.alchemy_enfeeble_pct:
+            # Debuff the monster's actual ATK/DEF stats (read by every hit-chance
+            # and damage calc via effective_attack/effective_defence), not a fake
+            # discount on damage taken. Refreshing to a stronger roll tops up the
+            # reduction by the delta rather than stacking the full amount twice;
+            # monster_turn.py undoes exactly this much when the duration expires.
+            delta = new_pct - player.alchemy_enfeeble_pct
+            monster.bonus_attack_pct -= delta
+            monster.bonus_defence_pct -= delta
+        player.alchemy_enfeeble_pct = max(player.alchemy_enfeeble_pct, new_pct)
         player.alchemy_enfeeble_turns = max(player.alchemy_enfeeble_turns, dur)
         msg += (
             f"\n🌊 **Enfeeble** — monster suffers **-{enfeeble:.0f}%** ATK/DEF "
@@ -253,7 +263,8 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_def_boost_pct = max(player.alchemy_def_boost_pct, enrage / 100.0)
         player.alchemy_def_boost_turns = max(player.alchemy_def_boost_turns, dur)
         msg += (
-            f"\n💪 **Enrage** — +{enrage:.0f}% ATK and DEF for **{dur}** monster turns!"
+            f"\n💪 **Enrage** — +{enrage:.0f}% ATK and DEF for "
+            f"**{player.alchemy_def_boost_turns}** monster turns!"
         )
 
     barrier = potion_passives_by_type.get("barrier", 0)
@@ -316,7 +327,7 @@ def _pt_post_hit_effects(
     if is_crit:
         bloodthirst_pct = player.get_tome_bonus("bloodthirst")
         if bloodthirst_pct > 0:
-            heal = max(1, int(damage * (bloodthirst_pct / 100)))
+            heal = max(1, int(damage * (bloodthirst_pct / 10)))
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(
                 f"**Bloodthirst** siphons **{heal}** HP from the critical strike."

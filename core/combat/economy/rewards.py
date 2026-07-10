@@ -12,6 +12,7 @@ from core.combat.economy.config import (
     GEAR_DROP_BASE_CHANCE,
     GEAR_DROP_MAX_BONUS,
     GEAR_DROP_SCALING_CONSTANT,
+    GOLD_BASE_BUFF_PCT,
     GOLD_BASE_FLAT,
     GOLD_RARITY_DENOMINATOR,
     GUILD_TICKET_BASE_CHANCE,
@@ -54,7 +55,9 @@ def calculate_rewards(
 
     Gold flow
     ---------
-    1. Base gold from monster level / reward_scale formula.
+    1. Base gold from monster level / reward_scale formula, buffed by
+       GOLD_BASE_BUFF_PCT (applied here so it compounds with every later step
+       instead of being a flat tack-on at the end).
     2. Rarity multiplier (sole multiplicative step): × (1 + √rarity / denom).
     3. Flat floor: +GOLD_BASE_FLAT.
     4. Single additive pool: gold_find emblem, Infernal Plunder (Lucifer boot),
@@ -172,7 +175,9 @@ def calculate_rewards(
         reward_scale = max(0, (monster.level - player.level) / 10)
 
     gold_base = int(
-        (monster.level ** random.uniform(1.4, 1.6)) * (1 + (reward_scale**1.3))
+        (monster.level ** random.uniform(1.4, 1.6))
+        * (1 + (reward_scale**1.3))
+        * (1 + GOLD_BASE_BUFF_PCT)
     )
 
     # Rarity — sole multiplicative step, applied first

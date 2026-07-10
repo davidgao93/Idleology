@@ -464,16 +464,18 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
 
     # HP ceiling enforcement — single enforcement point at load time.
     #
-    # total_max_hp is always >= max_hp (it only adds bonuses), so any stored
-    # current_hp that is at or above the base max_hp must be clamped to the
-    # current total_max_hp.  This handles the common "swap out Hearty/gluttony
-    # gear while at full HP" case: the DB row retains the old inflated value,
-    # and this line corrects it on next load without needing a migration or a
-    # per-equip clamp in the inventory system.
+    # Only pulls current_hp DOWN if it exceeds the current effective cap — it
+    # must never push it up. This handles the "swap out Hearty/gluttony gear
+    # while at full HP" overheal case: the DB row retains the old (higher)
+    # total_max_hp value, and this line corrects it on next load without
+    # needing a migration or a per-equip clamp in the inventory system.
     #
-    # If current_hp is below max_hp (player was wounded), total_max_hp >= max_hp
-    # so the value is already safe — no clamp needed.
-    if player.current_hp >= player.max_hp:
+    # Comparing against the base `max_hp` stat instead of `total_max_hp` here
+    # was a bug: any wounded player whose current_hp sat between the base stat
+    # and their gear-boosted total_max_hp (i.e. almost every geared player)
+    # would get silently full-healed on every reload — including mid-session
+    # reloads like "Fight Again", not just a fresh gear swap.
+    if player.current_hp > player.total_max_hp:
         player.current_hp = player.total_max_hp
 
     if player.get_celestial_armor_passive() == "celestial_wind_dancer":

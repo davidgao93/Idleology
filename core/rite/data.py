@@ -146,6 +146,18 @@ def compute_devotion_points(writs: list[str], total_turns: int) -> int:
     return dp
 
 
+def max_devotion_points() -> int:
+    """The maximum DP achievable in a single run — every independent toggle
+    writ, plus the highest-DP option in each mutually-exclusive group (speed,
+    attempts). Computed from WRITS directly so it can't drift out of sync if
+    a writ is added/changed. Used to scale the artefact drop chance (see
+    core/rite/loot.py: artefact_drop_chance)."""
+    toggle_total = sum(WRITS[k].dp for k in TOGGLE_WRIT_KEYS)
+    best_speed = max((WRITS[k].dp for k in SPEED_WRIT_KEYS), default=0)
+    best_attempts = max((WRITS[k].dp for k in ATTEMPTS_WRIT_KEYS), default=0)
+    return toggle_total + best_speed + best_attempts
+
+
 # Flavor text for the 5 entry keys — display name -> (thematic link, blurb).
 RITE_KEY_FLAVOR: dict[str, tuple[str, str]] = {
     "Apex of Dreams": (

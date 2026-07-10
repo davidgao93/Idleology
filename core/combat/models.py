@@ -86,6 +86,9 @@ class CombatState:
     atk_multiplier: float = 1.0
     def_multiplier: float = 1.0
     crit_multiplier: float = 1.0
+    # The Rite of Convergence — Respite's stacking Max HP buff (percentage
+    # points, e.g. 30.0 = +30%; additive with Vitality/Hearty in total_max_hp).
+    respite_hp_pct: float = 0.0
     partner_special_rarity: float = 0.0
     # Paradise Jewel unleash transients
     jewel_cataclysm_primed: bool = False
@@ -1089,7 +1092,7 @@ class Player:
         base = (
             self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp + parts_hp
         )
-        total_pct = vitality_pct + hearty_pct
+        total_pct = vitality_pct + hearty_pct + self.cs.respite_hp_pct
         if total_pct > 0:
             base = int(base * (1 + total_pct / 100))
         gluttony_pct = sum(
@@ -1200,6 +1203,7 @@ class Player:
         self.cs.atk_multiplier = 1.0
         self.cs.def_multiplier = 1.0
         self.cs.crit_multiplier = 1.0
+        self.cs.respite_hp_pct = 0.0
         self.cs.partner_special_rarity = 0.0
         self.cs.chapter_hit_penalty = 0
         self.cs.chapter_pdr_reduction = 0.0

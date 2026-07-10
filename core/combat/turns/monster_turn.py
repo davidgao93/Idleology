@@ -60,6 +60,21 @@ def process_monster_turn(
             player.alchemy_def_boost_pct = 0.0
             player.alchemy_atk_boost_pct = 0.0
 
+    # Decrement Enfeeble duration unconditionally each monster turn, same rule as
+    # Enrage above. Enfeeble debuffs the monster's actual ATK/DEF stats directly
+    # (applied to monster.bonus_attack_pct / bonus_defence_pct in player_turn.py
+    # on potion use — same live-mutation pattern as Frenzied Hunger), so it lowers
+    # both the monster's damage output and the player's hit chance against it for
+    # its whole duration; when the duration runs out here, undo exactly the amount
+    # that was applied.
+    if player.alchemy_enfeeble_turns > 0:
+        player.alchemy_enfeeble_turns -= 1
+        if player.alchemy_enfeeble_turns <= 0 and player.alchemy_enfeeble_pct > 0:
+            monster.bonus_attack_pct += player.alchemy_enfeeble_pct
+            monster.bonus_defence_pct += player.alchemy_enfeeble_pct
+            player.alchemy_enfeeble_pct = 0.0
+            log.append("🌊 **Enfeeble** wears off.")
+
     celestial = player.get_celestial_armor_passive()
     helmet_passive = player.get_helmet_passive()
     helmet_lvl = player.equipped_helmet.passive_lvl if player.equipped_helmet else 0
@@ -676,21 +691,6 @@ def process_monster_turn(
             calc.append(
                 f"  sundering: bypass={bypass} ward_absorbed={ward_absorbed} remaining={total_damage}"
             )
-
-        # --- Enfeeble: monster ATK/DEF debuff reduces incoming damage ---
-        if player.alchemy_enfeeble_turns > 0 and total_damage > 0:
-            enfeeble_reduction = int(total_damage * player.alchemy_enfeeble_pct)
-            total_damage = max(0, total_damage - enfeeble_reduction)
-            player.alchemy_enfeeble_turns -= 1
-            if enfeeble_reduction > 0:
-                _enf_msg = (
-                    f"🌊 **Enfeeble** weakens the blow by **{enfeeble_reduction}**! "
-                    f"({player.alchemy_enfeeble_turns} turn{'s' if player.alchemy_enfeeble_turns != 1 else ''} left)"
-                )
-                log.append(_enf_msg)
-                clog.append(_enf_msg)
-            if player.alchemy_enfeeble_turns <= 0:
-                player.alchemy_enfeeble_pct = 0.0
 
         # --- Unified damage-taken reduction pool: Painkiller, Tenacity, Slayer ---
         # "Killing Blow" (tank). All active % sources are summed first, then applied

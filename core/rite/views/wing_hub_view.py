@@ -37,8 +37,9 @@ from core.rite.data import WRITS
 from core.rite.run_state import RiteRunState
 from core.rite.views.respite_view import (
     POWER_ATK_DEF_INCREMENT,
+    RESPITE_MAX_HP_INCREMENT,
     RespiteView,
-    apply_power_stacks,
+    apply_respite_buffs,
 )
 
 # (key, display name, generator fn, thumbnail, entry-key emoji) — mechanic
@@ -294,10 +295,10 @@ async def _build_wing_combat_view(
     # buffs from a previous encounter must be cleared first.
     player.reset_combat_state()
 
-    # Respite's "Power" choice is additive and cumulative for the rest of
-    # the run — every stack picked adds another +30% ATK/DEF, applied fresh
-    # at the start of every wing attempt (never reset on clear or defeat).
-    apply_power_stacks(player, run_state)
+    # The Arbiter's Aid buffs (Power's ATK/DEF, Respite's Max HP) are
+    # additive and cumulative for the rest of the run — applied fresh at
+    # the start of every wing attempt (never reset on clear or defeat).
+    apply_respite_buffs(player, run_state)
 
     monster = Monster(
         name="",
@@ -406,6 +407,12 @@ class WingHubView(BaseLayoutView):
                     f"\n⚔️ **Power:** +{round(self.run_state.power_stacks * POWER_ATK_DEF_INCREMENT * 100)}% "
                     f"ATK/DEF (stacked {self.run_state.power_stacks}×)"
                     if self.run_state.power_stacks > 0
+                    else ""
+                )
+                + (
+                    f"\n💚 **Respite:** +{round(self.run_state.respite_hp_stacks * RESPITE_MAX_HP_INCREMENT * 100)}% "
+                    f"Max HP (stacked {self.run_state.respite_hp_stacks}×)"
+                    if self.run_state.respite_hp_stacks > 0
                     else ""
                 )
                 + writs_line

@@ -22,7 +22,7 @@ from core.rite import mobgen
 from core.rite.data import compute_devotion_points
 from core.rite.loot import grant_run_completion_rewards
 from core.rite.run_state import RiteRunState
-from core.rite.views.respite_view import apply_power_stacks
+from core.rite.views.respite_view import apply_respite_buffs
 
 # Phases 1-5 (index 0-4) are the converged, escalating "Amalgam"; the true
 # Arbiter (index 5, "Arbiter, the Last Edict") only reveals itself once the
@@ -70,7 +70,7 @@ async def build_arbiter_combat_view(
     """Builds Phase 1's CombatView. Shared by the initial reveal transition
     and death retries, which always restart the whole Arbiter from Phase 1."""
     player.reset_combat_state()
-    apply_power_stacks(player, run_state)
+    apply_respite_buffs(player, run_state)
 
     phases = mobgen.get_arbiter_phases(player)
     monster = mobgen.generate_arbiter_phase(player, phases[0], 0)
@@ -107,10 +107,10 @@ async def _enter_final_phase(
     """Builds Phase 6's (the true Arbiter's) CombatView fresh, once the
     player explicitly confirms via ArbiterFinalFormView's "Face the
     Arbiter" button — Phase 6 never auto-starts the instant the Amalgam
-    falls. Ward and any accumulated Power stacks carry over from Phase 5
-    since the fight is still continuous (no respite between phases)."""
+    falls. Ward and any accumulated Arbiter's Aid buffs carry over from
+    Phase 5 since the fight is still continuous (no respite between phases)."""
     reset_for_phase_transition(player)
-    apply_power_stacks(player, run_state)
+    apply_respite_buffs(player, run_state)
 
     phases = mobgen.get_arbiter_phases(player)
     monster = mobgen.generate_arbiter_phase(player, phases[_FINAL_PHASE_INDEX], _FINAL_PHASE_INDEX)
@@ -288,7 +288,7 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
             # cs.atk_multiplier/def_multiplier back to 1.0 every phase — the
             # Power stacking buff (applied once at Phase 1 start) would
             # otherwise be silently lost from Phase 2 onward.
-            apply_power_stacks(view.player, run_state)
+            apply_respite_buffs(view.player, run_state)
             view.monster = mobgen.generate_arbiter_phase(
                 view.player, next_phase_data, view.current_phase_index
             )

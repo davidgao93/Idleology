@@ -162,6 +162,11 @@ SIGIL_WORKER_MULTIPLIER: float = 0.0005
 # Flat gold added to every reward after the rarity multiplier.
 GOLD_BASE_FLAT: int = 80
 
+# Buff applied directly to the base gold formula (before the rarity multiplier,
+# flat bonus, and additive pool), so it compounds with rarity/emblems/procs
+# instead of being a flat tack-on at the end.
+GOLD_BASE_BUFF_PCT: float = 0.25
+
 # Divisor used in the rarity multiplier: mult = 1 + sqrt(rarity) / denominator.
 GOLD_RARITY_DENOMINATOR: float = 20.0
 
