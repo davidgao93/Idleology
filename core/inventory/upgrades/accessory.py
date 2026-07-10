@@ -2,8 +2,11 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from core.character.passive_formatters import get_scaled_passive_description
-from core.emojis import GOLD_COIN, VOID_ENGRAM
+from core.character.passive_formatters import (
+    get_scaled_passive_description,
+    get_void_passive_description,
+)
+from core.emojis import GOLD_COIN, RUNE_POTENTIAL, VOID_ENGRAM
 from core.images import (
     SYLAS_AUTHOR,
     UPGRADE_ENCHANT,
@@ -74,7 +77,7 @@ class PotentialView(BaseUpgradeView):
             f"**Attempts Left:** {self.item.potential_remaining}\n"
             f"**Success Rate:** {base_rate}%\n"
             f"**Cost:** {cost:,} Gold ({gold:,})\n\n"
-            f"💎 **Runes Owned:** {runes}"
+            f"{RUNE_POTENTIAL} **Runes Owned:** {runes}"
         )
 
         self.cost = cost
@@ -105,7 +108,7 @@ class PotentialView(BaseUpgradeView):
         btn_rune = Button(
             label=f"Use Rune ({boosted_rate}%)",
             style=ButtonStyle.success,
-            emoji="💎",
+            emoji=RUNE_POTENTIAL,
             row=0,
         )
         btn_rune.disabled = gold < cost or not has_attempts or is_capped or runes < 1
@@ -265,14 +268,17 @@ class VoidEngramView(BaseUpgradeView):
         self.engrams = uber_prog["void_engrams"]
 
         current_passive = getattr(self.item, "void_passive", "none")
-        display_passive = (
-            current_passive.replace("_", " ").title()
-            if current_passive != "none"
-            else "None"
-        )
+        if current_passive != "none":
+            passive_desc = get_void_passive_description(current_passive)
+            passive_line = (
+                f"**Current Void Passive:** {current_passive.replace('_', ' ').title()}"
+                + (f"\n*{passive_desc}*" if passive_desc else "")
+            )
+        else:
+            passive_line = "**Current Void Passive:** None"
 
         desc = (
-            f"**Current Void Passive:** {display_passive}\n"
+            f"{passive_line}\n"
             f"{VOID_ENGRAM} **Void Engrams Owned:** {self.engrams}\n"
             f"**Gold Cost:** {GOLD_COIN} 25,000,000\n\n"
             "Consuming an Engram will corrupt your accessory with a Void passive, or reroll your existing one."
@@ -338,9 +344,14 @@ class VoidEngramView(BaseUpgradeView):
         self.item.void_passive = new_passive
 
         display_new = new_passive.replace("_", " ").title()
+        new_desc = get_void_passive_description(new_passive)
         res_embed = discord.Embed(
             title=f"{VOID_ENGRAM} Engram Absorbed!",
-            description=f"The Engram dissolves into the void, reshaping your accessory.\n\n**New Passive:** {display_new}",
+            description=(
+                "The Engram dissolves into the void, reshaping your accessory.\n\n"
+                f"**New Passive:** {display_new}"
+                + (f"\n*{new_desc}*" if new_desc else "")
+            ),
             color=discord.Color.dark_theme(),
         )
         res_embed.set_author(name="Artificer Sylas", icon_url=SYLAS_AUTHOR)

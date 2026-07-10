@@ -73,7 +73,7 @@ _CORRUPTED_BRIEF: dict[str, dict[str, str]] = {
     "aphrodite": {
         "glove": "Your ward is considered broken whenever it is damaged.",
         "boot": "Your gear drop rate is lucky.",
-        "helmet": "Your ward can never be disabled.",
+        "helmet": "Ward lost to reduction or disable effects instead converts to DEF for the encounter.",
     },
     "lucifer": {
         "glove": "15% of your current ward is added to your hit damage.",

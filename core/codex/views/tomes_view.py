@@ -86,6 +86,27 @@ def _tome_field(tome) -> tuple[str, str]:
     return _passive_display_name(tome.passive_type), f"Tier {tome.tier}/5 — {stat_str}"
 
 
+def _tome_roll_range_text(tome: CodexTome) -> str:
+    """Formats the roll range for a tome's current tier (what Reroll Value can
+    land on) and, if not maxed, the next tier (what Upgrade rolls into)."""
+    _, val_tmpl = _PASSIVE_LABELS.get(tome.passive_type, (tome.passive_type, "{v:.1f}"))
+    ranges = TOME_TIER_RANGES.get(tome.passive_type)
+    if not ranges:
+        return "Unknown"
+    lines = []
+    if tome.tier > 0:
+        lo, hi = ranges[tome.tier - 1]
+        lines.append(
+            f"**Tier {tome.tier} (reroll):** {val_tmpl.format(v=lo)} – {val_tmpl.format(v=hi)}"
+        )
+    if tome.tier < 5:
+        lo, hi = ranges[tome.tier]
+        lines.append(
+            f"**Tier {tome.tier + 1} (upgrade):** {val_tmpl.format(v=lo)} – {val_tmpl.format(v=hi)}"
+        )
+    return "\n".join(lines) if lines else "Maxed out."
+
+
 def _passive_range_text(passive_type: str) -> str:
     """Formats the tier-1 and tier-5 (max) value ranges for a passive type,
     so a freshly unlocked slot's growth potential is clear at a glance."""
@@ -159,45 +180,73 @@ class CodexTomsView(BaseLayoutView):
         unlock_row.add_item(unlock_btn)
         self.add_item(unlock_row)
 
+        selected_tome = None
         if self.selected_slot is not None:
-            tome = next((t for t in tomes if t.slot == self.selected_slot), None)
-            if tome:
-                actions_row = ui.ActionRow()
+            selected_tome = next(
+                (t for t in tomes if t.slot == self.selected_slot), None
+            )
 
-                can_upgrade = (
-                    tome.tier < 5 and self.fragments >= TOME_UPGRADE_COSTS[tome.tier]
-                )
-                upgrade_cost = TOME_UPGRADE_COSTS[tome.tier] if tome.tier < 5 else 0
-                upgrade_gold = TOME_GOLD_COSTS[tome.tier] if tome.tier < 5 else 0
-                upgrade_btn = ui.Button(
-                    label=f"Upgrade T{tome.tier}→T{tome.tier + 1} ({upgrade_cost}🔷 + {upgrade_gold // 1_000_000}m💰)",
-                    style=ButtonStyle.primary,
-                    disabled=not can_upgrade,
-                )
-                upgrade_btn.callback = self._on_upgrade
-                actions_row.add_item(upgrade_btn)
+        actions_row = ui.ActionRow()
 
-                reroll_val_cost = get_reroll_cost(tome.tier)
-                reroll_val_gold = get_reroll_gold_cost(tome.tier)
-                can_reroll_val = tome.tier > 0 and self.fragments >= reroll_val_cost
-                reroll_val_btn = ui.Button(
-                    label=f"Reroll Value ({reroll_val_cost}🔷 + {reroll_val_gold // 1_000_000}m💰)",
-                    style=ButtonStyle.secondary,
-                    disabled=not can_reroll_val,
-                )
-                reroll_val_btn.callback = self._on_reroll_value
-                actions_row.add_item(reroll_val_btn)
+        if selected_tome:
+            can_upgrade = (
+                selected_tome.tier < 5
+                and self.fragments >= TOME_UPGRADE_COSTS[selected_tome.tier]
+            )
+            upgrade_cost = (
+                TOME_UPGRADE_COSTS[selected_tome.tier]
+                if selected_tome.tier < 5
+                else 0
+            )
+            upgrade_gold = (
+                TOME_GOLD_COSTS[selected_tome.tier] if selected_tome.tier < 5 else 0
+            )
+            upgrade_label = (
+                f"Upgrade T{selected_tome.tier}→T{selected_tome.tier + 1} "
+                f"({upgrade_cost}🔷 + {upgrade_gold // 1_000_000}m💰)"
+            )
 
-                can_reroll_type = self.pages > 0
-                reroll_type_btn = ui.Button(
-                    label="Reroll Type (1📄)",
-                    style=ButtonStyle.danger,
-                    disabled=not can_reroll_type,
-                )
-                reroll_type_btn.callback = self._on_reroll_type
-                actions_row.add_item(reroll_type_btn)
+            reroll_val_cost = get_reroll_cost(selected_tome.tier)
+            reroll_val_gold = get_reroll_gold_cost(selected_tome.tier)
+            can_reroll_val = (
+                selected_tome.tier > 0 and self.fragments >= reroll_val_cost
+            )
+            reroll_val_label = (
+                f"Reroll Value ({reroll_val_cost}🔷 + "
+                f"{reroll_val_gold // 1_000_000}m💰)"
+            )
 
-                self.add_item(actions_row)
+            can_reroll_type = self.pages > 0
+        else:
+            can_upgrade = can_reroll_val = can_reroll_type = False
+            upgrade_label = "Upgrade"
+            reroll_val_label = "Reroll Value"
+
+        upgrade_btn = ui.Button(
+            label=upgrade_label,
+            style=ButtonStyle.primary,
+            disabled=not can_upgrade,
+        )
+        upgrade_btn.callback = self._on_upgrade
+        actions_row.add_item(upgrade_btn)
+
+        reroll_val_btn = ui.Button(
+            label=reroll_val_label,
+            style=ButtonStyle.secondary,
+            disabled=not can_reroll_val,
+        )
+        reroll_val_btn.callback = self._on_reroll_value
+        actions_row.add_item(reroll_val_btn)
+
+        reroll_type_btn = ui.Button(
+            label="Reroll Type (1📄)",
+            style=ButtonStyle.danger,
+            disabled=not can_reroll_type,
+        )
+        reroll_type_btn.callback = self._on_reroll_type
+        actions_row.add_item(reroll_type_btn)
+
+        self.add_item(actions_row)
 
         exit_row = ui.ActionRow()
         exit_btn = ui.Button(label="Back", style=ButtonStyle.secondary, emoji="⬅️")
@@ -225,8 +274,11 @@ class CodexTomsView(BaseLayoutView):
         else:
             for tome in tomes:
                 name, value = _tome_field(tome)
+                prefix = "▶ " if tome.slot == self.selected_slot else ""
                 embed.add_field(
-                    name=f"Slot {tome.slot + 1}: {name}", value=value, inline=False
+                    name=f"{prefix}Slot {tome.slot + 1}: {name}",
+                    value=value,
+                    inline=False,
                 )
             unlocked = len(tomes)
             if unlocked < 5:
@@ -240,6 +292,11 @@ class CodexTomsView(BaseLayoutView):
         if self.selected_slot is not None:
             tome = next((t for t in tomes if t.slot == self.selected_slot), None)
             if tome:
+                embed.add_field(
+                    name="🎲 Roll Ranges",
+                    value=_tome_roll_range_text(tome),
+                    inline=False,
+                )
                 name, _ = _PASSIVE_LABELS.get(
                     tome.passive_type, (tome.passive_type, "")
                 )

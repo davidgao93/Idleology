@@ -182,7 +182,7 @@ _CORRUPTED_DESC: dict[tuple, str] = {
     (
         "aphrodite",
         "helmet",
-    ): "During combat: Your ward can never be reduced or disabled by modifiers.",
+    ): "During combat: Ward lost to reduction or disable effects instead converts to DEF for the rest of the encounter.",
     ("lucifer", "glove"): "On hit: 15% of your current ward is added to your damage.",
     (
         "lucifer",

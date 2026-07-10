@@ -8,10 +8,13 @@ from core.character.passive_data import (
     _ACCESSORY_PASSIVE_FUNCS,
     _ARMOR_PASSIVE_DESC,
     _BOOT_PASSIVE_FUNCS,
+    _CELESTIAL_PASSIVE_DESC,
     _CORRUPTED_DESC,
     _GLOVE_PASSIVE_FUNCS,
     _HELMET_PASSIVE_FUNCS,
+    _INFERNAL_PASSIVE_DESC,
     _ROMAN,
+    _VOID_PASSIVE_DESC,
     _WEAPON_PASSIVE_DESC,
 )
 
@@ -35,6 +38,27 @@ def get_armor_passive_description(passive: str) -> str:
     if not passive or passive == "none":
         return ""
     return _ARMOR_PASSIVE_DESC.get(_normalize(passive), "")
+
+
+def get_void_passive_description(passive: str) -> str:
+    """Looks up the effect text for a corrupted accessory void passive, e.g. 'void_gaze'."""
+    if not passive or passive == "none":
+        return ""
+    return _VOID_PASSIVE_DESC.get(_normalize(passive), "")
+
+
+def get_celestial_passive_description(passive: str) -> str:
+    """Looks up the effect text for a Celestial armor passive, e.g. 'celestial_vow'."""
+    if not passive or passive == "none":
+        return ""
+    return _CELESTIAL_PASSIVE_DESC.get(_normalize(passive), "")
+
+
+def get_infernal_passive_description(passive: str) -> str:
+    """Looks up the effect text for an Infernal weapon passive, e.g. 'diabolic_pact'."""
+    if not passive or passive == "none":
+        return ""
+    return _INFERNAL_PASSIVE_DESC.get(_normalize(passive), "")
 
 
 def get_scaled_passive_description(item_type: str, passive: str, level: int) -> str:

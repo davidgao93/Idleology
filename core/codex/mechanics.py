@@ -416,7 +416,7 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
     across the whole game sums into one pool instead of compounding. Always use
     += / -= on these fields, never *=.
     """
-    _ward_immune = player.get_helmet_corrupted_essence() == "aphrodite"
+    _ward_failsafe = player.get_helmet_corrupted_essence() == "aphrodite"
 
     for mod_type, value in chapter.player_mods:
         if mod_type == "atk_pct":
@@ -430,8 +430,9 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
             player.current_hp = min(player.current_hp, player.total_max_hp)
 
         elif mod_type == "ward_disable":
-            if not _ward_immune:
-                player.combat_ward = 0
+            if _ward_failsafe:
+                player.bonus_def += player.combat_ward
+            player.combat_ward = 0
 
         elif mod_type == "crit_pct":
             player.bonus_crit -= int(value)

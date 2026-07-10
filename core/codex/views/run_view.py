@@ -46,6 +46,7 @@ def build_wave_baseline(player: Player) -> dict:
     return {
         "bonus_crit": player.bonus_crit,
         "bonus_max_hp": player.bonus_max_hp,
+        "bonus_def": player.bonus_def,
         "combat_ward": player.combat_ward,
         "atk_multiplier": player.atk_multiplier,
         "def_multiplier": player.def_multiplier,
@@ -440,6 +441,7 @@ class CodexRunView(BaseLayoutView):
         self.player.reset_combat_bonus()
         self.player.bonus_crit = self.chapter_wave_baseline["bonus_crit"]
         self.player.bonus_max_hp = self.chapter_wave_baseline.get("bonus_max_hp", 0)
+        self.player.bonus_def = self.chapter_wave_baseline.get("bonus_def", 0)
         self.player.combat_ward = self.chapter_wave_baseline["combat_ward"]
         self.player.atk_multiplier = self.chapter_wave_baseline.get(
             "atk_multiplier", 1.0

@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
+from core.character.passive_formatters import get_infernal_passive_description
 from core.emojis import GOLD_COIN, INFERNAL_ENGRAM
 from core.images import SYLAS_AUTHOR, UPGRADE_INFERNAL_ENGRAM
 from core.inventory.upgrades.base import BaseUpgradeView
@@ -26,14 +27,17 @@ class InfernalEngramView(BaseUpgradeView):
         self.engrams = uber_prog["infernal_engrams"]
 
         current_passive = getattr(self.item, "infernal_passive", "none")
-        display_passive = (
-            current_passive.replace("_", " ").title()
-            if current_passive != "none"
-            else "None"
-        )
+        if current_passive != "none":
+            passive_desc = get_infernal_passive_description(current_passive)
+            passive_line = (
+                f"**Current Infernal Passive:** {current_passive.replace('_', ' ').title()}"
+                + (f"\n*{passive_desc}*" if passive_desc else "")
+            )
+        else:
+            passive_line = "**Current Infernal Passive:** None"
 
         desc = (
-            f"**Current Infernal Passive:** {display_passive}\n"
+            f"{passive_line}\n"
             f"{INFERNAL_ENGRAM} **Infernal Engrams Owned:** {self.engrams}\n"
             f"**Gold Cost:** {GOLD_COIN} 25,000,000\n\n"
             "Consuming an Engram will imbue your weapon with a powerful Infernal passive, or reroll your existing one."
@@ -102,9 +106,14 @@ class InfernalEngramView(BaseUpgradeView):
         self.item.infernal_passive = new_passive
 
         display_new = new_passive.replace("_", " ").title()
+        new_desc = get_infernal_passive_description(new_passive)
         res_embed = discord.Embed(
             title=f"{INFERNAL_ENGRAM} Engram Ignited!",
-            description=f"The Engram shatters in hellfire, branding your weapon.\n\n**New Passive:** {display_new}",
+            description=(
+                "The Engram shatters in hellfire, branding your weapon.\n\n"
+                f"**New Passive:** {display_new}"
+                + (f"\n*{new_desc}*" if new_desc else "")
+            ),
             color=discord.Color.red(),
         )
         res_embed.set_author(name="Artificer Sylas", icon_url=SYLAS_AUTHOR)

@@ -425,6 +425,7 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
         field_texts.append(text)
 
     thumb_url = embed.thumbnail.url if embed.thumbnail else None
+    packed_field_count = 0
     if thumb_url:
         # Pack the header together with the next few field blocks into the
         # same Section as the thumbnail — a bare one-line title next to a
@@ -438,6 +439,7 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
         while field_texts and section_chars < 220 and len(section_parts) < 3:
             section_parts.append(field_texts.pop(0))
             section_chars += len(section_parts[-1])
+            packed_field_count += 1
         if section_parts:
             children.append(
                 discord.ui.Section(
@@ -456,7 +458,7 @@ def embed_to_container(embed: discord.Embed) -> discord.ui.Container:
     # undifferentiated wall of text — Components V2 has no side-by-side
     # column layout to fall back on, so this is the only lever available.
     for idx, text in enumerate(field_texts):
-        if idx > 0:
+        if idx > 0 or packed_field_count > 0:
             children.append(
                 discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
             )

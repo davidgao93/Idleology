@@ -4,8 +4,11 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from core.character.passive_formatters import get_armor_passive_description
-from core.emojis import CELESTIAL_ENGRAM, GOLD_COIN, RUNE_SHATTER
+from core.character.passive_formatters import (
+    get_armor_passive_description,
+    get_celestial_passive_description,
+)
+from core.emojis import CELESTIAL_ENGRAM, GOLD_COIN, RUNE_POTENTIAL, RUNE_SHATTER
 from core.images import (
     SYLAS_AUTHOR,
     UPGRADE_CELESTIAL_ENGRAM,
@@ -58,7 +61,7 @@ class TemperView(BaseUpgradeView):
         current_pct = int((base_rate - (current_step * 0.05)) * 100)
         boosted_pct = min(100, current_pct + 10)
 
-        desc += f"\n\n💎 **Runes Owned:** {runes}"
+        desc += f"\n\n{RUNE_POTENTIAL} **Runes Owned:** {runes}"
 
         # --- BUTTONS ---
         self.clear_items()
@@ -75,7 +78,7 @@ class TemperView(BaseUpgradeView):
         btn_rune = Button(
             label=f"Use Rune ({boosted_pct}%)",
             style=ButtonStyle.primary,
-            emoji="💎",
+            emoji=RUNE_POTENTIAL,
             row=0,
         )
         btn_rune.disabled = not has_res or runes < 1
@@ -533,22 +536,38 @@ class ReinforceView(BaseUpgradeView):
 
         itype, stat_col, stat_label, _, is_pct = self._reinforce_info()
 
-        # Read current material inventory for simulation
-        initial_cost = EquipmentMechanics.calculate_reinforce_cost(self.item)
-        all_mat_keys: dict[str, dict] = {}  # column → mat dict
-        for m in initial_cost.get("materials", []):
-            all_mat_keys[m["column"]] = m
-        for m in all_mat_keys.values():
-            m["_stock"] = await self.bot.database.skills.get_single_resource(
-                uid, sid, m["table"], m["column"]
-            )
+        # Pre-fetch stock for every material tier reinforcement can require —
+        # not just the item's current tier — since reinforcement_lvl crosses
+        # tier thresholds (100/120/140/160/180/200) mid-simulation.
+        all_mat_cols = {
+            "mining": ["iron_bar", "steel_bar", "gold_bar", "platinum_bar", "idea_bar"],
+            "woodcutting": [
+                "oak_plank",
+                "willow_plank",
+                "mahogany_plank",
+                "magic_plank",
+                "idea_plank",
+            ],
+            "fishing": [
+                "desiccated_essence",
+                "regular_essence",
+                "sturdy_essence",
+                "reinforced_essence",
+                "titanium_essence",
+            ],
+        }
+        sim_mats: dict[str, int] = {}
+        for table, cols in all_mat_cols.items():
+            for col in cols:
+                sim_mats[col] = await self.bot.database.skills.get_single_resource(
+                    uid, sid, table, col
+                )
 
         import copy
 
         sim_item = copy.copy(self.item)
         sim_runes = shatter_runes
         sim_gold = gold
-        sim_mats = {col: m["_stock"] for col, m in all_mat_keys.items()}
         reinforces_done = 0
         runes_used = 0
         gold_used = 0
@@ -765,10 +784,17 @@ class EngramView(BaseUpgradeView):
         self.engrams = uber_prog["celestial_engrams"]
 
         current_passive = getattr(self.item, "celestial_passive", "none")
-        display_passive = current_passive.replace("_", " ").title()
+        if current_passive != "none":
+            passive_desc = get_celestial_passive_description(current_passive)
+            passive_line = (
+                f"**Current Celestial Passive:** {current_passive.replace('_', ' ').title()}"
+                + (f"\n*{passive_desc}*" if passive_desc else "")
+            )
+        else:
+            passive_line = "**Current Celestial Passive:** None"
 
         desc = (
-            f"**Current Celestial Passive:** {display_passive}\n"
+            f"{passive_line}\n"
             f"{CELESTIAL_ENGRAM} **Celestial Engrams Owned:** {self.engrams}\n"
             f"**Gold Cost:** {GOLD_COIN} 25,000,000\n\n"
             "Consuming an Engram will imbue your armor with a powerful Celestial passive, or reroll your existing one."
@@ -835,10 +861,15 @@ class EngramView(BaseUpgradeView):
         self.item.celestial_passive = new_passive
 
         display_new = new_passive.replace("_", " ").title()
+        new_desc = get_celestial_passive_description(new_passive)
         res_embed = discord.Embed(
             title=f"{CELESTIAL_ENGRAM} Engram Resonated!", color=discord.Color.gold()
         )
-        res_embed.description = f"The Engram shatters, weaving divine energy into your armor.\n\n**New Passive:** {display_new}"
+        res_embed.description = (
+            "The Engram shatters, weaving divine energy into your armor.\n\n"
+            f"**New Passive:** {display_new}"
+            + (f"\n*{new_desc}*" if new_desc else "")
+        )
         res_embed.set_author(name="Artificer Sylas", icon_url=SYLAS_AUTHOR)
         res_embed.set_thumbnail(url=UPGRADE_CELESTIAL_ENGRAM)
 

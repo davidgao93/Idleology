@@ -280,7 +280,8 @@ def process_monster_turn(
         )
         # skip in compact — monster HP regen visible in HP bar
 
-    # Tempted Fate: every 3rd monster turn drain ALL player ward
+    # Tempted Fate: every 3rd monster turn drain ALL player ward (Aphrodite
+    # helmet's Ward Failsafe converts the drained amount into DEF instead).
     start = len(log)
     if (
         apex_zone == "vault"
@@ -290,9 +291,15 @@ def process_monster_turn(
         drained = player.combat_ward
         if drained > 0:
             player.combat_ward = 0
-            log.append(
-                f"{GOLD_COIN} **Tempted Fate** — fortune's price is paid! All **{drained}** {STAT_WARD} Ward drained!"
-            )
+            if player.get_helmet_corrupted_essence() == "aphrodite":
+                player.bonus_def += drained
+                log.append(
+                    f"{GOLD_COIN} **Tempted Fate** — fortune's price is paid! **{drained}** {STAT_WARD} Ward converted to DEF!"
+                )
+            else:
+                log.append(
+                    f"{GOLD_COIN} **Tempted Fate** — fortune's price is paid! All **{drained}** {STAT_WARD} Ward drained!"
+                )
     capture_compact_events(log, clog, start)
 
     # Reality Fracture: every 4th monster turn reroll one modifier

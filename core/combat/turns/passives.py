@@ -62,10 +62,15 @@ def compute_def_as_atk_bonus(player: Player) -> tuple[int, list[str]]:
 
 def apply_stat_effects(player: Player, monster: Monster) -> None:
     """Applies monster modifiers that alter player/monster state at combat start."""
-    # Dispelling: reduce player ward by 80% (aphrodite helmet is immune)
+    # Dispelling: reduce player ward by its tiered %; Aphrodite helmet (Ward
+    # Failsafe) converts the lost amount into DEF instead of losing it outright.
     if monster.has_modifier("Dispelling"):
-        if player.get_helmet_corrupted_essence() != "aphrodite":
-            player.combat_ward = int(player.combat_ward * 0.20)
+        reduction_pct = monster.get_modifier_value("Dispelling")
+        lost = int(player.combat_ward * reduction_pct)
+        if player.get_helmet_corrupted_essence() == "aphrodite":
+            player.bonus_def += lost
+        else:
+            player.combat_ward -= lost
 
     # Slayer Target Defence: +2% flat def per emblem tier vs the active slayer species.
     # Uses bonus_def so it stacks additively with companion +% def and all other sources.

@@ -44,9 +44,12 @@ class BalancedEngramView(BaseView):
             if self.comp.balanced_passive_tier > 0
             else ""
         )
+        passive_line = f"**Current Balanced Passive:** {tier_display}{display_passive}"
+        if current_passive != "none":
+            passive_line += f"\n*{self.comp.balanced_description}*"
 
         desc = (
-            f"**Current Balanced Passive:** {tier_display}{display_passive}\n"
+            f"{passive_line}\n"
             f"**Bound Engrams Owned:** {self.engrams}\n\n"
             f"Consuming an Engram awakens your companion's hidden potential, granting a secondary passive "
             f"at T{max(1, self.comp.passive_tier - 2)} (Primary Tier − 2, minimum T1).\n"
@@ -131,7 +134,8 @@ class BalancedEngramView(BaseView):
             title="♊ Balanced Awakening!",
             description=(
                 f"The twins' constellation realigns, awakening a new potential.\n\n"
-                f"**New Balanced Passive:** T{new_tier} {display_new}"
+                f"**New Balanced Passive:** T{new_tier} {display_new}\n"
+                f"*{self.comp.balanced_description}*"
             ),
             color=discord.Color.blurple(),
         )

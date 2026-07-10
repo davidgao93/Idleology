@@ -4,7 +4,7 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from core.emojis import GOLD_COIN, RARITY
+from core.emojis import GOLD_COIN, RARITY, RUNE_REFINEMENT
 from core.images import HARLAN_AUTHOR, UPGRADE_REFINE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
@@ -543,7 +543,7 @@ class RefineView(BaseUpgradeView):
             f"This will perform **{total_cycles:,}** refine(s) using up to **{runes_used}** Rune(s).\n\n"
             f"**Estimated Resources Consumed:**\n"
             f"{GOLD_COIN} Gold: {gold_used:,}\n"
-            f"💎 Refinement Runes: {runes_used}\n"
+            f"{RUNE_REFINEMENT} Refinement Runes: {runes_used}\n"
             f"📦 Materials:\n{mat_lines}\n\n"
             f"*Stops when: {stop_reason}*\n\n"
             f"Proceed?"
