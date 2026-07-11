@@ -7,7 +7,7 @@ from core.combat.calc.damage_calc import roll_monster_damage as _roll_monster_da
 from core.combat.calc.hit_calc import calculate_monster_hit_chance
 from core.combat.calc.ward_system import _add_ward
 from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
-from core.emojis import GOLD_COIN, STAT_WARD
+from core.emojis import GOLD_COIN, INFERNAL_ENGRAM, STAT_WARD
 from core.models import Monster, Player
 
 
@@ -824,7 +824,7 @@ def process_monster_turn(
                     if helmet_corrupted == "lucifer" and player.lucifer_pdr_burst == 0:
                         player.lucifer_pdr_burst = 15
                         log.append(
-                            "🔥 **Infernal Resilience** — ward shattered, gaining **+15%** PDR for this combat!"
+                            f"{INFERNAL_ENGRAM} **Infernal Resilience** — ward shattered, gaining **+15%** PDR for this combat!"
                         )
                         # skip in compact — subtle buff that will affect future numbers
 
@@ -965,7 +965,7 @@ def process_monster_turn(
                 if lucifer_trigger:
                     player.lucifer_pdr_burst = 15
                     log.append(
-                        "🔥 **Infernal Resilience** — ward broken, gaining **+15% PDR** for this combat!"
+                        f"{INFERNAL_ENGRAM} **Infernal Resilience** — ward broken, gaining **+15% PDR** for this combat!"
                     )
                     # skip in compact — subtle buff
 

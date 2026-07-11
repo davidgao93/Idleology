@@ -326,6 +326,7 @@ class DiscordBot(commands.Bot):
         await self.database.settlement.migrate_buildings_schema()
         await self.database.settlement.migrate_settlements_schema()
         await self.database.settlement_materials.migrate_schema()
+        await self.database.paradise.migrate_schema()
         await self.load_cogs()
         self.status_task.start()
         self.backup_task.start()

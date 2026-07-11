@@ -28,6 +28,7 @@ from core.combat.economy.config import (
     STAT_INVEST_GOLD_PER_POINT,
     VOID_FRAG_BASE_CHANCE,
 )
+from core.emojis import INFERNAL_ENGRAM
 from core.models import Monster, Player
 
 # Rite of Convergence entry keys — RAID-DESIGN.md: "Each key drops
@@ -214,7 +215,7 @@ def calculate_rewards(
         )
         gold_additive += lucifer_pct
         results["msgs"].append(
-            f"🔥 **Infernal Plunder** — {num_mods} modifier"
+            f"{INFERNAL_ENGRAM} **Infernal Plunder** — {num_mods} modifier"
             f"{'s' if num_mods > 1 else ''} grant +{int(lucifer_pct * 100)}% increased gold!"
         )
 

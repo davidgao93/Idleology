@@ -59,7 +59,7 @@ class UberLuciferLobbyView(BaseView):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="🔥 The Infernal Sovereign", color=discord.Color.dark_red()
+            title=f"{INFERNAL_ENGRAM} The Infernal Sovereign", color=discord.Color.dark_red()
         )
 
         desc = (
@@ -69,8 +69,8 @@ class UberLuciferLobbyView(BaseView):
             f"**Entry Cost:** 3 {INFERNAL_SIGIL} Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "🔥 **Infernal Protection** — globally reduces all incoming damage by 60%.\n"
-            "🔥 **Infernal Strength** — ATK is doubled. "
+            f"{INFERNAL_ENGRAM} **Infernal Protection** — globally reduces all incoming damage by 60%.\n"
+            f"{INFERNAL_ENGRAM} **Infernal Strength** — ATK is doubled. "
         )
         embed.description = desc
 
@@ -159,7 +159,7 @@ class UberLuciferLobbyView(BaseView):
             start_logs,
             combat_phases=None,
             post_combat_view=return_view,
-            title_override="🔥 UBER ENCOUNTER",
+            title_override=f"{INFERNAL_ENGRAM} UBER ENCOUNTER",
             player_avatar_url=user_row["appearance"],
         )
 

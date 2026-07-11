@@ -6,6 +6,7 @@ import random
 from typing import Optional
 
 from .data import (
+    CORRUPTION_ENGRAM_EFFECTS,
     DUST_FROM_JEWEL_BASE,
     DUST_REROLL_TYPE,
     DUST_REROLL_VALUE,
@@ -13,6 +14,7 @@ from .data import (
     PASSIVES,
     REROLL_TYPE_POOL,
     SKILL_JEWELS,
+    EngramEffectDef,
 )
 
 # ---------------------------------------------------------------------------
@@ -41,9 +43,19 @@ def get_threshold(skill_key: str, effective_level: int) -> int:
 
 
 def get_effective_level(skill_key: str, data: dict, passive_modifier: int = 0) -> int:
-    """Return natural level + Mastery passive bonus (capped at 30)."""
+    """Return natural level + Mastery passive bonus + Corruption Engram bonus (capped at 30)."""
     natural = data["skill_levels"].get(skill_key, 0)
-    return min(30, natural + passive_modifier)
+    engram_bonus = get_engram_level_bonus(data, skill_key)
+    return min(30, natural + passive_modifier + engram_bonus)
+
+
+def get_effective_threshold(skill_key: str, data: dict, effective_level: int) -> int:
+    """Charge threshold after Compression passive and Corruption Engram reduction."""
+    compression = get_compression_bonus(data)
+    engram_reduction = get_engram_threshold_reduction(data, skill_key)
+    return max(
+        1, get_threshold(skill_key, effective_level) - compression - engram_reduction
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +182,7 @@ def add_charge(data: dict, skill_key: str, amount: int = 1) -> tuple[bool, int]:
 
     mastery_lvl = mastery_bonus(data)
     eff_level = get_effective_level(skill_key, data, mastery_lvl)
-    compression = get_compression_bonus(data)
-    threshold = max(1, get_threshold(skill_key, eff_level) - compression)
+    threshold = get_effective_threshold(skill_key, data, eff_level)
 
     if current >= threshold:
         return True, current
@@ -192,9 +203,10 @@ def consume_charges(data: dict, skill_key: str) -> int:
     return kept
 
 
-def should_double_proc(data: dict) -> bool:
-    """Returns True if Mirage passive triggers a second unleash."""
-    mirage_pct = get_mirage_pct(data)
+def should_double_proc(data: dict, skill_key: Optional[str] = None) -> bool:
+    """Returns True if Mirage passive (+ a Corruption Engram double-proc etch on
+    skill_key, stacking additively) triggers a second unleash."""
+    mirage_pct = get_mirage_pct(data) + get_engram_double_pct(data, skill_key)
     if mirage_pct <= 0:
         return False
     return random.random() < mirage_pct / 100
@@ -356,6 +368,74 @@ def _format_passive_value(slot: dict) -> str:
         return str(slot["value"])
     val = slot["value"]
     return f"{val}%" if defn.is_percent else str(val)
+
+
+# ---------------------------------------------------------------------------
+# Corruption Engram (Evelynn) — per-skill etches
+# ---------------------------------------------------------------------------
+
+
+def get_skill_engram(data: dict, skill_key: str | None) -> Optional[dict]:
+    """Returns the {'kind', 'value'} etch dict for skill_key, or None if unetched."""
+    if not skill_key:
+        return None
+    return data.get("skill_engrams", {}).get(skill_key)
+
+
+def get_engram_level_bonus(data: dict, skill_key: str | None) -> int:
+    """Flat skill-level bonus from a 'level' Corruption Engram etch."""
+    engram = get_skill_engram(data, skill_key)
+    if engram and engram.get("kind") == "level":
+        return int(engram["value"])
+    return 0
+
+
+def get_engram_threshold_reduction(data: dict, skill_key: str | None) -> int:
+    """Flat charge-threshold reduction from a 'threshold' Corruption Engram etch."""
+    engram = get_skill_engram(data, skill_key)
+    if engram and engram.get("kind") == "threshold":
+        return int(engram["value"])
+    return 0
+
+
+def get_engram_double_pct(data: dict, skill_key: str | None) -> float:
+    """% double-unleash bonus from a 'double_proc' Corruption Engram etch."""
+    engram = get_skill_engram(data, skill_key)
+    if engram and engram.get("kind") == "double_proc":
+        return float(engram["value"])
+    return 0.0
+
+
+def roll_corruption_engram_effect() -> EngramEffectDef:
+    """Rolls one of the Corruption Engram effects with equal weighting."""
+    return random.choice(CORRUPTION_ENGRAM_EFFECTS)
+
+
+def apply_corruption_engram(data: dict, skill_key: str) -> EngramEffectDef:
+    """
+    Etches (or re-etches, replacing any prior effect) a random Corruption Engram
+    effect onto skill_key. Modifies data in-place; caller must persist it and
+    decrement the player's corruption_engrams count.
+    """
+    effect = roll_corruption_engram_effect()
+    data.setdefault("skill_engrams", {})[skill_key] = {
+        "kind": effect.kind,
+        "value": effect.value,
+    }
+    return effect
+
+
+def format_engram_effect(engram: dict) -> str:
+    """Returns a display string like '+3 to skill level' for a stored etch dict."""
+    kind = engram.get("kind")
+    value = engram.get("value", 0)
+    if kind == "level":
+        return f"+{value:.0f} to skill level"
+    if kind == "threshold":
+        return f"-{value:.0f} to Charge Threshold"
+    if kind == "double_proc":
+        return f"+{value:.0f}% chance for unleash to trigger twice"
+    return "Unknown effect"
 
 
 # ---------------------------------------------------------------------------

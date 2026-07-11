@@ -20,7 +20,7 @@ from __future__ import annotations
 import math
 import random
 
-from core.emojis import STAT_WARD
+from core.emojis import INFERNAL_ENGRAM, STAT_WARD
 from core.models import Monster, Player
 
 _DMG_VARIANCE_CEIL = 1.35
@@ -474,7 +474,7 @@ def calc_crit_damage(
         if ward_bonus > 0:
             damage += ward_bonus
             calc_dmg_notes.append(f"+lucifer_ward={ward_bonus}")
-            log.append(f"🔥 **Soul Burn** — ward fuels the crit! (+{ward_bonus})")
+            log.append(f"{INFERNAL_ENGRAM} **Soul Burn** — ward fuels the crit! (+{ward_bonus})")
 
     if player.get_glove_corrupted_essence() == "gemini":
         second_pct = random.uniform(0.20, 0.40)
@@ -578,7 +578,7 @@ def calc_hit_damage(
         if ward_bonus > 0:
             damage += ward_bonus
             lucifer_note = f" +lucifer_ward={ward_bonus}"
-            log.append(f"🔥 **Soul Burn** — ward fuels the strike! (+{ward_bonus})")
+            log.append(f"{INFERNAL_ENGRAM} **Soul Burn** — ward fuels the strike! (+{ward_bonus})")
 
     echo_note = f" +echo={echo_damage}" if echo_damage else ""
     calc.append(
@@ -619,7 +619,9 @@ def calc_miss_damage(
         )
         if perdition_dmg > 0:
             damage += perdition_dmg
-            miss_parts.append(f"**Perdition** tears through for 🔥 **{perdition_dmg}**")
+            miss_parts.append(
+                f"{INFERNAL_ENGRAM} **Perdition** tears through for **{perdition_dmg}**"
+            )
 
     idx, _ = get_weapon_tier(player, "poison")
     if idx >= 0:

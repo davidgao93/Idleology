@@ -5,6 +5,7 @@ from core.combat.calc.calcs import fmt_weapon_passive, get_weapon_tier
 from core.emojis import (
     GOLD_COIN,
     HEMATURGY_ICON,
+    INFERNAL_ENGRAM,
     STAT_ATK,
     STAT_DEF,
     STAT_PDR,
@@ -132,7 +133,7 @@ def _cs_inverted_edge(player, monster):
     wep_atk, wep_def = player.equipped_weapon.attack, player.equipped_weapon.defence
     player.equipped_weapon.attack = wep_def
     player.equipped_weapon.defence = wep_atk
-    return f"🔥 **Inverted Edge**: weapon ATK ↔ DEF swapped ({wep_atk} ↔ {wep_def})."
+    return f"{INFERNAL_ENGRAM} **Inverted Edge**: weapon ATK ↔ DEF swapped ({wep_atk} ↔ {wep_def})."
 
 
 def _cs_gilded_hunger(player, monster):
@@ -140,7 +141,7 @@ def _cs_gilded_hunger(player, monster):
     bonus = int(player.get_total_rarity() * 0.1)
     if bonus > 0:
         player.bonus_atk += bonus
-        return f"🔥 **Gilded Hunger** devours rarity! ⚔️ +**{bonus}** ATK"
+        return f"{INFERNAL_ENGRAM} **Gilded Hunger** devours rarity! ⚔️ +**{bonus}** ATK"
 
 
 def _cs_diabolic_pact(player, monster):
@@ -150,13 +151,13 @@ def _cs_diabolic_pact(player, monster):
     # +100% ATK via the shared additive atk_multiplier pool (sums with any other
     # ATK % source active this combat — Codex boons, Apex zone bonus, Enrage, etc.)
     player.atk_multiplier += 1.0
-    return f"🔥 **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ ATK doubled!"
+    return f"{INFERNAL_ENGRAM} **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ ATK doubled!"
 
 
 def _cs_cursed_precision(player, monster):
     player.bonus_crit += 20
     player.cursed_precision_active = True
-    return "🔥 **Cursed Precision**: 🎯 Crit chance greatly increased, but crits roll for the lower result."
+    return f"{INFERNAL_ENGRAM} **Cursed Precision**: 🎯 Crit chance greatly increased, but crits roll for the lower result."
 
 
 def _cs_entropy(player, monster):

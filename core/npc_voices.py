@@ -235,6 +235,32 @@ _VOICES: dict[str, list[str]] = {
         "Most people expect miracles on a schedule. The Jewel doesn't care about your schedule.",
         "It's responding to you. That means something. I'm not sure what yet — but something.",
     ],
+    "paradise_skills": [
+        "Skills don't awaken on their own. Choose which one channels through the Jewel.",
+        "Every skill responds differently to the Jewel's pull. Pick the one that suits your hand.",
+        "The Jewel can only voice one skill at a time. Choose with intent.",
+        "Whichever skill you equip becomes an extension of the stone itself. Choose carefully.",
+    ],
+    "paradise_passives": [
+        "The passive slots are where the Jewel truly comes alive. Spend your jewels well.",
+        "Passives shape how the Jewel behaves beneath the surface. Subtle, but never small.",
+        "Every slot you fill changes the Jewel's temperament. I'd know — I cut enough of them.",
+        "Rerolling isn't cheating. It's refinement. The Jewel doesn't mind either way.",
+    ],
+    "paradise_engram": [
+        "Remarkable. This engram's power is formidable, adventurer... please do be careful.",
+        "Evelynn's corruption doesn't ask permission — it simply takes root. I hope you're ready.",
+        "I've handled a lot of dangerous stone in my time. This one still makes my hands shake.",
+        "The Origin of Corruption left more behind than her shattered form. This is a splinter of her will.",
+        "Etch this into the Jewel, and there's no undoing it — only rerolling. Proceed with open eyes.",
+        "She was the first thing the void ever dreamed of breaking. Some of that dream is still in here.",
+    ],
+    "paradise_engram_result": [
+        "The corruption takes. The Jewel pulses once, darker than before.",
+        "It's done. I felt that from here, adventurer. The stone remembers Evelynn now.",
+        "There — etched. Try not to look at it too long. It looks back.",
+        "The engram dissolves into the Jewel's core. Something of hers lingers now.",
+    ],
     "uber": [
         "These are the pinnacle of all you will face. Only those who have proven themselves may challenge them.",
         "Step carefully. These beings did not become what they are by accident.",

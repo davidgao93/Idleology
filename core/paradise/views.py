@@ -12,11 +12,17 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import COSMIC_DUST, PARADISE_JEWEL_UNCUT
-from core.images import SKILL_IMAGES, SKILL_UNCUT, TESSARA_PORTRAIT
+from core.emojis import COSMIC_DUST, CORRUPTION_ENGRAM, GOLD_COIN, PARADISE_JEWEL_UNCUT
+from core.images import (
+    MONSTER_EVELYNN_REBORN,
+    SKILL_IMAGES,
+    SKILL_UNCUT,
+    TESSARA_PORTRAIT,
+)
 from core.npc_voices import get_quip
 from core.paradise import mechanics as M
 from core.paradise.data import (
+    CORRUPTION_ENGRAM_GOLD_COST,
     DUST_REROLL_TYPE,
     DUST_REROLL_VALUE,
     PASSIVE_SLOT_THRESHOLDS,
@@ -47,11 +53,12 @@ async def _fetch_passives_data(
     return data, jewel_count, dust
 
 
-async def _fetch_skills_data(bot, user_id: str, server_id: str) -> tuple[dict, int]:
+async def _fetch_skills_data(bot, user_id: str, server_id: str) -> tuple[dict, int, int]:
     data = await bot.database.paradise.get(user_id)
     uber = await bot.database.uber.get_uber_progress(user_id, server_id)
     jewel_count = uber.get("paradise_jewels", 0)
-    return data, jewel_count
+    engram_count = uber.get("corruption_engrams", 0)
+    return data, jewel_count, engram_count
 
 
 # ---------------------------------------------------------------------------
@@ -64,13 +71,18 @@ def _skill_card_lines(data: dict, skill_key: str) -> list[str]:
     defn = SKILL_JEWELS[skill_key]
     mastery = M.mastery_bonus(data)
     eff_level = M.get_effective_level(skill_key, data, mastery)
-    compression = M.get_compression_bonus(data)
-    threshold = max(1, M.get_threshold(skill_key, eff_level) - compression)
+    threshold = M.get_effective_threshold(skill_key, data, eff_level)
     natural_level = data["skill_levels"].get(skill_key, 1)
+    engram_bonus = M.get_engram_level_bonus(data, skill_key)
 
     level_display = f"Lv {natural_level}"
+    bonus_bits = []
     if mastery > 0:
-        level_display += f" (+{mastery} Mastery → Lv {eff_level} effective)"
+        bonus_bits.append(f"+{mastery} Mastery")
+    if engram_bonus > 0:
+        bonus_bits.append(f"+{engram_bonus} Engram")
+    if bonus_bits:
+        level_display += f" ({' '.join(bonus_bits)} → Lv {eff_level} effective)"
     next_combats = M.combats_to_next_level(natural_level)
     level_display += (
         f"  *(~{next_combats:.0f} combats to next level)*"
@@ -78,12 +90,16 @@ def _skill_card_lines(data: dict, skill_key: str) -> list[str]:
         else "  *(MAX)*"
     )
 
-    return [
+    lines = [
         f"{defn.emoji} **{defn.name}** — {level_display}",
         f"**Charge Threshold:** {threshold}",
         f"*{defn.charge_trigger}*",
         f"**Unleash:** {M.format_unleash_description(skill_key, eff_level)}",
     ]
+    engram = M.get_skill_engram(data, skill_key)
+    if engram:
+        lines.append(f"{CORRUPTION_ENGRAM} **Corruption Etch:** {M.format_engram_effect(engram)}")
+    return lines
 
 
 def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
@@ -176,6 +192,7 @@ def _build_manage_skills_embed(data: dict) -> discord.Embed:
     embed = discord.Embed(
         title="⚔️ Manage Skills", color=discord.Color.from_str("#b967ff")
     )
+    embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
     equipped = data.get("equipped_skill")
     unlocked = data.get("unlocked_skills", [])
 
@@ -208,9 +225,10 @@ def _build_manage_skills_embed(data: dict) -> discord.Embed:
             value="\n".join(rows),
             inline=False,
         )
-        embed.description = "Select a skill below to equip it."
+        embed.description = f"*{get_quip('paradise_skills')}*\n\nSelect a skill below to equip it."
     else:
         embed.description = (
+            f"*{get_quip('paradise_skills')}*\n\n"
             "No skills unlocked yet. Cut a Jewel to unlock your first skill."
         )
 
@@ -219,10 +237,13 @@ def _build_manage_skills_embed(data: dict) -> discord.Embed:
 
 def _build_manage_passives_embed(data: dict, dust: int) -> discord.Embed:
     embed = discord.Embed(title="🔮 Manage Passives", color=discord.Color.blurple())
+    embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
     slot_count = M.get_passive_slot_count(data)
     passive_slots = data.get("passive_slots", [])
 
     lines = [
+        f"*{get_quip('paradise_passives')}*",
+        "",
         f"**Cosmic Dust:** {COSMIC_DUST} {dust:,}",
         f"**Reroll Type** — {DUST_REROLL_TYPE:,} dust (new passive type + new value)",
         f"**Reroll Value** — {DUST_REROLL_VALUE:,} dust (same type, new value)",
@@ -261,6 +282,7 @@ def _build_reroll_embed(
     embed = discord.Embed(
         title=f"🎲 Reroll Slot {slot_idx + 1}", color=discord.Color.blurple()
     )
+    embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
 
     lines = [f"**Cosmic Dust:** {COSMIC_DUST} {dust:,}", ""]
 
@@ -344,12 +366,17 @@ class ParadiseHubView(BaseView):
             return
         self._processing = True
         await interaction.response.defer()
+        uber = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        engram_count = uber.get("corruption_engrams", 0)
         view = _ManageSkillsView(
             self.bot,
             self.user_id,
             self.server_id,
             self.data,
             self.jewel_count,
+            engram_count,
             self.message,
         )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
@@ -380,10 +407,11 @@ class ParadiseHubView(BaseView):
 
 
 class _ManageSkillsView(BaseView):
-    def __init__(self, bot, user_id, server_id, data, jewel_count, message):
+    def __init__(self, bot, user_id, server_id, data, jewel_count, engram_count, message):
         super().__init__(bot, user_id, server_id)
         self.data = data
         self.jewel_count = jewel_count
+        self.engram_count = engram_count
         self.message = message
         self._processing = False
         self._build_items()
@@ -422,6 +450,17 @@ class _ManageSkillsView(BaseView):
             )
             cut_btn.callback = self._cut_jewel_callback
             self.add_item(cut_btn)
+
+        if equipped:
+            engram_btn = ui.Button(
+                label="Corruption Engram",
+                style=ButtonStyle.danger,
+                emoji=CORRUPTION_ENGRAM,
+                disabled=(self.engram_count < 1),
+                row=1,
+            )
+            engram_btn.callback = self._corruption_engram_callback
+            self.add_item(engram_btn)
 
         back_btn = ui.Button(
             label="Back", style=ButtonStyle.secondary, emoji="◀️", row=1
@@ -466,6 +505,7 @@ class _ManageSkillsView(BaseView):
             description="Select a skill jewel to permanently unlock.",
             color=discord.Color.green(),
         )
+        embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
         await interaction.edit_original_response(embed=embed, view=view)
         self.stop()
 
@@ -477,6 +517,23 @@ class _ManageSkillsView(BaseView):
         await interaction.response.defer()
         view = await _reload_hub(self.bot, self.user_id, self.server_id)
         view.message = self.message
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        self.stop()
+
+    async def _corruption_engram_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+        view = _CorruptionEngramView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.data,
+            self.engram_count,
+            self.message,
+        )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()
 
@@ -542,6 +599,7 @@ class _SkillPickView(BaseView):
             description=f"**{defn.name}** has been added to your roster.",
             color=discord.Color.green(),
         )
+        result_embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
         result_embed.set_thumbnail(url=SKILL_IMAGES.get(skill_key, SKILL_UNCUT))
         await interaction.edit_original_response(embed=result_embed, view=None)
         await asyncio.sleep(3)
@@ -556,11 +614,159 @@ class _SkillPickView(BaseView):
         await self._back_to_skills(interaction)
 
     async def _back_to_skills(self, interaction: Interaction) -> None:
-        data, jewel_count = await _fetch_skills_data(
+        data, jewel_count, engram_count = await _fetch_skills_data(
             self.bot, self.user_id, self.server_id
         )
         view = _ManageSkillsView(
-            self.bot, self.user_id, self.server_id, data, jewel_count, self.message
+            self.bot,
+            self.user_id,
+            self.server_id,
+            data,
+            jewel_count,
+            engram_count,
+            self.message,
+        )
+        await interaction.edit_original_response(embed=view.build_embed(), view=view)
+        self.stop()
+
+
+# ---------------------------------------------------------------------------
+# Corruption Engram view (Evelynn) — etch a random effect onto the equipped skill
+# ---------------------------------------------------------------------------
+
+
+class _CorruptionEngramView(BaseView):
+    def __init__(self, bot, user_id, server_id, data, engram_count, message):
+        super().__init__(bot, user_id, server_id)
+        self.data = data
+        self.engram_count = engram_count
+        self.message = message
+        self._processing = False
+        self._result_msg = ""
+        self._build_buttons()
+
+    def _build_buttons(self) -> None:
+        self.clear_items()
+        etch_btn = ui.Button(
+            label="Etch Corruption Engram",
+            style=ButtonStyle.danger,
+            emoji=CORRUPTION_ENGRAM,
+            disabled=(self.engram_count < 1),
+            row=0,
+        )
+        etch_btn.callback = self._etch_callback
+        self.add_item(etch_btn)
+
+        back_btn = ui.Button(
+            label="Back", style=ButtonStyle.secondary, emoji="◀️", row=1
+        )
+        back_btn.callback = self._on_back
+        self.add_item(back_btn)
+
+    def build_embed(self) -> discord.Embed:
+        skill_key = self.data.get("equipped_skill")
+        defn = SKILL_JEWELS.get(skill_key) if skill_key else None
+        engram = M.get_skill_engram(self.data, skill_key)
+
+        embed = discord.Embed(
+            title=f"{CORRUPTION_ENGRAM} Corruption Engram",
+            color=discord.Color.dark_purple(),
+        )
+        embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
+        embed.set_thumbnail(url=MONSTER_EVELYNN_REBORN)
+
+        lines = [
+            f"*{get_quip('paradise_engram')}*",
+            "",
+            f"**Target Skill:** {f'{defn.emoji} {defn.name}' if defn else '*None equipped*'}",
+            f"**Corruption Engrams Owned:** {CORRUPTION_ENGRAM} {self.engram_count}",
+            f"**Gold Cost:** {GOLD_COIN} {CORRUPTION_ENGRAM_GOLD_COST:,}",
+            "",
+            f"**Current Etching:** {M.format_engram_effect(engram) if engram else '*None*'}",
+            "",
+            "Etching consumes one Engram to brand the equipped skill jewel with a random "
+            "effect torn from Evelynn's corruption. A future Engram re-etches the same "
+            "skill, replacing whatever effect is already there.",
+            "",
+            "**Possible Effects** *(equal chance, ~9% each)*:",
+            "• +1/+2/+3/+4/+5 to skill level",
+            "• -1/-2/-3 to Charge Threshold",
+            "• +5/+10/+15% chance for unleash to trigger twice *(stacks with Mirage)*",
+        ]
+        if self._result_msg:
+            lines += ["", self._result_msg]
+
+        embed.description = "\n".join(lines)
+        return embed
+
+    async def _etch_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        skill_key = self.data.get("equipped_skill")
+        if not skill_key:
+            self._result_msg = "❌ You don't have a skill equipped."
+            self._processing = False
+            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            return
+
+        uber = await self.bot.database.uber.get_uber_progress(
+            self.user_id, self.server_id
+        )
+        self.engram_count = uber.get("corruption_engrams", 0)
+        if self.engram_count < 1:
+            self._result_msg = "❌ You don't have any Corruption Engrams."
+            self._build_buttons()
+            self._processing = False
+            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            return
+
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < CORRUPTION_ENGRAM_GOLD_COST:
+            self._result_msg = (
+                f"❌ You need **{GOLD_COIN} {CORRUPTION_ENGRAM_GOLD_COST:,} gold** "
+                "to etch a Corruption Engram."
+            )
+            self._processing = False
+            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            return
+
+        await self.bot.database.users.modify_gold(self.user_id, -CORRUPTION_ENGRAM_GOLD_COST)
+        await self.bot.database.uber.increment_corruption_engrams(
+            self.user_id, self.server_id, -1
+        )
+        effect = M.apply_corruption_engram(self.data, skill_key)
+        await self.bot.database.paradise.save(self.user_id, self.data)
+        self.engram_count -= 1
+
+        self._result_msg = (
+            f"☠️ *{get_quip('paradise_engram_result')}*\n"
+            f"**New Etching:** {M.format_engram_effect({'kind': effect.kind, 'value': effect.value})}"
+        )
+        self._build_buttons()
+        self._processing = False
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
+    async def _on_back(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+        data, jewel_count, engram_count = await _fetch_skills_data(
+            self.bot, self.user_id, self.server_id
+        )
+        view = _ManageSkillsView(
+            self.bot,
+            self.user_id,
+            self.server_id,
+            data,
+            jewel_count,
+            engram_count,
+            self.message,
         )
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
         self.stop()
@@ -747,6 +953,7 @@ class _PassiveInvestModal(ui.Modal):
             description=result_desc,
             color=discord.Color.from_str("#b967ff"),
         )
+        result_embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
         result_embed.set_thumbnail(url=SKILL_UNCUT)
         await interaction.edit_original_response(embed=result_embed, view=None)
         await asyncio.sleep(3)

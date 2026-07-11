@@ -273,8 +273,8 @@ def _do_charge_and_maybe_unleash(
     M.consume_charges(data, skill_key)
     _do_unleash()
 
-    # Mirage: chance to double proc
-    if M.should_double_proc(data):
+    # Mirage: chance to double proc (stacks with a Corruption Engram etch on this skill)
+    if M.should_double_proc(data, skill_key):
         defn_name = (
             SKILL_JEWELS[skill_key].name if skill_key in SKILL_JEWELS else skill_key
         )

@@ -8,6 +8,7 @@ from core.emojis import (
     CAPRICIOUS_CARP,
     COSMIC_DUST,
     DRAGON_KEY,
+    INFERNAL_ENGRAM,
     QUENCH,
     SOUL_CORE,
     SPARKLING_SPRIG,
@@ -229,7 +230,7 @@ class AlchemyMechanics:
         "chaos": "🌪️",
         "annulment": "❌",
         "aphrodite": "💗",
-        "lucifer": "🔥",
+        "lucifer": INFERNAL_ENGRAM,
         "gemini": "♊",
         "neet": "🌙",
     }

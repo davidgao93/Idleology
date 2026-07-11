@@ -13,6 +13,7 @@ def _default_data() -> dict:
         "equipped_skill": None,
         "skill_levels": {},
         "skill_charges": {},
+        "skill_engrams": {},
         "passive_slots": [],
         "passive_jewels_invested": 0,
         "total_jewels_obtained": 0,
@@ -26,6 +27,9 @@ def _row_to_dict(row) -> dict:
         "equipped_skill": row["equipped_skill"],
         "skill_levels": json.loads(row["skill_levels"]),
         "skill_charges": json.loads(row["skill_charges"]),
+        "skill_engrams": json.loads(row["skill_engrams"])
+        if row["skill_engrams"] is not None
+        else {},
         "passive_slots": json.loads(row["passive_slots"]),
         "passive_jewels_invested": row["passive_jewels_invested"],
         "total_jewels_obtained": row["total_jewels_obtained"],
@@ -43,12 +47,23 @@ class ParadiseRepository:
             (user_id,),
         )
 
+    async def migrate_schema(self) -> None:
+        """Add new columns to paradise_jewel_data for existing databases."""
+        try:
+            await self.connection.execute(
+                "ALTER TABLE paradise_jewel_data ADD COLUMN skill_engrams "
+                "TEXT NOT NULL DEFAULT '{}'"
+            )
+            await self.connection.commit()
+        except Exception:
+            pass  # column already exists
+
     async def get(self, user_id: str) -> dict:
         """Returns the paradise jewel data dict, creating a default row if needed."""
         await self._ensure_row(user_id)
         async with self.connection.execute(
             """SELECT user_id, unlocked_skills, equipped_skill, skill_levels,
-                      skill_charges, passive_slots, passive_jewels_invested,
+                      skill_charges, skill_engrams, passive_slots, passive_jewels_invested,
                       total_jewels_obtained, total_jewels_consumed
                FROM paradise_jewel_data WHERE user_id = ?""",
             (user_id,),
@@ -64,14 +79,16 @@ class ParadiseRepository:
         await self.connection.execute(
             """UPDATE paradise_jewel_data
                SET unlocked_skills = ?, equipped_skill = ?, skill_levels = ?,
-                   skill_charges = ?, passive_slots = ?, passive_jewels_invested = ?,
-                   total_jewels_obtained = ?, total_jewels_consumed = ?
+                   skill_charges = ?, skill_engrams = ?, passive_slots = ?,
+                   passive_jewels_invested = ?, total_jewels_obtained = ?,
+                   total_jewels_consumed = ?
                WHERE user_id = ?""",
             (
                 json.dumps(data["unlocked_skills"]),
                 data.get("equipped_skill"),
                 json.dumps(data["skill_levels"]),
                 json.dumps(data["skill_charges"]),
+                json.dumps(data.get("skill_engrams", {})),
                 json.dumps(data["passive_slots"]),
                 data["passive_jewels_invested"],
                 data["total_jewels_obtained"],

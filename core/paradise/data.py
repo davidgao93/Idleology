@@ -331,3 +331,40 @@ PASSIVE_SLOT_THRESHOLDS: list[int] = [1, 4, 9, 19, 34]
 DUST_REROLL_TYPE = 12_000
 DUST_REROLL_VALUE = 8_000
 DUST_FROM_JEWEL_BASE = 8_000
+
+
+# ---------------------------------------------------------------------------
+# Corruption Engram (Evelynn) — per-skill etch effects
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class EngramEffectDef:
+    key: str
+    kind: str  # "level" | "threshold" | "double_proc"
+    value: float
+    description: str
+
+
+# Equal weighting — one entry chosen at random per etch, ~9.1% chance each.
+CORRUPTION_ENGRAM_EFFECTS: list[EngramEffectDef] = [
+    EngramEffectDef("level_1", "level", 1, "+1 to skill level"),
+    EngramEffectDef("level_2", "level", 2, "+2 to skill level"),
+    EngramEffectDef("level_3", "level", 3, "+3 to skill level"),
+    EngramEffectDef("level_4", "level", 4, "+4 to skill level"),
+    EngramEffectDef("level_5", "level", 5, "+5 to skill level"),
+    EngramEffectDef("threshold_1", "threshold", 1, "-1 to Charge Threshold"),
+    EngramEffectDef("threshold_2", "threshold", 2, "-2 to Charge Threshold"),
+    EngramEffectDef("threshold_3", "threshold", 3, "-3 to Charge Threshold"),
+    EngramEffectDef(
+        "double_5", "double_proc", 5, "+5% chance for unleash to trigger twice"
+    ),
+    EngramEffectDef(
+        "double_10", "double_proc", 10, "+10% chance for unleash to trigger twice"
+    ),
+    EngramEffectDef(
+        "double_15", "double_proc", 15, "+15% chance for unleash to trigger twice"
+    ),
+]
+
+CORRUPTION_ENGRAM_GOLD_COST = 25_000_000

@@ -13,6 +13,7 @@ import discord
 
 from core.character.prestige_display import format_prestige_name
 from core.emojis import (
+    INFERNAL_ENGRAM,
     QUENCH,
     STAT_ATK,
     STAT_DEF,
@@ -79,8 +80,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         charges = jop.get("skill_charges", {}).get(skill_key, 0)
         mastery = M.mastery_bonus(jop)
         eff_lvl = M.get_effective_level(skill_key, jop, mastery)
-        compression = M.get_compression_bonus(jop)
-        threshold = max(1, M.get_threshold(skill_key, eff_lvl) - compression)
+        threshold = M.get_effective_threshold(skill_key, jop, eff_lvl)
         emoji = defn.emoji if defn else "💎"
         name = defn.name if defn else skill_key.title()
         lines.append(f"{emoji} **{name}**  {charges} / {threshold}")
@@ -157,7 +157,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
 
     # --- Weapon / accessory stacks ---
     if player.voracious_stacks > 0:
-        lines.append(f"🔥 Voracious  ×{player.voracious_stacks}")
+        lines.append(f"{INFERNAL_ENGRAM} Voracious  ×{player.voracious_stacks}")
     if player.gaze_stacks > 0:
         lines.append(f"👁️ Void Gaze  {player.gaze_stacks}/30")
     if player.hunger_stacks > 0:
@@ -165,7 +165,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
 
     # --- Lucifer PDR burst (ward-shatter bonus) ---
     if player.lucifer_pdr_burst > 0:
-        lines.append(f"🔥 PDR Burst  +{player.lucifer_pdr_burst}%")
+        lines.append(f"{INFERNAL_ENGRAM} PDR Burst  +{player.lucifer_pdr_burst}%")
 
     # --- Hematurgy passive states ---
     hp = getattr(player, "hematurgy_passives", None)

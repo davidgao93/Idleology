@@ -17,6 +17,7 @@ from core.emojis import (
     ESSENCE_COMMON,
     ESSENCE_CORRUPT,
     ESSENCE_RARE,
+    INFERNAL_ENGRAM,
     STAT_BLOCK,
 )
 from core.images import ESSENCE_HUB
@@ -50,7 +51,7 @@ ESSENCE_DISPLAY = {
     "chaos": ("Chaos", "🌀"),
     "annulment": ("Annulment", "✂️"),
     "aphrodite": ("Aphrodite's Disciple", "💠"),
-    "lucifer": ("Lucifer's Heir", "💠"),
+    "lucifer": ("Lucifer's Heir", INFERNAL_ENGRAM),
     "gemini": ("Gemini's Lost Twin", "💠"),
     "neet": ("NEET's Voidling", "💠"),
 }
