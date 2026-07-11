@@ -451,11 +451,11 @@ def _pt_partner_effects(
             threshold_pct = lvl / 100
             if monster.hp <= int(monster.max_hp * threshold_pct):
                 dmg = monster.hp
-                # Time Lord: 80% chance to survive the killing blow
+                # Time Lord: tiered chance to survive the killing blow
                 if (
                     monster.has_modifier("Time Lord")
                     and monster.hp > 1
-                    and random.random() < 0.80
+                    and random.random() < monster.get_modifier_value("Time Lord")
                 ):
                     monster.hp = 1
                     parts.append(
@@ -500,7 +500,7 @@ def _pt_check_cull(player: Player, monster: Monster, log: list[str]) -> bool:
     Deals true damage (bypasses all DR layers, Stalwart, uber protection, and monster ward)
     by setting HP directly.  Returns True if the killing blow landed (monster.hp == 0).
 
-    Time Lord — 80% chance to survive, leaving the monster at 1 HP; returns False.
+    Time Lord — tiered chance to survive, leaving the monster at 1 HP; returns False.
     Undying Resolve — fires in the post-cull block of process_player_turn (move cull before
     the Undying Resolve check so it can protect from cull kills).
     """
@@ -518,8 +518,12 @@ def _pt_check_cull(player: Player, monster: Monster, log: list[str]) -> bool:
 
     cull_dmg = monster.hp  # true damage = full remaining HP
 
-    # Time Lord: 80% chance to survive the killing blow (stays at 1 HP)
-    if monster.has_modifier("Time Lord") and monster.hp > 1 and random.random() < 0.80:
+    # Time Lord: tiered chance to survive the killing blow (stays at 1 HP)
+    if (
+        monster.has_modifier("Time Lord")
+        and monster.hp > 1
+        and random.random() < monster.get_modifier_value("Time Lord")
+    ):
         monster.hp = 1
         log.append(
             f"{player.name}'s weapon culls the weakened {monster.name} "

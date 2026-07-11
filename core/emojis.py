@@ -15,6 +15,26 @@ GOLD_ORE = "<:gold_ore:1524443428795187261>"
 PLATINUM_ORE = "<:platinum_ore:1524443419165069512>"
 QUENCH = "<:quench_potion:1524443419441627177>"
 
+# ── Monster parts (Consume / Hematurgy slot icons) ─────────────────────────
+MONSTER_HEAD = "<:monster_head:1525489774289354884>"
+MONSTER_TORSO = "<:monster_torso:1525489772250923060>"
+MONSTER_RIGHT_ARM = "<:monster_right_arm:1525489773106561114>"
+MONSTER_LEFT_ARM = "<:monster_left_arm:1525489776822583407>"
+MONSTER_RIGHT_LEG = "<:monster_right_leg:1525489776265007205>"
+MONSTER_LEFT_LEG = "<:monster_left_leg:1525489774461194412>"
+MONSTER_ORGANS = "<:monster_organs:1525489775472021716>"
+
+MONSTER_PART_SLOT_EMOJI: dict[str, str] = {
+    "head": MONSTER_HEAD,
+    "torso": MONSTER_TORSO,
+    "right_arm": MONSTER_RIGHT_ARM,
+    "left_arm": MONSTER_LEFT_ARM,
+    "right_leg": MONSTER_RIGHT_LEG,
+    "left_leg": MONSTER_LEFT_LEG,
+    "cheeks": MONSTER_CHEEK,
+    "organs": MONSTER_ORGANS,
+}
+
 # ── Gathering materials ─────────────────────────────────────────────────────
 IRON_ORE = "<:iron_ore:1524443400382840842>"
 COAL_ORE = "<:coal:1524443395194491071>"
@@ -376,4 +396,12 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "primal_essence": ("Primal Essence", PRIMAL_ESSENCE),
     "soul_vessel": ("Soul Vessel", SOUL_VESSEL),
     "apex_imprint": ("Apex Imprint", APEX_IMPRINT_EMOJI),
+    # Appended for the monster part slot emoji batch.
+    "monster_head": ("Monster Head", MONSTER_HEAD),
+    "monster_torso": ("Monster Torso", MONSTER_TORSO),
+    "monster_right_arm": ("Monster Right Arm", MONSTER_RIGHT_ARM),
+    "monster_left_arm": ("Monster Left Arm", MONSTER_LEFT_ARM),
+    "monster_right_leg": ("Monster Right Leg", MONSTER_RIGHT_LEG),
+    "monster_left_leg": ("Monster Left Leg", MONSTER_LEFT_LEG),
+    "monster_organs": ("Monster Organs", MONSTER_ORGANS),
 }

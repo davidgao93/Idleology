@@ -305,21 +305,21 @@ MODIFIER_DEFINITIONS: dict = {
     "Commanding": ModifierDef(
         "Commanding",
         "rare_tiered",
-        tiers=[0.075],  # Fixed 7.5%
-        difficulties=[0.028],
-        level_gates=[1],  # Single tier
+        tiers=[0.035, 0.045, 0.055, 0.065, 0.075],
+        difficulties=[0.0130, 0.0168, 0.0206, 0.0243, 0.0280],
+        level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
-            "On hit: Minions deal 7.5% of damage applied to you as true damage (bypasses all layers)"
+            f"On hit: Minions deal {v * 100:.1f}% of damage applied to you as true damage (bypasses all layers)"
         ),
     ),
     "Minion Army": ModifierDef(
         "Minion Army",
         "boss",
-        tiers=[0.15],  # 15% for boss version
-        difficulties=[0.0],
-        level_gates=[],
+        tiers=[0.11, 0.12, 0.13, 0.14, 0.15],
+        difficulties=[0.0, 0.0, 0.0, 0.0, 0.0],
+        level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (
-            "On hit: Minions deal 15% of damage applied to you as true damage (bypasses all layers)"
+            f"On hit: Minions deal {int(v * 100)}% of damage applied to you as true damage (bypasses all layers)"
         ),
     ),
     "Dampening": ModifierDef(
@@ -404,7 +404,7 @@ MODIFIER_DEFINITIONS: dict = {
     "Time Lord": ModifierDef(
         "Time Lord",
         "rare_tiered",
-        tiers=[0.96, 0.92, 0.88, 0.84, 0.80],
+        tiers=[0.80, 0.81, 0.82, 0.83, 0.84],
         difficulties=[0.0392, 0.0504, 0.0616, 0.0728, 0.084],
         level_gates=[20, 40, 60, 80, 100],
         description=lambda v: (

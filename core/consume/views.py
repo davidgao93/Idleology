@@ -5,7 +5,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
-from core.emojis import CONSUME_ICON, HEMATURGY_ICON, MONSTER_CHEEK
+from core.emojis import CONSUME_ICON, HEMATURGY_ICON, MONSTER_PART_SLOT_EMOJI
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
     CONSUME_EGG,
@@ -44,16 +44,7 @@ _SLOT_LABELS = {
     "organs": "Organs",
 }
 
-_SLOT_EMOJI = {
-    "head": "💀",
-    "torso": "🫁",
-    "right_arm": "💪",
-    "left_arm": "🤜",
-    "right_leg": "🦵",
-    "left_leg": "🦿",
-    "cheeks": MONSTER_CHEEK,
-    "organs": "🫀",
-}
+_SLOT_EMOJI = MONSTER_PART_SLOT_EMOJI
 
 
 def _build_main_embed(player: Player, inventory: list) -> discord.Embed:

@@ -51,6 +51,7 @@ from core.emojis import (
     MAGIC_LOGS,
     MAGMA_CORE,
     MAHOGANY_LOGS,
+    MONSTER_TORSO,
     OAK_LOGS,
     PARADISE_JEWEL_UNCUT,
     PINNACLE_KEY,
@@ -186,7 +187,7 @@ class StorageProfileBuilder:
         embed.add_field(
             name=f"{CONSUME_ICON} **Consume**",
             value=(
-                f"🦴 Parts: {parts_count}/20\n"
+                f"{MONSTER_TORSO} Parts: {parts_count}/20\n"
                 f"🥚 Eggs: {egg_count}/20\n"
                 f"🩸 Primordial: {blood['primordial']:,}\n"
                 f"🧬 Evolutionary: {blood['evolutionary']:,}\n"

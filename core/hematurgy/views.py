@@ -2,7 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import HEMATURGY_ICON, MONSTER_CHEEK
+from core.emojis import HEMATURGY_ICON, MONSTER_PART_SLOT_EMOJI
 from core.images import (
     CONSUME_SLOT_IMAGES,
     HEMATURGY,
@@ -42,16 +42,7 @@ _SLOT_LABELS = {
     "organs": "Organs",
 }
 
-_SLOT_EMOJI = {
-    "head": "💀",
-    "torso": "🫁",
-    "right_arm": "💪",
-    "left_arm": "🤜",
-    "right_leg": "🦵",
-    "left_leg": "🦿",
-    "cheeks": MONSTER_CHEEK,
-    "organs": "🫀",
-}
+_SLOT_EMOJI = MONSTER_PART_SLOT_EMOJI
 
 _BLOOD_EMOJI = {"primordial": "🩸", "evolutionary": "🧬", "mutative": "☣️"}
 _BLOOD_NAMES = {
@@ -101,6 +92,23 @@ def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
                 value=f"*No passive* — Unlock: {cost:,} 🩸",
                 inline=True,
             )
+    return embed
+
+
+def _build_transmute_embed(blood: dict, prompt: str) -> discord.Embed:
+    embed = discord.Embed(
+        title=f"{HEMATURGY_ICON} Transmute Blood",
+        description=(
+            f"*{get_quip('hematurgy')}*\n\n"
+            f"{prompt}\n\n"
+            f"🩸 **Primordial:** {blood.get('primordial', 0):,}  "
+            f"🧬 **Evolutionary:** {blood.get('evolutionary', 0):,}  "
+            f"☣️ **Mutative:** {blood.get('mutative', 0):,}"
+        ),
+        color=0x8B0000,
+    )
+    embed.set_author(name="Valdris", icon_url=VALDRIS_PORTRAIT)
+    embed.set_thumbnail(url=VALDRIS_THUMBNAIL)
     return embed
 
 
@@ -181,11 +189,11 @@ class TransmuteSourceSelect(ui.Select):
     async def callback(self, interaction: Interaction):
         source = self.values[0]
         view = TransmuteTargetView(self.view.parent, source)
-        await interaction.response.edit_message(
-            content=f"Select the **target** type to receive {_BLOOD_NAMES[source]} → ?",
-            embed=None,
-            view=view,
+        embed = _build_transmute_embed(
+            self.view.parent.blood,
+            f"Select the **target** type to receive {_BLOOD_NAMES[source]} → ?",
         )
+        await interaction.response.edit_message(embed=embed, view=view)
 
 
 class TransmuteTargetSelect(ui.Select):
@@ -220,7 +228,6 @@ class TransmuteTargetView(BaseView):
     @ui.button(label="Cancel", style=ButtonStyle.secondary, row=1)
     async def cancel(self, interaction: Interaction, button: ui.Button):
         await interaction.response.edit_message(
-            content=None,
             embed=_build_hematurgy_embed(self.parent.passives, self.parent.blood),
             view=self.parent,
         )
@@ -733,11 +740,10 @@ class HematurgyView(BaseView):
     @ui.button(label="Transmute Blood", style=ButtonStyle.secondary, emoji="⚗️", row=1)
     async def transmute(self, interaction: Interaction, button: ui.Button):
         transmute_view = TransmuteSourceView(self)
-        await interaction.response.edit_message(
-            content="Select the **source** blood type to convert from:",
-            embed=None,
-            view=transmute_view,
+        embed = _build_transmute_embed(
+            self.blood, "Select the **source** blood type to convert from:"
         )
+        await interaction.response.edit_message(embed=embed, view=transmute_view)
 
     # Row 2 — hard exit
     @ui.button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2)
@@ -757,7 +763,6 @@ class TransmuteSourceView(BaseView):
     @ui.button(label="Cancel", style=ButtonStyle.secondary, row=1)
     async def cancel(self, interaction: Interaction, button: ui.Button):
         await interaction.response.edit_message(
-            content=None,
             embed=_build_hematurgy_embed(self.parent.passives, self.parent.blood),
             view=self.parent,
         )

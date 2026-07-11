@@ -109,34 +109,43 @@ class ModDetailsMonsterView(BaseView):
     def build_embed(self) -> discord.Embed:
         title, lines = self.categories[self.current_category]
 
+        intro = "Higher monster levels unlock higher tiers."
         embed = discord.Embed(
             title=f"👹 Monster Modifiers — {title}",
-            description="Higher monster levels unlock higher tiers.",
             color=discord.Color.blue() if "Common" in title else discord.Color.purple(),
         )
 
         if lines:
-            # Split into ≤1024-char chunks across multiple fields
-            chunks: list[str] = []
-            current: list[str] = []
-            current_len = 0
-            for line in lines:
-                line_len = len(line) + 1  # +1 for newline
-                if current and current_len + line_len > 1020:
+            # Keep the whole list in the description (4096-char budget) so it
+            # renders as one continuous block — splitting across fields left
+            # a visible gap wherever a field happened to break mid-list.
+            full_text = intro + "\n\n" + "\n".join(lines)
+            if len(full_text) <= 4096:
+                embed.description = full_text
+            else:
+                # Fallback for the rare case a category outgrows the budget.
+                embed.description = intro
+                chunks: list[str] = []
+                current: list[str] = []
+                current_len = 0
+                for line in lines:
+                    line_len = len(line) + 1  # +1 for newline
+                    if current and current_len + line_len > 1020:
+                        chunks.append("\n".join(current))
+                        current = []
+                        current_len = 0
+                    current.append(line)
+                    current_len += line_len
+                if current:
                     chunks.append("\n".join(current))
-                    current = []
-                    current_len = 0
-                current.append(line)
-                current_len += line_len
-            if current:
-                chunks.append("\n".join(current))
-            for i, chunk in enumerate(chunks):
-                embed.add_field(
-                    name="Modifiers" if i == 0 else "​",
-                    value=chunk,
-                    inline=False,
-                )
+                for i, chunk in enumerate(chunks):
+                    embed.add_field(
+                        name="Modifiers" if i == 0 else "​",
+                        value=chunk,
+                        inline=False,
+                    )
         else:
+            embed.description = intro
             embed.add_field(
                 name="No modifiers", value="This category is empty.", inline=False
             )
