@@ -7,6 +7,7 @@ from discord.ui import Button, Modal, TextInput
 
 from core.base_view import BaseView
 from core.emojis import GOLD_COIN
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import CASINO_AUTHOR, TAVERN_CASINO
 from core.npc_voices import get_quip
 from core.pvp.engine import PvPEngine
@@ -141,6 +142,7 @@ class RouletteView(BaseView):
             )  # 35:1 for number, 1:1 (2x return) for color/parity
             payout = self.bet_amount * multiplier
             await self.bot.database.users.modify_gold(self.user_id, payout)
+            await hof_triggers.check_all_in(self.bot, self.user_id, payout)
             net_win = payout - self.bet_amount
             if net_win > 0:
                 try:
@@ -635,6 +637,7 @@ class BlackjackView(BaseView):
 
         if payout > 0:
             await self.bot.database.users.modify_gold(self.user_id, payout)
+            await hof_triggers.check_all_in(self.bot, self.user_id, payout)
 
         total_wagered = sum(h["bet"] for h in self.hands)
         net_win = (payout - total_wagered) + self.insurance_profit
@@ -1143,6 +1146,7 @@ class CrashView(BaseView):
 
         winnings = int(self.bet_amount * multiplier)
         await self.bot.database.users.modify_gold(self.user_id, winnings)
+        await hof_triggers.check_all_in(self.bot, self.user_id, winnings)
 
         total_payout = winnings + self.banked_winnings
         net_win = total_payout - self.original_bet
@@ -1215,6 +1219,7 @@ class CrashView(BaseView):
         self.banked_winnings += payout
 
         await self.bot.database.users.modify_gold(self.user_id, payout)
+        await hof_triggers.check_all_in(self.bot, self.user_id, payout)
 
         self.bank_half_button.disabled = True
         self.bank_half_button.label = "Halved ✅"
@@ -1328,6 +1333,7 @@ class HorseRaceView(BaseView):
         if winner == picked_horse:
             winnings = self.bet_amount * 4
             await self.bot.database.users.modify_gold(self.user_id, winnings)
+            await hof_triggers.check_all_in(self.bot, self.user_id, winnings)
             net_win = winnings - self.bet_amount
             if net_win > 0:
                 try:

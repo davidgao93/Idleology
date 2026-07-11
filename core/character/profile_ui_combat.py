@@ -83,7 +83,8 @@ class CombatProfileBuilder:
                 essence_atk += compute_essence_stat_bonus(_item).get("attack", 0)
         total_atk = p.get_total_attack()
         atk_bonuses = total_atk - p.base_attack - gear_atk - essence_atk
-        atk_val = f"**Total: {total_atk:,}**\n↳ Base: {p.base_attack:,}\n↳ Equipment: {gear_atk:,}"
+        total_atk_display = total_atk + cb["atk"]
+        atk_val = f"**Total: {total_atk_display:,}**\n↳ Base: {p.base_attack:,}\n↳ Equipment: {gear_atk:,}"
         if essence_atk:
             atk_val += f"\n↳ Essences: +{essence_atk:,}"
         if atk_bonuses:
@@ -110,7 +111,8 @@ class CombatProfileBuilder:
                 essence_def += compute_essence_stat_bonus(_item).get("defence", 0)
         total_def = p.get_total_defence()
         def_bonuses = total_def - p.base_defence - gear_def - essence_def
-        def_val = f"**Total: {total_def:,}**\n↳ Base: {p.base_defence:,}\n↳ Equipment: {gear_def:,}"
+        total_def_display = total_def + cb["def"]
+        def_val = f"**Total: {total_def_display:,}**\n↳ Base: {p.base_defence:,}\n↳ Equipment: {gear_def:,}"
         if essence_def:
             def_val += f"\n↳ Essences: +{essence_def:,}"
         if def_bonuses:
@@ -151,7 +153,8 @@ class CombatProfileBuilder:
         essence_hp = hp_post_gluttony - hp_post_pct
         total_hp = p.total_max_hp
         other_hp_bonuses = total_hp - p.max_hp - parts_hp - essence_hp
-        hp_val = f"**{p.current_hp:,} / {total_hp:,}**\n↳ Base: {p.max_hp:,}\n↳ Parts: {parts_hp:,}"
+        total_hp_display = total_hp + cb["hp"]
+        hp_val = f"**{p.current_hp:,} / {total_hp_display:,}**\n↳ Base: {p.max_hp:,}\n↳ Parts: {parts_hp:,}"
         if essence_hp:
             hp_val += f"\n↳ Essences: +{essence_hp:,}"
         if other_hp_bonuses:
@@ -246,7 +249,7 @@ class CombatProfileBuilder:
                 essence_crit += compute_essence_stat_bonus(_item).get("crit", 0)
         stat_crit = p.get_current_crit_chance()
         crit_bonuses = stat_crit - crit_equip - essence_crit - crit_weapon_template
-        total_crit_display = stat_crit + crit_weapon_piercing
+        total_crit_display = stat_crit + crit_weapon_piercing + cb["crit"]
         crit_val = f"**Total: {total_crit_display}%**\n↳ Weapon: {crit_weapon}%\n↳ Equipment: {crit_equip}%"
         if essence_crit:
             crit_val += f"\n↳ Essences: +{essence_crit}%"

@@ -96,19 +96,24 @@ MONSTER_EVELYNN_PRECURSOR = "https://cdn.discordapp.com/attachments/133463741136
 MONSTER_EVELYNN = "https://cdn.discordapp.com/attachments/1334637411363323996/1501338061878071466/evelynn.jpg?ex=69fbb587&is=69fa6407&hm=70291f73eba57fc7f170babfd0cbe37b8a8507c98a2687b8af8231c13265bd90&"
 
 # ── THE RITE OF CONVERGENCE — WING MONSTER IMAGES (Monster.image per wing) ─────
-MONSTER_APHRODITE_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915640782028871/aphro_reborn.jpg?ex=6a517bdc&is=6a502a5c&hm=ca0bb635b7f07e46e65d76eab6553181e56d7dcf720dabf1b4bbfe07b40aa50c&"
-MONSTER_LUCIFER_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915643344879656/lucifer_reborn.jpg?ex=6a517bdc&is=6a502a5c&hm=d7c89b6ab52f25110ea2f14d240077f0088acc4ee1e5ab70d4e5bc41a6bbc900&"
-MONSTER_GEMINI_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915643059535982/gemini_reborn.jpg?ex=6a517bdc&is=6a502a5c&hm=dfdb3a9fe6b060c5515c29aeda37f18715ffb05bcbe056ee0a0a1a0270a82bc4&"
-MONSTER_NEET_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915651528097865/neet_reborn.jpg?ex=6a517bde&is=6a502a5e&hm=4c970deb94dacfb9befd5858eb4efcb16ab65426de4422a53962de2e5d88279a&"
-MONSTER_EVELYNN_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915642757681202/eve_reborn.jpg?ex=6a517bdc&is=6a502a5c&hm=ac1b51b53240043ead6076bec96a0cedea8db52197765b13f0a203152d1f3f67&"
+MONSTER_APHRODITE_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1525264671790075964/aphro_reborn.gif?ex=6a52c0eb&is=6a516f6b&hm=3ff8154efc7cfd2b1918cc06ad90a3589af7d5f1c5f18d8dea089e0adf72c7ad&"
+MONSTER_LUCIFER_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248417335607346/lucifer_reborn.gif?ex=6a52b1c8&is=6a516048&hm=f5d07b2902503e9c0b2fb658a8eb3ce10a0268a24a0cb94acababea07c22299e&"
+MONSTER_GEMINI_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248409705906338/gemini_reborn.gif?ex=6a52b1c6&is=6a516046&hm=6ae527eee0e3295fa9af318b7c95d29fc4828d4934247886af89328b41f9d621&"
+# void_reborn.gif — NEET Reborn is the "Void"-species wing (see core/rite/mobgen.py: generate_wing_neet).
+MONSTER_NEET_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248455944048701/void_reborn.gif?ex=6a52b1d1&is=6a516051&hm=a54a19b235abe608756193fa3b8940fad81b7c50033771c2143a3a9d39b8782b&"
+MONSTER_EVELYNN_REBORN = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248359500091493/evelynn_reborn.gif?ex=6a52b1ba&is=6a51603a&hm=eaba7d21f3350ad804c07a8dfbf77d3d3607d0c0d04ae87b79603a2fc8185265&"
 
 # ── THE RITE OF CONVERGENCE — ARBITER PHASE IMAGES (phases 1-5, phase 6 final) ─
-ARBITER_PHASE_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915660910493786/raid_p1.jpg?ex=6a517be1&is=6a502a61&hm=b4c5422585f39f7dfeb3032181c89432a803a7db4423c20bc04a40fc4f77783f&"
-ARBITER_PHASE_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915662605254656/raid_p2.jpg?ex=6a517be1&is=6a502a61&hm=21e7479745efbe22aa31e32f646a3f185cb91c12fd6dfc6930ae2a7ac8e469cf&"
-ARBITER_PHASE_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915663074754701/raid_p3.jpg?ex=6a517be1&is=6a502a61&hm=4238c2f8611c946252a59b1f495e8803d23ec7c3a703a2e0d5b95989009e07ee&"
-ARBITER_PHASE_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915663502577675/raid_p4.jpg?ex=6a517be1&is=6a502a61&hm=4f5d0533dec0f5ba1f5da15a85f42ad5495469b1ea10562392f907eae6cd9ca9&"
-ARBITER_PHASE_5 = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915663897100428/raid_p5.jpg?ex=6a517be1&is=6a502a61&hm=308e38902ddcb5507bdcf248c517fed940c27e92520204d0c06465987dd18614&"
-ARBITER_PHASE_FINAL = "https://cdn.discordapp.com/attachments/1334637411363323996/1524915641084149790/arbiter_final.jpg?ex=6a517bdc&is=6a502a5c&hm=b1eb9804ee07f0f3571a3ce7e772bfa5e066bf7cdd6e32c92454bcd92c33c8b5&"
+# Phase order matches ARBITER_PHASE_NAMES in core/rite/mobgen.py: Left Wing of
+# the Heavens (angel), Right Wing of the Nine Hells (hell), Left Arm of
+# Ultimate Balance (gemini), Right Arm of the Infinite Void (void), the
+# converged Amalgam (final_form), then the true Arbiter reveal (final_fight).
+ARBITER_PHASE_1 = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248312758763691/amalgam_angel_wing.gif?ex=6a52b1af&is=6a51602f&hm=c1ac318e405c6feca78b5e635ec4796a1d1b8ec689ca377b3d3efc5561b6d7dd&"
+ARBITER_PHASE_2 = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248335240237287/amalgam_hell_wing.gif?ex=6a52b1b4&is=6a516034&hm=8482a3dc432f789bd096cb674bd2c59fd05f37cf667edc6cdcd90708c0455cdf&"
+ARBITER_PHASE_3 = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248327745273956/amalgam_gemini_arm.gif?ex=6a52b1b3&is=6a516033&hm=ab91b124b0a5659f85db8098c458b79ab8b3e8bd00ef920cc707a08b3992b957&"
+ARBITER_PHASE_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248343373250790/amalgam_void_arm.gif?ex=6a52b1b6&is=6a516036&hm=635c78fec1941662a89ec27ef48a69b76140f376ad4dbb551de55fcb2b97ed0b&"
+ARBITER_PHASE_5 = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248320312840312/amalgam_final_form.gif?ex=6a52b1b1&is=6a516031&hm=d60acd53d6aaaf462ec6fd9067646f46ffac10dcb0f26a2e01901228921b1b75&"
+ARBITER_PHASE_FINAL = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248351178723428/arbiter_final_fight.gif?ex=6a52b1b8&is=6a516038&hm=1702168ee8b79609920b1032ffa06c3589e390f23094402fbc9a0276447c2a7c&"
 
 # ── THE RITE OF CONVERGENCE — ARTEFACT ICONS ────────────────────────────────────
 # NOTE: no dedicated Gemini-themed asset has been provided yet for Seal of
@@ -472,4 +477,16 @@ PRESTIGE_AVATARS_FEMALE_SS = {
     "snow": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246967377727628/female_ss_snow.gif?ex=6a4f0d1c&is=6a4dbb9c&hm=e13832b3843f365b0ce63d5c782ccd63d4773db5dc40cc7ab94b88bb4c5146cc&",
     "storm": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246967860068382/female_ss_storm.gif?ex=6a4f0d1c&is=6a4dbb9c&hm=1966b55a6e691dd3ff333c154efb141689254422f9b9284f93fb5606961073fc&",
     "tech": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246968359063573/female_ss_tech.gif?ex=6a4f0d1c&is=6a4dbb9c&hm=719c1a4c56359816b3ea58d43db82486e05450959963c3e6d53adce358bf78db&",
+    "angel": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248367154696286/female_ss_angel.gif?ex=6a52b1bc&is=6a51603c&hm=fcac6738e221309223d4922d30aa795bcec6c1b7890c32776d9ae9ae9f93ff67&",
+    "fire": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248374914416800/female_ss_fire.gif?ex=6a52b1be&is=6a51603e&hm=bb3f5b376727a0fce14a6662240cb96604a5b7b83bd5bc4ea842c49a24281e9b&",
+    "rose": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248384179507330/female_ss_rose.gif?ex=6a52b1c0&is=6a516040&hm=748c10bddd7effca78f9a2bbbc5e4e3676ba68196f1ffa77f74b0661c4c03fcf&",
+    "thunder": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248391813009458/female_ss_thunder.gif?ex=6a52b1c2&is=6a516042&hm=0649f5c83d5aba729dc8423ff95e2def41cd413383bec31285130daff1fee649&",
+    "void": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248399551762543/female_ss_void.gif?ex=6a52b1c4&is=6a516044&hm=e941965d8bcc29d06bf945bc747a5f0e4140ac2e10e7ac74915313c90a72b880&",
+}
+
+PRESTIGE_AVATARS_MALE_SS = {
+    "celestial": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248425371898139/male_ss_celestial.gif?ex=6a52b1ca&is=6a51604a&hm=705863a8eb72572412f1025f3199d16adabf4f129ace971a907ac91a83022adb&",
+    "cyber_emperor": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248433575956530/male_ss_cyber_emperor.gif?ex=6a52b1cc&is=6a51604c&hm=a4243ed80d01bcafc17798f0458bd2e98bb078e9ddd37f99a378f1a4fa5d3084&",
+    "dragon": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248440756600872/male_ss_dragon.gif?ex=6a52b1ce&is=6a51604e&hm=d067b360b7dadcab215ab86fbf502a879edc7c67ff043784001ab2b73792a001&",
+    "samurai_lord": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248448574525470/male_ss_samurai_lord.gif?ex=6a52b1cf&is=6a51604f&hm=e82d1936c7eb3126a6e85080559b57e6f9f8895ca58ff37e37a1514392eb06aa&",
 }

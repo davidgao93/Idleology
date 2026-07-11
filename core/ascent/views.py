@@ -18,6 +18,7 @@ from core.combat.economy.loot import (
     generate_helmet,
     generate_weapon,
 )
+from core.hall_of_firsts import triggers as hof_triggers
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
 from core.images import VALE_PORTRAIT, VALE_THUMBNAIL
@@ -613,6 +614,7 @@ class AscentView(BaseLayoutView):
         if floor > self.best_floor:
             self.best_floor = floor
             await self.bot.database.ascension.update_highest_floor(self.user_id, floor)
+            await hof_triggers.check_peak(self.bot, self.user_id, floor)
 
         # Milestone rewards (every 5 floors)
         milestone_rewards = None

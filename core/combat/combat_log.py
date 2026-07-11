@@ -173,7 +173,6 @@ class CombatLogger:
                 ("hema_puncture_bleed", "Puncture pool"),
                 ("hema_frost_misses", "Flash Frost misses"),
                 ("hema_hp_lost_combat", "Soul Fracture HP lost"),
-                ("hema_ward_dmg_buffer", "Ward Inoculation buffer"),
                 ("hema_fevered_count", "Fevered Strike potions"),
                 ("hema_serrated_total", "Serrated ATK reduced"),
             ]

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from core.base_view import BaseView
 from core.emojis import GOLD_COIN
+from core.hall_of_firsts import triggers as hof_triggers
 from core.models import Partner
 from core.partners.dispatch import calculate_rewards, calculate_sigmund_rewards
 from core.partners.mechanics import grant_xp as _grant_xp
@@ -119,6 +120,7 @@ async def _apply_dispatch_rewards(
         await bot.database.partners.update_exp(
             user_id, partner.partner_id, new_exp, new_level
         )
+        await hof_triggers.check_friends_with_benefits(bot, user_id, new_level)
 
     if items_got:
         mining_batch: dict = {}

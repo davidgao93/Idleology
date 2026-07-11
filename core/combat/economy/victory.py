@@ -40,6 +40,7 @@ from core.combat.economy.rewards import (
     check_special_drops,
 )
 from core.companions.mechanics import CompanionMechanics
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
     BOSS_APHRODITE,
     BOSS_GEMINI_PET,
@@ -193,6 +194,8 @@ async def _apply_sanctum_conversion(
         await bot.database.social.increment_followers(
             ideology_name, 1, server_id, user_id
         )
+        follower_count = await bot.database.social.get_follower_count(ideology_name)
+        await hof_triggers.check_cult_leader(bot, user_id, follower_count)
         reward_data["msgs"].append(
             "🕍 Your Sanctum converts the fallen enemy into a devoted follower!"
         )
@@ -520,6 +523,7 @@ async def apply_victory_rewards(
         await bot.database.partners.update_exp(
             user_id, partner.partner_id, partner.exp, partner.level
         )
+        await hof_triggers.check_friends_with_benefits(bot, user_id, partner.level)
         await bot.database.partners.increment_affinity(user_id, partner.partner_id)
         if lvl_msgs:
             reward_data["msgs"].append(

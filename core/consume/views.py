@@ -6,6 +6,7 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
 from core.emojis import CONSUME_ICON, HEMATURGY_ICON, MONSTER_CHEEK
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
     CONSUME_EGG,
     CONSUME_HUB,
@@ -210,6 +211,7 @@ class EquipConfirmView(BaseView):
             self.part.hp_value,
             self.part.monster_name,
         )
+        await hof_triggers.check_fabulous(self.parent.bot, self.parent.user_id, slot)
         self.parent.player.equipped_parts[slot] = {
             "hp": self.part.hp_value,
             "monster_name": self.part.monster_name,
@@ -264,6 +266,7 @@ class PartDetailView(BaseView):
                 self.part.hp_value,
                 self.part.monster_name,
             )
+            await hof_triggers.check_fabulous(self.parent.bot, self.parent.user_id, slot)
             self.parent.player.equipped_parts[slot] = {
                 "hp": self.part.hp_value,
                 "monster_name": self.part.monster_name,

@@ -30,6 +30,18 @@ from core.combat.economy.config import (
 )
 from core.models import Monster, Player
 
+# Rite of Convergence entry keys — RAID-DESIGN.md: "Each key drops
+# independently from any Level 100 combat at 0% base rate + Special Rarity."
+# No generic SPECIAL_DROP_BASE_CHANCE floor like the other level-gated drops
+# below; the chance is exactly the modifier-difficulty + special-rarity pool.
+RITE_KEY_CURRENCY_COLUMNS: tuple = (
+    "rite_key_apex_of_dreams",
+    "rite_key_corruption_of_memories",
+    "rite_key_scales_of_judgment",
+    "rite_key_devoid_of_thoughts",
+    "rite_key_zenith_of_nightmares",
+)
+
 
 def calculate_rewards(
     player: Player, monster: Monster, *, apply_modifier_xp_bonus: bool = False
@@ -413,6 +425,9 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     if player.level >= 100:
         if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
             drops["pinnacle_key"] = True
+        for rite_key_col in RITE_KEY_CURRENCY_COLUMNS:
+            if random.random() < special_drop_chance:
+                drops[rite_key_col] = True
 
     return drops
 
@@ -461,6 +476,23 @@ _SPECIAL_FLAG_CURRENCY_MAP: Dict[str, tuple] = {
     "antique_tome": ("antique_tome", "Antique Tome"),
     "pinnacle_key": ("pinnacle_key", "Pinnacle Key"),
     "rune_of_regret": ("rune_of_regret", "Rune of Regret"),
+    "rite_key_apex_of_dreams": ("rite_key_apex_of_dreams", "Apex of Dreams"),
+    "rite_key_corruption_of_memories": (
+        "rite_key_corruption_of_memories",
+        "Corruption of Memories",
+    ),
+    "rite_key_scales_of_judgment": (
+        "rite_key_scales_of_judgment",
+        "Scales of Judgment",
+    ),
+    "rite_key_devoid_of_thoughts": (
+        "rite_key_devoid_of_thoughts",
+        "Devoid of Thoughts",
+    ),
+    "rite_key_zenith_of_nightmares": (
+        "rite_key_zenith_of_nightmares",
+        "Zenith of Nightmares",
+    ),
 }
 
 # Settlement materials routed to settlement_materials repo (not users table)

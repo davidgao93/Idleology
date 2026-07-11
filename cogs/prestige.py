@@ -10,6 +10,7 @@ from core.base_view import BaseView
 from core.character.prestige_display import format_prestige_name
 from core.emojis import EMBLEM_CATALOG
 from core.first_use import TutorialGateView
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
     ELIZA_PORTRAIT,
     ELIZA_THUMBNAIL,
@@ -17,6 +18,7 @@ from core.images import (
     PRESTIGE_AVATARS_MALE,
     PRESTIGE_AVATARS_FEMALE,
     PRESTIGE_AVATARS_FEMALE_SS,
+    PRESTIGE_AVATARS_MALE_SS,
 )
 from core.npc_voices import get_quip
 
@@ -34,6 +36,7 @@ AVATAR_TIER_PRICES: dict[str, int] = {
     "male": 250_000_000,
     "female": 500_000_000,
     "female_ss": 1_000_000_000,
+    "male_ss": 1_000_000_000,
 }
 # Tabs are labelled with their gender emoji rather than a text tier name —
 # ⭐ marks the "Prestige" variant of a gender's gallery.
@@ -41,6 +44,7 @@ AVATAR_TIER_LABELS: dict[str, str] = {
     "male": "♂️",
     "female": "♀️",
     "female_ss": "♀️⭐",
+    "male_ss": "♂️⭐",
 }
 
 # Purchasable animated avatar gallery. Tier -> codename -> {label, url}.
@@ -90,6 +94,32 @@ PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
             "url": PRESTIGE_AVATARS_FEMALE_SS["storm"],
         },
         "tech": {"label": "Neon Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["tech"]},
+        "angel": {
+            "label": "Seraphic Sovereign",
+            "url": PRESTIGE_AVATARS_FEMALE_SS["angel"],
+        },
+        "fire": {"label": "Phoenix Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["fire"]},
+        "rose": {"label": "Rose Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["rose"]},
+        "thunder": {
+            "label": "Thunder Sovereign",
+            "url": PRESTIGE_AVATARS_FEMALE_SS["thunder"],
+        },
+        "void": {"label": "Void Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["void"]},
+    },
+    "male_ss": {
+        "celestial": {
+            "label": "Celestial Sovereign",
+            "url": PRESTIGE_AVATARS_MALE_SS["celestial"],
+        },
+        "cyber_emperor": {
+            "label": "Cyber Emperor",
+            "url": PRESTIGE_AVATARS_MALE_SS["cyber_emperor"],
+        },
+        "dragon": {"label": "Dragon Sovereign", "url": PRESTIGE_AVATARS_MALE_SS["dragon"]},
+        "samurai_lord": {
+            "label": "Samurai Lord",
+            "url": PRESTIGE_AVATARS_MALE_SS["samurai_lord"],
+        },
     },
 }
 
@@ -205,7 +235,7 @@ class AvatarModal(discord.ui.Modal, title="Set Custom Avatar"):
         )
 
 
-_AVATAR_TIER_ORDER = ("male", "female", "female_ss")
+_AVATAR_TIER_ORDER = ("male", "female", "female_ss", "male_ss")
 
 
 class AvatarGalleryView(BaseView):
@@ -267,12 +297,6 @@ class AvatarGalleryView(BaseView):
             )
             btn.callback = self._handle_tier
             self.add_item(btn)
-
-        # Prestige Male tier — art not ready yet, shown as a disabled placeholder.
-        placeholder_btn = ui.Button(
-            label="♂️⭐", style=ButtonStyle.secondary, disabled=True, row=0
-        )
-        self.add_item(placeholder_btn)
 
         ids = self._tier_ids()
         prev_btn = ui.Button(
@@ -360,6 +384,7 @@ class AvatarGalleryView(BaseView):
             await self.bot.database.users.modify_gold(self.user_id, -price)
             await self.bot.database.prestige.add_owned(self.user_id, "avatar", item_key)
             self.owned_avatars.append(item_key)
+            await hof_triggers.check_looksmaxxer(self.bot, self.user_id)
 
         await self.bot.database.users.update_appearance(self.user_id, info["url"])
         self._rebuild()
@@ -810,6 +835,7 @@ class PrestigeBuilder:
                 f"♂️ Tier — **{AVATAR_TIER_PRICES['male']:,}g**\n"
                 f"♀️ Tier — **{AVATAR_TIER_PRICES['female']:,}g**\n"
                 f"♀️⭐ Tier — **{AVATAR_TIER_PRICES['female_ss']:,}g**\n"
+                f"♂️⭐ Tier — **{AVATAR_TIER_PRICES['male_ss']:,}g**\n"
                 f"Custom Avatar upload — **{AVATAR_COST:,}g** per upload\n"
                 "*Presets are owned once and freely swappable after.*"
             ),
@@ -919,6 +945,15 @@ class PrestigeHubView(BaseView):
             btn.callback = self._handle_tab
             self.add_item(btn)
 
+        # Hall of Firsts isn't an embed tab (it's a Components V2 screen), so
+        # it gets its own button that hands off to a fresh message rather
+        # than switching self.active_tab.
+        hof_btn = ui.Button(
+            label="Hall of Firsts", emoji="🏛️", style=ButtonStyle.secondary, row=1
+        )
+        hof_btn.callback = self._handle_hall_of_firsts
+        self.add_item(hof_btn)
+
         # Row 2: Close, alone on its own row (matches the Close convention used
         # by every other hub view in the bot).
         close_btn = ui.Button(
@@ -985,6 +1020,16 @@ class PrestigeHubView(BaseView):
         await interaction.response.send_modal(
             MonumentModal(self.bot, self.user_id, self.gold, already_owned, self)
         )
+
+    async def _handle_hall_of_firsts(self, interaction: discord.Interaction) -> None:
+        from core.combat.ui.combat_embed import handoff_to_layout
+        from core.hall_of_firsts.views import HallOfFirstsListView
+
+        await interaction.response.defer()
+        view = HallOfFirstsListView(self.bot, self.user_id, self.server_id)
+        await view.load()
+        await handoff_to_layout(interaction.message, view)
+        self.stop()
 
 
 # ---------------------------------------------------------------------------

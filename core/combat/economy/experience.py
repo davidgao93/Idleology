@@ -1,6 +1,7 @@
 import json
 import random
 
+from core.hall_of_firsts import triggers as hof_triggers
 from core.models import Player
 
 
@@ -140,6 +141,7 @@ class ExperienceManager:
                 player.level += 1
                 player.exp -= exp_threshold
                 changes["levels_gained"] += 1
+                await hof_triggers.check_nolife_andy(bot, user_id, player.level)
 
                 # Full-heal to current max HP (base stats unchanged until package chosen).
                 player.current_hp = player.total_max_hp

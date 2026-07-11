@@ -19,7 +19,6 @@ on_haemorrhage_tick(player, monster, log)    — bleed DoT, start of player turn
 on_player_hit(player, monster, damage, is_crit, log)  → extra_damage: int
 on_player_miss(player, monster, miss_damage, log)     → extra_damage: int
 on_ward_gained(player, amount, log)          → adjusted_amount: int
-drain_ward_dmg_buffer(player, monster, log)
 on_monster_turn_start(player, monster, log)  → skip_turn: bool
 on_monster_turn_end(player, monster, hp_damage, is_dodged, is_blocked, log)
 on_kill(player, log)
@@ -143,7 +142,6 @@ def reset_hematurgy_transients(player: Player) -> None:
     cs.hema_puncture_bleed = 0
     cs.hema_frost_misses = 0
     cs.hema_ward_inoculation = False  # re-applied by apply_hematurgy_start each fight
-    cs.hema_ward_dmg_buffer = 0
     cs.hema_serrated_total = 0
     # Clear any freeze flag left on the monster (defensive — uses dynamic attr)
     # Nothing to clear on player side; monster is replaced each floor/wave anyway.
@@ -156,7 +154,8 @@ def reset_hematurgy_transients(player: Player) -> None:
 
 def apply_hematurgy_start(player: Player, monster: Monster, log: list[str]) -> None:
     """
-    Ward Inoculation (M4): convert all starting ward to bonus DEF and double Max HP.
+    Ward Inoculation (M4): convert a tiered % of starting ward into bonus DEF
+    (T1=50% up to T7=140%) and double Max HP.
     Called from apply_combat_start_passives() after all other start passives have run.
     """
     tier = get_h(player, "ward_inoculation")
@@ -165,10 +164,13 @@ def apply_hematurgy_start(player: Player, monster: Monster, log: list[str]) -> N
 
     ward_val = player.combat_ward
     if ward_val > 0:
-        player.bonus_def += ward_val
+        efficiency = _tv("ward_inoculation", tier)
+        def_gain = int(ward_val * efficiency)
+        player.bonus_def += def_gain
         player.combat_ward = 0
         log.append(
-            f"🩸 **Ward Inoculation** — {ward_val:,} ward converted to {ward_val:,} flat DEF!"
+            f"🩸 **Ward Inoculation** — {ward_val:,} ward converted to "
+            f"{def_gain:,} flat DEF ({int(efficiency * 100)}%)!"
         )
 
     # Double Max HP by adding the current total as bonus_max_hp
@@ -177,8 +179,7 @@ def apply_hematurgy_start(player: Player, monster: Monster, log: list[str]) -> N
     player.cs.hema_ward_inoculation = True
 
     log.append(
-        f"🩸 **Ward Inoculation** — Max HP doubled to {player.total_max_hp:,}! "
-        f"Ward gains will deal damage instead."
+        f"🩸 **Ward Inoculation** — Max HP doubled to {player.total_max_hp:,}!"
     )
 
 
@@ -402,20 +403,13 @@ def on_player_miss(
 
 def on_ward_gained(player: Player, amount: int, log: list[str]) -> int:
     """
-    Ward Inoculation: if active, redirect ward to the damage buffer (returns 0).
     Vital Resonance: X% of ward generated → HP heal (then returns original amount).
+    Ward Inoculation no longer touches mid-combat ward gains — only the
+    combat-start pool (see apply_hematurgy_start).
     Called before ward is added to player.combat_ward.
     """
     if amount <= 0:
         return amount
-
-    # Ward Inoculation takes priority — no ward is actually gained
-    if player.cs.hema_ward_inoculation:
-        tier = get_h(player, "ward_inoculation")
-        if tier is not None:
-            efficiency = _tv("ward_inoculation", tier)
-            player.cs.hema_ward_dmg_buffer += int(amount * efficiency)
-            return 0
 
     # Vital Resonance: heal a fraction of ward gained (ward still fully added)
     tier_vr = get_h(player, "vital_resonance")
@@ -426,18 +420,6 @@ def on_ward_gained(player: Player, amount: int, log: list[str]) -> int:
             log.append(f"💚 **Vital Resonance** — {heal} HP restored from ward!")
 
     return amount
-
-
-def drain_ward_dmg_buffer(player: Player, monster: Monster, log: list[str]) -> None:
-    """Applies buffered Ward Inoculation damage to the monster. Call after ward-gen events."""
-    if player.cs.hema_ward_dmg_buffer <= 0 or monster.hp <= 0:
-        player.cs.hema_ward_dmg_buffer = 0
-        return
-    dmg = player.cs.hema_ward_dmg_buffer
-    actual = min(dmg, monster.hp)
-    monster.hp = max(0, monster.hp - actual)
-    player.cs.hema_ward_dmg_buffer = 0
-    log.append(f"🩸 **Ward Inoculation** — ward energy surges for **{actual}** damage!")
 
 
 # ---------------------------------------------------------------------------

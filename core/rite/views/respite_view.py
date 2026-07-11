@@ -10,12 +10,14 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
+from core.images import ARBITER_THUMBNAIL
 from core.npc_voices import get_quip
 from core.rite.run_state import RiteRunState
 
 RESPITE_HEAL_PCT = 0.40
 RESPITE_POTIONS = 2
 EMERGENCY_POTIONS = 8
+MAX_POTIONS = 20
 # Additive per-stack ATK/DEF bonus for Respite's "Power" choice — cumulative
 # and permanent for the rest of the run (see RiteRunState.power_stacks).
 POWER_ATK_DEF_INCREMENT = 0.30
@@ -111,7 +113,11 @@ class RespiteView(BaseLayoutView):
                 f"✨ **Emergency** — full HP restore + {EMERGENCY_POTIONS} potions"
             )
         return discord.ui.Container(
-            discord.ui.TextDisplay("\n".join(lines)), accent_color=discord.Color.gold()
+            discord.ui.Section(
+                "\n".join(lines),
+                accessory=discord.ui.Thumbnail(ARBITER_THUMBNAIL, description="The Arbiter"),
+            ),
+            accent_color=discord.Color.gold(),
         )
 
     def _build_rows(self) -> list[discord.ui.ActionRow]:
@@ -188,7 +194,7 @@ class RespiteView(BaseLayoutView):
         self.player.current_hp = min(
             self.player.total_max_hp, self.player.current_hp + heal
         )
-        self.player.potions += RESPITE_POTIONS
+        self.player.potions = min(MAX_POTIONS, self.player.potions + RESPITE_POTIONS)
         await self._apply_and_continue(interaction)
 
     async def _on_emergency(self, interaction: Interaction):
@@ -202,5 +208,5 @@ class RespiteView(BaseLayoutView):
         # and a full heal should restore to the player's true current max.
         apply_respite_buffs(self.player, self.run_state)
         self.player.current_hp = self.player.total_max_hp
-        self.player.potions += EMERGENCY_POTIONS
+        self.player.potions = min(MAX_POTIONS, self.player.potions + EMERGENCY_POTIONS)
         await self._apply_and_continue(interaction)

@@ -16,6 +16,7 @@ from core.combat.turns import engine
 from core.combat.turns import jewel_engine as _je
 from core.combat.turns.boundary import reset_for_phase_transition
 from core.combat.views.views import CombatView
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import ARBITER_PHASE_FINAL, ARBITER_PORTRAIT
 from core.npc_voices import get_quip
 from core.rite import mobgen
@@ -351,6 +352,7 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
         if won:
             view.bot.state_manager.clear_active(view.user_id)
             await view.bot.database.rite.set_first_clear(view.user_id, view.server_id)
+            await hof_triggers.check_absolute_cinema(view.bot, view.user_id)
             dp = compute_devotion_points(run_state.writs, run_state.total_turns)
             rewards = await grant_run_completion_rewards(
                 view.bot, view.user_id, view.server_id, view.player, dp

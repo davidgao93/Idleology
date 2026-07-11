@@ -115,10 +115,7 @@ class CombatState:
     hema_puncture_bleed: int = 0  # Puncture accumulated crit-bleed pool
     hema_frost_misses: int = 0  # Flash Frost consecutive miss counter
     hema_ward_inoculation: bool = (
-        False  # Ward Inoculation active (no ward regen, ward→damage)
-    )
-    hema_ward_dmg_buffer: int = (
-        0  # Ward Inoculation: accumulated ward→damage pending apply
+        False  # Ward Inoculation active this combat (combat-start ward→DEF fired)
     )
     hema_serrated_total: int = (
         0  # Serrated: cumulative ATK drained from monster this fight

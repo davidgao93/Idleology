@@ -35,6 +35,27 @@ class LeaderboardHubView(BaseView):
             btn.callback = self.handle_tab_switch
             self.add_item(btn)
 
+        # Hall of Firsts is a Components V2 screen, not an embed tab — it
+        # hands off to a fresh message rather than switching active_tab.
+        hof_btn = ui.Button(
+            label="Hall of Firsts", emoji="🏛️", style=ButtonStyle.secondary
+        )
+        hof_btn.callback = self.handle_hall_of_firsts
+        self.add_item(hof_btn)
+
+    async def handle_hall_of_firsts(self, interaction: Interaction) -> None:
+        if self._processing:
+            return await interaction.response.defer()
+        self._processing = True
+        from core.combat.ui.combat_embed import handoff_to_layout
+        from core.hall_of_firsts.views import HallOfFirstsListView
+
+        await interaction.response.defer()
+        view = HallOfFirstsListView(self.bot, self.user_id)
+        await view.load()
+        await handoff_to_layout(interaction.message, view)
+        self.stop()
+
     async def handle_tab_switch(self, interaction: Interaction):
         if self._processing:
             return await interaction.response.defer()

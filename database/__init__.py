@@ -18,6 +18,7 @@ from .repositories.duels import DuelStatsRepository
 from .repositories.eggs import EggsRepository
 from .repositories.equipment import EquipmentRepository
 from .repositories.essences import EssencesRepository
+from .repositories.hall_of_firsts import HallOfFirstsRepository
 from .repositories.hematurgy import HematurgyRepository
 from .repositories.journey import JourneyRepository
 from .repositories.maw import MawRepository
@@ -81,6 +82,7 @@ class DatabaseManager:
         self.loadouts = LoadoutRepository(connection)
         self.nether_market = NetherMarketRepository(connection)
         self.rite = RiteRepository(connection)
+        self.hall_of_firsts = HallOfFirstsRepository(connection)
 
     @asynccontextmanager
     async def transaction(self):

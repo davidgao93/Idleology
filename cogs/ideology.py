@@ -5,6 +5,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import IDEOLOGY_HUB, PROPAGATE
 
 
@@ -117,6 +118,7 @@ class Ideology(commands.Cog, name="ideology"):
         await self.bot.database.social.update_followers(
             user_ideology, new_followers_count
         )
+        await hof_triggers.check_cult_leader(self.bot, user_id, new_followers_count)
         await self.bot.database.users.update_timer(user_id, "last_propagate_time")
 
         # Send response

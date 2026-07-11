@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.emojis import GOLD_COIN, RARITY, RUNE_REFINEMENT
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import HARLAN_AUTHOR, UPGRADE_REFINE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.equipment_mechanics import EquipmentMechanics
@@ -177,6 +178,7 @@ class RefineView(BaseUpgradeView):
             await self.bot.database.equipment.increase_stat(
                 self.item.item_id, "weapon", "refinement_lvl", 1
             )
+            await hof_triggers.check_dang_yo(self.bot, self.user_id, self.item.refinement_lvl)
 
             res_str = (
                 ", ".join([f"+{v} {k.title()}" for k, v in stats.items() if v > 0])
@@ -405,6 +407,8 @@ class RefineView(BaseUpgradeView):
         if refines_done == 0:
             await interaction.followup.send(stop_reason, ephemeral=True)
             return
+
+        await hof_triggers.check_dang_yo(self.bot, self.user_id, self.item.refinement_lvl)
 
         gains_str = (
             ", ".join([f"+{v} {k.title()}" for k, v in total_gains.items() if v > 0])
@@ -642,6 +646,9 @@ class RefineView(BaseUpgradeView):
                 self.item.item_id, "weapon", "refinement_lvl", 1
             )
             refines_done += 1
+
+        if refines_done > 0:
+            await hof_triggers.check_dang_yo(self.bot, self.user_id, self.item.refinement_lvl)
 
         quest_msgs = []
         if runes_used > 0:

@@ -247,7 +247,14 @@ _CODEX_TOME_INFO: dict = {
     "wrath": ("Wrath", lambda v: f"+{v}% of base DEF as bonus ATK"),
     "bastion": ("Bastion", lambda v: f"+{v}% of base ATK as bonus DEF"),
     "tenacity": ("Tenacity", lambda v: f"{v}% chance per hit to halve damage"),
-    "bloodthirst": ("Bloodthirst", lambda v: f"Heal {v:.2f}% of critical hit damage"),
+    # Raw stored tome value is scaled ×10 here — the heal formula in
+    # player_turn.py applies it as damage * (value / 10), so the effective
+    # heal % is 10x the raw stored value (see _tome_display_value in
+    # core/codex/views/tomes_view.py for the same conversion).
+    "bloodthirst": (
+        "Bloodthirst",
+        lambda v: f"Heal {v * 10:.2f}% of critical hit damage",
+    ),
     "providence": ("Providence", lambda v: f"+{v}% more to total rarity"),
     "precision": ("Insight", lambda v: f"+{v} flat crit chance"),
     "affluence": ("Affluence", lambda v: f"+{v}% XP and Gold from combat"),
@@ -314,7 +321,7 @@ _HEMATURGY_SHORT_FUNCS: dict = {
         f"On miss: After {_htv('flash_frost', t):.0f} consecutive misses, freeze monster for 1 round"
     ),
     "ward_inoculation": lambda t: (
-        f"Combat start: Ward→DEF, Max HP doubled; On ward gain: deal {_htv('ward_inoculation', t) * 100:.0f}% as damage"
+        f"Combat start: gain {_htv('ward_inoculation', t) * 100:.0f}% of ward as bonus DEF, Max HP doubled"
     ),
     "soul_fracture": lambda t: (
         f"During combat: +{_htv('soul_fracture', t) * 100:.0f}% ATK per 10% Max HP lost this fight"

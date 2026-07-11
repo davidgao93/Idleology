@@ -11,6 +11,7 @@ from core.alchemy.mechanics import (
 )
 from core.base_view import BaseView
 from core.emojis import COSMIC_DUST, GOLD_COIN, POTION, SPIRIT_STONE
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.skills.mastery import get_attunement_alchemy_bonus
@@ -259,6 +260,7 @@ class _LevelUpConfirmView(BaseView):
         )
         new_level = self.current_level + 1
         await self.bot.database.alchemy.set_level(self.user_id, new_level)
+        await hof_triggers.check_mixologist(self.bot, self.user_id, new_level)
 
         view = await _hub_from_db(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()

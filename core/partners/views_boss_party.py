@@ -23,6 +23,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.emojis import GOLD_COIN
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import PARTNERS_BOSS_PARTY, VICTORY_APHRODITE_GEMINI
 from core.models import Partner
 from core.partners.dispatch import (
@@ -591,6 +592,9 @@ class BossPartyProgressView(BaseView):
             partner.exp = new_exp
             await self.bot.database.partners.update_exp(
                 self.user_id, partner.partner_id, new_exp, new_level
+            )
+            await hof_triggers.check_friends_with_benefits(
+                self.bot, self.user_id, new_level
             )
             if msgs:
                 level_msgs.append(

@@ -17,6 +17,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.emojis import NETHER_MARKET_PLUNDER
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import VEX_PORTRAIT, VEX_THUMBNAIL
 from core.nether_market.data import WEALTH_TIERS
 from core.nether_market.mechanics import MAX_CHARGES
@@ -576,7 +577,9 @@ class ConfirmTransactionView(BaseView):
         await self.bot.database.nether_market.modify_holdings(
             self.user_id, self.server_id, self.item_key, -self.qty
         )
-        await self.bot.database.users.modify_gold(self.user_id, self.price * self.qty)
+        gold_gained = self.price * self.qty
+        await self.bot.database.users.modify_gold(self.user_id, gold_gained)
+        await hof_triggers.check_the_trickster(self.bot, self.user_id, gold_gained)
         await self._succeed(interaction)
 
     async def _fail(self, interaction: Interaction, message: str):

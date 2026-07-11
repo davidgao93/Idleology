@@ -1017,6 +1017,24 @@ CREATE TABLE IF NOT EXISTS `prestige_owned` (
   PRIMARY KEY (`user_id`, `item_type`, `item_key`)
 );
 
+-- ============================================================
+-- HALL OF FIRSTS
+-- ============================================================
+
+-- Global (one bot instance, effectively one server) "first player to reach
+-- X" tracker. One row per category, first-write-wins via INSERT OR IGNORE.
+-- Snapshot columns freeze how the player looked at the moment of claiming,
+-- independent of later cosmetic changes.
+CREATE TABLE IF NOT EXISTS `hall_of_firsts` (
+  `category_key`        TEXT PRIMARY KEY,
+  `user_id`             TEXT NOT NULL,
+  `achieved_at`          TEXT NOT NULL,
+  `snapshot_name`        TEXT NOT NULL,
+  `snapshot_title`       TEXT,
+  `snapshot_emblem`      TEXT,
+  `snapshot_appearance`  TEXT
+);
+
 
 -- ============================================================
 -- REDEEM CODES

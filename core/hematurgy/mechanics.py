@@ -153,14 +153,14 @@ _TV: dict[str, list] = {
     ],  # crit-dmg fraction added to puncture bleed
     "flash_frost": [15, 13, 11, 9, 7, 5, 3],  # miss threshold for freeze (int)
     "ward_inoculation": [
-        0.60,
-        0.70,
+        0.50,
+        0.65,
         0.80,
-        0.90,
-        1.00,
+        0.95,
         1.10,
         1.25,
-    ],  # ward→damage efficiency (>1 = bonus dmg)
+        1.40,
+    ],  # combat-start ward→bonus DEF conversion rate
     "soul_fracture": [
         0.03,
         0.05,
@@ -282,8 +282,8 @@ def _desc(pid: str, tier: int) -> str:
             )
         case "ward_inoculation":
             return (
-                f"Combat start: all ward is converted to DEF and Max HP is doubled. "
-                f"Ward gained during combat instead deals {pct(v)} of its value as damage."
+                f"Combat start: gain {pct(v)} of your ward as bonus DEF, and Max HP "
+                f"is doubled."
             )
         case "soul_fracture":
             return (

@@ -17,6 +17,7 @@ from core.apex.mechanics import ApexMechanics
 from core.apex.models import MetaShardInventory, ShardInventory, SoulStone
 from core.base_view import BaseView
 from core.emojis import APEX_SHARD_EMOJI, CONDENSED_BLOOD, ENGORGED_HEART, RIFT_SHARD
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import APEX_UPGRADE
 
 
@@ -290,6 +291,15 @@ class UpgradeView(BaseView):
             await self.bot.database.apex.upgrade_slot_tier(
                 self.user_id, self.server_id, self._selected_slot, new_tier
             )
+            if new_tier >= 5:
+                from core.apex.models import soul_stone_from_db
+
+                ss_row = await self.bot.database.apex.get_or_create_soul_stone(
+                    self.user_id, self.server_id
+                )
+                await hof_triggers.check_hunter_of_hunters(
+                    self.bot, self.user_id, soul_stone_from_db(ss_row)
+                )
             result_title = "✅ Upgrade Successful!"
             result_desc = f"**{passive_display}** is now **T{new_tier}**!"
             color = 0x00CC44

@@ -686,12 +686,6 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
 
     generate_player_ward_on_hit(player, raw_damage, is_hit, is_crit, log)
 
-    # Ward Inoculation: drain accumulated ward-damage buffer onto the monster
-    if player.hematurgy_passives and player.cs.hema_ward_dmg_buffer > 0:
-        from core.hematurgy.engine import drain_ward_dmg_buffer
-
-        drain_ward_dmg_buffer(player, monster, log)
-
     # Apply damage to monster ward+HP — capture Time Lord / ward shatter events
     start = len(log)
     final_hit = apply_damage_to_monster(

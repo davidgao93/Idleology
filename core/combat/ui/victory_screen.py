@@ -28,6 +28,11 @@ from core.emojis import (
     PINNACLE_KEY,
     PUZZLE_BOX,
     RESOURCE_EMOJI,
+    RITE_KEY_CELESTIAL,
+    RITE_KEY_CORRUPT,
+    RITE_KEY_GEMINI,
+    RITE_KEY_INFERNAL,
+    RITE_KEY_VOID,
     RUNE_IMBUE,
     RUNE_MIRAGE_IMPERFECT,
     RUNE_MIRAGE_PERFECT,
@@ -170,6 +175,11 @@ def create_victory_embed(
         "Infernal Sigil": "🔥",
         "Void Sigil": "🟣",
         "Bound Sigil": "⚖️",
+        "Apex of Dreams": RITE_KEY_CELESTIAL,
+        "Corruption of Memories": RITE_KEY_INFERNAL,
+        "Scales of Judgment": RITE_KEY_GEMINI,
+        "Devoid of Thoughts": RITE_KEY_VOID,
+        "Zenith of Nightmares": RITE_KEY_CORRUPT,
     }
 
     for item_name in rewards.get("special", []):

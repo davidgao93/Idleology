@@ -266,8 +266,8 @@ class PotionDistillationView(BaseView):
             current = max(0, self.cosmic_dust)
             for i, ch in enumerate(choices):
                 cost = ch.get("effective_cost", 0)
-                cost_part = f" (-{cost}{COSMIC_DUST})" if cost > 0 else " (free)"
-                label = f"{ch['emoji']} {ch['name']}{cost_part}"
+                cost_part = f" (-{cost})" if cost > 0 else " (free)"
+                label = f"{ch['name']}{cost_part}"
                 style = (
                     ButtonStyle.secondary
                     if ch["key"] == "blue"
@@ -282,6 +282,7 @@ class PotionDistillationView(BaseView):
                 can_afford = (cost <= 0) or (cost <= current)
                 btn = ui.Button(
                     label=label[:80],
+                    emoji=COSMIC_DUST,
                     style=style,
                     row=i // 3,
                     disabled=not can_afford,

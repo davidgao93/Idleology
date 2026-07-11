@@ -7,6 +7,7 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.companions.engram_view import BalancedEngramView
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import COMPANIONS_FUSION, YUNA_PORTRAIT, YUNA_THUMBNAIL
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
@@ -456,6 +457,7 @@ class XPDistributeView(BaseView):
                 overflow_xp += cur_exp
                 cur_exp = 0
             await self.bot.database.companions.update_stats(comp.id, cur_lvl, cur_exp)
+            await hof_triggers.check_monster_tamer(self.bot, self.user_id, cur_lvl)
             if cur_lvl != comp.level:
                 msgs.append(f"**{comp.name}** levelled up to **{cur_lvl}**!")
             else:
@@ -805,6 +807,9 @@ class CompanionDetailView(BaseView):
                         cur_exp = 0
                     await self.bot.database.companions.update_stats(
                         comp_id, cur_lvl, cur_exp
+                    )
+                    await hof_triggers.check_monster_tamer(
+                        self.bot, self.user_id, cur_lvl
                     )
                     if did_level:
                         leveled_names.append(f"{name} (Lv.{cur_lvl})")

@@ -87,6 +87,7 @@ class QuestsRepository(BaseRepository):
             ("board_had_abandon", "0"),
             ("auto_rest_unlocked", "0"),
             ("auto_reload_unlocked", "0"),
+            ("lifetime_completions", "0"),
         ):
             try:
                 await self.connection.execute(
@@ -119,7 +120,7 @@ class QuestsRepository(BaseRepository):
             "SELECT user_id, tokens, veteran_unlocked, extra_slot_unlocked, "
             "horizon_boost_uses, checkin_day, checkin_last_time, "
             "enrichment_unlocked, prospector_unlocked, streak, board_had_abandon, "
-            "auto_rest_unlocked, auto_reload_unlocked "
+            "auto_rest_unlocked, auto_reload_unlocked, lifetime_completions "
             "FROM quest_meta WHERE user_id = ?",
             (user_id,),
         )
@@ -139,6 +140,7 @@ class QuestsRepository(BaseRepository):
                 "board_had_abandon": 0,
                 "auto_rest_unlocked": 0,
                 "auto_reload_unlocked": 0,
+                "lifetime_completions": 0,
             }
         return {
             "user_id": row["user_id"],
@@ -154,6 +156,7 @@ class QuestsRepository(BaseRepository):
             "board_had_abandon": row["board_had_abandon"],
             "auto_rest_unlocked": row["auto_rest_unlocked"],
             "auto_reload_unlocked": row["auto_reload_unlocked"],
+            "lifetime_completions": row["lifetime_completions"],
         }
 
     async def add_tokens(self, user_id: str, amount: int) -> None:
@@ -211,6 +214,16 @@ class QuestsRepository(BaseRepository):
         await self.connection.commit()
         meta = await self.get_meta(user_id)
         return meta["streak"]
+
+    async def increment_lifetime_completions(self, user_id: str) -> int:
+        """Increment the lifetime contract+horizon completion count by 1 and return the new total."""
+        await self.connection.execute(
+            "UPDATE quest_meta SET lifetime_completions = lifetime_completions + 1 WHERE user_id = ?",
+            (user_id,),
+        )
+        await self.connection.commit()
+        meta = await self.get_meta(user_id)
+        return meta["lifetime_completions"]
 
     async def reset_streak(self, user_id: str) -> None:
         await self.connection.execute(

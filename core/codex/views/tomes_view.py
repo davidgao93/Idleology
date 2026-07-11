@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
+from core.hall_of_firsts import triggers as hof_triggers
 from core.emojis import (
     HEMATURGY_ICON,
     RARITY,
@@ -56,6 +57,19 @@ _PASSIVE_EMOJI = {
 }
 
 
+def _tome_display_value(passive_type: str, raw_value: float) -> float:
+    """Maps a tome's raw stored value onto what's actually shown to the player.
+
+    Bloodthirst's heal formula (player_turn.py) applies the stored value as
+    damage * (value / 10), i.e. the effective heal % is 10x the raw stored
+    value. Every other tome type's raw value already equals its display %
+    1:1, so only bloodthirst needs this scale-up before formatting.
+    """
+    if passive_type == "bloodthirst":
+        return raw_value * 10
+    return raw_value
+
+
 def _passive_display_name(passive_type: str) -> str:
     """Emoji-prefixed display name for contexts that render custom emoji
     tags inline (embed text) — NOT for SelectOption labels, which only
@@ -82,7 +96,11 @@ _PASSIVE_DESCRIPTIONS = {
 def _tome_field(tome) -> tuple[str, str]:
     """Returns (name, value) for an embed field showing a tome slot."""
     _, val_tmpl = _PASSIVE_LABELS.get(tome.passive_type, (tome.passive_type, "{v:.1f}"))
-    stat_str = val_tmpl.format(v=tome.value) if tome.value > 0 else "Not upgraded"
+    stat_str = (
+        val_tmpl.format(v=_tome_display_value(tome.passive_type, tome.value))
+        if tome.value > 0
+        else "Not upgraded"
+    )
     return _passive_display_name(tome.passive_type), f"Tier {tome.tier}/5 — {stat_str}"
 
 
@@ -96,13 +114,17 @@ def _tome_roll_range_text(tome: CodexTome) -> str:
     lines = []
     if tome.tier > 0:
         lo, hi = ranges[tome.tier - 1]
+        lo_d = _tome_display_value(tome.passive_type, lo)
+        hi_d = _tome_display_value(tome.passive_type, hi)
         lines.append(
-            f"**Tier {tome.tier} (reroll):** {val_tmpl.format(v=lo)} – {val_tmpl.format(v=hi)}"
+            f"**Tier {tome.tier} (reroll):** {val_tmpl.format(v=lo_d)} – {val_tmpl.format(v=hi_d)}"
         )
     if tome.tier < 5:
         lo, hi = ranges[tome.tier]
+        lo_d = _tome_display_value(tome.passive_type, lo)
+        hi_d = _tome_display_value(tome.passive_type, hi)
         lines.append(
-            f"**Tier {tome.tier + 1} (upgrade):** {val_tmpl.format(v=lo)} – {val_tmpl.format(v=hi)}"
+            f"**Tier {tome.tier + 1} (upgrade):** {val_tmpl.format(v=lo_d)} – {val_tmpl.format(v=hi_d)}"
         )
     return "\n".join(lines) if lines else "Maxed out."
 
@@ -116,8 +138,14 @@ def _passive_range_text(passive_type: str) -> str:
         return "Unknown"
     t1_lo, t1_hi = ranges[0]
     t5_lo, t5_hi = ranges[4]
-    t1 = f"{val_tmpl.format(v=t1_lo)} – {val_tmpl.format(v=t1_hi)}"
-    t5 = f"{val_tmpl.format(v=t5_lo)} – {val_tmpl.format(v=t5_hi)}"
+    t1 = (
+        f"{val_tmpl.format(v=_tome_display_value(passive_type, t1_lo))} – "
+        f"{val_tmpl.format(v=_tome_display_value(passive_type, t1_hi))}"
+    )
+    t5 = (
+        f"{val_tmpl.format(v=_tome_display_value(passive_type, t5_lo))} – "
+        f"{val_tmpl.format(v=_tome_display_value(passive_type, t5_hi))}"
+    )
     return f"**Tier 1:** {t1}\n**Tier 5 (max):** {t5}"
 
 
@@ -300,8 +328,9 @@ class CodexTomsView(BaseLayoutView):
                 name, _ = _PASSIVE_LABELS.get(
                     tome.passive_type, (tome.passive_type, "")
                 )
+                display_val = _tome_display_value(tome.passive_type, tome.value)
                 embed.set_footer(
-                    text=f"Selected: Slot {self.selected_slot + 1} — {name} (Tier {tome.tier}/5, Value {tome.value:.2f})"
+                    text=f"Selected: Slot {self.selected_slot + 1} — {name} (Tier {tome.tier}/5, Value {display_val:.2f})"
                 )
         embed.set_thumbnail(url=CODEX_TOME)
         return embed
@@ -408,6 +437,9 @@ class CodexTomsView(BaseLayoutView):
             self.fragments -= cost
             self.player.codex_tomes = await self.bot.database.codex.get_tomes(
                 self.user_id
+            )
+            await hof_triggers.check_loremaster(
+                self.bot, self.user_id, self.player.codex_tomes
             )
         self._rebuild()
         self._processing = False

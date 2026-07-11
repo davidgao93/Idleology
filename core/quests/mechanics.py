@@ -15,6 +15,7 @@ from core.emojis import (
     SPIRIT_STONE,
     VOID_FRAG,
 )
+from core.hall_of_firsts import triggers as hof_triggers
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, get_damage_goals
 
 BOARD_COOLDOWN_HOURS = 20
@@ -305,6 +306,8 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
         gold = base_gold
 
     await bot.database.quests.complete_contract(user_id, server_id, slot)
+    total_completions = await bot.database.quests.increment_lifetime_completions(user_id)
+    await hof_triggers.check_really_board(bot, user_id, total_completions)
     await bot.database.quests.add_tokens(user_id, total_tokens)
     await bot.database.users.modify_gold(user_id, gold)
 
@@ -409,6 +412,8 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
     total_tokens = token_reward + bonus_tokens
 
     await bot.database.quests.complete_horizon(user_id, server_id)
+    total_completions = await bot.database.quests.increment_lifetime_completions(user_id)
+    await hof_triggers.check_really_board(bot, user_id, total_completions)
     await bot.database.quests.add_tokens(user_id, total_tokens)
 
     msgs = [f"🎫 +{total_tokens} Quest Token{'s' if total_tokens > 1 else ''}"]

@@ -7,6 +7,7 @@ from discord.ui import Button
 from core.base_view import BaseView
 from core.combat.views.views_elemental import ElementalEncounterView
 from core.emojis import RESOURCE_EMOJI
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import MASTERY_FISHING, MASTERY_MINING, MASTERY_WOODCUTTING
 from core.items.factory import load_player
 from core.skills import mastery as Mastery
@@ -392,6 +393,8 @@ class GatherView(BaseView):
             await self.bot.database.skills.upgrade_fishing_rod(
                 self.user_id, self.server_id, next_tier, cost_tuple
             )
+
+        await hof_triggers.check_one_with_nature(self.bot, self.user_id, self.server_id)
 
         # Award 1 artisan point
         await self.bot.database.skills.add_mastery_points(

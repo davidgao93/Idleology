@@ -15,6 +15,7 @@ import random
 from typing import TYPE_CHECKING
 
 from core.emojis import GOLD_COIN
+from core.hall_of_firsts import triggers as hof_triggers
 from core.settlement.constants import (
     BM_BASE_LOOT_WEIGHTS,
     BM_GOLD_MAX,
@@ -196,7 +197,9 @@ async def process_next_turn(
         ideology_name = (user_row["ideology"] or "") if user_row else ""
         if ideology_name:
             current = await bot.database.social.get_follower_count(ideology_name)
-            await bot.database.social.update_followers(ideology_name, current + workers)
+            new_total = current + workers
+            await bot.database.social.update_followers(ideology_name, new_total)
+            await hof_triggers.check_cult_leader(bot, user_id, new_total)
         summary["workers_from_nursery"] = workers
         summary["nursery_ideology"] = ideology_name
 
@@ -525,6 +528,9 @@ async def _complete_project(
             await bot.database.plots.develop_plot(
                 user_id, server_id, plot_index, bonus_type
             )
+            plots = await bot.database.plots.get_plots(user_id, server_id)
+            developed_count = sum(1 for p in plots if p["is_developed"])
+            await hof_triggers.check_king(bot, user_id, developed_count)
         return {"label": f"Plot {plot_index} Excavated"}
 
     elif ptype == "foundry_idlem":
