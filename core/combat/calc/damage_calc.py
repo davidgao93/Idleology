@@ -474,7 +474,9 @@ def calc_crit_damage(
         if ward_bonus > 0:
             damage += ward_bonus
             calc_dmg_notes.append(f"+lucifer_ward={ward_bonus}")
-            log.append(f"{INFERNAL_ENGRAM} **Soul Burn** — ward fuels the crit! (+{ward_bonus})")
+            log.append(
+                f"{INFERNAL_ENGRAM} **Soul Burn** — ward fuels the crit! (+{ward_bonus})"
+            )
 
     if player.get_glove_corrupted_essence() == "gemini":
         second_pct = random.uniform(0.20, 0.40)
@@ -578,7 +580,9 @@ def calc_hit_damage(
         if ward_bonus > 0:
             damage += ward_bonus
             lucifer_note = f" +lucifer_ward={ward_bonus}"
-            log.append(f"{INFERNAL_ENGRAM} **Soul Burn** — ward fuels the strike! (+{ward_bonus})")
+            log.append(
+                f"{INFERNAL_ENGRAM} **Soul Burn** — ward fuels the strike! (+{ward_bonus})"
+            )
 
     echo_note = f" +echo={echo_damage}" if echo_damage else ""
     calc.append(

@@ -13,7 +13,10 @@ import discord
 
 from core.character.prestige_display import format_prestige_name
 from core.emojis import (
+    HEMATURGY_PASSIVE_EMOJI,
     INFERNAL_ENGRAM,
+    MOD_FLASHFIRE,
+    MOD_PRESSURE_SURGE,
     QUENCH,
     STAT_ATK,
     STAT_DEF,
@@ -173,44 +176,64 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         cs = player.cs
 
         if "iron_momentum" in hp and cs.hema_momentum_stacks > 0:
-            lines.append(f"⚡ Momentum {cs.hema_momentum_stacks}/5")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['iron_momentum']} Momentum {cs.hema_momentum_stacks}/5"
+            )
 
         if "serrated" in hp and cs.hema_serrated_total > 0:
-            lines.append(f"🔪 Serrated  −{cs.hema_serrated_total} Monster ATK")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['serrated']} Serrated  −{cs.hema_serrated_total} Monster ATK"
+            )
 
         if "haemorrhage" in hp and cs.hema_bleed_total > 0:
-            lines.append(f"🩸 Bleed Pool  {cs.hema_bleed_total:,}")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['haemorrhage']} Bleed Pool  {cs.hema_bleed_total:,}"
+            )
 
         if "chain_reaction" in hp and cs.hema_chain_stacks > 0:
-            lines.append(f"⛓️ Chained {cs.hema_chain_stacks}/5")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['chain_reaction']} Chained {cs.hema_chain_stacks}/5"
+            )
 
         if "phantom_reflex" in hp and cs.hema_phantom_stacks > 0:
-            lines.append(f"🌀 Phantom {cs.hema_phantom_stacks}/2")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['phantom_reflex']} Phantom {cs.hema_phantom_stacks}/2"
+            )
 
         if "executioners_rite" in hp and monster is not None:
             if monster.max_hp > 0 and monster.hp / monster.max_hp < 0.30:
-                lines.append("⚔️ Executioner")
+                lines.append(
+                    f"{HEMATURGY_PASSIVE_EMOJI['executioners_rite']} Executioner"
+                )
 
         if "fevered_strike" in hp and cs.hema_fevered_count > 0:
-            lines.append(f"🔥 Fevered ×{cs.hema_fevered_count}")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['fevered_strike']} Fevered ×{cs.hema_fevered_count}"
+            )
 
         if "predators_mark" in hp and cs.hema_predators_mark:
-            lines.append("🎯 Marked")
+            lines.append(f"{HEMATURGY_PASSIVE_EMOJI['predators_mark']} Marked")
 
         if "flash_frost" in hp and cs.hema_frost_misses > 0:
             from core.hematurgy.mechanics import tier_val as _hema_tv
 
             threshold = int(_hema_tv("flash_frost", hp["flash_frost"]))
-            lines.append(f"❄️ Frost {cs.hema_frost_misses}/{threshold}")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['flash_frost']} Frost {cs.hema_frost_misses}/{threshold}"
+            )
 
         if "spectral_waltz" in hp and cs.hema_blade_count > 0:
-            lines.append(f"👻 Blades ×{cs.hema_blade_count}")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['spectral_waltz']} Blades ×{cs.hema_blade_count}"
+            )
 
         if "defiance" in hp and cs.hema_defiance_triggered:
-            lines.append("💪 Defiance")
+            lines.append(f"{HEMATURGY_PASSIVE_EMOJI['defiance']} Defiance")
 
         if "puncture" in hp and cs.hema_puncture_bleed > 0:
-            lines.append(f"🩸 Punctured {cs.hema_puncture_bleed:,}")
+            lines.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['puncture']} Punctured {cs.hema_puncture_bleed:,}"
+            )
 
     return "\n".join(lines)
 
@@ -221,7 +244,7 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
     lines: list[str] = []
 
     if monster.has_modifier("Flashfire") and monster.flashfire_charges > 0:
-        lines.append(f"🔥 Flashfire  {monster.flashfire_charges}/8")
+        lines.append(f"{MOD_FLASHFIRE} Flashfire  {monster.flashfire_charges}/8")
 
     if monster.has_modifier("Hemorrhage") and monster.bleed_stacks > 0:
         v = monster.get_modifier_value("Hemorrhage")
@@ -231,7 +254,7 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
         )
 
     if monster.has_modifier("Pressure Surge") and monster.pressure_stacks > 0:
-        lines.append(f"⚡ Pressure  {monster.pressure_stacks}/10")
+        lines.append(f"{MOD_PRESSURE_SURGE} Pressure  {monster.pressure_stacks}/10")
 
     if monster.has_modifier("Corrosion") and monster.corrode_stacks > 0:
         pdr_loss = monster.corrode_stacks * int(monster.get_modifier_value("Corrosion"))
@@ -256,9 +279,7 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
 
     if monster.has_modifier("Unbreakable"):
         threshold = int(monster.get_modifier_value("Unbreakable"))
-        lines.append(
-            f"💥 Unbreakable  {monster.unbreakable_charges}/{threshold}"
-        )
+        lines.append(f"💥 Unbreakable  {monster.unbreakable_charges}/{threshold}")
 
     if monster.has_modifier("Judgment"):
         threshold = int(monster.get_modifier_value("Judgment"))

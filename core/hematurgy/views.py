@@ -2,7 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import HEMATURGY_ICON, MONSTER_PART_SLOT_EMOJI
+from core.emojis import HEMATURGY_ICON, HEMATURGY_PASSIVE_EMOJI, MONSTER_PART_SLOT_EMOJI
 from core.images import (
     CONSUME_SLOT_IMAGES,
     HEMATURGY,
@@ -80,9 +80,10 @@ def _build_hematurgy_embed(passives: dict, blood: dict) -> discord.Embed:
             p = passives[slot]
             name = HematurgyMechanics.passive_display_name(p["passive_id"])
             badge = _tier_badge(p["tier"])
+            p_emoji = HEMATURGY_PASSIVE_EMOJI.get(p["passive_id"], "✦")
             embed.add_field(
                 name=f"{emoji} {label}",
-                value=f"✦ **{name}** ({badge})",
+                value=f"{p_emoji} **{name}** ({badge})",
                 inline=True,
             )
         else:
@@ -265,10 +266,11 @@ class MutateConfirmView(BaseView):
             else ""
         )
 
+        p_emoji = HEMATURGY_PASSIVE_EMOJI.get(passive["passive_id"], "✦")
         embed = discord.Embed(
             title="☣️ Mutation Warning",
             description=(
-                f"You are about to mutate **{name}** ({_tier_badge(tier)}).\n"
+                f"You are about to mutate {p_emoji} **{name}** ({_tier_badge(tier)}).\n"
                 f"This costs **{MUTATIVE_COST:,} ☣️ Mutative blood** and **cannot be undone**.\n\n"
                 f"**Possible Outcomes:**\n"
                 f"💀 **Delete** (50%) — passive is permanently destroyed\n"
@@ -396,9 +398,10 @@ class SlotDetailView(BaseView):
             name = HematurgyMechanics.passive_display_name(passive["passive_id"])
             tier = passive["tier"]
             desc = HematurgyMechanics.passive_description(passive["passive_id"], tier)
+            p_emoji = HEMATURGY_PASSIVE_EMOJI.get(passive["passive_id"], "✦")
             embed.add_field(
                 name=f"Active Passive — {_tier_badge(tier)}",
-                value=f"**{name}**\n{desc}",
+                value=f"{p_emoji} **{name}**\n{desc}",
                 inline=False,
             )
             if tier < EVO_MAX_TIER:

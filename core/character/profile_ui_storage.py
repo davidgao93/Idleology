@@ -33,6 +33,7 @@ from core.emojis import (
     DRAGON_KEY,
     ESSENCE_COMMON,
     ESSENCE_CORRUPT,
+    ESSENCE_META,
     ESSENCE_RARE,
     GEAR_BACKPACK,
     GEODE_CORE,
@@ -51,6 +52,7 @@ from core.emojis import (
     MAGIC_LOGS,
     MAGMA_CORE,
     MAHOGANY_LOGS,
+    MONSTER_EGG,
     MONSTER_TORSO,
     OAK_LOGS,
     PARADISE_JEWEL_UNCUT,
@@ -188,7 +190,7 @@ class StorageProfileBuilder:
             name=f"{CONSUME_ICON} **Consume**",
             value=(
                 f"{MONSTER_TORSO} Parts: {parts_count}/20\n"
-                f"🥚 Eggs: {egg_count}/20\n"
+                f"{MONSTER_EGG} Eggs: {egg_count}/20\n"
                 f"🩸 Primordial: {blood['primordial']:,}\n"
                 f"🧬 Evolutionary: {blood['evolutionary']:,}\n"
                 f"☣️ Mutative: {blood['mutative']:,}"
@@ -275,7 +277,7 @@ class StorageProfileBuilder:
             inline=True,
         )
         embed.add_field(
-            name="**Meta (Utility) Essences**",
+            name=f"{ESSENCE_META} **Meta (Utility) Essences**",
             value=_essence_lines(_UTILITY_ESSENCES),
             inline=True,
         )

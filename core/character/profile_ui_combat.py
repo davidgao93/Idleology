@@ -183,7 +183,9 @@ class CombatProfileBuilder:
         total_ward = ward_equip + essence_ward + ward_other
         if total_ward > 0:
             ward_hp = p.get_combat_ward_value()
-            ward_val = f"**{total_ward}%** (= {ward_hp:,} Ward)\n↳ Equipment: {ward_equip}%"
+            ward_val = (
+                f"**{total_ward}%** (= {ward_hp:,} Ward)\n↳ Equipment: {ward_equip}%"
+            )
             if essence_ward:
                 ward_val += f"\n↳ Essences: +{essence_ward}%"
             ward_val += f"\n↳ Other: {ward_other}%"

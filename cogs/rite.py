@@ -159,9 +159,7 @@ class Rite(commands.Cog, name="rite"):
                 self.bot, user_id, server_id, "rite", build_main=_build
             )
             self.bot.state_manager.set_active(user_id, "rite")
-            await interaction.response.send_message(
-                embed=gate.build_embed(), view=gate
-            )
+            await interaction.response.send_message(embed=gate.build_embed(), view=gate)
             gate.message = await interaction.original_response()
             return
 

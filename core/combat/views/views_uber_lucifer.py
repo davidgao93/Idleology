@@ -59,7 +59,8 @@ class UberLuciferLobbyView(BaseView):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title=f"{INFERNAL_ENGRAM} The Infernal Sovereign", color=discord.Color.dark_red()
+            title=f"{INFERNAL_ENGRAM} The Infernal Sovereign",
+            color=discord.Color.dark_red(),
         )
 
         desc = (

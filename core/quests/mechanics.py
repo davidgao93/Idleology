@@ -14,6 +14,7 @@ from core.emojis import (
     SOUL_CORE,
     SPIRIT_STONE,
     VOID_FRAG,
+    ZEAL,
 )
 from core.hall_of_firsts import triggers as hof_triggers
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS, get_damage_goals
@@ -306,7 +307,9 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
         gold = base_gold
 
     await bot.database.quests.complete_contract(user_id, server_id, slot)
-    total_completions = await bot.database.quests.increment_lifetime_completions(user_id)
+    total_completions = await bot.database.quests.increment_lifetime_completions(
+        user_id
+    )
     await hof_triggers.check_really_board(bot, user_id, total_completions)
     await bot.database.quests.add_tokens(user_id, total_tokens)
     await bot.database.users.modify_gold(user_id, gold)
@@ -354,7 +357,7 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
         _actual = compute_zeal_gain(_zeal_base, _earned)
         if _actual > 0:
             await bot.database.settlement.add_zeal(user_id, server_id, _actual)
-            msgs.append(f"🔥 +{_actual} Zeal")
+            msgs.append(f"{ZEAL} +{_actual} Zeal")
     except Exception:
         pass
 
@@ -412,7 +415,9 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
     total_tokens = token_reward + bonus_tokens
 
     await bot.database.quests.complete_horizon(user_id, server_id)
-    total_completions = await bot.database.quests.increment_lifetime_completions(user_id)
+    total_completions = await bot.database.quests.increment_lifetime_completions(
+        user_id
+    )
     await hof_triggers.check_really_board(bot, user_id, total_completions)
     await bot.database.quests.add_tokens(user_id, total_tokens)
 

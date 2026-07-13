@@ -158,11 +158,19 @@ CORRUPTION_CORE = "<:corruption_core:1524449916989214791>"
 CORRUPTION_ENGRAM = "<:corruption_engram:1524443381776777238>"
 
 # ── The Rite of Convergence entry keys ──────────────────────────────────────
-RITE_KEY_CELESTIAL = "<:celestial_raid_key:1524874694438682792>"  # Apex of Dreams (Aphrodite)
-RITE_KEY_INFERNAL = "<:infernal_raid_key:1524874697580347452>"  # Corruption of Memories (Lucifer)
-RITE_KEY_GEMINI = "<:gemini_raid_key:1524874695390920874>"  # Scales of Judgment (Gemini)
+RITE_KEY_CELESTIAL = (
+    "<:celestial_raid_key:1524874694438682792>"  # Apex of Dreams (Aphrodite)
+)
+RITE_KEY_INFERNAL = (
+    "<:infernal_raid_key:1524874697580347452>"  # Corruption of Memories (Lucifer)
+)
+RITE_KEY_GEMINI = (
+    "<:gemini_raid_key:1524874695390920874>"  # Scales of Judgment (Gemini)
+)
 RITE_KEY_VOID = "<:void_raid_key:1524874696066203687>"  # Devoid of Thoughts (NEET)
-RITE_KEY_CORRUPT = "<:corrupt_raid_key:1524874693767856340>"  # Zenith of Nightmares (Evelynn)
+RITE_KEY_CORRUPT = (
+    "<:corrupt_raid_key:1524874693767856340>"  # Zenith of Nightmares (Evelynn)
+)
 
 # ── Apex Hunt materials (zone shards, meta shards, soul fragments) ─────────
 PYRE_SHARD = "<:pyre_shard:1524798356965167125>"
@@ -197,6 +205,75 @@ APEX_META_SHARD_EMOJI: dict[str, str] = {
     "primal_essence": PRIMAL_ESSENCE,
     "soul_vessel": SOUL_VESSEL,
 }
+
+# ── Crafting tab: Meta (Utility) essence category icon ─────────────────────
+ESSENCE_META = "<:essence_meta:1525652764573831238>"
+
+# ── Monster eggs (Inventory / Consume / Hatchery) ───────────────────────────
+MONSTER_EGG = "<:monster_egg:1525652762401050694>"
+MONSTER_EGG_RARE = "<:monster_egg_rare:1525652763214745711>"
+MONSTER_EGG_GIGA = "<:monster_egg_giga:1525652763793555538>"
+
+MONSTER_EGG_TIER_EMOJI: dict[str, str] = {
+    "normal": MONSTER_EGG,
+    "rare": MONSTER_EGG_RARE,
+    "giga": MONSTER_EGG_GIGA,
+}
+
+# ── Hematurgy passives (15 main + 5 mutative — Hematurgy view + combat embeds) ─
+HEMA_REVERBERATION = "<:hema_reverberation:1525652750166261830>"
+HEMA_SOOTHING_VENOM = "<:hema_soothingvenom:1525652748698128424>"
+HEMA_IRON_MOMENTUM = "<:hema_ironmomentum:1525652753794207815>"
+HEMA_SERRATED = "<:hema_serrate:1525652749327405136>"
+HEMA_HAEMORRHAGE = "<:hema_haemorrhage:1525652754389930024>"
+HEMA_VITAL_RESONANCE = "<:hema_vitalresonance:1525652746378809404>"
+HEMA_EXECUTIONERS_RITE = "<:hema_executioner:1525652757590179872>"
+HEMA_CRIMSON_FEAST = "<:hema_crimsonfeast:1525652759955640440>"
+HEMA_PHANTOM_REFLEX = "<:hema_phantomreflex:1525652753177776340>"
+HEMA_CHAIN_REACTION = "<:hema_chainreaction:1525652761603997706>"
+HEMA_REGENERATIVE_TISSUE = "<:hema_regentissue:1525652750892007474>"
+HEMA_FEVERED_STRIKE = "<:hema_feveredstrike:1525652755719651378>"
+HEMA_PREDATORS_MARK = "<:hema_predatormark:1525652752460677190>"
+HEMA_COUNTERFORCE = "<:hema_counterforce:1525652760803020851>"
+HEMA_DEFIANCE = "<:hema_defiance:1525652759037345822>"
+HEMA_SPECTRAL_WALTZ = "<:hema_spectralwaltz:1525652747112808518>"
+HEMA_PUNCTURE = "<:hema_puncture:1525652751579742380>"
+HEMA_FLASH_FROST = "<:hema_flashfrost:1525652755048300645>"
+HEMA_WARD_INOCULATION = "<:hema_wardinoculation:1525652745670103241>"
+HEMA_SOUL_FRACTURE = "<:hema_soulfracture:1525652747532238981>"
+
+HEMATURGY_PASSIVE_EMOJI: dict[str, str] = {
+    "reverberation": HEMA_REVERBERATION,
+    "soothing_venom": HEMA_SOOTHING_VENOM,
+    "iron_momentum": HEMA_IRON_MOMENTUM,
+    "serrated": HEMA_SERRATED,
+    "haemorrhage": HEMA_HAEMORRHAGE,
+    "vital_resonance": HEMA_VITAL_RESONANCE,
+    "executioners_rite": HEMA_EXECUTIONERS_RITE,
+    "crimson_feast": HEMA_CRIMSON_FEAST,
+    "phantom_reflex": HEMA_PHANTOM_REFLEX,
+    "chain_reaction": HEMA_CHAIN_REACTION,
+    "regenerative_tissue": HEMA_REGENERATIVE_TISSUE,
+    "fevered_strike": HEMA_FEVERED_STRIKE,
+    "predators_mark": HEMA_PREDATORS_MARK,
+    "counterforce": HEMA_COUNTERFORCE,
+    "defiance": HEMA_DEFIANCE,
+    "spectral_waltz": HEMA_SPECTRAL_WALTZ,
+    "puncture": HEMA_PUNCTURE,
+    "flash_frost": HEMA_FLASH_FROST,
+    "ward_inoculation": HEMA_WARD_INOCULATION,
+    "soul_fracture": HEMA_SOUL_FRACTURE,
+}
+
+# ── Monster modifiers (combat embeds / monster-turn log lines) ─────────────
+MOD_FLASHFIRE = "<:mod_flashfire:1525652744839626822>"
+MOD_PRESSURE_SURGE = "<:mod_pressuresurge:1525652743795118210>"
+
+# ── General combat embed ────────────────────────────────────────────────────
+WIN_STREAK = "<:win_streak:1525652742213734525>"
+
+# ── Settlement and loot ─────────────────────────────────────────────────────
+ZEAL = "<:zeal:1525652741731520712>"
 
 # ── RESOURCE_EMOJI ─────────────────────────────────────────────────────────
 # Single source of truth for gathering/settlement/Black Market material icons.
@@ -404,4 +481,33 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "monster_right_leg": ("Monster Right Leg", MONSTER_RIGHT_LEG),
     "monster_left_leg": ("Monster Left Leg", MONSTER_LEFT_LEG),
     "monster_organs": ("Monster Organs", MONSTER_ORGANS),
+    # Appended for the 2026-07-11 emoji batch (crafting/eggs/hematurgy/modifiers/streak/zeal).
+    "essence_meta": ("Meta Essence", ESSENCE_META),
+    "monster_egg": ("Monster Egg", MONSTER_EGG),
+    "monster_egg_rare": ("Rare Monster Egg", MONSTER_EGG_RARE),
+    "monster_egg_giga": ("Giga Monster Egg", MONSTER_EGG_GIGA),
+    "hema_reverberation": ("Reverberation", HEMA_REVERBERATION),
+    "hema_soothing_venom": ("Soothing Venom", HEMA_SOOTHING_VENOM),
+    "hema_iron_momentum": ("Iron Momentum", HEMA_IRON_MOMENTUM),
+    "hema_serrated": ("Serrated", HEMA_SERRATED),
+    "hema_haemorrhage": ("Haemorrhage", HEMA_HAEMORRHAGE),
+    "hema_vital_resonance": ("Vital Resonance", HEMA_VITAL_RESONANCE),
+    "hema_executioners_rite": ("Executioner's Rite", HEMA_EXECUTIONERS_RITE),
+    "hema_crimson_feast": ("Crimson Feast", HEMA_CRIMSON_FEAST),
+    "hema_phantom_reflex": ("Phantom Reflex", HEMA_PHANTOM_REFLEX),
+    "hema_chain_reaction": ("Chain Reaction", HEMA_CHAIN_REACTION),
+    "hema_regenerative_tissue": ("Regenerative Tissue", HEMA_REGENERATIVE_TISSUE),
+    "hema_fevered_strike": ("Fevered Strike", HEMA_FEVERED_STRIKE),
+    "hema_predators_mark": ("Predator's Mark", HEMA_PREDATORS_MARK),
+    "hema_counterforce": ("Counterforce", HEMA_COUNTERFORCE),
+    "hema_defiance": ("Defiance", HEMA_DEFIANCE),
+    "hema_spectral_waltz": ("Spectral Waltz", HEMA_SPECTRAL_WALTZ),
+    "hema_puncture": ("Puncture", HEMA_PUNCTURE),
+    "hema_flash_frost": ("Flash Frost", HEMA_FLASH_FROST),
+    "hema_ward_inoculation": ("Ward Inoculation", HEMA_WARD_INOCULATION),
+    "hema_soul_fracture": ("Soul Fracture", HEMA_SOUL_FRACTURE),
+    "mod_flashfire": ("Flashfire", MOD_FLASHFIRE),
+    "mod_pressure_surge": ("Pressure Surge", MOD_PRESSURE_SURGE),
+    "win_streak": ("Win Streak", WIN_STREAK),
+    "zeal": ("Zeal", ZEAL),
 }

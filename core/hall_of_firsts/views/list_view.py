@@ -34,7 +34,9 @@ class HallOfFirstsListView(BaseLayoutView):
                     label=f"{c.name}"[:100],
                     value=c.key,
                     emoji=c.emoji,
-                    description=("Claimed" if c.key in self.claimed else "Unclaimed")[:100],
+                    description=("Claimed" if c.key in self.claimed else "Unclaimed")[
+                        :100
+                    ],
                 )
                 for c in CATEGORIES
             ],
@@ -50,7 +52,11 @@ class HallOfFirstsListView(BaseLayoutView):
         self.add_item(close_row)
 
     def _build_container(self) -> discord.ui.Container:
-        lines = ["## 🏛️ Hall of Firsts", "*The first adventurers to claim each legend.*", ""]
+        lines = [
+            "## 🏛️ Hall of Firsts",
+            "*The first adventurers to claim each legend.*",
+            "",
+        ]
         for c in CATEGORIES:
             row = self.claimed.get(c.key)
             holder = row["snapshot_name"] if row else "*Unclaimed*"

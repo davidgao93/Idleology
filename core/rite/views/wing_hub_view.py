@@ -145,7 +145,12 @@ class RiteEndView(BaseLayoutView):
 
 
 def build_rite_defeat_embed(
-    player: Player, monster: Monster, killing_blow: int, run_state: RiteRunState, *, title: str
+    player: Player,
+    monster: Monster,
+    killing_blow: int,
+    run_state: RiteRunState,
+    *,
+    title: str,
 ) -> discord.Embed:
     """Defeat acknowledgment shown whenever the player dies mid-Rite (a wing
     or an Arbiter phase) — mirrors the game's standard defeat screen
@@ -228,11 +233,15 @@ class RiteDefeatView(BaseLayoutView):
 
 
 class RiteExitConfirmRow(discord.ui.ActionRow["RiteExitConfirmView"]):
-    @discord.ui.button(label="Yes, Abandon the Rite", style=ButtonStyle.danger, emoji="🗑️")
+    @discord.ui.button(
+        label="Yes, Abandon the Rite", style=ButtonStyle.danger, emoji="🗑️"
+    )
     async def confirm(self, interaction: Interaction, button: ui.Button):
         await self.view._on_confirm(interaction)
 
-    @discord.ui.button(label="No, Keep Fighting", style=ButtonStyle.secondary, emoji="↩️")
+    @discord.ui.button(
+        label="No, Keep Fighting", style=ButtonStyle.secondary, emoji="↩️"
+    )
     async def cancel(self, interaction: Interaction, button: ui.Button):
         await self.view._on_cancel(interaction)
 
@@ -453,9 +462,7 @@ class WingHubView(BaseLayoutView):
                 btn.callback = self._make_start_callback(key)
                 row0.add_item(btn)
 
-        btn_close = ui.Button(
-            label="Exit Raid", style=ButtonStyle.secondary, emoji="✖️"
-        )
+        btn_close = ui.Button(label="Exit Raid", style=ButtonStyle.secondary, emoji="✖️")
         btn_close.callback = self.close_view
         row1.add_item(btn_close)
 
@@ -624,7 +631,11 @@ class WingHubView(BaseLayoutView):
                 else f"💀 The Rite Ends — Defeated by {view.monster.name}"
             )
             embed = build_rite_defeat_embed(
-                view.player, view.monster, view.killing_blow, run_state, title=defeat_title
+                view.player,
+                view.monster,
+                view.killing_blow,
+                run_state,
+                title=defeat_title,
             )
 
             if can_retry:
@@ -632,7 +643,12 @@ class WingHubView(BaseLayoutView):
                     view.user_id, view.server_id, run_state.to_snapshot()
                 )
                 defeat_view = RiteDefeatView(
-                    view.bot, view.user_id, view.server_id, view.player, run_state, embed
+                    view.bot,
+                    view.user_id,
+                    view.server_id,
+                    view.player,
+                    run_state,
+                    embed,
                 )
                 await message.edit(embed=None, view=defeat_view)
                 defeat_view.message = message

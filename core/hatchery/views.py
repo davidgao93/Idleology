@@ -6,10 +6,13 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import MONSTER_EGG, MONSTER_EGG_TIER_EMOJI
 from core.hatchery.mechanics import HatcheryMechanics
 from core.images import YUNA_PORTRAIT, YUNA_THUMBNAIL
 from core.npc_voices import get_quip
 
+# Unicode fallback used only for the egg-select dropdown (custom emoji don't
+# render correctly in SelectOption). Embed content uses MONSTER_EGG_TIER_EMOJI.
 _EGG_TIER_EMOJI = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
 _EGG_TIER_LABEL = {"normal": "Normal Egg", "rare": "Rare Egg", "giga": "Giga Egg"}
 
@@ -118,7 +121,7 @@ class HatcheryView(BaseView):
             egg_counts[e[1]] = egg_counts.get(e[1], 0) + 1
         egg_summary = (
             "  ".join(
-                f"{_EGG_TIER_EMOJI[t]} {egg_counts[t]}"
+                f"{MONSTER_EGG_TIER_EMOJI[t]} {egg_counts[t]}"
                 for t in ("normal", "rare", "giga")
                 if egg_counts.get(t, 0) > 0
             )
@@ -135,7 +138,7 @@ class HatcheryView(BaseView):
         for tier in ("normal", "rare", "giga"):
             secs = HatcheryMechanics.incubation_seconds(tier, workers)
             rows.append(
-                f"{_EGG_TIER_EMOJI[tier]} **{_EGG_TIER_LABEL[tier]}** — {_fmt_duration(secs)}"
+                f"{MONSTER_EGG_TIER_EMOJI[tier]} **{_EGG_TIER_LABEL[tier]}** — {_fmt_duration(secs)}"
             )
         embed.add_field(
             name=f"Incubation Times (with {workers} worker{'s' if workers != 1 else ''})",
@@ -146,7 +149,7 @@ class HatcheryView(BaseView):
         if self._incubation:
             inc = self._incubation
             rem = _remaining_seconds(inc["start_time"], inc["duration_seconds"])
-            emoji = _EGG_TIER_EMOJI.get(inc["egg_tier"], "🥚")
+            emoji = MONSTER_EGG_TIER_EMOJI.get(inc["egg_tier"], MONSTER_EGG)
             label = _EGG_TIER_LABEL.get(inc["egg_tier"], inc["egg_tier"])
             if rem > 0:
                 embed.add_field(
@@ -184,7 +187,10 @@ class HatcheryView(BaseView):
         if self._incubation is None:
             if self._eggs:
                 btn_queue = ui.Button(
-                    label="Incubate Egg", style=ButtonStyle.success, emoji="🥚", row=0
+                    label="Incubate Egg",
+                    style=ButtonStyle.success,
+                    emoji=MONSTER_EGG,
+                    row=0,
                 )
                 btn_queue.callback = self._open_egg_select
                 self.add_item(btn_queue)

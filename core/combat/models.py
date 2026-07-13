@@ -1067,7 +1067,16 @@ class Player:
         percentages are summed and applied once to the flat base. Gluttony essence
         is a separate multiplicative layer applied afterwards (different item slot).
         """
+        return self.get_total_max_hp()
+
+    def get_total_max_hp(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
+        """Same computation as total_max_hp; explain=True also returns a
+        contributions list — see get_total_attack docstring."""
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
+        contributions: list[tuple[str, float]] = []
 
         vitality_pct = self.get_tome_bonus("vitality")
 
@@ -1086,23 +1095,49 @@ class Player:
             if self.equipped_parts
             else 0
         )
+        contributions.append(("Base Max HP", self.max_hp))
+        if self.run_max_hp_bonus:
+            contributions.append(("Codex Run Bonus", self.run_max_hp_bonus))
+        if self.bonus_max_hp:
+            contributions.append(("Combat bonus accumulator", self.bonus_max_hp))
+        if asc_hp:
+            contributions.append(("Ascension Pinnacle", asc_hp))
+        if parts_hp:
+            contributions.append(("Equipped Monster Parts", parts_hp))
+
         base = (
             self.max_hp + self.run_max_hp_bonus + self.bonus_max_hp + asc_hp + parts_hp
         )
         total_pct = vitality_pct + hearty_pct + self.cs.respite_hp_pct
         if total_pct > 0:
-            base = int(base * (1 + total_pct / 100))
+            new_base = int(base * (1 + total_pct / 100))
+            contributions.append(
+                (f"Vitality/Hearty/Respite (+{total_pct:.1f}%)", new_base - base)
+            )
+            base = new_base
         gluttony_pct = sum(
             compute_essence_stat_bonus(item).get("max_hp_pct", 0)
             for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
             if item
         )
         if gluttony_pct > 0:
-            base = int(base * (1 + gluttony_pct / 100))
+            new_base = int(base * (1 + gluttony_pct / 100))
+            contributions.append(
+                (f"Gluttony Essences (+{gluttony_pct:.1f}%)", new_base - base)
+            )
+            base = new_base
         # Stat investment bonus (0.1% per point)
         if self.stat_invest_hp > 0:
-            base = int(base * (1 + self.stat_invest_hp * 0.001))
-        return max(1, base)
+            new_base = int(base * (1 + self.stat_invest_hp * 0.001))
+            contributions.append(
+                (f"Stat Investment ({self.stat_invest_hp} pts)", new_base - base)
+            )
+            base = new_base
+
+        base = max(1, base)
+        if explain:
+            return base, contributions
+        return base
 
     def _get_companion_bonus(self, p_type: str) -> float:
         primary = sum(
@@ -1245,27 +1280,48 @@ class Player:
     # flat) — never multiply `total` directly.
     # -----------------------------------------------------------------------
 
-    def get_total_attack(self, monster: "Monster | None" = None) -> int:
+    def get_total_attack(
+        self, monster: "Monster | None" = None, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
         """monster is optional — only needed for the conditional Hematurgy
         Executioner's Rite bonus (which reads monster HP%). Every other caller
-        can omit it."""
+        can omit it.
+
+        explain=True returns (total, contributions) where contributions is an
+        ordered list of (source_label, delta) tuples — used by the combat log
+        stat-breakdown audit. Delta is the actual amount that source added to
+        the total, computed on the same pass as the real total (no duplicated
+        math), so it can never drift from what's displayed in the combat embed.
+        """
+        contributions: list[tuple[str, float]] = []
         flat = self.flat_atk  # Base + Equipment; pre-computed, immutable during combat
+        contributions.append(("Base + Equipment (+Barracks)", flat))
 
         # ---- Flat bonus pool (gear/companion/tome sources) ----
         bonus_pool = self.bonus_atk
+        if self.bonus_atk:
+            contributions.append(("Combat bonus accumulator", self.bonus_atk))
 
         comp_pct = self._get_companion_bonus("atk")
         if comp_pct > 0:
-            bonus_pool += int(flat * (comp_pct / 100))
+            delta = int(flat * (comp_pct / 100))
+            bonus_pool += delta
+            contributions.append((f"Companions (+{comp_pct:.1f}%)", delta))
 
         # Stat investment bonus (0.1% per point, scales off flat)
         if self.stat_invest_atk > 0:
-            bonus_pool += int(flat * (self.stat_invest_atk * 0.001))
+            delta = int(flat * (self.stat_invest_atk * 0.001))
+            bonus_pool += delta
+            contributions.append(
+                (f"Stat Investment ({self.stat_invest_atk} pts)", delta)
+            )
 
         # Wrath tome: converts % of flat DEF into bonus ATK
         wrath_pct = self.get_tome_bonus("wrath")
         if wrath_pct > 0:
-            bonus_pool += int(self.flat_def * (wrath_pct / 100))
+            delta = int(self.flat_def * (wrath_pct / 100))
+            bonus_pool += delta
+            contributions.append((f"Wrath Tome (+{wrath_pct:.1f}% DEF→ATK)", delta))
 
         # Hematurgy Counterforce: converts % of total DEF into flat bonus ATK —
         # same shape as Wrath tome above, just scaled off the full DEF stat
@@ -1273,20 +1329,30 @@ class Player:
         if self.hematurgy_passives:
             from core.hematurgy.engine import get_counterforce_bonus
 
-            bonus_pool += get_counterforce_bonus(self)
+            delta = get_counterforce_bonus(self)
+            if delta:
+                bonus_pool += delta
+                contributions.append(("Hematurgy Counterforce", delta))
 
         # ---- Percentage-of-flat pool (every "+X% ATK" source sums here) ----
         pct_pool = 0.0
 
         # Unified multiplier (codex signature/boon + diabolic_pact, etc.)
         if self.atk_multiplier != 1.0:
-            pct_pool += self.atk_multiplier - 1.0
+            d = self.atk_multiplier - 1.0
+            pct_pool += d
+            contributions.append(
+                (f"ATK Multiplier (x{self.atk_multiplier:.2f})", int(flat * d))
+            )
 
         # Ascension pinnacle % bonus
         if self.ascension_unlocks:
             atk_pct = self.get_ascension_bonuses()["atk_pct"]
             if atk_pct:
                 pct_pool += atk_pct / 100
+                contributions.append(
+                    (f"Ascension Pinnacle (+{atk_pct}%)", int(flat * (atk_pct / 100)))
+                )
 
         # Soul Stone Vulcan Resonance (offensive_2 / offensive_3)
         if self.soul_stone:
@@ -1294,13 +1360,26 @@ class Player:
 
             res = ApexMechanics.get_resonance_multipliers(self.soul_stone)
             if res["atk_mult"] != 1.0:
-                pct_pool += res["atk_mult"] - 1.0
+                d = res["atk_mult"] - 1.0
+                pct_pool += d
+                contributions.append(
+                    (
+                        f"Soul Stone Vulcan Resonance (x{res['atk_mult']:.2f})",
+                        int(flat * d),
+                    )
+                )
 
         # Alchemy Enrage (temporary potion % ATK boost) — applies only to Base +
         # Equipment, same as every other pct_pool source, and expires on its own
         # turn timer (see monster_turn.py).
         if self.alchemy_atk_boost_pct > 0:
             pct_pool += self.alchemy_atk_boost_pct
+            contributions.append(
+                (
+                    f"Alchemy Enrage (+{self.alchemy_atk_boost_pct * 100:.0f}%)",
+                    int(flat * self.alchemy_atk_boost_pct),
+                )
+            )
 
         # Hematurgy: Iron Momentum (stacking) + Soul Fracture (HP-lost scaling) +
         # Executioner's Rite (conditional on monster < 30% HP, needs monster arg).
@@ -1311,10 +1390,28 @@ class Player:
                 get_soul_fracture_factor,
             )
 
-            pct_pool += get_iron_momentum_factor(self)
-            pct_pool += get_soul_fracture_factor(self)
+            im = get_iron_momentum_factor(self)
+            if im:
+                pct_pool += im
+                contributions.append(
+                    (f"Hematurgy Iron Momentum (+{im * 100:.1f}%)", int(flat * im))
+                )
+            sf = get_soul_fracture_factor(self)
+            if sf:
+                pct_pool += sf
+                contributions.append(
+                    (f"Hematurgy Soul Fracture (+{sf * 100:.1f}%)", int(flat * sf))
+                )
             if monster is not None:
-                pct_pool += get_executioners_rite_bonus(self, monster)
+                er = get_executioners_rite_bonus(self, monster)
+                if er:
+                    pct_pool += er
+                    contributions.append(
+                        (
+                            f"Hematurgy Executioner's Rite (+{er * 100:.1f}%)",
+                            int(flat * er),
+                        )
+                    )
 
         # Slayer Tree hu_1 "Slayer's Edge" — +18% ATK vs the assigned task species.
         # Lives in pct_pool (not a damage multiplier) so it sums with every other
@@ -1326,6 +1423,9 @@ class Player:
             and self.slayer_tree_nodes.get("hu_1") == "atk"
         ):
             pct_pool += 0.18
+            contributions.append(
+                ("Slayer Tree: Slayer's Edge (+18% vs task species)", int(flat * 0.18))
+            )
 
         total = flat + bonus_pool
         if pct_pool:
@@ -1333,43 +1433,72 @@ class Player:
 
         # Permanent run penalty (fragment_boost downside in codex runs) — a flat
         # deduction, not part of the pct_pool base.
+        if self.run_atk_penalty:
+            contributions.append(("Codex Run Penalty", -self.run_atk_penalty))
         total -= self.run_atk_penalty
 
-        return max(0, total)
+        total = max(0, total)
+        if explain:
+            return total, contributions
+        return total
 
-    def get_total_defence(self, monster: "Monster | None" = None) -> int:
+    def get_total_defence(
+        self, monster: "Monster | None" = None, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
         """monster is optional — only needed for the conditional Slayer Tree hu_2
-        "def" bonus (which reads monster.species). Every other caller can omit it."""
+        "def" bonus (which reads monster.species). Every other caller can omit it.
+
+        explain=True returns (total, contributions) — see get_total_attack docstring.
+        """
+        contributions: list[tuple[str, float]] = []
         flat = self.flat_def  # Base + Equipment; pre-computed, immutable during combat
+        contributions.append(("Base + Equipment (+Barracks)", flat))
 
         # ---- Flat bonus pool ----
         bonus_pool = self.bonus_def
+        if self.bonus_def:
+            contributions.append(("Combat bonus accumulator", self.bonus_def))
 
         comp_pct = self._get_companion_bonus("def")
         if comp_pct > 0:
-            bonus_pool += int(flat * (comp_pct / 100))
+            delta = int(flat * (comp_pct / 100))
+            bonus_pool += delta
+            contributions.append((f"Companions (+{comp_pct:.1f}%)", delta))
 
         # Stat investment bonus (0.1% per point, scales off flat)
         if self.stat_invest_def > 0:
-            bonus_pool += int(flat * (self.stat_invest_def * 0.001))
+            delta = int(flat * (self.stat_invest_def * 0.001))
+            bonus_pool += delta
+            contributions.append(
+                (f"Stat Investment ({self.stat_invest_def} pts)", delta)
+            )
 
         # Bastion tome: converts % of flat ATK into bonus DEF
         bastion_pct = self.get_tome_bonus("bastion")
         if bastion_pct > 0:
-            bonus_pool += int(self.flat_atk * (bastion_pct / 100))
+            delta = int(self.flat_atk * (bastion_pct / 100))
+            bonus_pool += delta
+            contributions.append((f"Bastion Tome (+{bastion_pct:.1f}% ATK→DEF)", delta))
 
         # ---- Percentage-of-flat pool ----
         pct_pool = 0.0
 
         # Unified multiplier
         if self.def_multiplier != 1.0:
-            pct_pool += self.def_multiplier - 1.0
+            d = self.def_multiplier - 1.0
+            pct_pool += d
+            contributions.append(
+                (f"DEF Multiplier (x{self.def_multiplier:.2f})", int(flat * d))
+            )
 
         # Ascension pinnacle % bonus
         if self.ascension_unlocks:
             def_pct = self.get_ascension_bonuses()["def_pct"]
             if def_pct:
                 pct_pool += def_pct / 100
+                contributions.append(
+                    (f"Ascension Pinnacle (+{def_pct}%)", int(flat * (def_pct / 100)))
+                )
 
         # Soul Stone Athena Resonance (defensive_2 / defensive_3)
         if self.soul_stone:
@@ -1377,17 +1506,37 @@ class Player:
 
             res = ApexMechanics.get_resonance_multipliers(self.soul_stone)
             if res["def_mult"] != 1.0:
-                pct_pool += res["def_mult"] - 1.0
+                d = res["def_mult"] - 1.0
+                pct_pool += d
+                contributions.append(
+                    (
+                        f"Soul Stone Athena Resonance (x{res['def_mult']:.2f})",
+                        int(flat * d),
+                    )
+                )
 
         # Alchemy Enrage (temporary potion % DEF boost) — same pct_pool treatment
         # as ATK; expires on its own turn timer (see monster_turn.py).
         if self.alchemy_def_boost_pct > 0:
             pct_pool += self.alchemy_def_boost_pct
+            contributions.append(
+                (
+                    f"Alchemy Enrage (+{self.alchemy_def_boost_pct * 100:.0f}%)",
+                    int(flat * self.alchemy_def_boost_pct),
+                )
+            )
 
         # Artefact: Seal of Duality — DEF +15-35% for the rest of combat once
         # the player's ward has broken at least once (see monster_turn.py).
         if self.seal_of_duality_triggered and self.artefact:
-            pct_pool += self.artefact.roll_1 / 100
+            d = self.artefact.roll_1 / 100
+            pct_pool += d
+            contributions.append(
+                (
+                    f"Artefact: Seal of Duality (+{self.artefact.roll_1:.0f}%)",
+                    int(flat * d),
+                )
+            )
 
         # Slayer Tree hu_2 "Hunter's Resolve" — +18% DEF vs the assigned task
         # species. Lives in pct_pool (not a damage-taken multiplier) so it sums
@@ -1399,58 +1548,104 @@ class Player:
             and self.slayer_tree_nodes.get("hu_2") == "def"
         ):
             pct_pool += 0.18
+            contributions.append(
+                (
+                    "Slayer Tree: Hunter's Resolve (+18% vs task species)",
+                    int(flat * 0.18),
+                )
+            )
 
         total = flat + bonus_pool
         if pct_pool:
             total += int(flat * pct_pool)
 
         # Permanent run penalty — a flat deduction, not part of the pct_pool base.
+        if self.run_def_penalty:
+            contributions.append(("Codex Run Penalty", -self.run_def_penalty))
         total -= self.run_def_penalty
 
-        return max(0, total)
+        total = max(0, total)
+        if explain:
+            return total, contributions
+        return total
 
-    def _calc_raw_pdr(self) -> tuple[int, int]:
-        """Returns (raw_pdr, pdr_cap) before the hard cap is applied."""
+    def _calc_raw_pdr(
+        self, explain: bool = False
+    ) -> "tuple[int, int] | tuple[int, int, list[tuple[str, float]]]":
+        """Returns (raw_pdr, pdr_cap) before the hard cap is applied.
+        explain=True appends a contributions list — see get_total_attack docstring."""
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
+        contributions: list[tuple[str, float]] = []
         total = 0
+        gear_pdr = 0
         if self.equipped_armor:
-            total += self.equipped_armor.pdr
+            gear_pdr += self.equipped_armor.pdr
         if self.equipped_glove:
-            total += self.equipped_glove.pdr
+            gear_pdr += self.equipped_glove.pdr
         if self.equipped_boot:
-            total += self.equipped_boot.pdr
+            gear_pdr += self.equipped_boot.pdr
         if self.equipped_helmet:
-            total += self.equipped_helmet.pdr
+            gear_pdr += self.equipped_helmet.pdr
+        total += gear_pdr
+        if gear_pdr:
+            contributions.append(("Equipment (armor/glove/boot/helmet)", gear_pdr))
 
         # Companions
-        total += self._get_companion_bonus("pdr")
+        comp = self._get_companion_bonus("pdr")
+        if comp:
+            total += comp
+            contributions.append(("Companions", comp))
 
         # Bulwark tome: bonus PDR
-        total += int(self.get_tome_bonus("bulwark"))
+        bulwark = int(self.get_tome_bonus("bulwark"))
+        if bulwark:
+            total += bulwark
+            contributions.append(("Bulwark Tome", bulwark))
 
         # Essence bonuses
-        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
-            if item:
-                total += compute_essence_stat_bonus(item).get("pdr", 0)
+        essence_pdr = sum(
+            compute_essence_stat_bonus(item).get("pdr", 0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if essence_pdr:
+            total += essence_pdr
+            contributions.append(("Essences", essence_pdr))
 
         # Corrupted essence: Lucifer helmet — PDR burst on ward break (transient, persists rest of combat)
-        total += self.lucifer_pdr_burst
+        if self.lucifer_pdr_burst:
+            total += self.lucifer_pdr_burst
+            contributions.append(
+                ("Lucifer Corrupted Essence (ward-break burst)", self.lucifer_pdr_burst)
+            )
 
         # Ascension pinnacle flat PDR
         if self.ascension_unlocks:
-            total += self.get_ascension_bonuses()["pdr"]
+            asc_pdr = self.get_ascension_bonuses()["pdr"]
+            if asc_pdr:
+                total += asc_pdr
+                contributions.append(("Ascension Pinnacle", asc_pdr))
 
         # Codex chapter PDR reduction (applied before hard cap)
         if self.chapter_pdr_reduction > 0:
-            total = int(total * (1 - self.chapter_pdr_reduction))
+            reduced = int(total * (1 - self.chapter_pdr_reduction))
+            contributions.append(
+                (
+                    f"Codex Chapter PDR Reduction (-{self.chapter_pdr_reduction * 100:.0f}%)",
+                    reduced - total,
+                )
+            )
+            total = reduced
 
         # Soul stone: impregnable — T1=+2% → T5=+10% PDR (skipped if armor passive active)
         ss_impregnable = self.get_soul_stone_passive("impregnable")
         if ss_impregnable and not (
             self.equipped_armor and self.equipped_armor.passive == "Impregnable"
         ):
-            total += ss_impregnable * 2
+            delta = ss_impregnable * 2
+            total += delta
+            contributions.append((f"Soul Stone Impregnable (T{ss_impregnable})", delta))
 
         # Hard cap: 90% with Impregnable armor passive OR soul stone impregnable, otherwise 80%
         has_impregnable = (
@@ -1462,9 +1657,20 @@ class Player:
         if self.has_artefact("blessed_bulwark"):
             cap += int(self.artefact.roll_1)
 
-        return int(max(0, total)), cap
+        raw = int(max(0, total))
+        if explain:
+            return raw, cap, contributions
+        return raw, cap
 
-    def get_total_pdr(self) -> int:
+    def get_total_pdr(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
+        if explain:
+            raw, cap, contributions = self._calc_raw_pdr(explain=True)
+            total = min(cap, raw)
+            if raw > cap:
+                contributions.append((f"Hard Cap ({cap}%)", cap - raw))
+            return total, contributions
         raw, cap = self._calc_raw_pdr()
         return min(cap, raw)
 
@@ -1473,98 +1679,178 @@ class Player:
         raw, _ = self._calc_raw_pdr()
         return raw
 
-    def get_total_fdr(self) -> int:
+    def get_total_fdr(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
+        contributions: list[tuple[str, float]] = []
         total = 0
+        gear_fdr = 0
         if self.equipped_armor:
-            total += self.equipped_armor.fdr
+            gear_fdr += self.equipped_armor.fdr
         if self.equipped_glove:
-            total += self.equipped_glove.fdr
+            gear_fdr += self.equipped_glove.fdr
         if self.equipped_boot:
-            total += self.equipped_boot.fdr
+            gear_fdr += self.equipped_boot.fdr
         if self.equipped_helmet:
-            total += self.equipped_helmet.fdr
+            gear_fdr += self.equipped_helmet.fdr
+        total += gear_fdr
+        if gear_fdr:
+            contributions.append(("Equipment (armor/glove/boot/helmet)", gear_fdr))
 
         # Companions
-        total += self._get_companion_bonus("fdr")
+        comp = self._get_companion_bonus("fdr")
+        if comp:
+            total += comp
+            contributions.append(("Companions", comp))
 
         # Resilience tome: bonus flat damage reduction
-        total += int(self.get_tome_bonus("resilience"))
+        resilience = int(self.get_tome_bonus("resilience"))
+        if resilience:
+            total += resilience
+            contributions.append(("Resilience Tome", resilience))
 
         # Codex FDR boon (per-wave transient)
-        total += self.boon_fdr
+        if self.boon_fdr:
+            total += self.boon_fdr
+            contributions.append(("Codex FDR Boon", self.boon_fdr))
 
         # Essence bonuses
-        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
-            if item:
-                total += compute_essence_stat_bonus(item).get("fdr", 0)
+        essence_fdr = sum(
+            compute_essence_stat_bonus(item).get("fdr", 0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if essence_fdr:
+            total += essence_fdr
+            contributions.append(("Essences", essence_fdr))
 
         # Ascension pinnacle flat FDR
         if self.ascension_unlocks:
-            total += self.get_ascension_bonuses()["fdr"]
+            asc_fdr = self.get_ascension_bonuses()["fdr"]
+            if asc_fdr:
+                total += asc_fdr
+                contributions.append(("Ascension Pinnacle", asc_fdr))
 
-        return int(total)
-
-    def get_total_ward_percentage(self) -> int:
-        from core.items.essence_mechanics import compute_essence_stat_bonus
-
-        total = 0
-        if self.equipped_accessory:
-            total += self.equipped_accessory.ward
-        if self.equipped_armor:
-            total += self.equipped_armor.ward
-        if self.equipped_glove:
-            total += self.equipped_glove.ward
-        if self.equipped_boot:
-            total += self.equipped_boot.ward
-        if self.equipped_helmet:
-            total += self.equipped_helmet.ward
-
-        # Companions
-        total += self._get_companion_bonus("ward")
-
-        # Essence bonuses (ward % bonus)
-        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
-            if item:
-                total += compute_essence_stat_bonus(item).get("ward", 0)
+        total = int(total)
+        if explain:
+            return total, contributions
         return total
 
-    def get_current_crit_chance(self) -> int:
+    def get_total_ward_percentage(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
         from core.items.essence_mechanics import compute_essence_stat_bonus
+
+        contributions: list[tuple[str, float]] = []
+        total = 0
+        gear_ward = 0
+        if self.equipped_accessory:
+            gear_ward += self.equipped_accessory.ward
+        if self.equipped_armor:
+            gear_ward += self.equipped_armor.ward
+        if self.equipped_glove:
+            gear_ward += self.equipped_glove.ward
+        if self.equipped_boot:
+            gear_ward += self.equipped_boot.ward
+        if self.equipped_helmet:
+            gear_ward += self.equipped_helmet.ward
+        total += gear_ward
+        if gear_ward:
+            contributions.append(
+                ("Equipment (accessory/armor/glove/boot/helmet)", gear_ward)
+            )
+
+        # Companions
+        comp = self._get_companion_bonus("ward")
+        if comp:
+            total += comp
+            contributions.append(("Companions", comp))
+
+        # Essence bonuses (ward % bonus)
+        essence_ward = sum(
+            compute_essence_stat_bonus(item).get("ward", 0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if essence_ward:
+            total += essence_ward
+            contributions.append(("Essences", essence_ward))
+
+        if explain:
+            return total, contributions
+        return total
+
+    def get_current_crit_chance(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
+        from core.items.essence_mechanics import compute_essence_stat_bonus
+
+        contributions: list[tuple[str, float]] = []
 
         # Flat sources: gear + companions + essences + tomes
         chance = 0
         # Weapon base crit (from drop template, stored as e.g. 0.05 → 5)
-        if self.equipped_weapon:
-            chance += int(self.equipped_weapon.crit_chance * 100)
-        if self.equipped_accessory:
+        weapon_crit = (
+            int(self.equipped_weapon.crit_chance * 100) if self.equipped_weapon else 0
+        )
+        if weapon_crit:
+            chance += weapon_crit
+            contributions.append(("Weapon base crit", weapon_crit))
+        if self.equipped_accessory and self.equipped_accessory.crit:
             chance += self.equipped_accessory.crit
+            contributions.append(("Accessory crit", self.equipped_accessory.crit))
 
         # Companions
-        chance += self._get_companion_bonus("crit")
+        comp = self._get_companion_bonus("crit")
+        if comp:
+            chance += comp
+            contributions.append(("Companions", comp))
 
         # Precision tome
-        chance += int(self.get_tome_bonus("precision"))
+        precision = int(self.get_tome_bonus("precision"))
+        if precision:
+            chance += precision
+            contributions.append(("Precision Tome", precision))
 
         # Essence bonuses (Insight)
-        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
-            if item:
-                chance += compute_essence_stat_bonus(item).get("crit", 0)
+        essence_crit = sum(
+            compute_essence_stat_bonus(item).get("crit", 0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if essence_crit:
+            chance += essence_crit
+            contributions.append(("Essences", essence_crit))
 
         # Per-combat/chapter bonus accumulator and permanent run penalty
-        chance += self.bonus_crit
-        chance -= self.run_crit_penalty
+        if self.bonus_crit:
+            chance += self.bonus_crit
+            contributions.append(("Combat bonus accumulator", self.bonus_crit))
+        if self.run_crit_penalty:
+            chance -= self.run_crit_penalty
+            contributions.append(("Codex Run Penalty", -self.run_crit_penalty))
 
         # Ascension pinnacle flat crit
         if self.ascension_unlocks:
-            chance += self.get_ascension_bonuses()["crit"]
+            asc_crit = self.get_ascension_bonuses()["crit"]
+            if asc_crit:
+                chance += asc_crit
+                contributions.append(("Ascension Pinnacle", asc_crit))
 
         # Multiplicative layer (Insight helmet passive, future mods)
         if self.crit_multiplier != 1.0:
-            chance = int(chance * self.crit_multiplier)
+            new_chance = int(chance * self.crit_multiplier)
+            contributions.append(
+                (f"Crit Multiplier (x{self.crit_multiplier:.2f})", new_chance - chance)
+            )
+            chance = new_chance
 
-        return max(0, chance)
+        chance = max(0, chance)
+        if explain:
+            return chance, contributions
+        return chance
 
     def get_total_evasion(self) -> int:
         """Total evasion including armor base and any essence bonuses on glove/boot/helmet."""
@@ -1666,7 +1952,9 @@ class Player:
     def get_weapon_utmost(self) -> str:
         return self.equipped_weapon.u_passive if self.equipped_weapon else "none"
 
-    def get_weapon_crit_multi(self, monster: "Monster | None" = None) -> float:
+    def get_weapon_crit_multi(
+        self, monster: "Monster | None" = None, explain: bool = False
+    ) -> "float | tuple[float, list[tuple[str, float]]]":
         """Returns the total crit damage multiplier.
 
         Additive sources (all stacked into a single multiplier, never compounded):
@@ -1684,35 +1972,54 @@ class Player:
         calc_crit_damage() in damage_calc.py, which adds them on top of this.
         Debuffs (Nullifying, chapter_crit_dmg_reduction) are also handled there,
         as multiplicative dampeners applied to the fully-summed total.
+
+        explain=True returns (total, contributions) — see get_total_attack docstring.
         """
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
+        contributions: list[tuple[str, float]] = []
         base = self.equipped_weapon.crit_multi if self.equipped_weapon else 2.0
+        contributions.append(("Weapon base (or 2.0 unarmed)", base))
 
         # Deftness essence (glove, boot, helmet)
-        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
-            if item:
-                base += compute_essence_stat_bonus(item).get("crit_multi", 0.0)
+        deftness = sum(
+            compute_essence_stat_bonus(item).get("crit_multi", 0.0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if deftness:
+            base += deftness
+            contributions.append(("Deftness Essences", deftness))
 
         # Insight helmet passive
         if self.equipped_helmet and self.get_helmet_passive() == "insight":
-            base += self.equipped_helmet.passive_lvl * 0.1
+            delta = self.equipped_helmet.passive_lvl * 0.1
+            base += delta
+            contributions.append(
+                (f"Insight Helmet (lvl {self.equipped_helmet.passive_lvl})", delta)
+            )
         else:
             # Soul stone: insight — 1:1 tier match to helmet lvl.
             ss_insight = self.get_soul_stone_passive("insight")
             if ss_insight:
-                base += ss_insight * 0.1
+                delta = ss_insight * 0.1
+                base += delta
+                contributions.append((f"Soul Stone Insight (T{ss_insight})", delta))
 
         # Slayer crit_dmg emblem
         crit_dmg_tiers = self.get_emblem_bonus("crit_dmg")
         if crit_dmg_tiers > 0:
-            base += crit_dmg_tiers * 0.05
+            delta = crit_dmg_tiers * 0.05
+            base += delta
+            contributions.append((f"Slayer crit_dmg Emblem (T{crit_dmg_tiers})", delta))
 
         # Active partner co_crit_damage
         if self.active_partner:
             for key, lvl in self.active_partner.combat_skills:
                 if key == "co_crit_damage":
-                    base += lvl * 0.10
+                    delta = lvl * 0.10
+                    base += delta
+                    contributions.append((f"Partner co_crit_damage (lvl {lvl})", delta))
 
         # Hematurgy: Chain Reaction + Executioner's Rite (crit damage half)
         if self.hematurgy_passives:
@@ -1721,10 +2028,18 @@ class Player:
                 get_executioners_rite_bonus,
             )
 
-            base += get_chain_reaction_crit_bonus(self)
+            cr = get_chain_reaction_crit_bonus(self)
+            if cr:
+                base += cr
+                contributions.append(("Hematurgy Chain Reaction", cr))
             if monster is not None:
-                base += get_executioners_rite_bonus(self, monster)
+                er = get_executioners_rite_bonus(self, monster)
+                if er:
+                    base += er
+                    contributions.append(("Hematurgy Executioner's Rite", er))
 
+        if explain:
+            return base, contributions
         return base
 
     def get_armor_passive(self) -> str:

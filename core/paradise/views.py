@@ -53,7 +53,9 @@ async def _fetch_passives_data(
     return data, jewel_count, dust
 
 
-async def _fetch_skills_data(bot, user_id: str, server_id: str) -> tuple[dict, int, int]:
+async def _fetch_skills_data(
+    bot, user_id: str, server_id: str
+) -> tuple[dict, int, int]:
     data = await bot.database.paradise.get(user_id)
     uber = await bot.database.uber.get_uber_progress(user_id, server_id)
     jewel_count = uber.get("paradise_jewels", 0)
@@ -98,7 +100,9 @@ def _skill_card_lines(data: dict, skill_key: str) -> list[str]:
     ]
     engram = M.get_skill_engram(data, skill_key)
     if engram:
-        lines.append(f"{CORRUPTION_ENGRAM} **Corruption Etch:** {M.format_engram_effect(engram)}")
+        lines.append(
+            f"{CORRUPTION_ENGRAM} **Corruption Etch:** {M.format_engram_effect(engram)}"
+        )
     return lines
 
 
@@ -225,7 +229,9 @@ def _build_manage_skills_embed(data: dict) -> discord.Embed:
             value="\n".join(rows),
             inline=False,
         )
-        embed.description = f"*{get_quip('paradise_skills')}*\n\nSelect a skill below to equip it."
+        embed.description = (
+            f"*{get_quip('paradise_skills')}*\n\nSelect a skill below to equip it."
+        )
     else:
         embed.description = (
             f"*{get_quip('paradise_skills')}*\n\n"
@@ -407,7 +413,9 @@ class ParadiseHubView(BaseView):
 
 
 class _ManageSkillsView(BaseView):
-    def __init__(self, bot, user_id, server_id, data, jewel_count, engram_count, message):
+    def __init__(
+        self, bot, user_id, server_id, data, jewel_count, engram_count, message
+    ):
         super().__init__(bot, user_id, server_id)
         self.data = data
         self.jewel_count = jewel_count
@@ -710,7 +718,9 @@ class _CorruptionEngramView(BaseView):
         if not skill_key:
             self._result_msg = "❌ You don't have a skill equipped."
             self._processing = False
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
             return
 
         uber = await self.bot.database.uber.get_uber_progress(
@@ -721,7 +731,9 @@ class _CorruptionEngramView(BaseView):
             self._result_msg = "❌ You don't have any Corruption Engrams."
             self._build_buttons()
             self._processing = False
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
             return
 
         gold = await self.bot.database.users.get_gold(self.user_id)
@@ -731,10 +743,14 @@ class _CorruptionEngramView(BaseView):
                 "to etch a Corruption Engram."
             )
             self._processing = False
-            await interaction.edit_original_response(embed=self.build_embed(), view=self)
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
             return
 
-        await self.bot.database.users.modify_gold(self.user_id, -CORRUPTION_ENGRAM_GOLD_COST)
+        await self.bot.database.users.modify_gold(
+            self.user_id, -CORRUPTION_ENGRAM_GOLD_COST
+        )
         await self.bot.database.uber.increment_corruption_engrams(
             self.user_id, self.server_id, -1
         )

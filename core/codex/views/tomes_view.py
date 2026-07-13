@@ -222,9 +222,7 @@ class CodexTomsView(BaseLayoutView):
                 and self.fragments >= TOME_UPGRADE_COSTS[selected_tome.tier]
             )
             upgrade_cost = (
-                TOME_UPGRADE_COSTS[selected_tome.tier]
-                if selected_tome.tier < 5
-                else 0
+                TOME_UPGRADE_COSTS[selected_tome.tier] if selected_tome.tier < 5 else 0
             )
             upgrade_gold = (
                 TOME_GOLD_COSTS[selected_tome.tier] if selected_tome.tier < 5 else 0

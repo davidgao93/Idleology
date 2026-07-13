@@ -15,6 +15,7 @@ from core.emojis import (
     GOLD_COIN,
     INFINITE_MAW,
     NETHER_MARKET_PLUNDER,
+    ZEAL,
 )
 from core.items.factory import load_player
 
@@ -372,7 +373,7 @@ class CardProfileBuilder:
                                 zeal_str = (
                                     f"**{available}/{ZEAL_GATHER_CAP}** — cap in ~{h}h"
                                 )
-                            settlement_lines.append(f"🔥 **Zeal** — {zeal_str}")
+                            settlement_lines.append(f"{ZEAL} **Zeal** — {zeal_str}")
                         except Exception:
                             pass
 

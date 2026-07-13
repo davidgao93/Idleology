@@ -115,7 +115,9 @@ class RespiteView(BaseLayoutView):
         return discord.ui.Container(
             discord.ui.Section(
                 "\n".join(lines),
-                accessory=discord.ui.Thumbnail(ARBITER_THUMBNAIL, description="The Arbiter"),
+                accessory=discord.ui.Thumbnail(
+                    ARBITER_THUMBNAIL, description="The Arbiter"
+                ),
             ),
             accent_color=discord.Color.gold(),
         )

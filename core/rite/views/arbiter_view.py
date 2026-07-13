@@ -114,7 +114,9 @@ async def _enter_final_phase(
     apply_respite_buffs(player, run_state)
 
     phases = mobgen.get_arbiter_phases(player)
-    monster = mobgen.generate_arbiter_phase(player, phases[_FINAL_PHASE_INDEX], _FINAL_PHASE_INDEX)
+    monster = mobgen.generate_arbiter_phase(
+        player, phases[_FINAL_PHASE_INDEX], _FINAL_PHASE_INDEX
+    )
     _apply_arbiter_writ_overlays(monster, run_state.writs)
     monster.is_boss = True
 
@@ -175,7 +177,12 @@ class ArbiterFinalFormView(BaseLayoutView):
 
         arbiter_callback = make_arbiter_end_state_callback(self.run_state)
         combat_view = await _enter_final_phase(
-            self.bot, self.user_id, self.server_id, self.player, self.run_state, arbiter_callback
+            self.bot,
+            self.user_id,
+            self.server_id,
+            self.player,
+            self.run_state,
+            arbiter_callback,
         )
         await interaction.edit_original_response(embed=None, view=combat_view)
         combat_view.message = await interaction.original_response()
@@ -215,7 +222,7 @@ def _build_victory_embed(
         title="✨ The Rite of Convergence is Complete",
         description=(
             f"{loot_line}\n\n"
-            "*\"Well, that'll come in handy.\"*\n\n"
+            '*"Well, that\'ll come in handy."*\n\n'
             f"**Total turns:** {run_state.total_turns}  •  **Devotion Points:** {dp}\n"
             f"**Loot value:** {rewards['value']:,} "
             f"(+{rewards['excess_dp_bonus_pct']:.0f}% from excess DP)"
@@ -274,7 +281,12 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
                 trans_embed.set_thumbnail(url=ARBITER_PHASE_FINAL)
 
                 final_form_view = ArbiterFinalFormView(
-                    view.bot, view.user_id, view.server_id, view.player, run_state, trans_embed
+                    view.bot,
+                    view.user_id,
+                    view.server_id,
+                    view.player,
+                    run_state,
+                    trans_embed,
                 )
                 await message.edit(embed=None, view=final_form_view)
                 final_form_view.message = message

@@ -16,6 +16,7 @@ from core.emojis import (
     DODGE_EVASION,
     ESSENCE_COMMON,
     ESSENCE_CORRUPT,
+    ESSENCE_META,
     ESSENCE_RARE,
     INFERNAL_ENGRAM,
     STAT_BLOCK,
@@ -238,7 +239,7 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
     )
     embed.add_field(name="​", value="​", inline=True)
     embed.add_field(
-        name="Meta (Utility) Essences",
+        name=f"{ESSENCE_META} Meta (Utility) Essences",
         value=_cat_text(["cleansing", "chaos", "annulment"]),
         inline=True,
     )

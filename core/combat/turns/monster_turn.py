@@ -7,7 +7,13 @@ from core.combat.calc.damage_calc import roll_monster_damage as _roll_monster_da
 from core.combat.calc.hit_calc import calculate_monster_hit_chance
 from core.combat.calc.ward_system import _add_ward
 from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
-from core.emojis import GOLD_COIN, INFERNAL_ENGRAM, STAT_WARD
+from core.emojis import (
+    GOLD_COIN,
+    INFERNAL_ENGRAM,
+    MOD_FLASHFIRE,
+    MOD_PRESSURE_SURGE,
+    STAT_WARD,
+)
 from core.models import Monster, Player
 
 
@@ -109,7 +115,7 @@ def process_monster_turn(
             player.current_hp = max(0, player.current_hp - burst)
             monster.flashfire_charges = 0
             log.append(
-                f"🔥 **Flashfire DETONATES!** The buildup erupts for **{burst}** 🔥 true damage!"
+                f"{MOD_FLASHFIRE} **Flashfire DETONATES!** The buildup erupts for **{burst}** true damage!"
             )
     capture_compact_events(
         log, clog, start
@@ -154,7 +160,7 @@ def process_monster_turn(
             player.current_hp = max(0, player.current_hp - burst)
             monster.pressure_stacks = 0
             log.append(
-                f"⚡ **Pressure Surge RELEASES!** Pent-up force slams for **{burst}** true damage!"
+                f"{MOD_PRESSURE_SURGE} **Pressure Surge RELEASES!** Pent-up force slams for **{burst}** true damage!"
             )
     capture_compact_events(
         log, clog, start

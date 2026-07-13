@@ -867,8 +867,7 @@ class EngramView(BaseUpgradeView):
         )
         res_embed.description = (
             "The Engram shatters, weaving divine energy into your armor.\n\n"
-            f"**New Passive:** {display_new}"
-            + (f"\n*{new_desc}*" if new_desc else "")
+            f"**New Passive:** {display_new}" + (f"\n*{new_desc}*" if new_desc else "")
         )
         res_embed.set_author(name="Artificer Sylas", icon_url=SYLAS_AUTHOR)
         res_embed.set_thumbnail(url=UPGRADE_CELESTIAL_ENGRAM)

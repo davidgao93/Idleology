@@ -36,6 +36,7 @@ get_phantom_reflex_evasion_bonus(player)     → float
 from __future__ import annotations
 
 from core.combat.models import Monster, Player
+from core.emojis import HEMATURGY_PASSIVE_EMOJI
 from core.hematurgy.mechanics import tier_val
 
 # ---------------------------------------------------------------------------
@@ -169,7 +170,7 @@ def apply_hematurgy_start(player: Player, monster: Monster, log: list[str]) -> N
         player.bonus_def += def_gain
         player.combat_ward = 0
         log.append(
-            f"🩸 **Ward Inoculation** — {ward_val:,} ward converted to "
+            f"{HEMATURGY_PASSIVE_EMOJI['ward_inoculation']} **Ward Inoculation** — {ward_val:,} ward converted to "
             f"{def_gain:,} flat DEF ({int(efficiency * 100)}%)!"
         )
 
@@ -179,7 +180,7 @@ def apply_hematurgy_start(player: Player, monster: Monster, log: list[str]) -> N
     player.cs.hema_ward_inoculation = True
 
     log.append(
-        f"🩸 **Ward Inoculation** — Max HP doubled to {player.total_max_hp:,}!"
+        f"{HEMATURGY_PASSIVE_EMOJI['ward_inoculation']} **Ward Inoculation** — Max HP doubled to {player.total_max_hp:,}!"
     )
 
 
@@ -199,7 +200,7 @@ def on_haemorrhage_tick(player: Player, monster: Monster, log: list[str]) -> Non
     actual = min(tick, monster.hp)
     monster.hp = max(0, monster.hp - actual)
     log.append(
-        f"🩸 **Haemorrhage** bleeds **{actual}** damage! (pool: {player.cs.hema_bleed_total:,})"
+        f"{HEMATURGY_PASSIVE_EMOJI['haemorrhage']} **Haemorrhage** bleeds **{actual}** damage! (pool: {player.cs.hema_bleed_total:,})"
     )
 
 
@@ -239,7 +240,7 @@ def on_player_hit(
         player.cs.hema_serrated_total += reduction
         crit_note = " (crit ×2)" if is_crit else ""
         log.append(
-            f"🔪 **Serrated**{crit_note} — monster ATK −{reduction} (now {monster.effective_attack})."
+            f"{HEMATURGY_PASSIVE_EMOJI['serrated']} **Serrated**{crit_note} — monster ATK −{reduction} (now {monster.effective_attack})."
         )
 
     # --- Haemorrhage: add bleed charge ---
@@ -256,7 +257,7 @@ def on_player_hit(
         else:
             if player.cs.hema_chain_stacks > 0:
                 log.append(
-                    f"⚡ **Chain Reaction** resets! ({player.cs.hema_chain_stacks} stacks lost)"
+                    f"{HEMATURGY_PASSIVE_EMOJI['chain_reaction']} **Chain Reaction** resets! ({player.cs.hema_chain_stacks} stacks lost)"
                 )
                 player.cs.hema_chain_stacks = 0
 
@@ -271,12 +272,14 @@ def on_player_hit(
                 monster.hp = max(0, monster.hp - actual_mark)
                 extra += actual_mark
                 log.append(
-                    f"🎯 **Predator's Mark** detonates! +{actual_mark} bonus damage!"
+                    f"{HEMATURGY_PASSIVE_EMOJI['predators_mark']} **Predator's Mark** detonates! +{actual_mark} bonus damage!"
                 )
             player.cs.hema_predators_mark = False
         if is_crit:
             player.cs.hema_predators_mark = True
-            log.append("🎯 **Predator's Mark** applied!")
+            log.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['predators_mark']} **Predator's Mark** applied!"
+            )
 
     # --- Spectral Waltz: +1 blade on hit; crit releases all blades at once ---
     tier_sw = get_h(player, "spectral_waltz")
@@ -292,7 +295,7 @@ def on_player_hit(
                 monster.hp = max(0, monster.hp - actual_sw)
                 extra += actual_sw
                 log.append(
-                    f"👻 **Spectral Waltz** — {player.cs.hema_blade_count} blade(s) unleashed! "
+                    f"{HEMATURGY_PASSIVE_EMOJI['spectral_waltz']} **Spectral Waltz** — {player.cs.hema_blade_count} blade(s) unleashed! "
                     f"💀 **{actual_sw}** damage!"
                 )
             player.cs.hema_blade_count = 0
@@ -331,14 +334,14 @@ def on_player_miss(
         and player.cs.hema_momentum_stacks > 0
     ):
         log.append(
-            f"🔥 **Iron Momentum** resets! ({player.cs.hema_momentum_stacks} stacks lost)"
+            f"{HEMATURGY_PASSIVE_EMOJI['iron_momentum']} **Iron Momentum** resets! ({player.cs.hema_momentum_stacks} stacks lost)"
         )
         player.cs.hema_momentum_stacks = 0
 
     # --- Chain Reaction: reset stacks on miss ---
     if get_h(player, "chain_reaction") is not None and player.cs.hema_chain_stacks > 0:
         log.append(
-            f"⚡ **Chain Reaction** resets on miss! ({player.cs.hema_chain_stacks} stacks lost)"
+            f"{HEMATURGY_PASSIVE_EMOJI['chain_reaction']} **Chain Reaction** resets on miss! ({player.cs.hema_chain_stacks} stacks lost)"
         )
         player.cs.hema_chain_stacks = 0
 
@@ -350,14 +353,16 @@ def on_player_miss(
     # --- Predator's Mark: clear mark on miss ---
     if get_h(player, "predators_mark") is not None and player.cs.hema_predators_mark:
         player.cs.hema_predators_mark = False
-        log.append("🎯 **Predator's Mark** fades (missed).")
+        log.append(
+            f"{HEMATURGY_PASSIVE_EMOJI['predators_mark']} **Predator's Mark** fades (missed)."
+        )
 
     # --- Spectral Waltz: −1 blade on miss ---
     tier_sw = get_h(player, "spectral_waltz")
     if tier_sw is not None and player.cs.hema_blade_count > 0:
         player.cs.hema_blade_count -= 1
         log.append(
-            f"👻 **Spectral Waltz** — a blade dissipates! ({player.cs.hema_blade_count} remaining)"
+            f"{HEMATURGY_PASSIVE_EMOJI['spectral_waltz']} **Spectral Waltz** — a blade dissipates! ({player.cs.hema_blade_count} remaining)"
         )
 
     # --- Flash Frost: increment miss counter ---
@@ -368,7 +373,7 @@ def on_player_miss(
         if player.cs.hema_frost_misses >= threshold:
             player.cs.hema_frost_misses = 0
             log.append(
-                f"❄️ **Flash Frost** — {threshold} misses reached! Monster frozen next turn!"
+                f"{HEMATURGY_PASSIVE_EMOJI['flash_frost']} **Flash Frost** — {threshold} misses reached! Monster frozen next turn!"
             )
             monster._hema_frozen = True
 
@@ -381,7 +386,7 @@ def on_player_miss(
             monster.hp = max(0, monster.hp - actual)
             extra += actual
             log.append(
-                f"💉 **Puncture** bursts on miss — **{actual}** bleed damage! (pool reset)"
+                f"{HEMATURGY_PASSIVE_EMOJI['puncture']} **Puncture** bursts on miss — **{actual}** bleed damage! (pool reset)"
             )
         player.cs.hema_puncture_bleed = 0
 
@@ -391,7 +396,9 @@ def on_player_miss(
         heal = int(miss_damage * _tv("soothing_venom", tier_sv))
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
-            log.append(f"☠️ **Soothing Venom** — poison siphons **{heal}** HP!")
+            log.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['soothing_venom']} **Soothing Venom** — poison siphons **{heal}** HP!"
+            )
 
     return extra
 
@@ -417,7 +424,9 @@ def on_ward_gained(player: Player, amount: int, log: list[str]) -> int:
         heal = int(amount * _tv("vital_resonance", tier_vr))
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
-            log.append(f"💚 **Vital Resonance** — {heal} HP restored from ward!")
+            log.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['vital_resonance']} **Vital Resonance** — {heal} HP restored from ward!"
+            )
 
     return amount
 
@@ -432,7 +441,7 @@ def on_monster_turn_start(player: Player, monster: Monster, log: list[str]) -> b
     if getattr(monster, "_hema_frozen", False):
         monster._hema_frozen = False
         log.append(
-            f"❄️ **Flash Frost** — {monster.name} is frozen and cannot act this round!"
+            f"{HEMATURGY_PASSIVE_EMOJI['flash_frost']} **Flash Frost** — {monster.name} is frozen and cannot act this round!"
         )
         return True
     return False
@@ -470,7 +479,7 @@ def on_monster_turn_end(
         player.bonus_atk += atk_bonus
         player.bonus_def += def_bonus
         log.append(
-            f"💪 **Defiance** ignites! HP below 40% — "
+            f"{HEMATURGY_PASSIVE_EMOJI['defiance']} **Defiance** ignites! HP below 40% — "
             f"+{atk_bonus} ATK and +{def_bonus} DEF for this fight!"
         )
 
@@ -492,7 +501,7 @@ def on_monster_turn_end(
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(
-                f"🌿 **Regenerative Tissue** — zero damage taken, healing {heal} HP!"
+                f"{HEMATURGY_PASSIVE_EMOJI['regenerative_tissue']} **Regenerative Tissue** — zero damage taken, healing {heal} HP!"
             )
 
 
@@ -509,13 +518,13 @@ def on_kill(player: Player, log: list[str]) -> None:
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(
-                f"🩸 **Crimson Feast** — kill restores **{heal}** HP "
+                f"{HEMATURGY_PASSIVE_EMOJI['crimson_feast']} **Crimson Feast** — kill restores **{heal}** HP "
                 f"({int(_tv('crimson_feast', tier_bt) * 100)}% Max HP)!"
             )
 
     if get_h(player, "haemorrhage") is not None and player.cs.hema_bleed_total > 0:
         log.append(
-            f"🩸 **Haemorrhage** — full bleed pool ({player.cs.hema_bleed_total:,}) discharges!"
+            f"{HEMATURGY_PASSIVE_EMOJI['haemorrhage']} **Haemorrhage** — full bleed pool ({player.cs.hema_bleed_total:,}) discharges!"
         )
         player.cs.hema_bleed_total = 0
 
@@ -534,7 +543,7 @@ def on_potion_used(player: Player, log: list[str]) -> None:
     bonus = int(player.flat_atk * _tv("fevered_strike", tier))
     player.bonus_atk += bonus
     log.append(
-        f"🔥 **Fevered Strike** ({player.cs.hema_fevered_count} potions) — +{bonus} ATK!"
+        f"{HEMATURGY_PASSIVE_EMOJI['fevered_strike']} **Fevered Strike** ({player.cs.hema_fevered_count} potions) — +{bonus} ATK!"
     )
 
 
@@ -568,7 +577,9 @@ def apply_reverberation(
             break
         monster.hp = max(0, monster.hp - actual)
         total_extra += actual
-        log.append(f"🎶 **Reverberation** re-echoes! +{actual} damage!")
+        log.append(
+            f"{HEMATURGY_PASSIVE_EMOJI['reverberation']} **Reverberation** re-echoes! +{actual} damage!"
+        )
         chance -= 0.10
         if monster.hp <= 0:
             break

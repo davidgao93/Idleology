@@ -54,7 +54,14 @@ async def try_claim_first(bot, user_id: str, category_key: str) -> bool:
         return False
 
 
-async def _announce(bot, category, name: str, title: str | None, emblem: str | None, appearance: str | None) -> None:
+async def _announce(
+    bot,
+    category,
+    name: str,
+    title: str | None,
+    emblem: str | None,
+    appearance: str | None,
+) -> None:
     channel = bot.get_channel(HALL_ANNOUNCE_CHANNEL_ID)
     if channel is None:
         return

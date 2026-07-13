@@ -5,7 +5,14 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.combat.economy.drops import _PART_SLOTS, _PART_WEIGHTS
-from core.emojis import CONSUME_ICON, HEMATURGY_ICON, MONSTER_PART_SLOT_EMOJI
+from core.emojis import (
+    CONSUME_ICON,
+    HEMATURGY_ICON,
+    MONSTER_EGG,
+    MONSTER_EGG_GIGA,
+    MONSTER_EGG_RARE,
+    MONSTER_PART_SLOT_EMOJI,
+)
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
     CONSUME_EGG,
@@ -257,7 +264,9 @@ class PartDetailView(BaseView):
                 self.part.hp_value,
                 self.part.monster_name,
             )
-            await hof_triggers.check_fabulous(self.parent.bot, self.parent.user_id, slot)
+            await hof_triggers.check_fabulous(
+                self.parent.bot, self.parent.user_id, slot
+            )
             self.parent.player.equipped_parts[slot] = {
                 "hp": self.part.hp_value,
                 "monster_name": self.part.monster_name,
@@ -496,14 +505,14 @@ def _build_egg_consume_embed(eggs: list) -> discord.Embed:
     for e in eggs:
         counts[e[1]] = counts.get(e[1], 0) + 1
     embed = discord.Embed(
-        title="🥚 Consume Monster Eggs",
+        title=f"{MONSTER_EGG} Consume Monster Eggs",
         description=(
             "Devour monster eggs to gain passive points.\n\n"
-            f"🥚 Normal: **{counts['normal']}**  "
-            f"🪺 Rare: **{counts['rare']}**  "
-            f"🐲 Giga: **{counts['giga']}**\n\n"
+            f"{MONSTER_EGG} Normal: **{counts['normal']}**  "
+            f"{MONSTER_EGG_RARE} Rare: **{counts['rare']}**  "
+            f"{MONSTER_EGG_GIGA} Giga: **{counts['giga']}**\n\n"
             "**Passive Points Gained:**\n"
-            "🥚 Normal: 1–5  |  🪺 Rare: 5–10  |  🐲 Giga: 10–20"
+            f"{MONSTER_EGG} Normal: 1–5  |  {MONSTER_EGG_RARE} Rare: 5–10  |  {MONSTER_EGG_GIGA} Giga: 10–20"
         ),
         color=0xB22222,
     )
@@ -569,7 +578,9 @@ class ConsumeView(BaseView):
         embed = _build_hematurgy_embed(passives, blood)
         await interaction.edit_original_response(embed=embed, view=hview)
 
-    @ui.button(label="Consume Eggs", style=ButtonStyle.success, emoji="🥚", row=1)
+    @ui.button(
+        label="Consume Eggs", style=ButtonStyle.success, emoji=MONSTER_EGG, row=1
+    )
     async def consume_eggs(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         eggs = await self.bot.database.eggs.get_eggs(self.user_id)

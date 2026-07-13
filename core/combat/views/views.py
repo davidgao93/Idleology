@@ -31,6 +31,7 @@ from core.combat.turns.boundary import (
 )
 from core.combat.views.views_lucifer import LuciferChoiceView
 from core.combat.views.views_prestige_boss import PrestigeBossHarvestView
+from core.emojis import WIN_STREAK
 from core.images import (
     VICTORY_APHRODITE_GEMINI,
     VICTORY_LUCIFER,
@@ -443,6 +444,7 @@ class CombatView(BaseLayoutView):
         )
         self.killing_blow = hp_before - max(0, self.player.current_hp)
         self.combat_logger.log_monster_turn(log, self.player)
+        self.combat_logger.log_player_stat_snapshot(self.player, self.monster)
         return log
 
     def _apply_phase_image_transition(self):
@@ -457,8 +459,8 @@ class CombatView(BaseLayoutView):
             return ""
         streak_pct = min(50, self.combat_streak // 10)
         if streak_pct <= 0:
-            return f"🔥 Streak: {self.combat_streak}"
-        return f"🔥 Streak: {self.combat_streak}  (+{streak_pct}% EXP & Gold)"
+            return f"{WIN_STREAK} Streak: {self.combat_streak}"
+        return f"{WIN_STREAK} Streak: {self.combat_streak}  (+{streak_pct}% EXP & Gold)"
 
     async def refresh_embed(self, interaction: Interaction):
         self._apply_phase_image_transition()
@@ -918,6 +920,7 @@ class CombatView(BaseLayoutView):
             engine.apply_stat_effects(self.player, self.monster)
             new_logs = engine.apply_combat_start_passives(self.player, self.monster)
             self.logs = new_logs
+            self.combat_logger.log_player_stat_snapshot(self.player, self.monster)
 
             trans_embed = discord.Embed(
                 title="Phase Complete!",
@@ -1023,7 +1026,7 @@ class CombatView(BaseLayoutView):
                 diff_name = _DIFFICULTY_NAMES_V[self.hard_mode]
                 bonus_parts.append(f"{diff_emoji} {diff_name} Mode +{hard_mode_pct}%")
             if streak_pct > 0:
-                bonus_parts.append(f"🔥 Streak +{streak_pct}%")
+                bonus_parts.append(f"{WIN_STREAK} Streak +{streak_pct}%")
             if difficulty_xp_pct > 0:
                 bonus_parts.append(
                     f"⚔️ Difficulty +{difficulty_xp_pct * 100:.1f}% XP, "
@@ -1046,7 +1049,7 @@ class CombatView(BaseLayoutView):
         # Victory embed footer: show updated streak so the player knows where they stand.
         if new_streak > 0:
             new_streak_pct = min(50, new_streak // 10)
-            footer_txt = f"🔥 Streak: {new_streak}"
+            footer_txt = f"{WIN_STREAK} Streak: {new_streak}"
             if new_streak_pct > 0:
                 footer_txt += f"  (+{new_streak_pct}% bonus next fight)"
             embed.set_footer(text=footer_txt)

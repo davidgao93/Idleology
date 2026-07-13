@@ -40,6 +40,7 @@ from core.combat.economy.rewards import (
     check_special_drops,
 )
 from core.companions.mechanics import CompanionMechanics
+from core.emojis import ZEAL
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
     BOSS_APHRODITE,
@@ -613,11 +614,13 @@ async def apply_victory_rewards(
         if actual_zeal > 0:
             await bot.database.settlement.add_zeal(user_id, server_id, actual_zeal)
             if earned_today >= ZEAL_DAILY_HARD_CAP:
-                zeal_note = "🔥 Settlement Zeal: capped for today"
+                zeal_note = f"{ZEAL} Settlement Zeal: capped for today"
             elif earned_today >= ZEAL_DAILY_SOFT_CAP:
-                zeal_note = f"🔥 +{actual_zeal} Settlement Zeal *(soft cap reached)*"
+                zeal_note = (
+                    f"{ZEAL} +{actual_zeal} Settlement Zeal *(soft cap reached)*"
+                )
             else:
-                zeal_note = f"🔥 +{actual_zeal} Settlement Zeal"
+                zeal_note = f"{ZEAL} +{actual_zeal} Settlement Zeal"
             reward_data["msgs"].append(zeal_note)
     except Exception:
         pass  # Zeal is non-critical; never break combat on its failure

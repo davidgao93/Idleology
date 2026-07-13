@@ -98,7 +98,10 @@ PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
             "label": "Seraphic Sovereign",
             "url": PRESTIGE_AVATARS_FEMALE_SS["angel"],
         },
-        "fire": {"label": "Phoenix Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["fire"]},
+        "fire": {
+            "label": "Phoenix Sovereign",
+            "url": PRESTIGE_AVATARS_FEMALE_SS["fire"],
+        },
         "rose": {"label": "Rose Sovereign", "url": PRESTIGE_AVATARS_FEMALE_SS["rose"]},
         "thunder": {
             "label": "Thunder Sovereign",
@@ -115,7 +118,10 @@ PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
             "label": "Cyber Emperor",
             "url": PRESTIGE_AVATARS_MALE_SS["cyber_emperor"],
         },
-        "dragon": {"label": "Dragon Sovereign", "url": PRESTIGE_AVATARS_MALE_SS["dragon"]},
+        "dragon": {
+            "label": "Dragon Sovereign",
+            "url": PRESTIGE_AVATARS_MALE_SS["dragon"],
+        },
         "samurai_lord": {
             "label": "Samurai Lord",
             "url": PRESTIGE_AVATARS_MALE_SS["samurai_lord"],

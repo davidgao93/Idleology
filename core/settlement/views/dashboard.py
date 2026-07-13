@@ -12,6 +12,7 @@ from core.emojis import (
     LIFE_ROOT,
     MAGMA_CORE,
     SPIRIT_SHARD,
+    ZEAL,
 )
 from core.images import (
     CRISIS_MONSTER_IMAGES,
@@ -327,7 +328,7 @@ class SettlementDashboardView(SettlementBaseView):
 
         # Zeal / DT economy
         embed.add_field(
-            name="🔥 Zeal",
+            name=f"{ZEAL} Zeal",
             value=f"{zeal:,}",
             inline=True,
         )
@@ -797,7 +798,7 @@ class SettlementDashboardView(SettlementBaseView):
         gather_zeal_btn = ui.Button(
             label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})",
             style=ButtonStyle.blurple,
-            emoji="🔥",
+            emoji=ZEAL,
             row=1,
             disabled=_pz <= 0,
         )
@@ -1309,9 +1310,7 @@ class SettlementDashboardView(SettlementBaseView):
 
             # Extreme-value deals can roll far more reward types than fit in an
             # embed field — send the untruncated breakdown ephemerally instead.
-            reward_parts = (summary.get("deal_rewards") or {}).get(
-                "summary_lines", []
-            )
+            reward_parts = (summary.get("deal_rewards") or {}).get("summary_lines", [])
             full_reward_text = " | ".join(reward_parts)
             if len(full_reward_text) > 300:
                 await self._send_chunked_ephemeral(
@@ -1330,7 +1329,9 @@ class SettlementDashboardView(SettlementBaseView):
         messages: list[str] = []
         current = header
         for part in parts:
-            candidate = f"{current}\n{part}" if current == header else f"{current} | {part}"
+            candidate = (
+                f"{current}\n{part}" if current == header else f"{current} | {part}"
+            )
             if len(candidate) > 1900:
                 messages.append(current)
                 current = part
@@ -1417,7 +1418,7 @@ class SettlementDashboardView(SettlementBaseView):
                 pending_deal=pending_deal,
             )
             embed.add_field(
-                name="🔥 Zeal Gathered",
+                name=f"{ZEAL} Zeal Gathered",
                 value=f"+{collected:,} Zeal collected from passive generation.",
                 inline=False,
             )

@@ -31,11 +31,27 @@ class CombatLogger:
     All methods are no-ops when combat_logging is disabled in config.json.
     """
 
+    # Stats tracked by the per-turn stat-breakdown audit, and the Player getter
+    # (kwargs) used to compute each one. All getters accept explain=True and
+    # return (total, [(source_label, delta), ...]) on that same code path used
+    # by the combat embed, so the audit can never drift from what's displayed.
+    _STAT_GETTERS = (
+        ("ATK", "get_total_attack", True),
+        ("DEF", "get_total_defence", True),
+        ("Max HP", "get_total_max_hp", False),
+        ("Crit%", "get_current_crit_chance", False),
+        ("Crit Multi", "get_weapon_crit_multi", True),
+        ("Ward%", "get_total_ward_percentage", False),
+        ("PDR", "get_total_pdr", False),
+        ("FDR", "get_total_fdr", False),
+    )
+
     def __init__(self, player: Player, monster: Monster):
         self._file = None
         self._turn = 0
         self._total_dealt = 0
         self._total_taken = 0
+        self._last_stat_snapshot: dict[str, float] | None = None
 
         if not _logging_enabled():
             return
@@ -57,6 +73,29 @@ class CombatLogger:
     def _w(self, line: str) -> None:
         if self._file:
             self._file.write(line + "\n")
+
+    def _compute_stats(
+        self, player: Player, monster: Monster
+    ) -> dict[str, tuple[float, list[tuple[str, float]]]]:
+        """Returns {label: (total, contributions)} for every tracked stat, using
+        the exact same Player getters (with explain=True) the combat embed calls
+        with explain defaulted off — so this can never drift from what's displayed."""
+        results: dict[str, tuple[float, list[tuple[str, float]]]] = {}
+        for label, method_name, takes_monster in self._STAT_GETTERS:
+            method = getattr(player, method_name)
+            results[label] = (
+                method(monster, explain=True) if takes_monster else method(explain=True)
+            )
+        return results
+
+    @staticmethod
+    def _format_breakdown(label: str, total: float, contributions: list) -> list[str]:
+        total_str = f"{total:.2f}" if isinstance(total, float) else str(total)
+        lines = [f"  {label}: {total_str}"]
+        for src, delta in contributions:
+            delta_str = f"{delta:+.2f}" if isinstance(delta, float) else f"{delta:+d}"
+            lines.append(f"      {delta_str}  {src}")
+        return lines
 
     # ------------------------------------------------------------------
     # Public API
@@ -132,6 +171,20 @@ class CombatLogger:
         )
         self._w("")
 
+        # Full per-stat contributor breakdown — turn-1 baseline, captured after
+        # apply_stat_effects/apply_combat_start_passives have already run (see
+        # CombatView.__init__), so this reflects every weapon/armor/accessory
+        # passive and monster modifier already applied to the player.
+        self._w("[STAT BREAKDOWN] (turn 1 baseline, after combat-start passives)")
+        stats = self._compute_stats(player, monster)
+        for label, (total, contributions) in stats.items():
+            for line in self._format_breakdown(label, total, contributions):
+                self._w(line)
+        self._last_stat_snapshot = {
+            label: total for label, (total, _c) in stats.items()
+        }
+        self._w("")
+
     def log_transient_states(self, player: Player, after_label: str = "") -> None:
         """Log all active jewel/hematurgy transient states after a turn.
         Outputs nothing if all transients are at zero/inactive to keep logs clean."""
@@ -191,6 +244,37 @@ class CombatLogger:
             prefix = f" after {after_label}" if after_label else ""
             self._w(f"  [TRANSIENTS{prefix}]")
             for line in lines:
+                self._w(f"    {line}")
+
+    def log_player_stat_snapshot(self, player: Player, monster: Monster) -> None:
+        """Logs a contributor breakdown for any of the 8 tracked stats that
+        changed since the last snapshot (the turn-1 baseline from
+        log_combat_start, or the previous call to this method). Prints nothing
+        if no tracked stat changed, mirroring log_transient_states' quiet-when-
+        inactive behavior — keeps per-turn logs readable while still catching
+        every mid-combat drift source (Enrage/Enfeeble, ward breaks, hematurgy
+        stacks, etc.)."""
+        if not self._file:
+            return
+
+        stats = self._compute_stats(player, monster)
+        prev = self._last_stat_snapshot or {}
+        changed = [
+            label
+            for label, (total, _c) in stats.items()
+            if label not in prev or prev[label] != total
+        ]
+        self._last_stat_snapshot = {
+            label: total for label, (total, _c) in stats.items()
+        }
+
+        if not changed:
+            return
+
+        self._w(f"  [STATS CHANGED T{self._turn}]")
+        for label in changed:
+            total, contributions = stats[label]
+            for line in self._format_breakdown(label, total, contributions):
                 self._w(f"    {line}")
 
     def log_player_turn(self, result, monster: Monster) -> None:

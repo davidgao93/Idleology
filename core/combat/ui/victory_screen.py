@@ -16,7 +16,10 @@ from core.emojis import (
     ANGEL_KEY,
     APEX_SHARD_EMOJI,
     BLESSED_BISMUTH,
+    BOUND_SIGIL,
     CAPRICIOUS_CARP,
+    CELESTIAL_SIGIL,
+    CORRUPTION_SIGIL,
     COSMIC_DUST,
     CURIO,
     DIVINER_ROD,
@@ -25,6 +28,8 @@ from core.emojis import (
     INFERNAL_SIGIL,
     LIFE_ROOT,
     MAGMA_CORE,
+    MONSTER_EGG,
+    MONSTER_EGG_TIER_EMOJI,
     PARADISE_JEWEL_UNCUT,
     PINNACLE_KEY,
     PUZZLE_BOX,
@@ -49,6 +54,7 @@ from core.emojis import (
     SPIRIT_STONE,
     VOID_FRAG,
     VOID_KEY,
+    VOID_SIGIL,
 )
 from core.images import COMBAT_VICTORY
 from core.items.models import _PART_SLOT_LABELS
@@ -171,11 +177,11 @@ def create_victory_embed(
         "Diviner's Rod": DIVINER_ROD,
         "Antique Tome": "📜",
         "Guild Ticket": "🎫",
-        "Sigil of Corruption": "☠️",
-        "Celestial Sigil": "🌌",
+        "Sigil of Corruption": CORRUPTION_SIGIL,
+        "Celestial Sigil": CELESTIAL_SIGIL,
         "Infernal Sigil": INFERNAL_SIGIL,
-        "Void Sigil": "🟣",
-        "Bound Sigil": "⚖️",
+        "Void Sigil": VOID_SIGIL,
+        "Bound Sigil": BOUND_SIGIL,
         "Apex of Dreams": RITE_KEY_CELESTIAL,
         "Corruption of Memories": RITE_KEY_INFERNAL,
         "Scales of Judgment": RITE_KEY_GEMINI,
@@ -228,10 +234,9 @@ def create_victory_embed(
             "rare": "Rare Monster Egg",
             "giga": "Giga Monster Egg",
         }
-        _EGG_TIER_EMOJIS = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
         egg_tier = rewards["egg"]
         egg_label = _EGG_TIER_LABELS.get(egg_tier, "Monster Egg")
-        egg_emoji = _EGG_TIER_EMOJIS.get(egg_tier, "🥚")
+        egg_emoji = MONSTER_EGG_TIER_EMOJI.get(egg_tier, MONSTER_EGG)
         loot_lines.append(f"{egg_emoji} **{egg_label}**")
 
     # 7. Monster Body Part Drop

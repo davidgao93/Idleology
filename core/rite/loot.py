@@ -39,12 +39,48 @@ ARTEFACT_DROP_CHANCE_CAP = 0.40
 # NOTE: Seal of Duality has no dedicated artefact asset yet — falls back to
 # MONSTER_GEMINI_REBORN until one is provided.
 ARTEFACT_TABLE: dict[str, tuple[str, str, int, int, str]] = {
-    "blessed_bulwark": ("Blessed Bulwark", "Aphrodite", ARTEFACT_TIER_1_DP, 25, ARTEFACT_BLESSED_BULWARK),
-    "brand_of_ruin": ("Brand of Ruin", "Lucifer", ARTEFACT_TIER_1_DP, 25, ARTEFACT_BRAND_OF_RUIN),
-    "seal_of_duality": ("Seal of Duality", "Gemini", ARTEFACT_TIER_1_DP, 25, MONSTER_GEMINI_REBORN),
-    "sad_ones_gamble": ("Sad One's Gamble", "NEET", ARTEFACT_TIER_2_DP, 10, ARTEFACT_SAD_ONES_GAMBLE),
-    "corrupted_insignia": ("Corrupted Insignia", "Evelynn", ARTEFACT_TIER_2_DP, 10, ARTEFACT_CORRUPTED_INSIGNIA),
-    "the_final_edict": ("The Final Edict", "Arbiter", ARTEFACT_TIER_3_DP, 5, ARTEFACT_THE_FINAL_EDICT),
+    "blessed_bulwark": (
+        "Blessed Bulwark",
+        "Aphrodite",
+        ARTEFACT_TIER_1_DP,
+        25,
+        ARTEFACT_BLESSED_BULWARK,
+    ),
+    "brand_of_ruin": (
+        "Brand of Ruin",
+        "Lucifer",
+        ARTEFACT_TIER_1_DP,
+        25,
+        ARTEFACT_BRAND_OF_RUIN,
+    ),
+    "seal_of_duality": (
+        "Seal of Duality",
+        "Gemini",
+        ARTEFACT_TIER_1_DP,
+        25,
+        MONSTER_GEMINI_REBORN,
+    ),
+    "sad_ones_gamble": (
+        "Sad One's Gamble",
+        "NEET",
+        ARTEFACT_TIER_2_DP,
+        10,
+        ARTEFACT_SAD_ONES_GAMBLE,
+    ),
+    "corrupted_insignia": (
+        "Corrupted Insignia",
+        "Evelynn",
+        ARTEFACT_TIER_2_DP,
+        10,
+        ARTEFACT_CORRUPTED_INSIGNIA,
+    ),
+    "the_final_edict": (
+        "The Final Edict",
+        "Arbiter",
+        ARTEFACT_TIER_3_DP,
+        5,
+        ARTEFACT_THE_FINAL_EDICT,
+    ),
 }
 
 
@@ -69,9 +105,10 @@ def artefact_drop_chance(total_dp: int) -> float:
     if span <= 0 or total_dp <= ARTEFACT_TIER_1_DP:
         return ARTEFACT_DROP_CHANCE_BASE
     progress = min(1.0, (total_dp - ARTEFACT_TIER_1_DP) / span)
-    return ARTEFACT_DROP_CHANCE_BASE + (
-        ARTEFACT_DROP_CHANCE_CAP - ARTEFACT_DROP_CHANCE_BASE
-    ) * progress
+    return (
+        ARTEFACT_DROP_CHANCE_BASE
+        + (ARTEFACT_DROP_CHANCE_CAP - ARTEFACT_DROP_CHANCE_BASE) * progress
+    )
 
 
 def roll_artefact_key(total_dp: int) -> str | None:
