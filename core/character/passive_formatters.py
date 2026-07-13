@@ -297,8 +297,9 @@ CATEGORY_ORDER: list[str] = [
     "Parts",
 ]
 
-# Buckets shown without an explicit +/- sign (magnitudes, not deltas).
-_UNSIGNED_CATEGORIES = {"Base", "Equipment"}
+# Categories shown even when their value is zero (every other category is
+# hidden when empty, since it's just noise once the accumulator is empty).
+_ALWAYS_SHOWN_CATEGORIES = {"Base", "Equipment"}
 
 
 def render_bucket_lines(
@@ -309,20 +310,20 @@ def render_bucket_lines(
     label_overrides: dict[str, str] | None = None,
 ) -> list[str]:
     """Renders grouped buckets as '↳ Category: value' lines in CATEGORY_ORDER,
-    skipping empty buckets. Base/Equipment show a plain magnitude; every other
-    bucket is signed (+/-). label_overrides optionally renames a category's
-    displayed label (e.g. the "Bonus" catch-all -> "Other bonus sources" when
-    it's nested under a "Bonus:" group header, to avoid the name collision)."""
+    skipping empty buckets except Base/Equipment (shown even at zero). No
+    leading '+' on positive values — every line here is an accumulator
+    contribution, so the sign is implied; negative deltas still show '-'.
+    label_overrides optionally renames a category's displayed label (e.g. the
+    "Bonus" catch-all -> "Other bonus sources" when it's nested under a
+    "Bonus:" group header, to avoid the name collision)."""
     lines = []
     for cat in CATEGORY_ORDER:
         if cat not in buckets:
             continue
         val = buckets[cat]
         label = (label_overrides or {}).get(cat, cat)
-        if cat in _UNSIGNED_CATEGORIES:
+        if cat in _ALWAYS_SHOWN_CATEGORIES or val:
             lines.append(f"↳ {label}: {val:,.{decimals}f}{suffix}")
-        elif val:
-            lines.append(f"↳ {label}: {val:+,.{decimals}f}{suffix}")
     return lines
 
 
@@ -398,7 +399,7 @@ def render_flat_bonus_total_lines(
     if bonus_total:
         lines.append(f"↳ Bonus: {bonus_total:,.{decimals}f}{suffix}")
     if combat_start_delta:
-        lines.append(f"↳ Combat Start: {combat_start_delta:+,.{decimals}f}{suffix}")
+        lines.append(f"↳ Combat Start: {combat_start_delta:,.{decimals}f}{suffix}")
     return lines
 
 

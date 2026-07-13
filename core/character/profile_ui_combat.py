@@ -181,9 +181,9 @@ class CombatProfileBuilder:
         cs_sr = p.get_special_drop_bonus() - total_sr
 
         if cs_crit:
-            crit_lines.append(f"↳ Combat Start: {cs_crit:+}%")
+            crit_lines.append(f"↳ Combat Start: {cs_crit}%")
         if cs_sr:
-            sr_lines.append(f"↳ Combat Start: {cs_sr:+.1f}%")
+            sr_lines.append(f"↳ Combat Start: {cs_sr:.1f}%")
 
         atk_lines = render_flat_bonus_total_lines(
             "atk", p.flat_atk, atk_buckets, total_atk, cs_atk
@@ -191,7 +191,7 @@ class CombatProfileBuilder:
         def_lines = render_flat_bonus_total_lines(
             "def", p.flat_def, def_buckets, total_def, cs_def
         )
-        hp_lines = [f"{p.current_hp:,} / {total_hp:,} *(current, pre-combat)*"]
+        hp_lines = [f"{p.current_hp:,} / {total_hp:,}"]
         hp_lines += render_flat_bonus_total_lines(
             "hp", flat_hp, hp_buckets, total_hp, cs_hp
         )
