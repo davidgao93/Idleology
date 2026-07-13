@@ -639,6 +639,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         if player.alchemy_eclipse_strikes <= 0:
             player.alchemy_eclipse_bonus = 0.0
 
+    miss_poison_dmg = 0
     if is_crit:
         raw_damage = calc_crit_damage(
             player, monster, attack_multiplier, log, calc, clog=clog
@@ -648,7 +649,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             player, monster, attack_multiplier, log, calc, clog=clog
         )
     else:
-        raw_damage = calc_miss_damage(
+        raw_damage, miss_poison_dmg = calc_miss_damage(
             player, monster, attack_multiplier, log, calc, clog=clog
         )
 
@@ -844,7 +845,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
                 echo_component = int(final_hit * echo_scale / (1 + echo_scale))
                 apply_reverberation(player, monster, echo_component, log)
         else:
-            on_player_miss(player, monster, raw_damage, log)
+            on_player_miss(player, monster, raw_damage, miss_poison_dmg, log)
         # Kill hook
         if monster.hp <= 0:
             on_kill(player, log)

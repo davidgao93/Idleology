@@ -140,7 +140,7 @@ _TV: dict[str, list] = {
         0.40,
     ],  # ATK+DEF% on first HP<40% drop
     # Mutated pool
-    "spectral_waltz": [5, 5, 6, 7, 8, 9, 10],  # % ATK per blade released
+    "spectral_waltz": [4, 5, 6, 7, 8, 9, 10],  # % ATK per blade released
     "spectral_waltz_max": [5, 6, 7, 8, 10, 12, 15],  # max blade cap
     "puncture": [
         0.05,
@@ -201,11 +201,11 @@ def _desc(pid: str, tier: int) -> str:
     match pid:
         case "reverberation":
             return (
-                f"Echo hits have a {pct(v)} chance to re-echo again (each successive "
-                f"re-echo is -10% less likely, resets on miss)."
+                f"Your weapon's Echo passive has a {pct(v)} chance to chain re-echo "
+                f"again (each successive re-echo is 50% less likely)."
             )
         case "soothing_venom":
-            return f"{pct(v)} of your Poison passive's miss-damage is returned as HP lifesteal."
+            return f"{pct(v)} of your weapon's Poison passive miss-damage is gained as HP."
         case "iron_momentum":
             return (
                 f"Each consecutive hit grants +{pct(v)} ATK (max 5 stacks). "
@@ -224,7 +224,10 @@ def _desc(pid: str, tier: int) -> str:
         case "vital_resonance":
             return f"{pct(v)} of all ward generated is simultaneously applied as HP recovery."
         case "executioners_rite":
-            return f"While the monster is below 30% HP: +{pct(v)} ATK and +{pct(v)} crit damage."
+            return (
+                f"On hit, while the monster is below 30% HP: +{pct(v)} bonus ATK "
+                f"and +{v:.2f} critical strike multiplier."
+            )
         case "crimson_feast":
             return f"On monster kill: restore {pct(v)} of Max HP."
         case "phantom_reflex":
@@ -277,8 +280,9 @@ def _desc(pid: str, tier: int) -> str:
         case "flash_frost":
             thresh = int(v)
             return (
-                f"After {thresh} consecutive misses the monster cannot act for 1 round "
-                f"and the counter fully resets. Checks invulnerability before applying."
+                f"Each miss adds a Frost stack on the monster. After {thresh} stacks, "
+                f"the monster cannot act for 1 turn and the stacks fully reset. "
+                f"Checks invulnerability before applying."
             )
         case "ward_inoculation":
             return (
@@ -287,8 +291,8 @@ def _desc(pid: str, tier: int) -> str:
             )
         case "soul_fracture":
             return (
-                f"For each 10% of Max HP lost **during this combat** (HP at combat start "
-                f"excluded): +{pct(v)} ATK. Tracks real-time; resets between fights."
+                f"For each 10% of your flat Max HP lost **during this combat**: "
+                f"+{pct(v)} bonus ATK. Tracks real-time; resets between fights."
             )
     return "Unknown passive."
 

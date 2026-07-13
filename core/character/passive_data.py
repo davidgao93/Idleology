@@ -266,10 +266,10 @@ _ROMAN = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}
 
 _HEMATURGY_SHORT_FUNCS: dict = {
     "reverberation": lambda t: (
-        f"On hit: {_htv('reverberation', t) * 100:.0f}% chance for echoes to retrigger (−10% per chain)"
+        f"On hit: Echo has {_htv('reverberation', t) * 100:.0f}% chance to chain re-echo (50% less likely per chain)"
     ),
     "soothing_venom": lambda t: (
-        f"On miss: Leech {_htv('soothing_venom', t) * 100:.0f}% of poison damage as HP"
+        f"On miss: Gain {_htv('soothing_venom', t) * 100:.0f}% of your weapon's Poison passive miss-damage as HP"
     ),
     "iron_momentum": lambda t: (
         f"On hit: +{_htv('iron_momentum', t) * 100:.0f}% ATK per stack (max 5); On miss: reset stacks"
@@ -284,7 +284,8 @@ _HEMATURGY_SHORT_FUNCS: dict = {
         f"On ward gain: Heal {_htv('vital_resonance', t) * 100:.0f}% of ward gained as HP"
     ),
     "executioners_rite": lambda t: (
-        f"During combat: +{_htv('executioners_rite', t) * 100:.0f}% ATK and crit damage while monster HP < 30%"
+        f"On hit: While the monster is below 30% HP, +{_htv('executioners_rite', t) * 100:.0f}% bonus ATK "
+        f"and +{_htv('executioners_rite', t):.2f} crit strike multiplier"
     ),
     "crimson_feast": lambda t: (
         f"On kill: Restore {_htv('crimson_feast', t) * 100:.0f}% of Max HP"
@@ -317,13 +318,13 @@ _HEMATURGY_SHORT_FUNCS: dict = {
         f"On crit: Build {_htv('puncture', t) * 100:.0f}% crit damage as bleed pool; On miss: burst 50%"
     ),
     "flash_frost": lambda t: (
-        f"On miss: After {_htv('flash_frost', t):.0f} consecutive misses, freeze monster for 1 round"
+        f"On miss: Adds a Frost stack; after {_htv('flash_frost', t):.0f} stacks, freeze monster for 1 turn"
     ),
     "ward_inoculation": lambda t: (
         f"Combat start: gain {_htv('ward_inoculation', t) * 100:.0f}% of ward as bonus DEF, Max HP doubled"
     ),
     "soul_fracture": lambda t: (
-        f"During combat: +{_htv('soul_fracture', t) * 100:.0f}% ATK per 10% Max HP lost this fight"
+        f"During combat: +{_htv('soul_fracture', t) * 100:.0f}% bonus ATK per 10% of flat Max HP lost this fight"
     ),
 }
 

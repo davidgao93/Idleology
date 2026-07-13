@@ -17,7 +17,7 @@ get_h(player, pid)                           → int | None
 apply_hematurgy_start(player, monster, log)  — Ward Inoculation at combat start
 on_haemorrhage_tick(player, monster, log)    — bleed DoT, start of player turn
 on_player_hit(player, monster, damage, is_crit, log)  → extra_damage: int
-on_player_miss(player, monster, miss_damage, log)     → extra_damage: int
+on_player_miss(player, monster, miss_damage, poison_damage, log)  → extra_damage: int
 on_ward_gained(player, amount, log)          → adjusted_amount: int
 on_monster_turn_start(player, monster, log)  → skip_turn: bool
 on_monster_turn_end(player, monster, hp_damage, is_dodged, is_blocked, log)
@@ -81,12 +81,18 @@ def get_executioners_rite_bonus(player: Player, monster: Monster) -> float:
 
 
 def get_soul_fracture_factor(player: Player) -> float:
-    """Soul Fracture: returns fractional ATK bonus per 10% of max HP lost this combat."""
+    """Soul Fracture: returns fractional ATK bonus per 10% of flat Max HP lost
+    this combat. Anchored to a stable flat HP baseline (transient bonus_max_hp
+    zeroed out) rather than the live total, so the chunk size can't shift
+    mid-combat if something else changes bonus_max_hp."""
     tier = get_h(player, "soul_fracture")
     if tier is None or player.cs.hema_hp_lost_combat <= 0:
         return 0.0
-    max_hp = max(player.total_max_hp, 1)
-    chunks = int(player.cs.hema_hp_lost_combat / (max_hp * 0.10))
+    saved_bonus = player.bonus_max_hp
+    player.bonus_max_hp = 0
+    flat_max_hp = max(player.total_max_hp, 1)
+    player.bonus_max_hp = saved_bonus
+    chunks = int(player.cs.hema_hp_lost_combat / (flat_max_hp * 0.10))
     if chunks <= 0:
         return 0.0
     return _tv("soul_fracture", tier) * chunks
@@ -325,10 +331,14 @@ def on_player_miss(
     player: Player,
     monster: Monster,
     miss_damage: int,
+    poison_damage: int,
     log: list[str],
 ) -> int:
     """
-    Fires after a miss resolves.
+    Fires after a miss resolves. miss_damage is the total on-miss damage dealt
+    (Perdition + Poison + Oblivion); poison_damage is the Poison-passive-only
+    portion of that, used by Soothing Venom so it doesn't lifesteal off
+    Perdition/Oblivion damage too.
     Returns any extra damage dealt (Puncture burst) + tracks Soothing Venom heal.
     """
     extra = 0
@@ -395,10 +405,10 @@ def on_player_miss(
             )
         player.cs.hema_puncture_bleed = 0
 
-    # --- Soothing Venom: lifesteal from poison miss-damage ---
+    # --- Soothing Venom: lifesteal from Poison-passive miss-damage only ---
     tier_sv = get_h(player, "soothing_venom")
-    if tier_sv is not None and miss_damage > 0:
-        heal = int(miss_damage * _tv("soothing_venom", tier_sv))
+    if tier_sv is not None and poison_damage > 0:
+        heal = int(poison_damage * _tv("soothing_venom", tier_sv))
         if heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + heal)
             log.append(
@@ -585,7 +595,7 @@ def apply_reverberation(
         log.append(
             f"{HEMATURGY_PASSIVE_EMOJI['reverberation']} **Reverberation** re-echoes! +{actual} damage!"
         )
-        chance -= 0.10
+        chance *= 0.5
         if monster.hp <= 0:
             break
 

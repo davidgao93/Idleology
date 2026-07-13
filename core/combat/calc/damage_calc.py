@@ -10,7 +10,7 @@ calculate_damage_taken(player, monster) -> int          # raw monster hit before
 roll_monster_damage(player, monster, pdr, fdr, calc)   # full monster damage roll with mods
 calc_crit_damage(player, monster, mult, log, calc)      # player crit damage
 calc_hit_damage(player, monster, mult, log, calc)       # player normal hit damage
-calc_miss_damage(player, monster, mult, log, calc)      # player miss on-hit damage
+calc_miss_damage(player, monster, mult, log, calc)      # player miss on-hit damage -> (total, poison_only)
 apply_monster_damage_reduction(monster, dmg, log, calc) # monster's own DR modifiers
 apply_damage_to_monster(player, monster, dmg, log)      # final application to monster ward+HP
 """
@@ -610,11 +610,18 @@ def calc_miss_damage(
     calc: list[str],
     *,
     clog: list[str] | None = None,
-) -> int:
-    """Phase 4c — miss, any on-miss damage sources. Returns total miss damage."""
+) -> tuple[int, int]:
+    """Phase 4c — miss, any on-miss damage sources.
+
+    Returns (total_damage, poison_damage) — poison_damage is broken out
+    separately (rather than folded into the Perdition/Oblivion total) so
+    Hematurgy Soothing Venom can lifesteal specifically off the weapon's
+    Poison passive, not off every on-miss damage source.
+    """
     from core.combat.calc.calcs import get_weapon_tier
 
     damage = 0
+    poison_dmg = 0
     miss_parts = []
 
     infernal = player.get_weapon_infernal()
@@ -662,7 +669,7 @@ def calc_miss_damage(
     calc.append(
         f"  miss_dmg: {damage} (sources: {', '.join(miss_parts) if miss_parts else 'none'})"
     )
-    return damage
+    return damage, poison_dmg
 
 
 # ---------------------------------------------------------------------------

@@ -1311,6 +1311,8 @@ class Player:
             total += self.equipped_weapon.attack
         if self.equipped_accessory:
             total += self.equipped_accessory.attack
+        if self.equipped_armor and self.equipped_armor.main_stat_type == "atk":
+            total += self.equipped_armor.main_stat
         if self.equipped_glove:
             total += self.equipped_glove.attack
         if self.equipped_boot:
@@ -1332,6 +1334,8 @@ class Player:
             total += self.equipped_weapon.defence
         if self.equipped_accessory:
             total += self.equipped_accessory.defence
+        if self.equipped_armor and self.equipped_armor.main_stat_type == "def":
+            total += self.equipped_armor.main_stat
         if self.equipped_glove:
             total += self.equipped_glove.defence
         if self.equipped_boot:

@@ -302,20 +302,103 @@ _UNSIGNED_CATEGORIES = {"Base", "Equipment"}
 
 
 def render_bucket_lines(
-    buckets: dict[str, float], *, suffix: str = "", decimals: int = 0
+    buckets: dict[str, float],
+    *,
+    suffix: str = "",
+    decimals: int = 0,
+    label_overrides: dict[str, str] | None = None,
 ) -> list[str]:
     """Renders grouped buckets as '↳ Category: value' lines in CATEGORY_ORDER,
     skipping empty buckets. Base/Equipment show a plain magnitude; every other
-    bucket is signed (+/-)."""
+    bucket is signed (+/-). label_overrides optionally renames a category's
+    displayed label (e.g. the "Bonus" catch-all -> "Other bonus sources" when
+    it's nested under a "Bonus:" group header, to avoid the name collision)."""
     lines = []
     for cat in CATEGORY_ORDER:
         if cat not in buckets:
             continue
         val = buckets[cat]
+        label = (label_overrides or {}).get(cat, cat)
         if cat in _UNSIGNED_CATEGORIES:
-            lines.append(f"↳ {cat}: {val:,.{decimals}f}{suffix}")
+            lines.append(f"↳ {label}: {val:,.{decimals}f}{suffix}")
         elif val:
-            lines.append(f"↳ {cat}: {val:+,.{decimals}f}{suffix}")
+            lines.append(f"↳ {label}: {val:+,.{decimals}f}{suffix}")
+    return lines
+
+
+# Which display buckets belong under the "Flat" group header for each stat's
+# nested Flat/Bonus/Total breakdown (see profile_ui_combat.py build_stats).
+# Everything else present in a stat's buckets dict falls under "Bonus".
+FLAT_BUCKET_KEYS: dict[str, set[str]] = {
+    # ATK/DEF: literal gear/base/essence/barracks contributions only — every
+    # %-of-flat source (Ascension pinnacle, Companions, Stat Investment,
+    # Wrath/Bastion tomes, Hematurgy, ...) is a Bonus, matching flat_atk/flat_def.
+    "atk": {"Base", "Equipment", "Barracks", "Essences"},
+    "def": {"Base", "Equipment", "Barracks", "Essences"},
+    # Max HP has no flat_hp cache and a different contribution shape: Base,
+    # Codex Run Bonus, and Ascension Pinnacle/Monster Parts are literal flat
+    # adds (not %), so they anchor Flat; Vitality/Hearty/Gluttony/Stat
+    # Investment are all %-of-running-base multipliers, so they're Bonus.
+    "hp": {"Base", "Ascent", "Parts", "Codex"},
+}
+
+
+def split_flat_bonus_buckets(
+    buckets: dict[str, float], stat_key: str
+) -> "tuple[dict[str, float], dict[str, float]]":
+    """Splits a group_contributions() bucket dict into (flat_buckets,
+    bonus_buckets) using FLAT_BUCKET_KEYS[stat_key]. stat_key is 'atk',
+    'def', or 'hp'."""
+    flat_keys = FLAT_BUCKET_KEYS.get(stat_key, set())
+    flat = {k: v for k, v in buckets.items() if k in flat_keys}
+    bonus = {k: v for k, v in buckets.items() if k not in flat_keys}
+    return flat, bonus
+
+
+def render_flat_bonus_total_lines(
+    stat_key: str,
+    flat_total: float,
+    buckets: dict[str, float],
+    baseline_total: float,
+    combat_start_delta: float,
+    *,
+    suffix: str = "",
+    decimals: int = 0,
+) -> list[str]:
+    """Renders the nested Flat / Bonus / Total breakdown used by the stats
+    page for ATK, DEF, and Max HP — mirrors the turn-1 baseline stat
+    breakdown in combat_log.py (Total = Flat + Bonus + Combat Start, where
+    Combat Start is the deterministic apply_combat_start_passives() preview
+    measured as a real before/after diff, never a hand-derived approximation).
+
+    flat_total: player.flat_atk / flat_def, or the Flat-bucket sum for HP.
+    buckets: full group_contributions() dict for this stat (Base/Equipment/
+        Barracks/Essences/Stats/Hematurgy/Ascent/Codex/Passives/Bonus/Parts).
+    baseline_total: the stat's real total BEFORE combat-start bonuses are
+        seeded (i.e. get_total_attack()/get_total_defence()/get_total_max_hp()
+        on a freshly-loaded Player) — equals flat_total + bonus_total exactly.
+    combat_start_delta: the before/after diff once combat-start bonuses are
+        seeded into bonus_atk/bonus_def/bonus_max_hp.
+    """
+    flat_buckets, bonus_buckets = split_flat_bonus_buckets(buckets, stat_key)
+    bonus_total = baseline_total - flat_total
+    grand_total = baseline_total + combat_start_delta
+
+    lines = [f"**Flat: {flat_total:,.{decimals}f}{suffix}**"]
+    lines += render_bucket_lines(flat_buckets, suffix=suffix, decimals=decimals)
+    lines.append(f"**Bonus: {bonus_total:,.{decimals}f}{suffix}**")
+    lines += render_bucket_lines(
+        bonus_buckets,
+        suffix=suffix,
+        decimals=decimals,
+        label_overrides={"Bonus": "Other bonus sources"},
+    )
+    lines.append(f"**Total: {grand_total:,.{decimals}f}{suffix}**")
+    lines.append(f"↳ Flat: {flat_total:,.{decimals}f}{suffix}")
+    if bonus_total:
+        lines.append(f"↳ Bonus: {bonus_total:,.{decimals}f}{suffix}")
+    if combat_start_delta:
+        lines.append(f"↳ Combat Start: {combat_start_delta:+,.{decimals}f}{suffix}")
     return lines
 
 

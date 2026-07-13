@@ -30,6 +30,8 @@ from core.character.passive_formatters import (
     _normalize,
     group_contributions,
     render_bucket_lines,
+    render_flat_bonus_total_lines,
+    split_flat_bonus_buckets,
 )
 from core.emojis import (
     ACCESSORY_SLOT,
@@ -66,31 +68,32 @@ class CombatProfileBuilder:
         embed = discord.Embed(title="Combat Statistics", color=0x00FF00)
         embed.set_thumbnail(url=data["appearance"])
 
-        # "Total" on this page must equal the player's TRUE, persistent stat
-        # right now — the same number /rest, combat entry, etc. read via
-        # player.total_max_hp/get_total_attack() on a freshly-loaded Player.
-        # It must NOT include the deterministic combat-start preview (cb):
-        # that only becomes real once a fight actually starts, so baking it
-        # into "Total" here would show a number higher than what e.g. /rest
-        # actually restores you to, making resting look broken (see the
-        # HP section below). So every stat's baseline (pre-seed) is computed
-        # first; only afterward do we seed the CombatState to measure the
-        # "Combat Start" delta as a separate line — never merged into Total.
-        # Computing the delta as a full before/after diff (rather than a
-        # hand-derived approximation) is what makes it correct for sources
-        # that read ANOTHER stat's live total, e.g. Hematurgy Counterforce
-        # reads get_total_defence(), and Max HP's Vitality/Stat-Investment
-        # bonuses compound sequentially on top of the bonus_max_hp
-        # accumulator — a bolted-on approximation undercounts those; a real
-        # diff of two real computations can't.
+        # Every stat's baseline (pre-combat-start) is computed first; the
+        # deterministic combat-start preview (cb) is seeded afterward and
+        # measured as a full before/after diff, so "Combat Start" can never
+        # drift from what apply_combat_start_passives() actually does turn 1
+        # (Hematurgy Counterforce reads get_total_defence(), Max HP's
+        # Vitality/Stat-Investment bonuses compound sequentially on top of
+        # bonus_max_hp — a hand-derived approximation would undercount those;
+        # a real diff of two real computations can't).
+        #
+        # ATK/DEF/HP "Total" below = Flat + Bonus + Combat Start, matching the
+        # combat log's turn-1 baseline exactly (see combat_log.py
+        # log_combat_start — it also snapshots stats after combat-start
+        # passives have fired). Note this means HP's "Total" can exceed what
+        # /rest actually restores you to (e.g. Ward Inoculation doubles Max
+        # HP at combat start) — current HP is shown against the pre-combat
+        # value instead, since that's what /rest and passive regen both use.
         cb = _compute_combat_bonuses(p)
 
-        # ── Attack (baseline) ───────────────────────────────────────────────
+        # ── Attack ───────────────────────────────────────────────────────────
         gear_atk = 0
         if p.equipped_weapon:
             gear_atk += p.equipped_weapon.attack
         if p.equipped_accessory:
             gear_atk += p.equipped_accessory.attack
+        if p.equipped_armor and p.equipped_armor.main_stat_type == "atk":
+            gear_atk += p.equipped_armor.main_stat
         if p.equipped_glove:
             gear_atk += p.equipped_glove.attack
         if p.equipped_boot:
@@ -108,14 +111,15 @@ class CombatProfileBuilder:
             atk_buckets["Barracks"] = barracks_atk
         if essence_atk:
             atk_buckets["Essences"] = atk_buckets.get("Essences", 0) + essence_atk
-        atk_lines = [f"**Total: {total_atk:,}**"] + render_bucket_lines(atk_buckets)
 
-        # ── Defence (baseline) ───────────────────────────────────────────────
+        # ── Defence ──────────────────────────────────────────────────────────
         gear_def = 0
         if p.equipped_weapon:
             gear_def += p.equipped_weapon.defence
         if p.equipped_accessory:
             gear_def += p.equipped_accessory.defence
+        if p.equipped_armor and p.equipped_armor.main_stat_type == "def":
+            gear_def += p.equipped_armor.main_stat
         if p.equipped_glove:
             gear_def += p.equipped_glove.defence
         if p.equipped_boot:
@@ -135,14 +139,12 @@ class CombatProfileBuilder:
             def_buckets["Barracks"] = barracks_def
         if essence_def:
             def_buckets["Essences"] = def_buckets.get("Essences", 0) + essence_def
-        def_lines = [f"**Total: {total_def:,}**"] + render_bucket_lines(def_buckets)
 
-        # ── HP (baseline) ────────────────────────────────────────────────────
+        # ── HP ───────────────────────────────────────────────────────────────
         total_hp, hp_contribs = p.get_total_max_hp(explain=True)
         hp_buckets = group_contributions(hp_contribs)
-        hp_lines = [f"**{p.current_hp:,} / {total_hp:,}**"] + render_bucket_lines(
-            hp_buckets
-        )
+        flat_hp_buckets, _bonus_hp_preview = split_flat_bonus_buckets(hp_buckets, "hp")
+        flat_hp = sum(flat_hp_buckets.values())
 
         # ── Crit Chance (baseline) ──────────────────────────────────────────
         # Note: Piercing (weapon "piercing_N"), Voracious stacks, and partner
@@ -178,16 +180,21 @@ class CombatProfileBuilder:
         cs_crit = p.get_current_crit_chance() - total_crit
         cs_sr = p.get_special_drop_bonus() - total_sr
 
-        if cs_atk:
-            atk_lines.append(f"↳ Combat Start: {cs_atk:+,}")
-        if cs_def:
-            def_lines.append(f"↳ Combat Start: {cs_def:+,}")
-        if cs_hp:
-            hp_lines.append(f"↳ Combat Start: {cs_hp:+,}")
         if cs_crit:
             crit_lines.append(f"↳ Combat Start: {cs_crit:+}%")
         if cs_sr:
             sr_lines.append(f"↳ Combat Start: {cs_sr:+.1f}%")
+
+        atk_lines = render_flat_bonus_total_lines(
+            "atk", p.flat_atk, atk_buckets, total_atk, cs_atk
+        )
+        def_lines = render_flat_bonus_total_lines(
+            "def", p.flat_def, def_buckets, total_def, cs_def
+        )
+        hp_lines = [f"{p.current_hp:,} / {total_hp:,} *(current, pre-combat)*"]
+        hp_lines += render_flat_bonus_total_lines(
+            "hp", flat_hp, hp_buckets, total_hp, cs_hp
+        )
 
         embed.add_field(
             name=f"{STAT_ATK} Attack", value="\n".join(atk_lines), inline=True
