@@ -46,10 +46,25 @@ _DIFFICULTY_SURPLUS_MULT = [1.0, 1.2, 1.3, 1.4, 1.5]
 _DIFFICULTY_CRIT_CHANCE = [0.0, 0.15, 0.20, 0.30, 0.50]
 
 
+def _scale_surplus(surplus: float, surplus_mult: float) -> float:
+    """Applies difficulty scaling to the ATK-vs-DEF surplus.
+
+    Only amplifies a POSITIVE surplus (monster ahead of the player) — harder
+    difficulty is meant to punish being outmatched more severely, not make an
+    already-outclassed monster even weaker. If a negative surplus (player's
+    DEF beats the monster's ATK) were also scaled up in magnitude, a higher
+    difficulty could push raw damage toward/below zero, making the monster
+    hit for LESS than it would at Off difficulty for the same stats — the
+    opposite of what selecting a harder mode should do. surplus must already
+    be floor-clamped by the caller (see calculate_damage_taken)."""
+    return surplus * surplus_mult if surplus > 0 else surplus
+
+
 def calculate_damage_taken(player: Player, monster: Monster) -> int:
     """Raw monster damage before PDR/FDR.
     Guaranteed base from monster level, amplified/dampened by stat surplus.
-    Difficulty mode scales the surplus multiplier (Hard ×1.2 … Delirious ×1.5).
+    Difficulty mode scales a POSITIVE surplus only (Hard ×1.2 … Delirious ×1.5)
+    — see _scale_surplus().
 
     Rookie shield: players below level 50 receive at most (player.level − 2) damage
     per hit, floored at 1.  Cap starts at 1 (levels 1–3) and rises by +1 per level,
@@ -59,7 +74,7 @@ def calculate_damage_taken(player: Player, monster: Monster) -> int:
     surplus = (monster.effective_attack - p_def) / p_def
     surplus = max(-0.95, surplus)
     surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
-    raw = base_raw * (1.0 + surplus * surplus_mult)
+    raw = base_raw * (1.0 + _scale_surplus(surplus, surplus_mult))
     variance_floor = min(player.level * 0.01, _DMG_VARIANCE_FLOOR_MAX)
     raw_min = max(1, int(raw * variance_floor))
     raw_max = max(raw_min, int(raw * _DMG_VARIANCE_CEIL))
@@ -101,7 +116,7 @@ def roll_monster_damage(
     dmg = calculate_damage_taken(player, monster)
 
     base_raw_display = monster.level * 0.75 * _mid_level_scalar(monster.level)
-    post_surplus = base_raw_display * (1.0 + surplus * surplus_mult)
+    post_surplus = base_raw_display * (1.0 + _scale_surplus(surplus, surplus_mult))
     _var_floor = min(player.level * 0.01, _DMG_VARIANCE_FLOOR_MAX)
     var_low = max(1, int(post_surplus * _var_floor))
     var_high = max(var_low, int(post_surplus * _DMG_VARIANCE_CEIL))

@@ -38,7 +38,9 @@ VICE_NODES: dict = {
     "vi_treasure": {
         "branch": "vice",
         "name": "Treasure Sense",
-        "desc": lambda rank: f"+{rank * 0.5:.1f}% chance to encounter a Treasure monster",
+        "desc": lambda rank: (
+            f"+{rank * 0.5:.1f}% chance to encounter a Treasure monster"
+        ),
         "max_rank": 5,
         "costs": [15, 20, 30, 45, 65],
         "value_per_rank": 0.5,  # same units as Treasure-Tracker boot (%)
@@ -66,7 +68,9 @@ RECOVERY_NODES: dict = {
     "re_stamina_regen": {
         "branch": "recovery",
         "name": "Deep Reserves",
-        "desc": lambda rank: f"{rank * 4}% chance stamina regen tick grants +2 instead of +1",
+        "desc": lambda rank: (
+            f"{rank * 4}% chance stamina regen tick grants +2 instead of +1"
+        ),
         "max_rank": 5,
         "costs": [15, 20, 30, 45, 65],
         "value_per_rank": 0.04,
@@ -120,7 +124,9 @@ DEICIDE_NODES: dict = {
     "de_boss_dupe": {
         "branch": "deicide",
         "name": "Greedy Conquest",
-        "desc": lambda rank: f"{rank * 10}% chance for a second bonus rune roll on boss kills",
+        "desc": lambda rank: (
+            f"{rank * 10}% chance for a second bonus rune roll on boss kills"
+        ),
         "max_rank": 3,
         "costs": [40, 60, 90],
         "value_per_rank": 0.10,

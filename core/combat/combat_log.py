@@ -51,12 +51,21 @@ class CombatLogger:
         ("Special Rarity", "get_special_drop_bonus", False),
     )
 
+    # Same explain=True contract as _STAT_GETTERS above, but for Monster
+    # getters (no monster/takes_monster arg needed — these only read `self`).
+    _MONSTER_STAT_GETTERS = (
+        ("ATK", "get_effective_attack"),
+        ("DEF", "get_effective_defence"),
+        ("Max HP", "get_effective_max_hp"),
+    )
+
     def __init__(self, player: Player, monster: Monster):
         self._file = None
         self._turn = 0
         self._total_dealt = 0
         self._total_taken = 0
         self._last_stat_snapshot: dict[str, float] | None = None
+        self._last_monster_stat_snapshot: dict[str, float] | None = None
 
         if not _logging_enabled():
             return
@@ -91,6 +100,18 @@ class CombatLogger:
             results[label] = (
                 method(monster, explain=True) if takes_monster else method(explain=True)
             )
+        return results
+
+    def _compute_monster_stats(
+        self, monster: Monster
+    ) -> dict[str, tuple[float, list[tuple[str, float]]]]:
+        """Returns {label: (total, contributions)} for ATK/DEF/Max HP, using
+        the exact same Monster getters (explain=True) the effective_* properties
+        are built from — see get_effective_attack/defence/max_hp docstrings."""
+        results: dict[str, tuple[float, list[tuple[str, float]]]] = {}
+        for label, method_name in self._MONSTER_STAT_GETTERS:
+            method = getattr(monster, method_name)
+            results[label] = method(explain=True)
         return results
 
     @staticmethod
@@ -190,6 +211,21 @@ class CombatLogger:
         }
         self._w("")
 
+        # Monster ATK/DEF/Max HP breakdown — turn-1 baseline, same timing as
+        # the player breakdown above (after apply_stat_effects has already run,
+        # so any partner combat-start monster debuffs are already reflected).
+        # Crit/Hit are covered by the [CALC] lines above (mon_crit in the
+        # per-turn calc trace, monster hit chance here).
+        self._w("[MONSTER STAT BREAKDOWN] (turn 1 baseline)")
+        mstats = self._compute_monster_stats(monster)
+        for label, (total, contributions) in mstats.items():
+            for line in self._format_breakdown(label, total, contributions):
+                self._w(line)
+        self._last_monster_stat_snapshot = {
+            label: total for label, (total, _c) in mstats.items()
+        }
+        self._w("")
+
     def log_transient_states(self, player: Player, after_label: str = "") -> None:
         """Log all active jewel/hematurgy transient states after a turn.
         Outputs nothing if all transients are at zero/inactive to keep logs clean."""
@@ -277,6 +313,37 @@ class CombatLogger:
             return
 
         self._w(f"  [STATS CHANGED T{self._turn}]")
+        for label in changed:
+            total, contributions = stats[label]
+            for line in self._format_breakdown(label, total, contributions):
+                self._w(f"    {line}")
+
+    def log_monster_stat_snapshot(self, monster: Monster) -> None:
+        """Logs a contributor breakdown for any of the monster's ATK/DEF/Max HP
+        that changed since the last snapshot (the turn-1 baseline from
+        log_combat_start, or the previous call to this method). Prints nothing
+        if nothing changed — same quiet-when-inactive convention as
+        log_player_stat_snapshot. Catches mid-combat monster stat drift
+        (Onslaught, Wrathful Retaliation, Corrosion, Alchemy Enfeeble,
+        companion/weapon debuffs, etc.)."""
+        if not self._file:
+            return
+
+        stats = self._compute_monster_stats(monster)
+        prev = self._last_monster_stat_snapshot or {}
+        changed = [
+            label
+            for label, (total, _c) in stats.items()
+            if label not in prev or prev[label] != total
+        ]
+        self._last_monster_stat_snapshot = {
+            label: total for label, (total, _c) in stats.items()
+        }
+
+        if not changed:
+            return
+
+        self._w(f"  [MONSTER STATS CHANGED T{self._turn}]")
         for label in changed:
             total, contributions = stats[label]
             for line in self._format_breakdown(label, total, contributions):
@@ -471,7 +538,7 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
     Monster damage formula (matches calculate_damage_taken):
       base_raw = 5 + level * 1.5
       surplus  = clamp((m_atk - p_def) / p_def, −0.95, ∞)
-      raw      = base_raw * (1 + surplus * surplus_mult)   [surplus_mult=1.2 in hard mode]
+      raw      = base_raw * (1 + scaled_surplus)   [surplus_mult only applies when surplus > 0 — see damage_calc._scale_surplus]
       max_raw  = raw * 1.15 variance ceiling
     """
     p_atk = player.get_total_attack(monster)
@@ -494,12 +561,13 @@ def log_combat_debug(player: Player, monster: Monster, log: logging.Logger) -> N
         m_atk = int(m_atk * (1 + monster.onslaught_bonus_atk))
 
     # Correct formula — must mirror calculate_damage_taken exactly
+    from core.combat.calc.damage_calc import _DIFFICULTY_SURPLUS_MULT, _scale_surplus
+
     _base_raw = 5.0 + monster.level * 1.5
     _p_def_clamped = max(p_def, 1)
     _surplus = max(-0.95, (m_atk - _p_def_clamped) / _p_def_clamped)
-    _DIFFICULTY_SURPLUS_MULT_LOG = [1.0, 1.2, 1.3, 1.4, 1.5]
-    _surplus_mult = _DIFFICULTY_SURPLUS_MULT_LOG[monster.difficulty_level]
-    raw_base = _base_raw * (1.0 + _surplus * _surplus_mult)
+    _surplus_mult = _DIFFICULTY_SURPLUS_MULT[monster.difficulty_level]
+    raw_base = _base_raw * (1.0 + _scale_surplus(_surplus, _surplus_mult))
 
     # Phase 1: Use unified damage pools for theoretical max hit calculation
     monster.damage_increased_pct = 0.0

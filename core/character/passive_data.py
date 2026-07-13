@@ -3,7 +3,6 @@ core/character/passive_data.py
 Lookup tables for all passive/essence descriptions used in the profile hub.
 """
 
-from core.emojis import QUENCH
 from core.hematurgy.mechanics import tier_val as _htv
 
 _WEAPON_PASSIVE_DESC: dict[str, str] = {
@@ -26,11 +25,11 @@ _WEAPON_PASSIVE_DESC: dict[str, str] = {
     "debilitate_4": "Combat start: Enemy DEF -32%",
     "debilitate_5": "Combat start: Enemy DEF -40%",
     # Shocking family — Min damage floor (×8% per tier)
-    "shocking_1": "On hit: Dmg is at least 8% of ATK on non-crits",
-    "shocking_2": "On hit: Dmg is at least 16% of ATK on non-crits",
-    "shocking_3": "On hit: Dmg is at least 24% of ATK on non-crits",
-    "shocking_4": "On hit: Dmg is at least 32% of ATK on non-crits",
-    "shocking_5": "On hit: Dmg is at least 40% of ATK on non-crits",
+    "shocking_1": "On hit: Dmg is at least 8% of ATK",
+    "shocking_2": "On hit: Dmg is at least 16% of ATK",
+    "shocking_3": "On hit: Dmg is at least 24% of ATK",
+    "shocking_4": "On hit: Dmg is at least 32% of ATK",
+    "shocking_5": "On hit: Dmg is at least 40% of ATK",
     # Sturdy family — DEF boost (×8% per tier)
     "sturdy_1": "On equip: Gain 8% of total DEF as bonus DEF",
     "sturdy_2": "On equip: Gain 16% of total DEF as bonus DEF",
@@ -331,61 +330,61 @@ _HEMATURGY_SHORT_FUNCS: dict = {
 # Alchemy potion passives — (value, duration) → description string
 _POTION_PASSIVE_DESCS: dict[str, tuple[str, callable]] = {
     "panacea": (
-        "🌿 Panacea",
+        "Panacea",
         lambda v, d: (
             f"On potion use: {v:.0f}% chance to cleanse ailments and grant {d:.0f}t immunity"
         ),
     ),
     "eclipse": (
-        "🌑 Eclipse",
+        "Eclipse",
         lambda v, d: (
             f"On potion use: next {d:.0f} attacks deal +{v:.0f}% damage and are guaranteed crits"
         ),
     ),
     "aegis": (
-        "🛡️ Aegis",
+        "Aegis",
         lambda v, d: f"On potion use: shield = {v:.0f}% max HP for {d:.0f} turns",
     ),
     "enfeeble": (
-        "🌊 Enfeeble",
+        "Enfeeble",
         lambda v, d: (
             f"On potion use: monster −{v:.0f}% ATK/DEF for {d:.0f} of its turns"
         ),
     ),
     "blood_tithe": (
-        "🩸 Blood Tithe",
+        "Blood Tithe",
         lambda v, d: (
             f"On potion use: leech {v:.0f}% of damage as HP for next {d:.0f} hits"
         ),
     ),
     "accel": (
-        "⚡ Accel",
+        "Accel",
         lambda v, d: f"On potion use: +{v:.0f}% Hit Chance for {d:.0f} turns",
     ),
     "quench": (
-        f"{QUENCH} Quench",
+        "Quench",
         lambda v, d: (
             f"On potion use: heal +{v:.0f}% max HP then 5% max HP/turn for {d:.0f} turns"
         ),
     ),
     "viper": (
-        "🐍 Viper",
+        "Viper",
         lambda v, d: (
             f"On potion use: {v:.0f}% heal as burst damage + DoT for {d:.0f} turns"
         ),
     ),
     "enrage": (
-        "💪 Enrage",
+        "Enrage",
         lambda v, d: f"On potion use: +{v:.0f}% ATK and DEF for {d:.0f} monster turns",
     ),
     "barrier": (
-        "🔮 Barrier",
+        "Barrier",
         lambda v, d: (
             f"On potion use: +{v:.0f}% of heal as Ward each turn for {d:.0f} turns"
         ),
     ),
     "painkiller": (
-        "🩹 Painkiller",
+        "Painkiller",
         lambda v, d: (
             f"On potion use: −{v:.0f}% damage from the monster's next {d:.0f} hits"
         ),

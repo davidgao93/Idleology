@@ -66,13 +66,26 @@ class CombatProfileBuilder:
         embed = discord.Embed(title="Combat Statistics", color=0x00FF00)
         embed.set_thumbnail(url=data["appearance"])
 
+        # "Total" on this page must equal the player's TRUE, persistent stat
+        # right now — the same number /rest, combat entry, etc. read via
+        # player.total_max_hp/get_total_attack() on a freshly-loaded Player.
+        # It must NOT include the deterministic combat-start preview (cb):
+        # that only becomes real once a fight actually starts, so baking it
+        # into "Total" here would show a number higher than what e.g. /rest
+        # actually restores you to, making resting look broken (see the
+        # HP section below). So every stat's baseline (pre-seed) is computed
+        # first; only afterward do we seed the CombatState to measure the
+        # "Combat Start" delta as a separate line — never merged into Total.
+        # Computing the delta as a full before/after diff (rather than a
+        # hand-derived approximation) is what makes it correct for sources
+        # that read ANOTHER stat's live total, e.g. Hematurgy Counterforce
+        # reads get_total_defence(), and Max HP's Vitality/Stat-Investment
+        # bonuses compound sequentially on top of the bonus_max_hp
+        # accumulator — a bolted-on approximation undercounts those; a real
+        # diff of two real computations can't.
         cb = _compute_combat_bonuses(p)
 
-        # ── Attack ───────────────────────────────────────────────────────────
-        # Total/contributions come straight from get_total_attack(explain=True) —
-        # the exact same call the combat log uses — so the "Total" here always
-        # matches the log's turn-1 baseline modulo the "Combat Start" preview
-        # (see _compute_combat_bonuses docstring for what that preview can't see).
+        # ── Attack (baseline) ───────────────────────────────────────────────
         gear_atk = 0
         if p.equipped_weapon:
             gear_atk += p.equipped_weapon.attack
@@ -95,17 +108,9 @@ class CombatProfileBuilder:
             atk_buckets["Barracks"] = barracks_atk
         if essence_atk:
             atk_buckets["Essences"] = atk_buckets.get("Essences", 0) + essence_atk
-        total_atk_display = total_atk + cb["atk"]
-        atk_lines = [f"**Total: {total_atk_display:,}**"] + render_bucket_lines(
-            atk_buckets
-        )
-        if cb["atk"]:
-            atk_lines.append(f"↳ Combat Start: {cb['atk']:+,}")
-        embed.add_field(
-            name=f"{STAT_ATK} Attack", value="\n".join(atk_lines), inline=True
-        )
+        atk_lines = [f"**Total: {total_atk:,}**"] + render_bucket_lines(atk_buckets)
 
-        # ── Defence ──────────────────────────────────────────────────────────
+        # ── Defence (baseline) ───────────────────────────────────────────────
         gear_def = 0
         if p.equipped_weapon:
             gear_def += p.equipped_weapon.defence
@@ -130,25 +135,66 @@ class CombatProfileBuilder:
             def_buckets["Barracks"] = barracks_def
         if essence_def:
             def_buckets["Essences"] = def_buckets.get("Essences", 0) + essence_def
-        total_def_display = total_def + cb["def"]
-        def_lines = [f"**Total: {total_def_display:,}**"] + render_bucket_lines(
-            def_buckets
+        def_lines = [f"**Total: {total_def:,}**"] + render_bucket_lines(def_buckets)
+
+        # ── HP (baseline) ────────────────────────────────────────────────────
+        total_hp, hp_contribs = p.get_total_max_hp(explain=True)
+        hp_buckets = group_contributions(hp_contribs)
+        hp_lines = [f"**{p.current_hp:,} / {total_hp:,}**"] + render_bucket_lines(
+            hp_buckets
         )
-        if cb["def"]:
-            def_lines.append(f"↳ Combat Start: {cb['def']:+,}")
+
+        # ── Crit Chance (baseline) ──────────────────────────────────────────
+        # Note: Piercing (weapon "piercing_N"), Voracious stacks, and partner
+        # co_crit_rate are added on top of get_current_crit_chance() by
+        # calculate_crit_chance() (see calc/hit_calc.py) to form the *effective*
+        # crit used in combat resolution. The combat log's own STAT BREAKDOWN
+        # tracks get_current_crit_chance() only (see combat_log.py _STAT_GETTERS),
+        # so Total here intentionally excludes them too, for exact log parity.
+        total_crit, crit_contribs = p.get_current_crit_chance(explain=True)
+        crit_buckets = group_contributions(crit_contribs)
+        crit_lines = [f"**Total: {total_crit}%**"] + render_bucket_lines(
+            crit_buckets, suffix="%"
+        )
+
+        # ── Special Rarity (baseline) ───────────────────────────────────────
+        total_sr, sr_contribs = p.get_special_drop_bonus(explain=True)
+        sr_buckets = group_contributions(sr_contribs)
+        sr_lines = [f"**{total_sr:.1f}%** (cap: 20%)"] + render_bucket_lines(
+            sr_buckets, suffix="%", decimals=1
+        )
+
+        # Now seed the CombatState and measure the "Combat Start" delta for
+        # each of the 5 stats cb affects, as a full before/after diff.
+        p.bonus_atk += cb["atk"]
+        p.bonus_def += cb["def"]
+        p.bonus_max_hp += cb["hp"]
+        p.bonus_crit += cb["crit"]
+        p.partner_special_rarity += cb["special_rarity"]
+
+        cs_atk = p.get_total_attack() - total_atk
+        cs_def = p.get_total_defence() - total_def
+        cs_hp = p.get_total_max_hp() - total_hp
+        cs_crit = p.get_current_crit_chance() - total_crit
+        cs_sr = p.get_special_drop_bonus() - total_sr
+
+        if cs_atk:
+            atk_lines.append(f"↳ Combat Start: {cs_atk:+,}")
+        if cs_def:
+            def_lines.append(f"↳ Combat Start: {cs_def:+,}")
+        if cs_hp:
+            hp_lines.append(f"↳ Combat Start: {cs_hp:+,}")
+        if cs_crit:
+            crit_lines.append(f"↳ Combat Start: {cs_crit:+}%")
+        if cs_sr:
+            sr_lines.append(f"↳ Combat Start: {cs_sr:+.1f}%")
+
+        embed.add_field(
+            name=f"{STAT_ATK} Attack", value="\n".join(atk_lines), inline=True
+        )
         embed.add_field(
             name=f"{STAT_DEF} Defence", value="\n".join(def_lines), inline=True
         )
-
-        # ── HP ───────────────────────────────────────────────────────────────
-        total_hp, hp_contribs = p.get_total_max_hp(explain=True)
-        hp_buckets = group_contributions(hp_contribs)
-        total_hp_display = total_hp + cb["hp"]
-        hp_lines = [
-            f"**{p.current_hp:,} / {total_hp_display:,}**"
-        ] + render_bucket_lines(hp_buckets)
-        if cb["hp"]:
-            hp_lines.append(f"↳ Combat Start: {cb['hp']:+,}")
         embed.add_field(name=f"{STAT_HP} HP", value="\n".join(hp_lines), inline=True)
 
         # ── Ward ─────────────────────────────────────────────────────────────
@@ -175,24 +221,7 @@ class CombatProfileBuilder:
             hit_val = "\n".join(hit_lines)
         embed.add_field(name="🎯 Hit Chance", value=hit_val, inline=True)
 
-        # ── Crit Chance ──────────────────────────────────────────────────────
-        # Note: Piercing (weapon "piercing_N"), Voracious stacks, and partner
-        # co_crit_rate are added on top of get_current_crit_chance() by
-        # calculate_crit_chance() (see calc/hit_calc.py) to form the *effective*
-        # crit used in combat resolution. The combat log's own STAT BREAKDOWN
-        # tracks get_current_crit_chance() only (see combat_log.py _STAT_GETTERS),
-        # so Total here intentionally excludes them too, for exact log parity.
-        total_crit, crit_contribs = p.get_current_crit_chance(explain=True)
-        crit_buckets = group_contributions(crit_contribs)
-        total_crit_display = total_crit + cb["crit"]
-        crit_lines = [f"**Total: {total_crit_display}%**"] + render_bucket_lines(
-            crit_buckets, suffix="%"
-        )
-        if cb["crit"]:
-            crit_lines.append(f"↳ Combat Start: {cb['crit']:+}%")
-        embed.add_field(
-            name="🗡️ Crit Chance", value="\n".join(crit_lines), inline=True
-        )
+        embed.add_field(name="🗡️ Crit Chance", value="\n".join(crit_lines), inline=True)
 
         # ── Crit Multiplier ──────────────────────────────────────────────────
         total_multi, multi_contribs = p.get_weapon_crit_multi(explain=True)
@@ -261,19 +290,6 @@ class CombatProfileBuilder:
                 name=f"{RARITY} Rarity", value="\n".join(rar_lines), inline=True
             )
 
-        # ── Special Rarity ────────────────────────────────────────────────────
-        # partner_special_rarity is only set on the Player object once real
-        # combat starts (_apply_partner_combat_start) — get_special_drop_bonus()
-        # alone reads 0 for it pre-combat, so cb["special_rarity"] previews the
-        # deterministic combat-start value, same convention as ATK/DEF/HP/Crit.
-        total_sr, sr_contribs = p.get_special_drop_bonus(explain=True)
-        sr_buckets = group_contributions(sr_contribs)
-        total_sr_display = min(20.0, total_sr + cb["special_rarity"])
-        sr_lines = [f"**{total_sr_display:.1f}%** (cap: 20%)"] + render_bucket_lines(
-            sr_buckets, suffix="%", decimals=1
-        )
-        if cb["special_rarity"]:
-            sr_lines.append(f"↳ Combat Start: {cb['special_rarity']:+.1f}%")
         embed.add_field(
             name="⭐ Special Rarity", value="\n".join(sr_lines), inline=True
         )

@@ -445,6 +445,7 @@ class CombatView(BaseLayoutView):
         self.killing_blow = hp_before - max(0, self.player.current_hp)
         self.combat_logger.log_monster_turn(log, self.player)
         self.combat_logger.log_player_stat_snapshot(self.player, self.monster)
+        self.combat_logger.log_monster_stat_snapshot(self.monster)
         return log
 
     def _apply_phase_image_transition(self):
@@ -925,6 +926,7 @@ class CombatView(BaseLayoutView):
             new_logs = engine.apply_combat_start_passives(self.player, self.monster)
             self.logs = new_logs
             self.combat_logger.log_player_stat_snapshot(self.player, self.monster)
+            self.combat_logger.log_monster_stat_snapshot(self.monster)
 
             trans_embed = discord.Embed(
                 title="Phase Complete!",
@@ -1031,11 +1033,6 @@ class CombatView(BaseLayoutView):
                 bonus_parts.append(f"{diff_emoji} {diff_name} Mode +{hard_mode_pct}%")
             if streak_pct > 0:
                 bonus_parts.append(f"{WIN_STREAK} Streak +{streak_pct}%")
-            if difficulty_xp_pct > 0:
-                bonus_parts.append(
-                    f"⚔️ Difficulty +{difficulty_xp_pct * 100:.1f}% XP, "
-                    f"+{difficulty_drop_pct * 100:.1f}% Drops"
-                )
             value_lines = [" | ".join(bonus_parts)]
             if total_bonus_pct > 0:
                 value_lines.append(f"+{bonus_xp:,} XP  •  +{bonus_gold:,} Gold")

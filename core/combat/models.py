@@ -368,6 +368,132 @@ class Monster:
         val = int(base * (1 + self.bonus_max_hp_pct))
         return max(1, val)
 
+    # ------------------------------------------------------------------
+    # Explain-capable stat breakdowns — same total as the effective_* properties
+    # above (same formula, just also returns contributions), used by the
+    # combat log's [MONSTER STAT BREAKDOWN]. bonus_*_pct is fed by many
+    # scattered spawn-time and mid-combat sources (see gen_mob.py:
+    # _apply_spawn_modifiers, Inner Sanctum Vice/Deicide, Uber/Ascent/prestige
+    # boss setup, turns/player_turn.py Alchemy Enfeeble, etc.) — only the
+    # single dominant named modifier for each stat (Empowered/Fortified/
+    # Titanic) is broken out here; everything else in the pool is summed into
+    # "Other Modifiers" so the breakdown still reconciles exactly to the total
+    # without threading per-source labels through every spawn path.
+    # ------------------------------------------------------------------
+
+    def get_effective_attack(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
+        contributions: list[tuple[str, float]] = []
+        base = self.base_attack if self.base_attack > 0 else self.attack
+        contributions.append(("Base (species/level)", base))
+
+        val = base
+        if self.flat_attack_bonus:
+            val += self.flat_attack_bonus
+            contributions.append(("Flat Bonus", self.flat_attack_bonus))
+
+        if self.bonus_attack_pct:
+            pre_pct = val
+            val = int(val * (1 + self.bonus_attack_pct))
+            pct_gain = val - pre_pct
+            empowered_pct = (
+                self.get_modifier_value("Empowered")
+                if self.has_modifier("Empowered")
+                else 0.0
+            )
+            if empowered_pct:
+                empowered_gain = int(pre_pct * empowered_pct)
+                contributions.append(
+                    (f"Empowered (+{empowered_pct * 100:.0f}%)", empowered_gain)
+                )
+                other_gain = pct_gain - empowered_gain
+            else:
+                other_gain = pct_gain
+            if other_gain:
+                contributions.append(("Other Modifiers", other_gain))
+
+        if self.flat_attack_reduction:
+            contributions.append(("Flat Reduction", -self.flat_attack_reduction))
+        val = max(0, val - self.flat_attack_reduction)
+
+        if explain:
+            return val, contributions
+        return val
+
+    def get_effective_defence(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
+        contributions: list[tuple[str, float]] = []
+        base = self.base_defence if self.base_defence > 0 else self.defence
+        contributions.append(("Base (species/level)", base))
+
+        val = base
+        if self.flat_defence_bonus:
+            val += self.flat_defence_bonus
+            contributions.append(("Flat Bonus", self.flat_defence_bonus))
+
+        if self.bonus_defence_pct:
+            pre_pct = val
+            val = int(val * (1 + self.bonus_defence_pct))
+            pct_gain = val - pre_pct
+            fortified_pct = (
+                self.get_modifier_value("Fortified")
+                if self.has_modifier("Fortified")
+                else 0.0
+            )
+            if fortified_pct:
+                fortified_gain = int(pre_pct * fortified_pct)
+                contributions.append(
+                    (f"Fortified (+{fortified_pct * 100:.0f}%)", fortified_gain)
+                )
+                other_gain = pct_gain - fortified_gain
+            else:
+                other_gain = pct_gain
+            if other_gain:
+                contributions.append(("Other Modifiers", other_gain))
+
+        if self.flat_defence_reduction:
+            contributions.append(("Flat Reduction", -self.flat_defence_reduction))
+        val = max(0, val - self.flat_defence_reduction)
+
+        if explain:
+            return val, contributions
+        return val
+
+    def get_effective_max_hp(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
+        contributions: list[tuple[str, float]] = []
+        base = self.base_max_hp if self.base_max_hp > 0 else self.max_hp
+        contributions.append(("Base (species/level)", base))
+
+        val = base
+        if self.bonus_max_hp_pct:
+            pre_pct = val
+            val = int(val * (1 + self.bonus_max_hp_pct))
+            pct_gain = val - pre_pct
+            titanic_pct = (
+                (self.get_modifier_value("Titanic") - 1.0)
+                if self.has_modifier("Titanic")
+                else 0.0
+            )
+            if titanic_pct:
+                titanic_gain = int(pre_pct * titanic_pct)
+                contributions.append(
+                    (f"Titanic (+{titanic_pct * 100:.0f}%)", titanic_gain)
+                )
+                other_gain = pct_gain - titanic_gain
+            else:
+                other_gain = pct_gain
+            if other_gain:
+                contributions.append(("Other Modifiers", other_gain))
+
+        val = max(1, val)
+        if explain:
+            return val, contributions
+        return val
+
     def get_total_damage_mult(self) -> float:
         """
         Returns the final multiplier to apply to monster outgoing damage rolls.
@@ -1938,7 +2064,9 @@ class Player:
         _HIT_SENSITIVITY = 0.35
         _HIT_MAX = 0.95
 
-        hit_base = self.equipped_weapon.hit_chance if self.equipped_weapon else _HIT_BASE
+        hit_base = (
+            self.equipped_weapon.hit_chance if self.equipped_weapon else _HIT_BASE
+        )
         base_pct = hit_base * 100
         contributions.append(("Weapon base hit", int(base_pct)))
 
@@ -2095,7 +2223,9 @@ class Player:
             # to `gain` exactly (comp_share + remainder = gain).
             if comp_rarity_pct > 0 and prov_pct > 0:
                 comp_share = int(gain * comp_rarity_pct / combined_more_pct)
-                contributions.append((f"Companions (+{comp_rarity_pct:.1f}%)", comp_share))
+                contributions.append(
+                    (f"Companions (+{comp_rarity_pct:.1f}%)", comp_share)
+                )
                 contributions.append(
                     (f"Providence Tome (+{prov_pct:.1f}%)", gain - comp_share)
                 )

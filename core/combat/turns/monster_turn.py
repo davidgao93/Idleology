@@ -779,7 +779,9 @@ def process_monster_turn(
 
             void_passive = player.get_accessory_void_passive()
             if void_passive == "nullfield" and random.random() < 0.15:
-                _null_msg = f"{VOID_ENGRAM} **Nullfield** absorbs the strike into the void!"
+                _null_msg = (
+                    f"{VOID_ENGRAM} **Nullfield** absorbs the strike into the void!"
+                )
                 log.append(_null_msg)
                 clog.append(_null_msg)
                 total_damage = 0

@@ -414,7 +414,9 @@ class ItemDetailView(BaseView):
                 await self.bot.database.users.modify_currency(
                     self.user_id, "shatter_runes", shatter_back
                 )
-                rune_msg += f"\n{RUNE_SHATTER} Recovered **{shatter_back}** Shatter Rune(s)."
+                rune_msg += (
+                    f"\n{RUNE_SHATTER} Recovered **{shatter_back}** Shatter Rune(s)."
+                )
 
         # Update List State
         self.parent.items = [

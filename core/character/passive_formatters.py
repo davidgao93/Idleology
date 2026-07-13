@@ -198,9 +198,7 @@ def _compute_combat_bonuses(p) -> dict:
             p.equipped_armor and _normalize(p.equipped_armor.passive) == "transcendence"
         ):
             pct = _SST["transcendence"][ss_transcendence - 1]
-            cb["atk"] += int(
-                (p.get_total_attack() + p.get_total_defence()) * pct / 100
-            )
+            cb["atk"] += int((p.get_total_attack() + p.get_total_defence()) * pct / 100)
 
         ss_juggernaut = p.get_soul_stone_passive("juggernaut")
         if ss_juggernaut and not (

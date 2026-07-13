@@ -325,7 +325,9 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             if boss_name in monster.name:
                 for item, chance in config.items():
                     eff_chance = (
-                        chance if item == "curio" else min(1.0, chance + boss_rune_bonus)
+                        chance
+                        if item == "curio"
+                        else min(1.0, chance + boss_rune_bonus)
                     )
                     if random.random() < eff_chance:
                         drops[item] = True
@@ -408,7 +410,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["draconic_key"] = True
         if random.random() < ANGELIC_KEY_BASE_CHANCE + special_drop_chance:
             drops["angelic_key"] = True
-        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance + rune_chance_bonus:
+        if (
+            random.random()
+            < SPECIAL_DROP_BASE_CHANCE + special_drop_chance + rune_chance_bonus
+        ):
             drops["shatter_rune"] = True
 
     if player.level >= 30:
@@ -428,7 +433,10 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         for item in ("magma_core", "life_root", "spirit_shard"):
             if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
                 drops[item] = True
-        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance + rune_chance_bonus:
+        if (
+            random.random()
+            < SPECIAL_DROP_BASE_CHANCE + special_drop_chance + rune_chance_bonus
+        ):
             drops["rune_of_regret"] = True
 
     if player.level >= 50:

@@ -100,7 +100,8 @@ def get_tree_bonuses(nodes_owned: dict) -> dict:
 
     bonuses = {
         # Vice
-        "special_rarity_pct": rank_of("vi_rarity") * VICE_NODES["vi_rarity"]["value_per_rank"],
+        "special_rarity_pct": rank_of("vi_rarity")
+        * VICE_NODES["vi_rarity"]["value_per_rank"],
         "rune_chance_pct": rank_of("vi_rune_chance")
         * VICE_NODES["vi_rune_chance"]["value_per_rank"],
         "treasure_chance_pct": rank_of("vi_treasure")

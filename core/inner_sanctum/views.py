@@ -34,9 +34,7 @@ def _node_status_line(node_id: str, node: dict, nodes_owned: dict) -> str:
     if node.get("is_choice"):
         owned = nodes_owned.get(node_id)
         if owned:
-            label = next(
-                (lbl for key, lbl in node["choices"] if key == owned), owned
-            )
+            label = next((lbl for key, lbl in node["choices"] if key == owned), owned)
             return f"✅ **{node['name']}** → {label}"
         return f"⬜ **{node['name']}** ({node['cost']} pts) — *choose an affinity*"
 
