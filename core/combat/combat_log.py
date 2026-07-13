@@ -44,6 +44,11 @@ class CombatLogger:
         ("Ward%", "get_total_ward_percentage", False),
         ("PDR", "get_total_pdr", False),
         ("FDR", "get_total_fdr", False),
+        ("Hit%", "get_total_hit_chance", True),
+        ("Evasion", "get_total_evasion", False),
+        ("Block", "get_total_block", False),
+        ("Rarity", "get_total_rarity", False),
+        ("Special Rarity", "get_special_drop_bonus", False),
     )
 
     def __init__(self, player: Player, monster: Monster):

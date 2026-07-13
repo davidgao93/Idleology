@@ -92,11 +92,9 @@ def calculate_monster_hit_chance(player: Player, monster: Monster) -> float:
 
 
 def calculate_crit_chance(player: Player) -> float:
-    """Returns effective crit chance (0–100) accounting for weapon tier and infernal."""
-    from core.combat.calc.calcs import get_weapon_tier
-
-    idx, _ = get_weapon_tier(player, "piercing")
-    chance = player.get_current_crit_chance() + ((idx + 1) * 5 if idx >= 0 else 0)
+    """Returns effective crit chance (0–100) accounting for infernal/partner sources.
+    Piercing is now folded directly into player.get_current_crit_chance()."""
+    chance = player.get_current_crit_chance()
     if player.get_weapon_infernal() == "voracious" and player.voracious_stacks > 0:
         chance += player.voracious_stacks * 5 * player.get_infernal_strength_mult()
     if player.active_partner:

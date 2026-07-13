@@ -1354,6 +1354,21 @@ class Player:
                 (f"ATK Multiplier (x{self.atk_multiplier:.2f})", int(flat * d))
             )
 
+        # Burning (weapon passive) — permanent ATK gain, always active once
+        # equipped (+8% of flat ATK per tier). Previously only raised the
+        # damage-roll ceiling per-hit in calc/damage_calc.py, invisible on the
+        # base stat; now lives here so it's always reflected, and stacks
+        # additively with every other ATK% source like the rest of pct_pool.
+        from core.combat.calc.calcs import get_weapon_tier
+
+        idx, _ = get_weapon_tier(self, "burning")
+        if idx >= 0:
+            d = (idx + 1) * 0.08
+            pct_pool += d
+            contributions.append(
+                (f"Burning (weapon passive, T{idx + 1})", int(flat * d))
+            )
+
         # Ascension pinnacle % bonus
         if self.ascension_unlocks:
             atk_pct = self.get_ascension_bonuses()["atk_pct"]
@@ -1498,6 +1513,21 @@ class Player:
             pct_pool += d
             contributions.append(
                 (f"DEF Multiplier (x{self.def_multiplier:.2f})", int(flat * d))
+            )
+
+        # Sturdy (weapon passive) — permanent DEF gain, always active once
+        # equipped (+8% of flat DEF per tier). Previously only applied once at
+        # real combat start via apply_combat_start_passives (bonus_def mutation),
+        # invisible outside an active fight; now lives here so it's always
+        # reflected, with the same net effect once combat begins.
+        from core.combat.calc.calcs import get_weapon_tier
+
+        idx, _ = get_weapon_tier(self, "sturdy")
+        if idx >= 0:
+            d = (idx + 1) * 0.08
+            pct_pool += d
+            contributions.append(
+                (f"Sturdy (weapon passive, T{idx + 1})", int(flat * d))
             )
 
         # Ascension pinnacle % bonus
@@ -1811,6 +1841,18 @@ class Player:
             chance += self.equipped_accessory.crit
             contributions.append(("Accessory crit", self.equipped_accessory.crit))
 
+        # Piercing (weapon passive) — permanent flat crit chance, always active
+        # once equipped (+5% per tier). Previously only added by
+        # calc/hit_calc.py:calculate_crit_chance() at roll time, invisible on
+        # the base stat; now lives here so it's always reflected.
+        from core.combat.calc.calcs import get_weapon_tier
+
+        idx, _ = get_weapon_tier(self, "piercing")
+        if idx >= 0:
+            delta = (idx + 1) * 5
+            chance += delta
+            contributions.append((f"Piercing (weapon passive, T{idx + 1})", delta))
+
         # Companions
         comp = self._get_companion_bonus("crit")
         if comp:
@@ -1861,33 +1903,183 @@ class Player:
             return chance, contributions
         return chance
 
-    def get_total_evasion(self) -> int:
+    def get_total_hit_chance(
+        self, monster: "Monster | None" = None, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
+        """Returns hit chance as an integer percentage, for display (profile
+        stats page / combat log) purposes.
+
+        Mirrors two layers from calc/hit_calc.py's real hit resolution:
+        - "base" hit% (weapon + ATK-vs-monster-DEF ratio + rookie/ascension/
+          essence/alchemy sources), hard-capped at 95 — matches
+          calculate_hit_chance().
+        - "accuracy" bonus (Deadeye, Slayer Emblem/Tree, companions, minus
+          Blinding/chapter penalties) — added on top UNCAPPED, matching
+          resolve_hit()'s acc_bonus, which is added directly to the attack
+          roll rather than to the capped base % (so these sources can push
+          the effective hit chance past the base's 95% ceiling).
+
+        NOTE: this is a read-only mirror for display — calc/hit_calc.py's
+        calculate_hit_chance()/resolve_hit() are the actual combat-resolution
+        code path and are NOT derived from this method. If either the base
+        formula or the accuracy-bonus sources change, update both here and
+        there to keep the stats page/log in sync with real combat.
+
+        monster is optional — omit for a monster-neutral preview (profile
+        page): the ATK-vs-DEF ratio term and monster-conditional sources
+        (Blinding, Slayer Tree species match) are skipped when monster is None.
+        """
+        from core.combat.calc.calcs import get_weapon_tier
+        from core.items.essence_mechanics import compute_essence_stat_bonus
+
+        contributions: list[tuple[str, float]] = []
+
+        _HIT_BASE = 0.60
+        _HIT_SENSITIVITY = 0.35
+        _HIT_MAX = 0.95
+
+        hit_base = self.equipped_weapon.hit_chance if self.equipped_weapon else _HIT_BASE
+        base_pct = hit_base * 100
+        contributions.append(("Weapon base hit", int(base_pct)))
+
+        if monster is not None:
+            m_def = monster.effective_defence
+            if m_def <= 0:
+                new_base_pct = _HIT_MAX * 100
+            else:
+                pct_diff = (self.get_total_attack(monster) - m_def) / m_def
+                new_base_pct = (hit_base + pct_diff * _HIT_SENSITIVITY) * 100
+            delta = new_base_pct - base_pct
+            if delta:
+                contributions.append(("ATK vs Monster DEF", int(delta)))
+            base_pct = new_base_pct
+
+        if self.level < 50:
+            rookie_bonus = 30 * (1.0 - (self.level - 1) / 49.0)
+            contributions.append(
+                (f"Evelynn Rookie Shield (Lv.{self.level})", int(rookie_bonus))
+            )
+            base_pct += rookie_bonus
+
+        if self.ascension_unlocks:
+            hit_bonus = self.get_ascension_bonuses()["hit"]
+            if hit_bonus:
+                contributions.append((f"Ascension Pinnacle (+{hit_bonus})", hit_bonus))
+                base_pct += hit_bonus
+
+        essence_hit = sum(
+            compute_essence_stat_bonus(item).get("hit_pct", 0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if essence_hit:
+            contributions.append(("Essences", essence_hit))
+            base_pct += essence_hit
+
+        if self.alchemy_hit_boost_pct > 0:
+            delta = self.alchemy_hit_boost_pct * 100
+            contributions.append((f"Alchemy Enrage (+{delta:.0f}%)", delta))
+            base_pct += delta
+
+        base_pct = min(_HIT_MAX * 100, base_pct)
+
+        # ---- Accuracy bonus layer — uncapped, added directly to the roll ----
+        acc_bonus = 0.0
+        emblem_acc = self.get_emblem_bonus("accuracy") * 2
+        if emblem_acc:
+            acc_bonus += emblem_acc
+            contributions.append(("Slayer Emblem", emblem_acc))
+
+        if (
+            monster is not None
+            and self.active_task_species
+            and self.active_task_species == monster.species
+            and self.slayer_tree_nodes.get("hu_1") == "accuracy"
+        ):
+            acc_bonus += 8
+            contributions.append(("Slayer Tree: vs task species", 8))
+
+        idx, _ = get_weapon_tier(self, "deadeye")
+        if idx >= 0:
+            delta = (idx + 1) * 4
+            acc_bonus += delta
+            contributions.append((f"Deadeye (weapon passive, T{idx + 1})", delta))
+
+        comp_hit = self._get_companion_bonus("hit")
+        if comp_hit:
+            acc_bonus += comp_hit
+            contributions.append(("Companions", comp_hit))
+
+        if monster is not None and monster.has_modifier("Blinding"):
+            penalty = monster.get_modifier_value("Blinding")
+            acc_bonus -= penalty
+            contributions.append(("Blinding", -penalty))
+
+        if self.chapter_hit_penalty:
+            acc_bonus -= self.chapter_hit_penalty
+            contributions.append(("Codex Chapter Haze", -self.chapter_hit_penalty))
+
+        total = int(base_pct + acc_bonus)
+        if explain:
+            return total, contributions
+        return total
+
+    def get_total_evasion(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
         """Total evasion including armor base and any essence bonuses on glove/boot/helmet."""
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
+        contributions: list[tuple[str, float]] = []
         total = self.equipped_armor.evasion if self.equipped_armor else 0
-        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
-            if item:
-                total += compute_essence_stat_bonus(item).get("evasion", 0)
+        if total:
+            contributions.append(("Equipment (armor)", total))
+        essence_evasion = sum(
+            compute_essence_stat_bonus(item).get("evasion", 0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if essence_evasion:
+            total += essence_evasion
+            contributions.append(("Essences", essence_evasion))
+        if explain:
+            return total, contributions
         return total
 
-    def get_total_block(self) -> int:
+    def get_total_block(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
         """Total block including armor base and any essence bonuses on glove/boot/helmet."""
         from core.items.essence_mechanics import compute_essence_stat_bonus
 
+        contributions: list[tuple[str, float]] = []
         total = self.equipped_armor.block if self.equipped_armor else 0
-        for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet):
-            if item:
-                total += compute_essence_stat_bonus(item).get("block", 0)
+        if total:
+            contributions.append(("Equipment (armor)", total))
+        essence_block = sum(
+            compute_essence_stat_bonus(item).get("block", 0)
+            for item in (self.equipped_glove, self.equipped_boot, self.equipped_helmet)
+            if item
+        )
+        if essence_block:
+            total += essence_block
+            contributions.append(("Essences", essence_block))
+        if explain:
+            return total, contributions
         return total
 
     def get_combat_ward_value(self) -> int:
         ward_percent = self.get_total_ward_percentage()
         return int((ward_percent / 100) * self.total_max_hp) if ward_percent > 0 else 0
 
-    def get_total_rarity(self) -> int:
+    def get_total_rarity(
+        self, explain: bool = False
+    ) -> "int | tuple[int, list[tuple[str, float]]]":
         """Full rarity total: gear + (companion + Providence % more, additive) + codex boon bonus."""
+        contributions: list[tuple[str, float]] = []
         total = self.rarity  # Gear only (weapon + accessory)
+        if total:
+            contributions.append(("Equipment", total))
 
         # Companion rarity and Providence tome both provide "% more rarity" and sum additively
         # before being applied as a single multiplier to gear rarity.
@@ -1895,44 +2087,87 @@ class Player:
         prov_pct = self.get_tome_bonus("providence")
         combined_more_pct = comp_rarity_pct + prov_pct
         if combined_more_pct > 0 and total > 0:
-            total = int(total * (1 + combined_more_pct / 100))
+            new_total = int(total * (1 + combined_more_pct / 100))
+            gain = new_total - total
+            # Split the combined multiplicative gain proportionally between
+            # sources by their %-more share — int rounding means an exact
+            # per-source split isn't otherwise possible, but this reconciles
+            # to `gain` exactly (comp_share + remainder = gain).
+            if comp_rarity_pct > 0 and prov_pct > 0:
+                comp_share = int(gain * comp_rarity_pct / combined_more_pct)
+                contributions.append((f"Companions (+{comp_rarity_pct:.1f}%)", comp_share))
+                contributions.append(
+                    (f"Providence Tome (+{prov_pct:.1f}%)", gain - comp_share)
+                )
+            elif comp_rarity_pct > 0:
+                contributions.append((f"Companions (+{comp_rarity_pct:.1f}%)", gain))
+            else:
+                contributions.append((f"Providence Tome (+{prov_pct:.1f}%)", gain))
+            total = new_total
 
         # Codex rarity boon accumulator
-        total += self.bonus_rarity
+        if self.bonus_rarity:
+            total += self.bonus_rarity
+            contributions.append(("Codex Bonus", self.bonus_rarity))
+        if explain:
+            return total, contributions
         return total
 
-    def get_special_drop_bonus(self) -> float:
+    def get_special_drop_bonus(
+        self, explain: bool = False
+    ) -> "float | tuple[float, list[tuple[str, float]]]":
         """Returns total Special Rarity bonus in %, capped at 20%."""
+        contributions: list[tuple[str, float]] = []
         bonus = 0.0
         # Gear (Thrill-Seeker Boot): 0.5% per level, max 3% at rank 6
         if self.equipped_boot and self.equipped_boot.passive == "thrill-seeker":
-            bonus += self.equipped_boot.passive_lvl * 0.5
+            delta = self.equipped_boot.passive_lvl * 0.5
+            bonus += delta
+            contributions.append(("Thrill-Seeker (boot passive)", delta))
         # Soul Stone: thrill-seeker tier adds 0.5% per tier
         ss_ts = self.get_soul_stone_passive("thrill-seeker")
         if ss_ts:
-            bonus += ss_ts * 0.5
+            delta = ss_ts * 0.5
+            bonus += delta
+            contributions.append((f"Soul Stone Thrill-Seeker (T{ss_ts})", delta))
 
         # Armor (Treasure Hunter)
         if self.equipped_armor and self.equipped_armor.passive == "Treasure Hunter":
             bonus += 3
+            contributions.append(("Treasure Hunter (armor passive)", 3))
         # Soul Stone: treasure hunter adds flat 3% bonus
         if self.get_soul_stone_passive("treasure hunter"):
             bonus += 3
+            contributions.append(("Soul Stone Treasure Hunter", 3))
 
         # Companions
-        bonus += self._get_companion_bonus("s_rarity")
+        comp = self._get_companion_bonus("s_rarity")
+        if comp:
+            bonus += comp
+            contributions.append(("Companions", comp))
 
         # Partner co_special_rarity (set at combat start by passives.py)
-        bonus += int(self.partner_special_rarity)
+        if self.partner_special_rarity:
+            delta = int(self.partner_special_rarity)
+            bonus += delta
+            contributions.append(("Combat bonus accumulator", delta))
 
         # Inner Sanctum Vice — Gilded Instinct
         if self.inner_sanctum_nodes:
             from core.inner_sanctum.mechanics import get_tree_bonuses
 
-            bonus += get_tree_bonuses(self.inner_sanctum_nodes)["special_rarity_pct"]
+            delta = get_tree_bonuses(self.inner_sanctum_nodes)["special_rarity_pct"]
+            if delta:
+                bonus += delta
+                contributions.append(("Inner Sanctum", delta))
 
         # [SAFETY CAP] Hard cap special rarity bonus at 20%
-        return min(20, bonus)
+        capped = min(20, bonus)
+        if bonus > 20:
+            contributions.append(("Hard Cap (20%)", 20 - bonus))
+        if explain:
+            return capped, contributions
+        return capped
 
     def get_weapon_infernal(self) -> str:
         return self.equipped_weapon.infernal_passive if self.equipped_weapon else "none"

@@ -316,16 +316,8 @@ def calc_crit_damage(
     base_min = 1
     calc_dmg_notes: list[str] = [f"base_atk={base_max}"]
 
-    # Burning: raises the ceiling (same as hit damage)
-    burn_idx, burn_name = get_weapon_tier(player, "burning")
-    if burn_idx >= 0:
-        burn_bonus = int(base_max * (burn_idx + 1) * 0.08)
-        base_max += burn_bonus
-        calc_dmg_notes.append(f"burn+{burn_bonus}={base_max}")
-        log.append(
-            f"**{fmt_weapon_passive(burn_name)}** 🔥 burns bright!\n"
-            f"Attack damage potential boosted by **{burn_bonus}**."
-        )
+    # Burning is folded directly into player.get_total_attack(), so base_max
+    # above already reflects it — no separate ceiling injection needed here.
 
     # Shocking: raises the roll floor (same as hit damage)
     shock_idx, shock_name = get_weapon_tier(player, "shocking")
@@ -515,16 +507,9 @@ def calc_hit_damage(
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
 
-    # Burning raises the damage ceiling first — floor passives must see the true maximum
-    burn_note = ""
-    idx, name = get_weapon_tier(player, "burning")
-    if idx >= 0:
-        bonus = int(player.get_total_attack(monster) * ((idx + 1) * 0.08))
-        base_max += bonus
-        burn_note = f" burn+{bonus}"
-        log.append(
-            f"**{fmt_weapon_passive(name)}** 🔥 burns bright!\nAttack damage potential boosted by **{bonus}**."
-        )
+    # Burning is folded directly into player.get_total_attack(), so base_max
+    # above already reflects it — floor passives below still correctly see
+    # the true (burn-inclusive) maximum.
 
     # Floor: Adroit + Shocking stack ADDITIVELY against the post-Burning base_max.
     # Both percentages are summed, then applied once as a single floor.
@@ -586,7 +571,7 @@ def calc_hit_damage(
 
     echo_note = f" +echo={echo_damage}" if echo_damage else ""
     calc.append(
-        f"  hit_dmg: range=[{base_min}–{base_max}]{burn_note}{floor_note} "
+        f"  hit_dmg: range=[{base_min}–{base_max}]{floor_note} "
         f"rolled={rolled} ×mult={attack_multiplier:.4f}={int(rolled * attack_multiplier)}"
         f"{echo_note}{lucifer_note} = {damage}"
     )

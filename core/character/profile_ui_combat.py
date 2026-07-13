@@ -164,42 +164,15 @@ class CombatProfileBuilder:
             )
 
         # ── Hit Chance ───────────────────────────────────────────────────────
-        _HIT_BASE_PCT = 60
-        hit_weapon_pct = (
-            int(p.equipped_weapon.hit_chance * 100)
-            if p.equipped_weapon
-            else _HIT_BASE_PCT
-        )
-        hit_essence = 0
-        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
-            if _item:
-                hit_essence += compute_essence_stat_bonus(_item).get("hit_pct", 0)
-        hit_ascension = p.get_ascension_bonuses()["hit"] if p.ascension_unlocks else 0
-        hit_deadeye = 0
-        if p.equipped_weapon:
-            for _passive in (
-                p.equipped_weapon.passive,
-                p.equipped_weapon.p_passive,
-                p.equipped_weapon.u_passive,
-            ):
-                if _passive and "deadeye" in _passive.lower():
-                    try:
-                        tier = int(_passive.lower().split("_")[-1])
-                        hit_deadeye += tier * 4
-                    except (ValueError, IndexError):
-                        pass
-        hit_companion = p._get_companion_bonus("hit")
-        hit_accuracy_emblem = p.get_emblem_bonus("accuracy") * 2
-        hit_bonuses = hit_deadeye + hit_ascension + hit_companion + hit_accuracy_emblem
-        hit_total = hit_weapon_pct + hit_essence + hit_bonuses
         if p.get_glove_corrupted_essence() == "neet":
             hit_val = "**Total: 0%**\n↳ *(NEET Glove — always misses)*"
         else:
-            hit_val = f"**Total: {hit_total}%**\n↳ Weapon: {hit_weapon_pct}%"
-            if hit_essence:
-                hit_val += f"\n↳ Essences: +{hit_essence}%"
-            if hit_bonuses:
-                hit_val += f"\n↳ Bonuses: +{hit_bonuses}%"
+            total_hit, hit_contribs = p.get_total_hit_chance(explain=True)
+            hit_buckets = group_contributions(hit_contribs)
+            hit_lines = [f"**Total: {total_hit}%**"] + render_bucket_lines(
+                hit_buckets, suffix="%"
+            )
+            hit_val = "\n".join(hit_lines)
         embed.add_field(name="🎯 Hit Chance", value=hit_val, inline=True)
 
         # ── Crit Chance ──────────────────────────────────────────────────────
@@ -256,77 +229,54 @@ class CombatProfileBuilder:
             )
 
         # ── Evasion ───────────────────────────────────────────────────────────
-        evasion_armor = p.equipped_armor.evasion if p.equipped_armor else 0
-        evasion_essence = 0
-        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
-            if _item:
-                evasion_essence += compute_essence_stat_bonus(_item).get("evasion", 0)
-        total_evasion = evasion_armor + evasion_essence
+        total_evasion, evasion_contribs = p.get_total_evasion(explain=True)
         if total_evasion > 0:
-            eva_val = f"**{total_evasion}%**\n↳ Armor: {evasion_armor}%"
-            if evasion_essence:
-                eva_val += f"\n↳ Essences: +{evasion_essence}%"
-            embed.add_field(name=f"{DODGE_EVASION} Evasion", value=eva_val, inline=True)
+            evasion_buckets = group_contributions(evasion_contribs)
+            eva_lines = [f"**{total_evasion}%**"] + render_bucket_lines(
+                evasion_buckets, suffix="%"
+            )
+            embed.add_field(
+                name=f"{DODGE_EVASION} Evasion", value="\n".join(eva_lines), inline=True
+            )
 
         # ── Block ─────────────────────────────────────────────────────────────
-        block_armor = p.equipped_armor.block if p.equipped_armor else 0
-        block_essence = 0
-        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
-            if _item:
-                block_essence += compute_essence_stat_bonus(_item).get("block", 0)
-        total_block = block_armor + block_essence
+        total_block, block_contribs = p.get_total_block(explain=True)
         if total_block > 0:
-            blk_val = f"**{total_block}%**\n↳ Armor: {block_armor}%"
-            if block_essence:
-                blk_val += f"\n↳ Essences: +{block_essence}%"
-            embed.add_field(name=f"{STAT_BLOCK} Block", value=blk_val, inline=True)
+            block_buckets = group_contributions(block_contribs)
+            blk_lines = [f"**{total_block}%**"] + render_bucket_lines(
+                block_buckets, suffix="%"
+            )
+            embed.add_field(
+                name=f"{STAT_BLOCK} Block", value="\n".join(blk_lines), inline=True
+            )
 
         # ── Rarity ───────────────────────────────────────────────────────────
-        gear_rarity = p.rarity
-        comp_rarity_pct = p._get_companion_bonus("rarity")
-        prov_pct = p.get_tome_bonus("providence")
-        combined_more_pct = comp_rarity_pct + prov_pct
-        total_rarity = p.get_total_rarity()
+        total_rarity, rarity_contribs = p.get_total_rarity(explain=True)
         if total_rarity > 0:
-            rar_val = f"**{total_rarity}%**\n↳ Equipment: {gear_rarity}%"
-            if combined_more_pct > 0 and gear_rarity > 0:
-                after_more = int(gear_rarity * (1 + combined_more_pct / 100))
-                gain = after_more - gear_rarity
-                if comp_rarity_pct > 0 and prov_pct > 0:
-                    # Two sources — show the combined total plus a per-source breakdown.
-                    rar_val += f"\n↳ +{combined_more_pct:.1f}% more (+{gain})"
-                    rar_val += f"\n  ↳ Companion: {comp_rarity_pct:.1f}%"
-                    rar_val += f"\n  ↳ Providence: {prov_pct:.1f}%"
-                elif comp_rarity_pct > 0:
-                    rar_val += f"\n↳ Companion: {gain}%"
-                else:
-                    rar_val += f"\n↳ Providence: {gain}%"
-            else:
-                after_more = gear_rarity
-            codex_bonus = total_rarity - after_more
-            if codex_bonus:
-                rar_val += f"\n↳ Codex: +{codex_bonus}"
-            embed.add_field(name=f"{RARITY} Rarity", value=rar_val, inline=True)
+            rarity_buckets = group_contributions(rarity_contribs)
+            rar_lines = [f"**{total_rarity}%**"] + render_bucket_lines(
+                rarity_buckets, suffix="%"
+            )
+            embed.add_field(
+                name=f"{RARITY} Rarity", value="\n".join(rar_lines), inline=True
+            )
 
         # ── Special Rarity ────────────────────────────────────────────────────
-        sr_boot = 0.0
-        if p.equipped_boot and p.equipped_boot.passive == "thrill-seeker":
-            sr_boot = p.equipped_boot.passive_lvl * 0.5
-        sr_armor = (
-            3
-            if (p.equipped_armor and p.equipped_armor.passive == "Treasure Hunter")
-            else 0
+        # partner_special_rarity is only set on the Player object once real
+        # combat starts (_apply_partner_combat_start) — get_special_drop_bonus()
+        # alone reads 0 for it pre-combat, so cb["special_rarity"] previews the
+        # deterministic combat-start value, same convention as ATK/DEF/HP/Crit.
+        total_sr, sr_contribs = p.get_special_drop_bonus(explain=True)
+        sr_buckets = group_contributions(sr_contribs)
+        total_sr_display = min(20.0, total_sr + cb["special_rarity"])
+        sr_lines = [f"**{total_sr_display:.1f}%** (cap: 20%)"] + render_bucket_lines(
+            sr_buckets, suffix="%", decimals=1
         )
-        sr_companion = p._get_companion_bonus("s_rarity")
-        sr_partner_combat = cb["special_rarity"]
-        sr_total = min(20.0, sr_boot + sr_armor + sr_companion + sr_partner_combat)
-        sr_val = f"**{sr_total:.1f}%** (cap: 20%)"
-        if sr_armor or sr_boot:
-            sr_val += f"\n↳ Equipment: +{sr_armor + sr_boot:.1f}%"
-        if sr_companion or sr_partner_combat:
-            sr_bonus = sr_companion + sr_partner_combat
-            sr_val += f"\n↳ Bonuses: {sr_bonus:.1f}%"
-        embed.add_field(name="⭐ Special Rarity", value=sr_val, inline=True)
+        if cb["special_rarity"]:
+            sr_lines.append(f"↳ Combat Start: {cb['special_rarity']:+.1f}%")
+        embed.add_field(
+            name="⭐ Special Rarity", value="\n".join(sr_lines), inline=True
+        )
 
         return embed
 

@@ -116,8 +116,6 @@ def _compute_combat_bonuses(p) -> dict:
     exists — the profile page can only ever show the deterministic subset, so
     a combat log may show extra RNG-sourced deltas this preview omits.
     """
-    from core.combat.calc.calcs import get_weapon_tier
-
     cb: dict = {"atk": 0, "def": 0, "hp": 0, "crit": 0, "special_rarity": 0.0}
 
     # Partner combat skills (deterministic only)
@@ -146,10 +144,10 @@ def _compute_combat_bonuses(p) -> dict:
     if p.equipped_armor and _normalize(p.equipped_armor.passive) == "transcendence":
         cb["atk"] += int((p.get_total_attack() + p.get_total_defence()) * 0.20)
 
-    # Sturdy family (weapon passive — boosts defence by a fixed %)
-    idx, _ = get_weapon_tier(p, "sturdy")
-    if idx >= 0:
-        cb["def"] += int(p.get_total_defence() * (idx + 1) * 0.08)
+    # Sturdy (and Burning/Piercing) are now folded directly into
+    # get_total_defence()/get_total_attack()/get_current_crit_chance(), so
+    # they no longer need a "combat start" preview here — the stats page
+    # already reflects them permanently.
 
     # Infernal passives (deterministic ones only)
     if p.equipped_weapon and p.equipped_weapon.infernal_passive not in ("none", ""):
@@ -261,6 +259,7 @@ _CATEGORY_RULES: list[tuple[str, str]] = [
     ("artefact", "Passives"),
     ("slayer", "Passives"),
     ("insight helmet", "Passives"),
+    (" passive", "Passives"),  # "weapon passive", "boot passive", "armor passive", ...
     ("alchemy enrage", "Passives"),
     ("partner co_", "Bonus"),
     ("companions", "Bonus"),

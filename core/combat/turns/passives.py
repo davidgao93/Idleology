@@ -410,14 +410,9 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
         if void_p == "unravelling" and logs.get("Void Passive") == "":
             del logs["Void Passive"]
 
-    idx, name = get_weapon_tier(player, "sturdy")
-    if idx >= 0:
-        pct = (idx + 1) * 0.08
-        flat = int(player.get_total_defence(monster) * pct)
-        player.bonus_def += flat
-        weapon_parts.append(
-            f"🛡️ **{fmt_weapon_passive(name)}**: defence boosted by **{flat}** ({int(pct * 100)}%)"
-        )
+    # Sturdy is now folded directly into player.get_total_defence() (see
+    # models.py) as a permanent stat contribution, so no combat-start mutation
+    # is needed here anymore.
 
     if weapon_parts:
         logs["Weapon Passive"] = "\n".join(weapon_parts)
