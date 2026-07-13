@@ -446,6 +446,11 @@ NETHER_NPC_IRONMONGER_THUMBNAIL = "https://cdn.discordapp.com/attachments/133463
 NETHER_NPC_COUNTESS_VAELORA_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541261623418/countess_vael.jpg?ex=6a46c505&is=6a457385&hm=0c1795051ce727338745f048c29af1d925e8f774d54ed713dfa7e2a3b1be0212&"
 NETHER_NPC_THE_HOARDER_THUMBNAIL = "https://cdn.discordapp.com/attachments/1334637411363323996/1521970541529927791/hoarder.jpg?ex=6a46c505&is=6a457385&hm=2801dad317700dda1301488e10f7d52d71658fe88bdd0538fa947a40d3f4b5a1&"
 
+# ── INNER SANCTUM ──────────────────────────────────────────────────────────
+# TODO: source real art and replace with a hosted CDN URL (see scripts/upload_new.py).
+# Left as None so embed.set_thumbnail(url=None) simply omits the thumbnail.
+INNER_SANCTUM_THUMBNAIL = None
+
 # ── PRESTIGE AVATARS ──────────────────────────────────────────────────────────
 # Purchasable animated avatar gallery (cogs/prestige.py). Keys are internal
 # codenames; display labels + tier pricing live in cogs/prestige.py:

@@ -108,10 +108,12 @@ async def _enter_final_phase(
     """Builds Phase 6's (the true Arbiter's) CombatView fresh, once the
     player explicitly confirms via ArbiterFinalFormView's "Face the
     Arbiter" button — Phase 6 never auto-starts the instant the Amalgam
-    falls. Ward and any accumulated Arbiter's Aid buffs carry over from
-    Phase 5 since the fight is still continuous (no respite between phases)."""
+    falls. Ward, Arbiter's Aid buffs, and Start-of-Combat passive bonuses
+    (Infernal/Void/partner/Hematurgy/Soul Stone) all carry over from Phase 5
+    since the fight is still continuous (no respite between phases) and
+    player.cs is never reset mid-fight — apply_respite_buffs() already set
+    atk/def_multiplier back at Phase 1 start and doesn't need reapplying here."""
     reset_for_phase_transition(player)
-    apply_respite_buffs(player, run_state)
 
     phases = mobgen.get_arbiter_phases(player)
     monster = mobgen.generate_arbiter_phase(
@@ -297,11 +299,13 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
             view.current_phase_index = upcoming_phase_index
             next_phase_data = view.combat_phases[view.current_phase_index]
             reset_for_phase_transition(view.player)
-            # reset_for_phase_transition -> reset_combat_bonus() zeroes
-            # cs.atk_multiplier/def_multiplier back to 1.0 every phase — the
-            # Power stacking buff (applied once at Phase 1 start) would
-            # otherwise be silently lost from Phase 2 onward.
-            apply_respite_buffs(view.player, run_state)
+            # reset_for_phase_transition no longer zeros cs.atk_multiplier/
+            # def_multiplier or the bonus accumulators — they, and the Power
+            # stacking buff apply_respite_buffs set at Phase 1 start, persist
+            # automatically across phases now. Re-invoking apply_respite_buffs
+            # here would just overwrite atk/def_multiplier and silently wipe
+            # any Start-of-Combat passive that also modifies them (e.g.
+            # Diabolic Pact), so it's intentionally not called again.
             view.monster = mobgen.generate_arbiter_phase(
                 view.player, next_phase_data, view.current_phase_index
             )
@@ -309,6 +313,8 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
             view.monster.is_boss = True
 
             engine.apply_stat_effects(view.player, view.monster)
+            # apply_combat_start_passives is guarded by player.cs.combat_start_fired —
+            # it already fired at Phase 1 start and returns {} here.
             new_logs = engine.apply_combat_start_passives(view.player, view.monster)
             view.logs = new_logs
 

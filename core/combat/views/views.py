@@ -918,6 +918,10 @@ class CombatView(BaseLayoutView):
             self.monster.is_boss = True
 
             engine.apply_stat_effects(self.player, self.monster)
+            # apply_combat_start_passives is guarded by player.cs.combat_start_fired —
+            # it already fired at Phase 1 start and returns {} here, so Start-of-Combat
+            # passives (Gilded Hunger, partner skills, Ward Inoculation, etc.) don't
+            # re-trigger/duplicate on every later phase.
             new_logs = engine.apply_combat_start_passives(self.player, self.monster)
             self.logs = new_logs
             self.combat_logger.log_player_stat_snapshot(self.player, self.monster)

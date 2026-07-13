@@ -27,8 +27,9 @@ from core.character.passive_formatters import (
     _desc_scaled,
     _format_corrupted,
     _format_weapon_passive,
-    _get_piercing_crit_bonus,
     _normalize,
+    group_contributions,
+    render_bucket_lines,
 )
 from core.emojis import (
     ACCESSORY_SLOT,
@@ -68,6 +69,10 @@ class CombatProfileBuilder:
         cb = _compute_combat_bonuses(p)
 
         # ── Attack ───────────────────────────────────────────────────────────
+        # Total/contributions come straight from get_total_attack(explain=True) —
+        # the exact same call the combat log uses — so the "Total" here always
+        # matches the log's turn-1 baseline modulo the "Combat Start" preview
+        # (see _compute_combat_bonuses docstring for what that preview can't see).
         gear_atk = 0
         if p.equipped_weapon:
             gear_atk += p.equipped_weapon.attack
@@ -81,17 +86,24 @@ class CombatProfileBuilder:
         for _item in (p.equipped_glove, p.equipped_boot):
             if _item:
                 essence_atk += compute_essence_stat_bonus(_item).get("attack", 0)
-        total_atk = p.get_total_attack()
-        atk_bonuses = total_atk - p.base_attack - gear_atk - essence_atk
-        total_atk_display = total_atk + cb["atk"]
-        atk_val = f"**Total: {total_atk_display:,}**\n↳ Base: {p.base_attack:,}\n↳ Equipment: {gear_atk:,}"
+        total_atk, atk_contribs = p.get_total_attack(explain=True)
+        barracks_atk = p.flat_atk - p.base_attack - gear_atk - essence_atk
+        atk_buckets = group_contributions(atk_contribs[1:])  # skip merged flat entry
+        atk_buckets["Base"] = p.base_attack
+        atk_buckets["Equipment"] = gear_atk
+        if barracks_atk:
+            atk_buckets["Barracks"] = barracks_atk
         if essence_atk:
-            atk_val += f"\n↳ Essences: +{essence_atk:,}"
-        if atk_bonuses:
-            atk_val += f"\n↳ Bonuses: {atk_bonuses:+,}"
+            atk_buckets["Essences"] = atk_buckets.get("Essences", 0) + essence_atk
+        total_atk_display = total_atk + cb["atk"]
+        atk_lines = [f"**Total: {total_atk_display:,}**"] + render_bucket_lines(
+            atk_buckets
+        )
         if cb["atk"]:
-            atk_val += f"\n↳ Combat start: {cb['atk']:+,}"
-        embed.add_field(name=f"{STAT_ATK} Attack", value=atk_val, inline=True)
+            atk_lines.append(f"↳ Combat Start: {cb['atk']:+,}")
+        embed.add_field(
+            name=f"{STAT_ATK} Attack", value="\n".join(atk_lines), inline=True
+        )
 
         # ── Defence ──────────────────────────────────────────────────────────
         gear_def = 0
@@ -109,87 +121,47 @@ class CombatProfileBuilder:
         for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
             if _item:
                 essence_def += compute_essence_stat_bonus(_item).get("defence", 0)
-        total_def = p.get_total_defence()
-        def_bonuses = total_def - p.base_defence - gear_def - essence_def
-        total_def_display = total_def + cb["def"]
-        def_val = f"**Total: {total_def_display:,}**\n↳ Base: {p.base_defence:,}\n↳ Equipment: {gear_def:,}"
+        total_def, def_contribs = p.get_total_defence(explain=True)
+        barracks_def = p.flat_def - p.base_defence - gear_def - essence_def
+        def_buckets = group_contributions(def_contribs[1:])
+        def_buckets["Base"] = p.base_defence
+        def_buckets["Equipment"] = gear_def
+        if barracks_def:
+            def_buckets["Barracks"] = barracks_def
         if essence_def:
-            def_val += f"\n↳ Essences: +{essence_def:,}"
-        if def_bonuses:
-            def_val += f"\n↳ Bonuses: {def_bonuses:+,}"
+            def_buckets["Essences"] = def_buckets.get("Essences", 0) + essence_def
+        total_def_display = total_def + cb["def"]
+        def_lines = [f"**Total: {total_def_display:,}**"] + render_bucket_lines(
+            def_buckets
+        )
         if cb["def"]:
-            def_val += f"\n↳ Combat start: {cb['def']:+,}"
-        embed.add_field(name=f"{STAT_DEF} Defence", value=def_val, inline=True)
+            def_lines.append(f"↳ Combat Start: {cb['def']:+,}")
+        embed.add_field(
+            name=f"{STAT_DEF} Defence", value="\n".join(def_lines), inline=True
+        )
 
         # ── HP ───────────────────────────────────────────────────────────────
-        vitality_pct = p.get_tome_bonus("vitality")
-        hearty_pct = 0
-        if p.equipped_boot and p.equipped_boot.passive == "hearty":
-            hearty_pct = p.equipped_boot.passive_lvl * 5
-        ss_hearty = p.get_soul_stone_passive("hearty")
-        if ss_hearty:
-            hearty_pct += ss_hearty * 5
-        asc_hp = p.get_ascension_bonuses()["hp"] if p.ascension_unlocks else 0
-        parts_hp = (
-            sum(v["hp"] for v in p.equipped_parts.values()) if p.equipped_parts else 0
-        )
-        hp_pre_pct = p.max_hp + p.run_max_hp_bonus + p.bonus_max_hp + asc_hp + parts_hp
-        hp_total_pct = vitality_pct + hearty_pct
-        hp_post_pct = (
-            int(hp_pre_pct * (1 + hp_total_pct / 100))
-            if hp_total_pct > 0
-            else hp_pre_pct
-        )
-        gluttony_pct = sum(
-            compute_essence_stat_bonus(item).get("max_hp_pct", 0)
-            for item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet)
-            if item
-        )
-        hp_post_gluttony = (
-            int(hp_post_pct * (1 + gluttony_pct / 100))
-            if gluttony_pct > 0
-            else hp_post_pct
-        )
-        essence_hp = hp_post_gluttony - hp_post_pct
-        total_hp = p.total_max_hp
-        other_hp_bonuses = total_hp - p.max_hp - parts_hp - essence_hp
+        total_hp, hp_contribs = p.get_total_max_hp(explain=True)
+        hp_buckets = group_contributions(hp_contribs)
         total_hp_display = total_hp + cb["hp"]
-        hp_val = f"**{p.current_hp:,} / {total_hp_display:,}**\n↳ Base: {p.max_hp:,}\n↳ Parts: {parts_hp:,}"
-        if essence_hp:
-            hp_val += f"\n↳ Essences: +{essence_hp:,}"
-        if other_hp_bonuses:
-            hp_val += f"\n↳ Bonuses: {other_hp_bonuses:+,}"
+        hp_lines = [
+            f"**{p.current_hp:,} / {total_hp_display:,}**"
+        ] + render_bucket_lines(hp_buckets)
         if cb["hp"]:
-            hp_val += f"\n↳ Combat start: {cb['hp']:+,}"
-        embed.add_field(name=f"{STAT_HP} HP", value=hp_val, inline=True)
+            hp_lines.append(f"↳ Combat Start: {cb['hp']:+,}")
+        embed.add_field(name=f"{STAT_HP} HP", value="\n".join(hp_lines), inline=True)
 
         # ── Ward ─────────────────────────────────────────────────────────────
-        ward_equip = 0
-        if p.equipped_accessory:
-            ward_equip += p.equipped_accessory.ward
-        if p.equipped_armor:
-            ward_equip += p.equipped_armor.ward
-        if p.equipped_glove:
-            ward_equip += p.equipped_glove.ward
-        if p.equipped_boot:
-            ward_equip += p.equipped_boot.ward
-        if p.equipped_helmet:
-            ward_equip += p.equipped_helmet.ward
-        essence_ward = 0
-        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
-            if _item:
-                essence_ward += compute_essence_stat_bonus(_item).get("ward", 0)
-        ward_other = p._get_companion_bonus("ward")
-        total_ward = ward_equip + essence_ward + ward_other
+        total_ward, ward_contribs = p.get_total_ward_percentage(explain=True)
         if total_ward > 0:
             ward_hp = p.get_combat_ward_value()
-            ward_val = (
-                f"**{total_ward}%** (= {ward_hp:,} Ward)\n↳ Equipment: {ward_equip}%"
+            ward_buckets = group_contributions(ward_contribs)
+            ward_lines = [
+                f"**{total_ward}%** (= {ward_hp:,} Ward)"
+            ] + render_bucket_lines(ward_buckets, suffix="%")
+            embed.add_field(
+                name=f"{STAT_WARD} Ward", value="\n".join(ward_lines), inline=True
             )
-            if essence_ward:
-                ward_val += f"\n↳ Essences: +{essence_ward}%"
-            ward_val += f"\n↳ Other: {ward_other}%"
-            embed.add_field(name=f"{STAT_WARD} Ward", value=ward_val, inline=True)
 
         # ── Hit Chance ───────────────────────────────────────────────────────
         _HIT_BASE_PCT = 60
@@ -231,108 +203,57 @@ class CombatProfileBuilder:
         embed.add_field(name="🎯 Hit Chance", value=hit_val, inline=True)
 
         # ── Crit Chance ──────────────────────────────────────────────────────
-        crit_weapon_template = (
-            int(p.equipped_weapon.crit_chance * 100) if p.equipped_weapon else 0
+        # Note: Piercing (weapon "piercing_N"), Voracious stacks, and partner
+        # co_crit_rate are added on top of get_current_crit_chance() by
+        # calculate_crit_chance() (see calc/hit_calc.py) to form the *effective*
+        # crit used in combat resolution. The combat log's own STAT BREAKDOWN
+        # tracks get_current_crit_chance() only (see combat_log.py _STAT_GETTERS),
+        # so Total here intentionally excludes them too, for exact log parity.
+        total_crit, crit_contribs = p.get_current_crit_chance(explain=True)
+        crit_buckets = group_contributions(crit_contribs)
+        total_crit_display = total_crit + cb["crit"]
+        crit_lines = [f"**Total: {total_crit_display}%**"] + render_bucket_lines(
+            crit_buckets, suffix="%"
         )
-        crit_weapon_piercing = 0
-        if p.equipped_weapon:
-            for _passive in (
-                p.equipped_weapon.passive,
-                p.equipped_weapon.p_passive,
-                p.equipped_weapon.u_passive,
-            ):
-                if _passive:
-                    crit_weapon_piercing += _get_piercing_crit_bonus(_passive.lower())
-        crit_weapon = crit_weapon_template + crit_weapon_piercing
-        crit_equip = p.equipped_accessory.crit if p.equipped_accessory else 0
-        essence_crit = 0
-        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
-            if _item:
-                essence_crit += compute_essence_stat_bonus(_item).get("crit", 0)
-        stat_crit = p.get_current_crit_chance()
-        crit_bonuses = stat_crit - crit_equip - essence_crit - crit_weapon_template
-        total_crit_display = stat_crit + crit_weapon_piercing + cb["crit"]
-        crit_val = f"**Total: {total_crit_display}%**\n↳ Weapon: {crit_weapon}%\n↳ Equipment: {crit_equip}%"
-        if essence_crit:
-            crit_val += f"\n↳ Essences: +{essence_crit}%"
-        if crit_bonuses:
-            crit_val += f"\n↳ Bonuses: {crit_bonuses:+}%"
         if cb["crit"]:
-            crit_val += f"\n↳ Combat start: {cb['crit']:+}"
-        embed.add_field(name="🗡️ Crit Chance", value=crit_val, inline=True)
+            crit_lines.append(f"↳ Combat Start: {cb['crit']:+}%")
+        embed.add_field(
+            name="🗡️ Crit Chance", value="\n".join(crit_lines), inline=True
+        )
 
         # ── Crit Multiplier ──────────────────────────────────────────────────
-        weapon_base_multi = p.equipped_weapon.crit_multi if p.equipped_weapon else 2.0
-        crit_multi_total = p.get_weapon_crit_multi()
-        essence_multi = 0.0
-        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
-            if _item:
-                essence_multi += compute_essence_stat_bonus(_item).get(
-                    "crit_multi", 0.0
-                )
-        cm_val = f"**{crit_multi_total:.2f}×**\n↳ Weapon: {weapon_base_multi:.2f}×"
-        if essence_multi:
-            cm_val += f"\n↳ Essences: +{essence_multi:.2f}×"
-        crit_multi_bonus = round(
-            crit_multi_total - weapon_base_multi - essence_multi, 4
+        total_multi, multi_contribs = p.get_weapon_crit_multi(explain=True)
+        multi_buckets = group_contributions(multi_contribs)
+        cm_lines = [f"**{total_multi:.2f}×**"] + render_bucket_lines(
+            multi_buckets, suffix="×", decimals=2
         )
-        if crit_multi_bonus > 0:
-            cm_val += f"\n↳ Bonuses: +{crit_multi_bonus:.2f}×"
-        embed.add_field(name=f"{CRIT_MULTI} Crit Multiplier", value=cm_val, inline=True)
+        embed.add_field(
+            name=f"{CRIT_MULTI} Crit Multiplier",
+            value="\n".join(cm_lines),
+            inline=True,
+        )
 
         # ── PDR ──────────────────────────────────────────────────────────────
-        pdr_equip = 0
-        if p.equipped_armor:
-            pdr_equip += p.equipped_armor.pdr
-        if p.equipped_glove:
-            pdr_equip += p.equipped_glove.pdr
-        if p.equipped_boot:
-            pdr_equip += p.equipped_boot.pdr
-        if p.equipped_helmet:
-            pdr_equip += p.equipped_helmet.pdr
-        essence_pdr = 0
-        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
-            if _item:
-                essence_pdr += compute_essence_stat_bonus(_item).get("pdr", 0)
-        pdr_other = p._get_companion_bonus("pdr") + int(p.get_tome_bonus("bulwark"))
-        if p.ascension_unlocks:
-            pdr_other += p.get_ascension_bonuses()["pdr"]
-        raw_pdr = pdr_equip + essence_pdr + pdr_other
-        capped_pdr = min(80, raw_pdr)
-        pdr_str = f"**{capped_pdr}%**" + (
-            f" ({raw_pdr}% uncapped)" if raw_pdr > 80 else ""
+        total_pdr, pdr_contribs = p.get_total_pdr(explain=True)
+        raw_note = ""
+        for label, delta in pdr_contribs:
+            if label.startswith("Hard Cap"):
+                raw_note = f" ({total_pdr - delta}% uncapped)"
+                break
+        pdr_buckets = group_contributions(pdr_contribs)
+        pdr_lines = [f"**{total_pdr}%**{raw_note}"] + render_bucket_lines(
+            pdr_buckets, suffix="%"
         )
-        pdr_val = f"{pdr_str}\n↳ Equipment: {pdr_equip}%"
-        if essence_pdr:
-            pdr_val += f"\n↳ Essences: +{essence_pdr}%"
-        pdr_val += f"\n↳ Other: {pdr_other}%"
-        embed.add_field(name=f"{STAT_PDR} PDR", value=pdr_val, inline=True)
+        embed.add_field(name=f"{STAT_PDR} PDR", value="\n".join(pdr_lines), inline=True)
 
         # ── FDR ──────────────────────────────────────────────────────────────
-        fdr_equip = 0
-        if p.equipped_armor:
-            fdr_equip += p.equipped_armor.fdr
-        if p.equipped_glove:
-            fdr_equip += p.equipped_glove.fdr
-        if p.equipped_boot:
-            fdr_equip += p.equipped_boot.fdr
-        if p.equipped_helmet:
-            fdr_equip += p.equipped_helmet.fdr
-        essence_fdr = 0
-        for _item in (p.equipped_glove, p.equipped_boot, p.equipped_helmet):
-            if _item:
-                essence_fdr += compute_essence_stat_bonus(_item).get("fdr", 0)
-        fdr_other = p._get_companion_bonus("fdr") + int(p.get_tome_bonus("resilience"))
-        if p.ascension_unlocks:
-            fdr_other += p.get_ascension_bonuses()["fdr"]
-        total_fdr = int(fdr_equip + essence_fdr + fdr_other)
+        total_fdr, fdr_contribs = p.get_total_fdr(explain=True)
         if total_fdr > 0:
-            fdr_val = f"**{total_fdr:,}**\n↳ Equipment: {fdr_equip}"
-            if essence_fdr:
-                fdr_val += f"\n↳ Essences: +{essence_fdr}"
-            if fdr_other > 0:
-                fdr_val += f"\n↳ Other: {fdr_other}"
-            embed.add_field(name=f"{STAT_FDR} FDR", value=fdr_val, inline=True)
+            fdr_buckets = group_contributions(fdr_contribs)
+            fdr_lines = [f"**{total_fdr:,}**"] + render_bucket_lines(fdr_buckets)
+            embed.add_field(
+                name=f"{STAT_FDR} FDR", value="\n".join(fdr_lines), inline=True
+            )
 
         # ── Evasion ───────────────────────────────────────────────────────────
         evasion_armor = p.equipped_armor.evasion if p.equipped_armor else 0

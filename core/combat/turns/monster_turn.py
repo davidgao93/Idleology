@@ -8,11 +8,13 @@ from core.combat.calc.hit_calc import calculate_monster_hit_chance
 from core.combat.calc.ward_system import _add_ward
 from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
 from core.emojis import (
+    CELESTIAL_ENGRAM,
     GOLD_COIN,
     INFERNAL_ENGRAM,
     MOD_FLASHFIRE,
     MOD_PRESSURE_SURGE,
     STAT_WARD,
+    VOID_ENGRAM,
 )
 from core.models import Monster, Player
 
@@ -254,13 +256,15 @@ def process_monster_turn(
             if celestial == "celestial_vow" and not getattr(
                 player, "celestial_vow_used", False
             ):
-                player.current_hp = 1
+                heal_amount = int(player.total_max_hp * 0.5)
+                player.current_hp = heal_amount
                 ward_gain = int(player.total_max_hp * 0.5)
                 added = _add_ward(player, ward_gain, log)
                 player.celestial_vow_used = True
                 log.append(
                     f"💥 **Unbreakable** reaches its limit — but **Celestial Vow** "
-                    f"saves you! You survive with **{added}** {STAT_WARD} Ward!"
+                    f"saves you! You're restored to **{heal_amount}** HP and gain "
+                    f"**{added}** {STAT_WARD} Ward!"
                 )
             else:
                 player.current_hp = 0
@@ -775,7 +779,7 @@ def process_monster_turn(
 
             void_passive = player.get_accessory_void_passive()
             if void_passive == "nullfield" and random.random() < 0.15:
-                _null_msg = "⬛ **Nullfield** absorbs the strike into the void!"
+                _null_msg = f"{VOID_ENGRAM} **Nullfield** absorbs the strike into the void!"
                 log.append(_null_msg)
                 clog.append(_null_msg)
                 total_damage = 0
@@ -860,11 +864,15 @@ def process_monster_turn(
                     and (player.current_hp - total_damage <= 0)
                     and not getattr(player, "celestial_vow_used", False)
                 ):
-                    player.current_hp = 1
+                    heal_amount = int(player.total_max_hp * 0.5)
+                    player.current_hp = heal_amount
                     ward_gain = int(player.total_max_hp * 0.5)
                     added = _add_ward(player, ward_gain, log)
                     player.celestial_vow_used = True
-                    _vow_msg = f"✨ **Celestial Vow** activates! You survive the fatal blow and gain {added} {STAT_WARD} Ward!"
+                    _vow_msg = (
+                        f"{CELESTIAL_ENGRAM} **Celestial Vow** activates! You survive the fatal "
+                        f"blow, heal to **{heal_amount}** HP, and gain **{added}** {STAT_WARD} Ward!"
+                    )
                     log.append(f"\n{_vow_msg}")
                     clog.append(_vow_msg)
                 else:
@@ -910,7 +918,7 @@ def process_monster_turn(
                     player.current_hp = player.total_max_hp
                     player.hunger_stacks = 0
                     _hunger_msg = (
-                        f"⬛ **Eternal Hunger** consumes the pain!\n"
+                        f"{VOID_ENGRAM} **Eternal Hunger** consumes the pain!\n"
                         f"💀 Devoured **{hunger_dmg}** HP ({monster.name}'s max × 10%)!\n"
                         f"❤️ Wounds consumed — HP restored to full!"
                     )
@@ -918,7 +926,7 @@ def process_monster_turn(
                     clog.append(_hunger_msg)
                 else:
                     log.append(
-                        f"⬛ **Eternal Hunger** feeds ({player.hunger_stacks}/10 stacks)."
+                        f"{VOID_ENGRAM} **Eternal Hunger** feeds ({player.hunger_stacks}/10 stacks)."
                     )
                     # skip in compact — stack count visible in Status field
 

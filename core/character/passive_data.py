@@ -94,7 +94,7 @@ _CELESTIAL_PASSIVE_DESC: dict[str, str] = {
     "celestial glancing blows": "Combat start: Block Chance doubled. During combat: Blocked hits deal 50% damage",
     "celestial wind dancer": "Combat start: Evasion Chance tripled; Helmet is disabled",
     "celestial sanctity": "During combat: Damage dealt by enemies is unlucky",
-    "celestial vow": "Once per combat: Survive a fatal blow at 1 HP, gain 50% of Max HP as Ward",
+    "celestial vow": "Once per combat: Survive a fatal blow, heal to 50% of Max HP, and gain 50% of Max HP as Ward",
     "celestial fortress": "During combat: Gain +1% PDR per 5% missing HP",
 }
 

@@ -20,7 +20,7 @@ from __future__ import annotations
 import math
 import random
 
-from core.emojis import INFERNAL_ENGRAM, STAT_WARD
+from core.emojis import INFERNAL_ENGRAM, STAT_WARD, VOID_ENGRAM
 from core.models import Monster, Player
 
 _DMG_VARIANCE_CEIL = 1.35
@@ -457,7 +457,7 @@ def calc_crit_damage(
         reduction = max(1, int(monster.effective_attack * 0.03))
         monster.flat_attack_reduction += reduction
         log.append(
-            f"⬛ **Void Gaze** ({player.gaze_stacks}/30) — {monster.name}'s ATK -{reduction}!"
+            f"{VOID_ENGRAM} **Void Gaze** ({player.gaze_stacks}/30) — {monster.name}'s ATK -{reduction}!"
         )
 
     if (
@@ -642,7 +642,9 @@ def calc_miss_damage(
     if void_passive == "oblivion":
         oblivion_dmg = int(player.get_total_attack(monster) * 0.5)
         damage += oblivion_dmg
-        miss_parts.append(f"**Oblivion** phases through for ⬛ **{oblivion_dmg}**")
+        miss_parts.append(
+            f"**Oblivion** phases through for {VOID_ENGRAM} **{oblivion_dmg}**"
+        )
 
     if infernal == "voracious":
         player.voracious_stacks += 1

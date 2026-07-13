@@ -136,6 +136,10 @@ class ExperienceManager:
                 )
                 changes["msgs"].append("✨ Gained **2** Passive Points!")
 
+                if server_id:
+                    await bot.database.inner_sanctum.add_points(user_id, server_id, 10)
+                    changes["msgs"].append("🔮 Gained **10** Inner Sanctum Points!")
+
             # Normal Level Up (pre-100): generate packages instead of applying stats.
             else:
                 player.level += 1
@@ -183,6 +187,22 @@ class ExperienceManager:
                         "and check `/journey` to see what you've just unlocked and claim your rewards!"
                     )
 
+                # Inner Sanctum points: locked until level 25 (lump-sum unlock grant),
+                # then +1 per level thereafter.
+                if server_id:
+                    if player.level == 25:
+                        await bot.database.inner_sanctum.add_points(
+                            user_id, server_id, 25
+                        )
+                        changes["msgs"].append(
+                            "🔮 **The Inner Sanctum awakens!** Gained **25** Inner "
+                            "Sanctum Points! Use `/inner_sanctum` to spend them."
+                        )
+                    elif player.level > 25:
+                        await bot.database.inner_sanctum.add_points(
+                            user_id, server_id, 1
+                        )
+
         # 4. Persist pending packages to DB (append to any already-pending sets).
         if new_packages and server_id:
             existing = await bot.database.users.get_pending_packages(user_id, server_id)
@@ -197,10 +217,18 @@ class ExperienceManager:
     async def remove_experience(
         bot, user_id: str, player: Player, base_loss: int
     ) -> int:
-        """Removes XP on death, factoring in EXP Protection."""
+        """Removes XP on death, factoring in EXP Protection and the Inner
+        Sanctum Recovery path's Merciful Fall node."""
         exp_protected = await bot.database.users.get_exp_protection(user_id)
         if exp_protected:
             return 0  # No XP lost if protected
+
+        from core.inner_sanctum.mechanics import get_tree_bonuses
+
+        is_bonuses = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))
+        reduction_pct = is_bonuses["exp_loss_reduction_pct"]
+        if reduction_pct > 0:
+            base_loss = int(base_loss * (1 - reduction_pct))
 
         actual_loss = min(player.exp, base_loss)
         player.exp -= actual_loss

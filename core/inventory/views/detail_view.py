@@ -19,6 +19,7 @@ from core.emojis import (
     VOID_ENGRAM,
     VOID_KEY,
 )
+from core.images import VEYRA_AUTHOR
 from core.inventory.inventory import InventoryUI
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.items.essence_mechanics import get_essence_slots
@@ -293,6 +294,8 @@ class ItemDetailView(BaseView):
             return True
         if hasattr(self.item, "passive_lvl") and self.item.passive_lvl > 0:
             return True
+        if hasattr(self.item, "reinforcement_lvl") and self.item.reinforcement_lvl > 0:
+            return True
 
         return False
 
@@ -323,6 +326,16 @@ class ItemDetailView(BaseView):
                     value=f"**{runes_back}** rune(s) will be recovered.",
                     inline=False,
                 )
+
+        if isinstance(self.item, (Armor, Glove, Boot, Helmet)):
+            shatter_back = EquipmentMechanics.calculate_shatter_refund(self.item)
+            if shatter_back > 0:
+                embed.add_field(
+                    name=f"{RUNE_SHATTER} Shatter Runes",
+                    value=f"**{shatter_back}** rune(s) will be recovered.",
+                    inline=False,
+                )
+                embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
 
         if isinstance(self.item, (Glove, Boot, Helmet)):
             from core.items.essence_views import ESSENCE_DISPLAY
@@ -393,6 +406,16 @@ class ItemDetailView(BaseView):
                 )
                 rune_msg = f"\n{RUNE_REFINEMENT} Recovered **{runes_back}** Refinement Rune(s)."
 
+        # Armor/Glove/Boot/Helmet shatter rune refund
+        shatter_back = 0
+        if isinstance(self.item, (Armor, Glove, Boot, Helmet)):
+            shatter_back = EquipmentMechanics.calculate_shatter_refund(self.item)
+            if shatter_back > 0:
+                await self.bot.database.users.modify_currency(
+                    self.user_id, "shatter_runes", shatter_back
+                )
+                rune_msg += f"\n{RUNE_SHATTER} Recovered **{shatter_back}** Shatter Rune(s)."
+
         # Update List State
         self.parent.items = [
             i for i in self.parent.items if i.item_id != self.item.item_id
@@ -411,6 +434,8 @@ class ItemDetailView(BaseView):
         temp_embed.description = (
             f"🗑️ **{self.item.name}** was dismantled.{xp_msg}{rune_msg}"
         )
+        if shatter_back > 0:
+            temp_embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
 
         await interaction.edit_original_response(
             content=None, embed=temp_embed, view=None

@@ -157,7 +157,8 @@ class UberHubView(BaseLayoutView):
                 text, accessory=discord.ui.Thumbnail(thumb_url, description=title)
             )
 
-        sep = lambda: discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
+        def sep() -> discord.ui.Separator:
+            return discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
 
         children: list = [
             discord.ui.Section(

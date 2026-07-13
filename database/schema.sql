@@ -591,6 +591,15 @@ CREATE TABLE IF NOT EXISTS slayer_tree (
   PRIMARY KEY (user_id, server_id)
 );
 
+CREATE TABLE IF NOT EXISTS inner_sanctum (
+  user_id           TEXT    NOT NULL,
+  server_id         TEXT    NOT NULL,
+  points_available  INTEGER NOT NULL DEFAULT 0,
+  points_spent      INTEGER NOT NULL DEFAULT 0,
+  nodes_owned       TEXT    NOT NULL DEFAULT '{}',
+  PRIMARY KEY (user_id, server_id)
+);
+
 CREATE TABLE IF NOT EXISTS uber_progress (
   user_id                          TEXT NOT NULL,
   server_id                        TEXT NOT NULL,

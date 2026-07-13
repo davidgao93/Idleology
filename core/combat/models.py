@@ -36,6 +36,10 @@ class CombatState:
     ward: int = 0
     is_invulnerable: bool = False
     cooldown_reduction_seconds: int = 0
+    # Guards apply_combat_start_passives() so multi-phase boss fights only
+    # fire Start-of-Combat passives (Infernal/Void/partner/Hematurgy/Soul
+    # Stone) once, at true Phase 1 start — never on later phase transitions.
+    combat_start_fired: bool = False
     celestial_vow_used: bool = False
     voracious_stacks: int = 0
     cursed_precision_active: bool = False
@@ -453,6 +457,11 @@ class Player:
     active_task_species: str = (
         None  # Store this so the engine knows if we are fighting a task mob
     )
+
+    # Inner Sanctum
+    inner_sanctum_nodes: dict = field(
+        default_factory=dict
+    )  # nodes_owned from inner_sanctum table
 
     # Codex Tomes
     codex_tomes: List[CodexTome] = field(default_factory=list)
@@ -1915,6 +1924,12 @@ class Player:
 
         # Partner co_special_rarity (set at combat start by passives.py)
         bonus += int(self.partner_special_rarity)
+
+        # Inner Sanctum Vice — Gilded Instinct
+        if self.inner_sanctum_nodes:
+            from core.inner_sanctum.mechanics import get_tree_bonuses
+
+            bonus += get_tree_bonuses(self.inner_sanctum_nodes)["special_rarity_pct"]
 
         # [SAFETY CAP] Hard cap special rarity bonus at 20%
         return min(20, bonus)

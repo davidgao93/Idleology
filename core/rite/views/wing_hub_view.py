@@ -392,7 +392,8 @@ class WingHubView(BaseLayoutView):
                 text, accessory=discord.ui.Thumbnail(thumb_url, description=name)
             )
 
-        sep = lambda: discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
+        def sep() -> discord.ui.Separator:
+            return discord.ui.Separator(spacing=discord.SeparatorSpacing.small)
 
         hp_pct = int(100 * self.player.current_hp / max(1, self.player.total_max_hp))
         writs_line = ""

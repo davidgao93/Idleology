@@ -16,8 +16,10 @@ explicit field resets across view files:
 
   reset_for_phase_transition(player)
       Minimal reset for boss phase transitions (Aphrodite, Lucifer, NEET, Gemini).
-      Preserves all transient stacks and ward.  Only resets combat_bonus
-      accumulators and invulnerability, which are per-phase rather than per-fight.
+      Preserves all transient stacks, ward, combat_bonus accumulators, and
+      Start-of-Combat passive bonuses (those only ever fire once, guarded by
+      player.cs.combat_start_fired). Only resets invulnerability, which is
+      genuinely per-phase rather than per-fight.
 
   fire_on_victory_effects(player) -> list[str]
       Fires passive effects that trigger on encounter victory.
@@ -49,6 +51,7 @@ def reset_combat_transients(player: Player) -> None:
     cs.celestial_vow_used = False
     cs.lucifer_pdr_burst = 0
     cs.is_snared = False
+    cs.combat_start_fired = False
     _je.reset_jewel_transients(player)
     reset_hematurgy_transients(player)
 
@@ -56,11 +59,12 @@ def reset_combat_transients(player: Player) -> None:
 def reset_for_phase_transition(player: Player) -> None:
     """Minimal reset for boss phase transitions.
 
-    All stacks, ward, and transients persist — the fight is continuous.
-    Only combat_bonus accumulators and invulnerability reset because they
-    are per-phase (applied fresh by apply_combat_start_passives each phase).
+    All stacks, ward, combat_bonus accumulators, and Start-of-Combat passive
+    bonuses (Infernal/Void/partner/Hematurgy/Soul Stone, guarded by
+    player.cs.combat_start_fired) persist — the fight is continuous, and
+    those passives only ever fire once, at true Phase 1 start. Only
+    invulnerability resets, since it is genuinely per-phase.
     """
-    player.reset_combat_bonus()
     player.cs.is_invulnerable = False
 
 

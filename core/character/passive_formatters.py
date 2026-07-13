@@ -97,16 +97,6 @@ def _format_weapon_passive(key: str) -> str:
     return key.title()
 
 
-def _get_piercing_crit_bonus(passive: str) -> int:
-    """Returns the flat crit-chance bonus from a piercing_N passive (+5 per tier)."""
-    if passive and passive.startswith("piercing_"):
-        try:
-            return int(passive.split("_")[1]) * 5
-        except (ValueError, IndexError):
-            pass
-    return 0
-
-
 def _format_corrupted(etype: str, slot: str) -> str:
     key = (_normalize(etype), slot.lower())
     desc = _CORRUPTED_DESC.get(key, etype.replace("_", " ").title())
@@ -115,7 +105,17 @@ def _format_corrupted(etype: str, slot: str) -> str:
 
 
 def _compute_combat_bonuses(p) -> dict:
-    """Compute deterministic (non-random) combat-start stat bonuses for display."""
+    """Compute deterministic (non-random) combat-start stat bonuses for display.
+
+    Mirrors `apply_stat_effects` / `apply_combat_start_passives` (see
+    core/combat/turns/passives.py) and `apply_hematurgy_start` (see
+    core/hematurgy/engine.py) closely enough to preview what the "Combat bonus
+    accumulator" will read at turn 1 of the player's next fight. Deliberately
+    excludes RNG-gated sources (Absorb, Unlimited Wealth, the sig_co_skol
+    essence-buff roll) since those can't be known before a real monster/roll
+    exists — the profile page can only ever show the deterministic subset, so
+    a combat log may show extra RNG-sourced deltas this preview omits.
+    """
     from core.combat.calc.calcs import get_weapon_tier
 
     cb: dict = {"atk": 0, "def": 0, "hp": 0, "crit": 0, "special_rarity": 0.0}
@@ -177,4 +177,166 @@ def _compute_combat_bonuses(p) -> dict:
         elif void_p == "void echo" and p.equipped_weapon:
             cb["atk"] += int(p.equipped_weapon.attack * 0.15)
 
+    # Inner Sanctum Recovery — permanent ATK malus scaling with points spent
+    # in the path (see apply_stat_effects). Monster-independent, always active.
+    is_nodes = getattr(p, "inner_sanctum_nodes", None)
+    if is_nodes:
+        from core.inner_sanctum.mechanics import get_tree_bonuses
+
+        recovery_malus_pct = get_tree_bonuses(is_nodes)["recovery_atk_malus_pct"]
+        if recovery_malus_pct > 0:
+            cb["atk"] -= int(p.flat_atk * recovery_malus_pct)
+
+    # Soul Stone combat-start passives (deterministic tiers only — Absorb and
+    # Unlimited Wealth are RNG-gated and skipped, see docstring above). Each
+    # is skipped if the equivalent gear passive is already active, matching
+    # the "not (...)" guards in _apply_soul_stone_start.
+    if p.soul_stone:
+        from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+        from core.apex.mechanics import ApexMechanics
+
+        ss_transcendence = p.get_soul_stone_passive("transcendence")
+        if ss_transcendence and not (
+            p.equipped_armor and _normalize(p.equipped_armor.passive) == "transcendence"
+        ):
+            pct = _SST["transcendence"][ss_transcendence - 1]
+            cb["atk"] += int(
+                (p.get_total_attack() + p.get_total_defence()) * pct / 100
+            )
+
+        ss_juggernaut = p.get_soul_stone_passive("juggernaut")
+        if ss_juggernaut and not (
+            p.equipped_helmet and _normalize(p.equipped_helmet.passive) == "juggernaut"
+        ):
+            cb["atk"] += int(p.flat_def * ss_juggernaut * 4.0 / 100)
+
+        res = ApexMechanics.get_resonance_multipliers(p.soul_stone)
+        tyr_pct = res.get("tyr_pct", 0.0)
+        if tyr_pct > 0:
+            cur_atk = p.get_total_attack()
+            cur_def = p.get_total_defence()
+            combined = int((cur_atk + cur_def) * (1 + tyr_pct))
+            half = combined // 2
+            cb["atk"] += max(0, half - cur_atk)
+            cb["def"] += max(0, half - cur_def)
+
+    # Hematurgy Ward Inoculation — converts the current ward pool into flat
+    # DEF and doubles Max HP; both fire unconditionally whenever owned (see
+    # apply_hematurgy_start).
+    if p.hematurgy_passives:
+        from core.hematurgy.engine import get_h
+        from core.hematurgy.mechanics import tier_val
+
+        wi_tier = get_h(p, "ward_inoculation")
+        if wi_tier is not None:
+            ward_val = p.get_combat_ward_value()
+            if ward_val > 0:
+                cb["def"] += int(ward_val * tier_val("ward_inoculation", wi_tier))
+            cb["hp"] += p.total_max_hp
+
     return cb
+
+
+# ---------------------------------------------------------------------------
+# Contribution-label categorization — shared by the profile stats page so it
+# can group the exact (source_label, delta) pairs returned by every
+# get_total_*(explain=True) Player getter into the same short buckets used
+# here, instead of re-deriving totals by hand (see profile_ui_combat.py).
+# Keeping this table in sync with new contribution labels is the only way to
+# add a stat source without the profile page silently drifting from the
+# combat log again.
+# ---------------------------------------------------------------------------
+
+_CATEGORY_RULES: list[tuple[str, str]] = [
+    ("hematurgy", "Hematurgy"),
+    ("ascension pinnacle", "Ascent"),
+    ("vitality/hearty/respite", "Passives"),
+    ("tome", "Codex"),
+    ("codex", "Codex"),
+    ("monster parts", "Parts"),
+    ("stat investment", "Stats"),
+    ("essence", "Essences"),
+    ("corrupted", "Essences"),
+    ("soul stone", "Passives"),
+    ("artefact", "Passives"),
+    ("slayer", "Passives"),
+    ("insight helmet", "Passives"),
+    ("alchemy enrage", "Passives"),
+    ("partner co_", "Bonus"),
+    ("companions", "Bonus"),
+    ("combat bonus accumulator", "Bonus"),
+    ("multiplier", "Bonus"),
+    ("hard cap", "Bonus"),
+    ("run penalty", "Codex"),
+    ("run bonus", "Codex"),
+    ("equipment", "Equipment"),
+    ("weapon base crit", "Equipment"),
+    ("accessory crit", "Equipment"),
+    ("weapon base", "Base"),
+    ("base max hp", "Base"),
+    ("base + equipment", "Base"),
+]
+
+# Fixed display order for grouped buckets (skipped when empty). Base/Equipment/
+# Barracks are only ever populated manually by callers that split the merged
+# "Base + Equipment (+Barracks)" contribution (ATK/DEF) — every other bucket
+# is reachable directly from categorize_contribution().
+CATEGORY_ORDER: list[str] = [
+    "Base",
+    "Equipment",
+    "Barracks",
+    "Essences",
+    "Stats",
+    "Hematurgy",
+    "Ascent",
+    "Codex",
+    "Passives",
+    "Bonus",
+    "Parts",
+]
+
+# Buckets shown without an explicit +/- sign (magnitudes, not deltas).
+_UNSIGNED_CATEGORIES = {"Base", "Equipment"}
+
+
+def render_bucket_lines(
+    buckets: dict[str, float], *, suffix: str = "", decimals: int = 0
+) -> list[str]:
+    """Renders grouped buckets as '↳ Category: value' lines in CATEGORY_ORDER,
+    skipping empty buckets. Base/Equipment show a plain magnitude; every other
+    bucket is signed (+/-)."""
+    lines = []
+    for cat in CATEGORY_ORDER:
+        if cat not in buckets:
+            continue
+        val = buckets[cat]
+        if cat in _UNSIGNED_CATEGORIES:
+            lines.append(f"↳ {cat}: {val:,.{decimals}f}{suffix}")
+        elif val:
+            lines.append(f"↳ {cat}: {val:+,.{decimals}f}{suffix}")
+    return lines
+
+
+def categorize_contribution(label: str) -> str:
+    """Maps a get_total_*(explain=True) contribution label to a short
+    display bucket (Base, Equipment, Stats, Hematurgy, Ascent, Codex,
+    Passives, Bonus, Parts, Essences)."""
+    low = label.lower()
+    for needle, bucket in _CATEGORY_RULES:
+        if needle in low:
+            return bucket
+    return "Bonus"
+
+
+def group_contributions(
+    contributions: list[tuple[str, float]],
+) -> dict[str, float]:
+    """Sums a get_total_*(explain=True) contributions list into short display
+    buckets, in CATEGORY_ORDER. Zero-delta entries are dropped."""
+    buckets: dict[str, float] = {}
+    for label, delta in contributions:
+        if not delta:
+            continue
+        cat = categorize_contribution(label)
+        buckets[cat] = buckets.get(cat, 0) + delta
+    return buckets

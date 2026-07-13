@@ -22,7 +22,7 @@ from core.combat.calc.damage_calc import (
 from core.combat.calc.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
 from core.combat.calc.ward_system import _add_ward, generate_player_ward_on_hit
 from core.combat.turns.helpers import PlayerTurnResult, capture_compact_events
-from core.emojis import QUENCH, STAT_WARD
+from core.emojis import CELESTIAL_ENGRAM, QUENCH, STAT_WARD
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -820,7 +820,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         _gr_regen = random.randint(50, 200)
         _gr_added = _add_ward(player, _gr_regen, log)
         log.append(
-            f"✨ **Celestial Ghostreaver** restores **{_gr_added}** {STAT_WARD} Ward!"
+            f"{CELESTIAL_ENGRAM} **Celestial Ghostreaver** restores **{_gr_added}** {STAT_WARD} Ward!"
         )
         _je.process_jewel_trigger(player, monster, "ward", _gr_added, log)
 

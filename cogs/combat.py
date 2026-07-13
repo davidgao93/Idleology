@@ -32,6 +32,7 @@ from core.combat.views.warning_views import (
     LowHealthWarningView,
 )
 from core.first_use import TUTORIALS
+from core.inner_sanctum.mechanics import get_tree_bonuses
 from core.items.factory import load_player
 from core.models import Monster
 
@@ -312,11 +313,21 @@ class Combat(commands.Cog, name="combat"):
 
         # Consume 1 stamina. Use consume_stamina (SQL MAX(0, val-1)) so over-cap
         # values (e.g. 12.5 from War Camp) drain correctly without being truncated.
+        # Inner Sanctum Recovery — Frugal Spirit: chance to skip the consumption entirely.
+        is_tree = await self.bot.database.inner_sanctum.get(user_id, server_id)
+        is_bonuses = get_tree_bonuses(is_tree["nodes_owned"])
+        stamina_saved = random.random() < is_bonuses["stamina_save_chance"]
+
         current_stamina = existing_user["combat_stamina"]
-        await self.bot.database.users.consume_stamina(user_id)
+        if not stamina_saved:
+            await self.bot.database.users.consume_stamina(user_id)
         # Start the regen clock the moment we cross below the normal cap.
         # Over-cap stamina (from War Camp) delays the stamp until that crossing.
-        if current_stamina >= MAX_STAMINA and current_stamina - 1 < MAX_STAMINA:
+        if (
+            not stamina_saved
+            and current_stamina >= MAX_STAMINA
+            and current_stamina - 1 < MAX_STAMINA
+        ):
             await self.bot.database.users.set_stamina_regen_time(user_id)
 
         is_boss = False
@@ -384,7 +395,11 @@ class Combat(commands.Cog, name="combat"):
                     "balance_fragment": all_currencies["balance_fragment"],
                 }
                 triggered, boss_type, cost_dict = EncounterManager.check_boss_door(
-                    player.level, currencies
+                    player.level,
+                    currencies,
+                    boss_chance_bonus=is_bonuses["boss_chance_bonus_pct"],
+                    affinity=is_bonuses["boss_affinity"],
+                    affinity_shift=is_bonuses["boss_affinity_shift"],
                 )
 
             if triggered:
@@ -440,6 +455,8 @@ class Combat(commands.Cog, name="combat"):
         task_species = slayer_profile["active_task_species"]
         slayer_tree_data = await self.bot.database.slayer.get_tree(user_id, server_id)
         player.slayer_tree_nodes = slayer_tree_data["nodes_owned"]
+        # is_tree/is_bonuses were already fetched above for the stamina-save roll.
+        player.inner_sanctum_nodes = is_tree["nodes_owned"]
 
         monster = Monster(
             name="",
@@ -474,6 +491,8 @@ class Combat(commands.Cog, name="combat"):
                 ss_treasure_tracker = player.get_soul_stone_passive("treasure-tracker")
                 if ss_treasure_tracker:
                     treasure_chance += ss_treasure_tracker * 0.5
+            # Inner Sanctum Vice — Treasure Sense
+            treasure_chance += is_bonuses["treasure_chance_pct"]
             is_treasure = random.random() * 100 < treasure_chance
             monster = await generate_encounter(
                 player,

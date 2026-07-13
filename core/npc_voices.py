@@ -225,6 +225,13 @@ _VOICES: dict[str, list[str]] = {
         "This is not for the faint of heart. Good. You don't look faint of heart.",
         "The body adapts. That's the truth every hematurge builds their craft on. Let's adapt you.",
     ],
+    "inner_sanctum": [
+        "Three paths wind through this place — Vice, Recovery, Deicide. None of them are free.",
+        "Every gift here casts a shadow. Choose which weight you're willing to carry into battle.",
+        "You want the world to bend toward you? It will. It'll also push back.",
+        "Greed, comfort, or conquest — the Sanctum doesn't judge. It just keeps score.",
+        "Spend your points wisely. Reversing a choice costs more than making one.",
+    ],
     "paradise": [
         "You're here. Good. The Jewel won't cut itself, and I'm not doing it for you.",
         "Decades of lapidary work, and you're the one who ends up with it. Life has a sense of humour.",

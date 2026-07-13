@@ -287,6 +287,9 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
 
     Returns a dict of truthy flags like {'spirit_stone': True, 'draconic_key': True}.
     """
+    from core.inner_sanctum.mechanics import get_tree_bonuses
+
+    is_bonuses = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))
     drops = {}
 
     # ── Boss encounters ──────────────────────────────────────────────────────
@@ -314,11 +317,25 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             },
         }
 
+        # Inner Sanctum Deicide — Reliquary Sense: flat bonus % added to every
+        # boss rune/key chance (curio excluded — it's already guaranteed).
+        boss_rune_bonus = is_bonuses["boss_rune_chance_pct"]
+
         for boss_name, config in boss_configs.items():
             if boss_name in monster.name:
                 for item, chance in config.items():
-                    if random.random() < chance:
+                    eff_chance = (
+                        chance if item == "curio" else min(1.0, chance + boss_rune_bonus)
+                    )
+                    if random.random() < eff_chance:
                         drops[item] = True
+
+                # Deicide — Greedy Conquest: chance for one extra bonus item from
+                # this boss's table (can duplicate an already-rolled rune type).
+                dupe_chance = is_bonuses["boss_dupe_chance"]
+                dupe_candidates = [k for k in config if k != "curio"]
+                if dupe_chance and dupe_candidates and random.random() < dupe_chance:
+                    drops["deicide_dupe_item"] = random.choice(dupe_candidates)
                 break
 
         if player.level >= 30:
@@ -347,6 +364,11 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         sum(m.difficulty for m in monster.modifiers),
     )
     special_drop_chance = mod_difficulty_bonus + special_rarity
+
+    # Inner Sanctum Vice — Hoarder's Eye: flat bonus % on rune-specific rolls only
+    # (shatter_rune, rune_of_regret) — deliberately not folded into special_drop_chance
+    # so it doesn't also buff unrelated drops like Guild Tickets or Blueprints.
+    rune_chance_bonus = is_bonuses["rune_chance_pct"]
 
     # Rare monsters always receive the full difficulty cap bonus + a free curio.
     rare_monsters = [
@@ -386,7 +408,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["draconic_key"] = True
         if random.random() < ANGELIC_KEY_BASE_CHANCE + special_drop_chance:
             drops["angelic_key"] = True
-        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance + rune_chance_bonus:
             drops["shatter_rune"] = True
 
     if player.level >= 30:
@@ -406,7 +428,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         for item in ("magma_core", "life_root", "spirit_shard"):
             if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
                 drops[item] = True
-        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance + rune_chance_bonus:
             drops["rune_of_regret"] = True
 
     if player.level >= 50:
@@ -565,6 +587,14 @@ async def apply_special_flags(
         elif key == "yvenn_slayer_bonus" and isinstance(val, int):
             # Bonus slayer progress — stored for the slayer integration block
             reward_data["yvenn_slayer_bonus"] = val
+
+        elif key == "deicide_dupe_item" and isinstance(val, str):
+            # Inner Sanctum Deicide — Greedy Conquest: a second unit of a boss
+            # rune/key type, granted even if the same type already dropped above.
+            if val in _SPECIAL_FLAG_CURRENCY_MAP:
+                currency_key, display_name = _SPECIAL_FLAG_CURRENCY_MAP[val]
+                await bot.database.users.modify_currency(user_id, currency_key, 1)
+                reward_data["special"].append(f"{display_name} (Deicide bonus)")
 
 
 def calculate_item_drop_chance(player: Player) -> int:

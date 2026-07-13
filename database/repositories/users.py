@@ -1,10 +1,13 @@
 # database/repositories/users.py
 
+import json
+import random
 import re
 from datetime import datetime, timedelta
 
 import aiosqlite
 
+from core.inner_sanctum.mechanics import get_tree_bonuses
 from core.models import Player
 
 
@@ -485,12 +488,27 @@ class UserRepository:
         """
         Grants +1 combat_stamina to every user below cap whose last regen
         was >= 1 hour ago (or has never been set). Returns number of users updated.
+
+        Inner Sanctum Recovery — Deep Reserves: each eligible user has a
+        per-rank chance to receive +2 instead of +1 on a given tick.
         """
         now = datetime.now()
         async with self.connection.execute(
             "SELECT user_id, combat_stamina, last_stamina_regen FROM users WHERE combat_stamina < 10"
         ) as cursor:
             rows = await cursor.fetchall()
+
+        if not rows:
+            return 0
+
+        async with self.connection.execute(
+            "SELECT user_id, nodes_owned FROM inner_sanctum"
+        ) as is_cursor:
+            is_rows = await is_cursor.fetchall()
+        nodes_by_user = {
+            r["user_id"]: (json.loads(r["nodes_owned"]) if r["nodes_owned"] else {})
+            for r in is_rows
+        }
 
         updated = 0
         for row in rows:
@@ -513,9 +531,17 @@ class UserRepository:
                     should_grant = True
 
             if should_grant:
+                gain = 1
+                nodes_owned = nodes_by_user.get(user_id)
+                if nodes_owned:
+                    bonus_chance = get_tree_bonuses(nodes_owned)[
+                        "stamina_regen_bonus_chance"
+                    ]
+                    if bonus_chance and random.random() < bonus_chance:
+                        gain = 2
                 await self.connection.execute(
                     "UPDATE users SET combat_stamina = ?, last_stamina_regen = ? WHERE user_id = ?",
-                    (min(10, stamina + 1), now.isoformat(), user_id),
+                    (min(10, stamina + gain), now.isoformat(), user_id),
                 )
                 await self.connection.commit()
                 updated += 1

@@ -20,6 +20,7 @@ from .repositories.equipment import EquipmentRepository
 from .repositories.essences import EssencesRepository
 from .repositories.hall_of_firsts import HallOfFirstsRepository
 from .repositories.hematurgy import HematurgyRepository
+from .repositories.inner_sanctum import InnerSanctumRepository
 from .repositories.journey import JourneyRepository
 from .repositories.maw import MawRepository
 from .repositories.monster_parts import MonsterPartsRepository
@@ -60,6 +61,7 @@ class DatabaseManager:
         self.settlement_materials = SettlementMaterialsRepository(connection)
         self.plots = PlotRepository(connection)
         self.slayer = SlayerRepository(connection)
+        self.inner_sanctum = InnerSanctumRepository(connection)
         self.uber = UberRepository(connection)
         self.codex = CodexRepository(connection)
         self.duels = DuelStatsRepository(connection)

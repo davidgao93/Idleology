@@ -8,12 +8,9 @@ from discord import ButtonStyle, Interaction, ui
 from core.base_view import BaseView
 from core.emojis import MONSTER_EGG, MONSTER_EGG_TIER_EMOJI
 from core.hatchery.mechanics import HatcheryMechanics
-from core.images import YUNA_PORTRAIT, YUNA_THUMBNAIL
+from core.images import SETTLEMENT_BUILDINGS, YUNA_PORTRAIT
 from core.npc_voices import get_quip
 
-# Unicode fallback used only for the egg-select dropdown (custom emoji don't
-# render correctly in SelectOption). Embed content uses MONSTER_EGG_TIER_EMOJI.
-_EGG_TIER_EMOJI = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
 _EGG_TIER_LABEL = {"normal": "Normal Egg", "rare": "Rare Egg", "giga": "Giga Egg"}
 
 
@@ -42,7 +39,7 @@ class EggQueueSelect(ui.Select):
         options = []
         for egg in eggs[:25]:
             tier = egg[1]
-            emoji = _EGG_TIER_EMOJI.get(tier, "🥚")
+            emoji = MONSTER_EGG_TIER_EMOJI.get(tier, MONSTER_EGG)
             label = f"{_EGG_TIER_LABEL.get(tier, tier)} — lvl {egg[2]} {egg[3]}"
             options.append(
                 discord.SelectOption(label=label[:100], value=str(egg[0]), emoji=emoji)
@@ -114,7 +111,7 @@ class HatcheryView(BaseView):
             color=0x4CAF50,
         )
         embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
-        embed.set_thumbnail(url=YUNA_THUMBNAIL)
+        embed.set_thumbnail(url=SETTLEMENT_BUILDINGS["hatchery"])
 
         egg_counts = {}
         for e in self._eggs:

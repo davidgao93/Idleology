@@ -198,7 +198,7 @@ def create_victory_embed(
 
     for essence_type in rewards.get("essences", []):
         label, emoji = ESSENCE_DISPLAY.get(essence_type, (essence_type.title(), "✨"))
-        loot_lines.append(f"{emoji} **Essence of {label}**")
+        loot_lines.append(f"✦ **Essence of {emoji} {label}**")
 
     # 4. Equipment Drops
     for item_desc in rewards.get("items", []):

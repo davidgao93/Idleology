@@ -307,6 +307,20 @@ class EquipmentMechanics:
             runes_back += 1
         return runes_back
 
+    @staticmethod
+    def calculate_shatter_refund(item: "_Reinforceable") -> int:
+        """
+        Shatter rune refund granted when armor/glove/boot/helmet is discarded.
+        Shatter Runes grant extra reinforce slots beyond the item's base allotment
+        (reinforcement_lvl + reinforces_remaining - base_slots); ~80% of those
+        spent runes are recovered.
+        """
+        base_slots = 3 if item.level <= 40 else (4 if item.level <= 80 else 5)
+        shatter_used = item.reinforcement_lvl + item.reinforces_remaining - base_slots
+        if shatter_used <= 0:
+            return 0
+        return max(0, int(shatter_used * 0.8))
+
     # Per-refine soft caps. get_scaled_stat approaches these asymptotically via a
     # hyperbolic curve: expected = cap * (level / (level + 100)), ±20% variance.
     _REFINE_CAPS = {"attack": 15, "defence": 10, "rarity": 50}

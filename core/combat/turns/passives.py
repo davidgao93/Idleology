@@ -10,6 +10,7 @@ from core.emojis import (
     STAT_DEF,
     STAT_PDR,
     STAT_WARD,
+    VOID_ENGRAM,
 )
 from core.models import Monster, Player
 
@@ -80,6 +81,16 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
         if slayer_def_tiers > 0:
             bonus = int(player.flat_def * slayer_def_tiers * 0.02)
             player.bonus_def += bonus
+
+    # Inner Sanctum Recovery — trade-off for stamina/survivability investment:
+    # a small permanent ATK malus scaling with points spent in the path.
+    is_nodes = getattr(player, "inner_sanctum_nodes", None)
+    if is_nodes:
+        from core.inner_sanctum.mechanics import get_tree_bonuses
+
+        recovery_malus_pct = get_tree_bonuses(is_nodes)["recovery_atk_malus_pct"]
+        if recovery_malus_pct > 0:
+            player.bonus_atk -= int(player.flat_atk * recovery_malus_pct)
 
 
 # ---------------------------------------------------------------------------
@@ -167,7 +178,7 @@ def _cs_entropy(player, monster):
     def_t = int(player.equipped_weapon.defence * 0.20)
     player.equipped_weapon.attack = player.equipped_weapon.attack - atk_t + def_t
     player.equipped_weapon.defence = player.equipped_weapon.defence - def_t + atk_t
-    return f"⬛ **Entropy** warps the weapon! 20% ATK↔DEF transferred (±{atk_t} ATK / ±{def_t} DEF)"
+    return f"{VOID_ENGRAM} **Entropy** warps the weapon! 20% ATK↔DEF transferred (±{atk_t} ATK / ±{def_t} DEF)"
 
 
 def _cs_void_echo(player, monster):
@@ -176,7 +187,7 @@ def _cs_void_echo(player, monster):
     bonus = int(player.equipped_weapon.attack * 0.15)
     if bonus > 0:
         player.bonus_atk += bonus
-        return f"⬛ **Void Echo** resonates! ⚔️ +**{bonus}** ATK (15% of weapon ATK)"
+        return f"{VOID_ENGRAM} **Void Echo** resonates! ⚔️ +**{bonus}** ATK (15% of weapon ATK)"
 
 
 _ARMOR_START_HANDLERS: dict[str, callable] = {
@@ -307,7 +318,16 @@ def _apply_partner_combat_start(
 
 
 def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, str]:
-    """Applies player passives that trigger at the start of combat. Returns UI log strings."""
+    """Applies player passives that trigger at the start of combat. Returns UI log strings.
+
+    Guarded by player.cs.combat_start_fired so multi-phase boss fights (which
+    call this again on every phase transition to refresh apply_stat_effects)
+    only fire these once, at true Phase 1 start — not on every later phase.
+    """
+    if player.cs.combat_start_fired:
+        return {}
+    player.cs.combat_start_fired = True
+
     player.is_invulnerable_this_combat = False
     logs: Dict[str, str] = {}
 
@@ -368,7 +388,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
 
     if player.get_accessory_void_passive() == "unravelling":
         def_strip_pct += 0.20
-        def_strip_parts.append("⬛ **Unravelling** (20%)")
+        def_strip_parts.append(f"{VOID_ENGRAM} **Unravelling** (20%)")
         logs["Void Passive"] = logs.get(
             "Void Passive", ""
         )  # ensure key exists for later merge

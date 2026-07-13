@@ -10,6 +10,7 @@ from core.combat.mobgen.modifier_data import (
     make_modifier,
     omnipotent_label,
 )
+from core.inner_sanctum.mechanics import get_tree_bonuses
 from core.images import (
     COMBAT_DUMMY,
     CORRUPTED_MONSTERS,
@@ -139,6 +140,7 @@ async def generate_encounter(
         if not monster.is_essence:
             _roll_zenith_spawn(monster, player, slayer_tree_nodes or {})
 
+    _apply_inner_sanctum_vice_downside(monster, player)
     finalize_monster_spawn(monster)
     return monster
 
@@ -199,6 +201,7 @@ async def generate_boss(player, monster, phase, phase_index):
         monster, phase["modifiers_count"], is_boss=True, force_max_eligible_tier=True
     )
     _apply_spawn_modifiers(monster)
+    _apply_inner_sanctum_deicide_downside(monster, player)
     finalize_monster_spawn(monster)
     return monster
 
@@ -243,6 +246,30 @@ async def generate_ascent_monster(
     finalize_monster_spawn(monster)
     monster.is_boss = True
     return monster
+
+
+def _apply_inner_sanctum_vice_downside(monster, player) -> None:
+    """Vice path trade-off: every point invested in Vice makes regular
+    monsters slightly tankier/harder-hitting, in exchange for its rarity/loot
+    bonuses (treasure chance, rune chance, special rarity)."""
+    bonuses = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))
+    if bonuses["vice_monster_atk_pct"]:
+        monster.bonus_attack_pct += bonuses["vice_monster_atk_pct"]
+    if bonuses["vice_monster_hp_pct"]:
+        monster.bonus_max_hp_pct += bonuses["vice_monster_hp_pct"]
+
+
+def _apply_inner_sanctum_deicide_downside(monster, player) -> None:
+    """Deicide path trade-off: every point invested in Deicide makes phase-door
+    bosses tougher, in exchange for its boss-chance/boss-loot bonuses.
+    Never applied to Uber bosses — those are separately hand-tuned fights."""
+    bonuses = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))
+    if bonuses["deicide_boss_atk_pct"]:
+        monster.bonus_attack_pct += bonuses["deicide_boss_atk_pct"]
+    if bonuses["deicide_boss_def_pct"]:
+        monster.bonus_defence_pct += bonuses["deicide_boss_def_pct"]
+    if bonuses["deicide_boss_hp_pct"]:
+        monster.bonus_max_hp_pct += bonuses["deicide_boss_hp_pct"]
 
 
 def _pick_modifier_type(is_boss: bool) -> str:

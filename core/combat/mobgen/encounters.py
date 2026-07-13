@@ -11,40 +11,71 @@ from core.images import (
 
 class EncounterManager:
     @staticmethod
-    def check_boss_door(player_level: int, currencies: dict) -> Tuple[bool, str, dict]:
+    def check_boss_door(
+        player_level: int,
+        currencies: dict,
+        boss_chance_bonus: float = 0.0,
+        affinity: str | None = None,
+        affinity_shift: float = 0.0,
+    ) -> Tuple[bool, str, dict]:
         """
         Determines if a boss door appears.
+
+        boss_chance_bonus — Inner Sanctum Deicide's Hunter's Resolve node:
+            widens the total trigger window beyond the base 80% (capped at 95%).
+        affinity / affinity_shift — Deicide's Marked Prey choice node: shifts
+            relative weight toward one boss type, taken proportionally from
+            the other three.
+
         Returns: (triggered, boss_type, cost_dict)
         """
         roll = random.random()
 
+        boss_order = ["aphrodite", "lucifer", "gemini", "NEET"]
+        p_door = min(0.95, 0.80 + boss_chance_bonus)
+        weights = {b: p_door / len(boss_order) for b in boss_order}
+        if affinity in weights and affinity_shift > 0:
+            bonus = weights[affinity] * affinity_shift
+            taken = bonus / (len(boss_order) - 1)
+            for b in boss_order:
+                if b == affinity:
+                    weights[b] += bonus
+                else:
+                    weights[b] = max(0.0, weights[b] - taken)
+
+        windows = {}
+        cumulative = 0.0
+        for b in boss_order:
+            windows[b] = (cumulative, cumulative + weights[b])
+            cumulative += weights[b]
+
         # 1. Aphrodite (Celestial)
+        lo, hi = windows["aphrodite"]
         if (
             player_level >= 20
             and currencies["dragon_key"] > 0
             and currencies["angel_key"] > 0
-            and roll < 0.20
+            and lo <= roll < hi
         ):
             return True, "aphrodite", {"dragon_key": 1, "angel_key": 1}
 
         # 2. Lucifer (Infernal)
-        elif (
-            player_level >= 30 and currencies["soul_cores"] >= 5 and 0.20 <= roll < 0.40
-        ):
+        lo, hi = windows["lucifer"]
+        if player_level >= 30 and currencies["soul_cores"] >= 5 and lo <= roll < hi:
             return True, "lucifer", {"soul_cores": 5}
 
         # 3. Gemini (Balance)
-        elif (
+        lo, hi = windows["gemini"]
+        if (
             player_level >= 40
             and currencies["balance_fragment"] >= 2
-            and 0.40 <= roll < 0.60
+            and lo <= roll < hi
         ):
             return True, "gemini", {"balance_fragment": 2}
 
         # 4. NEET (Void)
-        elif (
-            player_level >= 50 and currencies["void_frags"] >= 3 and 0.60 <= roll < 0.80
-        ):
+        lo, hi = windows["NEET"]
+        if player_level >= 50 and currencies["void_frags"] >= 3 and lo <= roll < hi:
             return True, "NEET", {"void_frags": 3}
 
         return False, "", {}
