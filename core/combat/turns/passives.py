@@ -99,11 +99,9 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
 
 
 def _cs_transcendence(player, monster):
-    total_atk = player.get_total_attack(monster)
-    total_def = player.get_total_defence(monster)
-    bonus = int((total_atk + total_def) * 0.20)
+    bonus = int((player.flat_atk + player.flat_def) * 0.20)
     player.bonus_atk += bonus
-    return f"**✨ Transcendence** channels your power! ⚔️ +**{bonus}** ATK (20% of total ATK+DEF)"
+    return f"**✨ Transcendence** channels your power! ⚔️ +**{bonus}** ATK (20% of flat ATK+DEF)"
 
 
 def _cs_unlimited_wealth(player, monster):
@@ -159,10 +157,11 @@ def _cs_diabolic_pact(player, monster):
     # Deduct 50% of max HP from current HP, floor of 1 (max HP is unchanged)
     cost = int(player.total_max_hp * 0.5)
     player.current_hp = max(1, player.current_hp - cost)
-    # +100% ATK via the shared additive atk_multiplier pool (sums with any other
-    # ATK % source active this combat — Codex boons, Apex zone bonus, Enrage, etc.)
+    # +100% of flat ATK via the shared additive atk_multiplier pool (sums with
+    # any other ATK % source active this combat — Codex boons, Apex zone
+    # bonus, Enrage, etc.)
     player.atk_multiplier += 1.0
-    return f"{INFERNAL_ENGRAM} **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ ATK doubled!"
+    return f"{INFERNAL_ENGRAM} **Diabolic Pact** sealed in blood! 💀 -{cost} HP → ⚔️ +100% of flat ATK as bonus ATK!"
 
 
 def _cs_cursed_precision(player, monster):
@@ -174,20 +173,26 @@ def _cs_cursed_precision(player, monster):
 def _cs_entropy(player, monster):
     if not player.equipped_weapon:
         return
+    # 20% of the weapon's own flat ATK becomes bonus DEF, and vice versa —
+    # added to the bonus pools directly (mutating the weapon item here would
+    # be invisible: flat_atk/flat_def are already cached before combat start).
     atk_t = int(player.equipped_weapon.attack * 0.20)
     def_t = int(player.equipped_weapon.defence * 0.20)
-    player.equipped_weapon.attack = player.equipped_weapon.attack - atk_t + def_t
-    player.equipped_weapon.defence = player.equipped_weapon.defence - def_t + atk_t
-    return f"{VOID_ENGRAM} **Entropy** warps the weapon! 20% ATK↔DEF transferred (±{atk_t} ATK / ±{def_t} DEF)"
+    player.bonus_def += atk_t
+    player.bonus_atk += def_t
+    return (
+        f"{VOID_ENGRAM} **Entropy** warps the weapon! "
+        f"⚔️ +**{def_t}** ATK / 🛡️ +**{atk_t}** DEF (20% flat Weapon ATK↔DEF)"
+    )
 
 
 def _cs_void_echo(player, monster):
     if not player.equipped_weapon:
         return
-    bonus = int(player.equipped_weapon.attack * 0.15)
+    bonus = int(player.equipped_weapon.attack * 0.30)
     if bonus > 0:
         player.bonus_atk += bonus
-        return f"{VOID_ENGRAM} **Void Echo** resonates! ⚔️ +**{bonus}** ATK (15% of weapon ATK)"
+        return f"{VOID_ENGRAM} **Void Echo** resonates! ⚔️ +**{bonus}** ATK (30% of flat weapon ATK)"
 
 
 _ARMOR_START_HANDLERS: dict[str, callable] = {
@@ -444,19 +449,17 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
 
     log: list[str] = []
 
-    # Transcendence (soul stone): T1=4% → T5=20% of (ATK+DEF) as bonus ATK
+    # Transcendence (soul stone): T1=4% → T5=20% of flat (ATK+DEF) as bonus ATK
     ss_transcendence = player.get_soul_stone_passive("transcendence")
     if ss_transcendence and not (
         player.equipped_armor and player.equipped_armor.passive == "Transcendence"
     ):
         pct = _SST["transcendence"][ss_transcendence - 1]
-        total_atk = player.get_total_attack(monster)
-        total_def = player.get_total_defence(monster)
-        bonus = int((total_atk + total_def) * pct / 100)
+        bonus = int((player.flat_atk + player.flat_def) * pct / 100)
         player.bonus_atk += bonus
         log.append(
             f"✨ **Soul Transcendence T{ss_transcendence}** — "
-            f"⚔️ +**{bonus}** ATK ({pct}% of ATK+DEF)"
+            f"⚔️ +**{bonus}** ATK ({pct}% of flat ATK+DEF)"
         )
 
     # Juggernaut (soul stone): T1=4% → T5=20% of flat DEF as bonus ATK
@@ -513,26 +516,24 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
             f"🗺️ **Soul Treasure Hunter T{ss_treasure}** — +**{bonus:.1f}** Special Rarity"
         )
 
-    # Tyr Resonance (mixed_2 or mixed_3): redistribute ATK+DEF at combat start
+    # Tyr Resonance (mixed_2 or mixed_3): redistribute flat ATK+DEF at combat start
     if player.soul_stone:
         res = ApexMechanics.get_resonance_multipliers(player.soul_stone)
         tyr_pct = res.get("tyr_pct", 0.0)
         if tyr_pct > 0:
-            # Current effective totals (after all other bonuses)
-            cur_atk = player.get_total_attack(monster)
-            cur_def = player.get_total_defence(monster)
-            combined = int((cur_atk + cur_def) * (1 + tyr_pct))
+            # Anchored to the stable flat_atk/flat_def baseline (not live totals)
+            # so the bonus is deterministic regardless of dispatch order.
+            combined = int((player.flat_atk + player.flat_def) * (1 + tyr_pct))
             half = combined // 2
-            # Bonus needed: (half - cur_atk) added as bonus_atk, etc.
-            atk_bonus = max(0, half - cur_atk)
-            def_bonus = max(0, half - cur_def)
+            atk_bonus = max(0, half - player.flat_atk)
+            def_bonus = max(0, half - player.flat_def)
             if atk_bonus > 0:
                 player.bonus_atk += atk_bonus
             if def_bonus > 0:
                 player.bonus_def += def_bonus
             res_name = "Tyr's Adjudication" if tyr_pct >= 0.20 else "Tyr's Ruling"
             log.append(
-                f"⚖️ **{res_name}** — ATK+DEF combined +{int(tyr_pct * 100)}%, redistributed equally!"
+                f"⚖️ **{res_name}** — flat ATK+DEF combined +{int(tyr_pct * 100)}%, redistributed equally!"
             )
 
     return log

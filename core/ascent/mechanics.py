@@ -75,9 +75,9 @@ class AscentMechanics:
         reward = PINNACLE_REWARDS.get(floor, {})
         parts = []
         if reward.get("atk_pct"):
-            parts.append(f"+{reward['atk_pct']}% ATK")
+            parts.append(f"+{reward['atk_pct']}% Flat ATK")
         if reward.get("def_pct"):
-            parts.append(f"+{reward['def_pct']}% DEF")
+            parts.append(f"+{reward['def_pct']}% Flat DEF")
         if reward.get("crit"):
             parts.append(f"+{reward['crit']} Crit Chance")
         if reward.get("hit"):

@@ -580,7 +580,7 @@ class ApexMechanics:
             return f"On hit: 10% chance to deal {v}% increased damage"
         if passive_key == "transcendence":
             v = _SST["transcendence"][tier - 1]
-            return f"Combat start: Gain {v}% of your total ATK and DEF as bonus ATK"
+            return f"Combat start: Gain {v}% of your flat ATK and DEF as bonus ATK"
         if passive_key == "treasure hunter":
             v = _SST["treasure hunter"][tier - 1]
             return (

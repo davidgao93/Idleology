@@ -581,7 +581,6 @@ class Combat(commands.Cog, name="combat"):
         # Apply start-of-combat stat effects and passives (weapon/armor/etc.)
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
-        engine.log_combat_debug(player, monster, self.bot.logger)
 
         # Reset jewel charges before building the embed so the status bar shows 0
         # on the very first frame. The reset in CombatView.__init__ is kept as a guard.

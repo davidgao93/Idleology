@@ -93,13 +93,13 @@ def get_soul_fracture_factor(player: Player) -> float:
 
 
 def get_counterforce_bonus(player: Player) -> int:
-    """Counterforce: converts X% of total DEF into a flat bonus_pool ATK amount
-    (same shape as the Wrath tome conversion — scales off get_total_defence(),
-    not get_total_attack(), to avoid recursing back into this stat)."""
+    """Counterforce: converts X% of flat DEF into a flat bonus_pool ATK amount
+    (same shape as the Wrath tome conversion — scales off flat_def, never a
+    live total, so the bonus is stable and order-independent)."""
     tier = get_h(player, "counterforce")
     if tier is None:
         return 0
-    return int(player.get_total_defence() * _tv("counterforce", tier))
+    return int(player.flat_def * _tv("counterforce", tier))
 
 
 def get_chain_reaction_crit_bonus(player: Player) -> float:
@@ -174,9 +174,14 @@ def apply_hematurgy_start(player: Player, monster: Monster, log: list[str]) -> N
             f"{def_gain:,} flat DEF ({int(efficiency * 100)}%)!"
         )
 
-    # Double Max HP by adding the current total as bonus_max_hp
-    base_total = player.total_max_hp  # read before we mutate bonus_max_hp
-    player.bonus_max_hp += base_total
+    # Double Max HP off the stable base — zero out any transient bonus_max_hp
+    # already added earlier this combat-start pass (e.g. partner Stat Transfer)
+    # before reading it, so the doubling is deterministic regardless of
+    # handler dispatch order and can't compound with itself.
+    saved_bonus = player.bonus_max_hp
+    player.bonus_max_hp = 0
+    stable_base = player.total_max_hp
+    player.bonus_max_hp = saved_bonus + stable_base
     player.cs.hema_ward_inoculation = True
 
     log.append(

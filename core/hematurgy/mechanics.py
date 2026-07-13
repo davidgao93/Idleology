@@ -253,8 +253,8 @@ def _desc(pid: str, tier: int) -> str:
             )
         case "counterforce":
             return (
-                f"At the start of each player turn, {pct(v)} of your total DEF is added "
-                f"as flat bonus ATK for that turn."
+                f"During combat, {pct(v)} of your flat DEF is added "
+                f"as flat bonus ATK."
             )
         case "defiance":
             return (

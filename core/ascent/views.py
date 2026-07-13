@@ -167,9 +167,9 @@ class AscentLobbyView(BaseLayoutView):
         )
         bonus_parts = []
         if bonuses["atk_pct"]:
-            bonus_parts.append(f"+{bonuses['atk_pct']}% ATK")
+            bonus_parts.append(f"+{bonuses['atk_pct']}% Flat ATK")
         if bonuses["def_pct"]:
-            bonus_parts.append(f"+{bonuses['def_pct']}% DEF")
+            bonus_parts.append(f"+{bonuses['def_pct']}% Flat DEF")
         if bonuses["crit"]:
             bonus_parts.append(f"+{bonuses['crit']} Crit")
         if bonuses["hit"]:

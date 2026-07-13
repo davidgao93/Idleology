@@ -161,6 +161,17 @@ def build_attack_multiplier(
             add_pool_bonus += 0.25
             add_pool_parts.append("hu3_dmg+25%")
 
+    # Burning (weapon passive) — permanent, always-on increased damage that
+    # stacks additively with every other add_pool source (Piety, Obliterate,
+    # Instability, ...) rather than a separate stat bonus.
+    from core.combat.calc.calcs import get_weapon_tier
+
+    burn_idx, _ = get_weapon_tier(player, "burning")
+    if burn_idx >= 0:
+        burn_bonus = (burn_idx + 1) * 0.08
+        add_pool_bonus += burn_bonus
+        add_pool_parts.append(f"burning+{int(burn_bonus * 100)}%")
+
     if glove_passive == "instability" and glove_lvl > 0:
         if random.random() < 0.5:
             add_pool_bonus -= 0.5  # −50% = ×0.5 when alone

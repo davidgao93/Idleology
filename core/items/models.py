@@ -205,8 +205,8 @@ class Companion:
         """Returns formatted string like '+9% Atk'"""
         val = self.passive_value
         p_map = {
-            "atk": f"+{val}% Atk",
-            "def": f"+{val}% Def",
+            "atk": f"+{val}% Flat ATK as Bonus ATK",
+            "def": f"+{val}% Flat DEF as Bonus DEF",
             "hit": f"+{val} Hit Chance",
             "crit": f"+{val} Crit Chance",
             "ward": f"+{val}% HP as Ward",
@@ -246,8 +246,8 @@ class Companion:
             return "Not Awakened"
         val = self.balanced_passive_value
         p_map = {
-            "atk": f"+{val}% Atk",
-            "def": f"+{val}% Def",
+            "atk": f"+{val}% Flat ATK as Bonus ATK",
+            "def": f"+{val}% Flat DEF as Bonus DEF",
             "hit": f"+{val} Hit Chance",
             "crit": f"+{val} Crit Chance",
             "ward": f"+{val}% Ward",

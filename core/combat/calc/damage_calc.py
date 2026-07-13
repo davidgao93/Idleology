@@ -331,8 +331,9 @@ def calc_crit_damage(
     base_min = 1
     calc_dmg_notes: list[str] = [f"base_atk={base_max}"]
 
-    # Burning is folded directly into player.get_total_attack(), so base_max
-    # above already reflects it — no separate ceiling injection needed here.
+    # Burning is an on-hit "increased damage" source applied via the
+    # attack_multiplier param (see hit_calc.py build_attack_multiplier), not
+    # a base_max ceiling contributor — it never touches get_total_attack().
 
     # Shocking: raises the roll floor (same as hit damage)
     shock_idx, shock_name = get_weapon_tier(player, "shocking")
@@ -522,11 +523,11 @@ def calc_hit_damage(
     glove_passive = player.get_glove_passive()
     glove_lvl = player.equipped_glove.passive_lvl if player.equipped_glove else 0
 
-    # Burning is folded directly into player.get_total_attack(), so base_max
-    # above already reflects it — floor passives below still correctly see
-    # the true (burn-inclusive) maximum.
+    # Burning is an on-hit "increased damage" source applied via the
+    # attack_multiplier param (see hit_calc.py build_attack_multiplier), not
+    # a base_max ceiling contributor — it never touches get_total_attack().
 
-    # Floor: Adroit + Shocking stack ADDITIVELY against the post-Burning base_max.
+    # Floor: Adroit + Shocking stack ADDITIVELY against base_max.
     # Both percentages are summed, then applied once as a single floor.
     floor_pct = 0.0
     floor_parts: list[str] = []

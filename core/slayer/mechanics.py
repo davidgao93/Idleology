@@ -32,7 +32,7 @@ SLAYER_PASSIVE_DEFS: dict[str, Callable[[int], str]] = {
     "boss_dmg": lambda t: f"+{t * 5}% damage vs bosses",
     "combat_dmg": lambda t: f"+{t * 2}% damage vs normal monsters",
     "slayer_def": lambda t: f"+{t * 2}% defence vs assigned slayer species",
-    "crit_dmg": lambda t: f"+{t * 5}% critical hit damage multiplier",
+    "crit_dmg": lambda t: f"+{t * 5}% critical strike multiplier",
     "accuracy": lambda t: f"+{t * 2} flat accuracy roll",
     "gold_find": lambda t: f"+{t * 3}% gold from combat",
     "xp_find": lambda t: f"+{t * 3}% XP from combat",

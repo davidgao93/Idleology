@@ -1430,12 +1430,12 @@ class Player:
         """
         contributions: list[tuple[str, float]] = []
         flat = self.flat_atk  # Base + Equipment; pre-computed, immutable during combat
-        contributions.append(("Base + Equipment (+Barracks)", flat))
+        contributions.append(("FLAT ATK: Base + Equipment + Essences + Barracks", flat))
 
         # ---- Flat bonus pool (gear/companion/tome sources) ----
         bonus_pool = self.bonus_atk
         if self.bonus_atk:
-            contributions.append(("Combat bonus accumulator", self.bonus_atk))
+            contributions.append(("BONUS STAT POOL ACCUMULATOR", self.bonus_atk))
 
         comp_pct = self._get_companion_bonus("atk")
         if comp_pct > 0:
@@ -1458,9 +1458,8 @@ class Player:
             bonus_pool += delta
             contributions.append((f"Wrath Tome (+{wrath_pct:.1f}% DEF→ATK)", delta))
 
-        # Hematurgy Counterforce: converts % of total DEF into flat bonus ATK —
-        # same shape as Wrath tome above, just scaled off the full DEF stat
-        # (including DEF buffs) instead of flat_def.
+        # Hematurgy Counterforce: converts % of flat DEF into flat bonus ATK —
+        # same shape as the Wrath tome conversion above.
         if self.hematurgy_passives:
             from core.hematurgy.engine import get_counterforce_bonus
 
@@ -1480,20 +1479,9 @@ class Player:
                 (f"ATK Multiplier (x{self.atk_multiplier:.2f})", int(flat * d))
             )
 
-        # Burning (weapon passive) — permanent ATK gain, always active once
-        # equipped (+8% of flat ATK per tier). Previously only raised the
-        # damage-roll ceiling per-hit in calc/damage_calc.py, invisible on the
-        # base stat; now lives here so it's always reflected, and stacks
-        # additively with every other ATK% source like the rest of pct_pool.
-        from core.combat.calc.calcs import get_weapon_tier
-
-        idx, _ = get_weapon_tier(self, "burning")
-        if idx >= 0:
-            d = (idx + 1) * 0.08
-            pct_pool += d
-            contributions.append(
-                (f"Burning (weapon passive, T{idx + 1})", int(flat * d))
-            )
+        # Burning (weapon passive) — moved to an on-hit "increased damage"
+        # source in hit_calc.py's build_attack_multiplier() (stacks with
+        # Piety, etc.) instead of a permanent ATK stat bonus. See there.
 
         # Ascension pinnacle % bonus
         if self.ascension_unlocks:
@@ -1602,7 +1590,7 @@ class Player:
         """
         contributions: list[tuple[str, float]] = []
         flat = self.flat_def  # Base + Equipment; pre-computed, immutable during combat
-        contributions.append(("Base + Equipment (+Barracks)", flat))
+        contributions.append(("Base + Equipment + Essence + Barracks", flat))
 
         # ---- Flat bonus pool ----
         bonus_pool = self.bonus_def

@@ -373,7 +373,8 @@ class StatInvestView(BaseView):
         desc = (
             f"**Passive Points available:** {pts}\n"
             f"**Runes of Regret:** {runes}\n\n"
-            "Each point grants **+0.1%** to the chosen stat in combat.\n"
+            "Each point grants **+0.1%** of the chosen stat's flat value as a "
+            "bonus in combat (e.g. ATK points grant % of flat ATK as bonus ATK).\n"
             "Use a **Rune of Regret** to reclaim 1 point from any stat."
         )
         if self._refund_mode:

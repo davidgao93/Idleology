@@ -42,7 +42,7 @@ def build_building_list_embed() -> discord.Embed:
         ),
     ]
     _PASSIVES = [
-        ("⚔️ Barracks", "Passive · +% Player Attack & Defence in combat"),
+        ("⚔️ Barracks", "Passive · +% Flat Attack & Defence as Bonus Attack & Defence"),
         ("⛪ Temple", "Passive · +% Propagate follower gain"),
         ("💊 Apothecary", "Passive · +Flat HP effectiveness of potions"),
         ("🔮 Uber Shrine", "Passive · Shrine statues for uber boss sigil drops"),

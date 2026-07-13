@@ -140,14 +140,16 @@ def _compute_combat_bonuses(p) -> dict:
     if p.equipped_helmet and _normalize(p.equipped_helmet.passive) == "juggernaut":
         cb["atk"] += int(p.flat_def * p.equipped_helmet.passive_lvl * 0.04)
 
-    # Transcendence (armor passive — 20% of total ATK + DEF as bonus ATK)
+    # Transcendence (armor passive — 20% of flat ATK + DEF as bonus ATK)
     if p.equipped_armor and _normalize(p.equipped_armor.passive) == "transcendence":
-        cb["atk"] += int((p.get_total_attack() + p.get_total_defence()) * 0.20)
+        cb["atk"] += int((p.flat_atk + p.flat_def) * 0.20)
 
-    # Sturdy (and Burning/Piercing) are now folded directly into
-    # get_total_defence()/get_total_attack()/get_current_crit_chance(), so
-    # they no longer need a "combat start" preview here — the stats page
-    # already reflects them permanently.
+    # Sturdy (and Piercing) are folded directly into
+    # get_total_defence()/get_current_crit_chance(), so they no longer need a
+    # "combat start" preview here — the stats page already reflects them
+    # permanently. Burning is an on-hit "increased damage" source (see
+    # hit_calc.py build_attack_multiplier), like Piety — it never touches the
+    # ATK stat, so it's intentionally absent from this preview too.
 
     # Infernal passives (deterministic ones only)
     if p.equipped_weapon and p.equipped_weapon.infernal_passive not in ("none", ""):
@@ -162,7 +164,7 @@ def _compute_combat_bonuses(p) -> dict:
             cb["crit"] += 20
         elif inf == "diabolic pact":
             cb["hp"] -= int(p.max_hp * 0.50)
-            cb["atk"] += p.get_total_attack()
+            cb["atk"] += p.flat_atk
 
     # Void passives (deterministic ones only)
     if p.equipped_accessory and p.equipped_accessory.void_passive not in ("none", ""):
@@ -170,10 +172,10 @@ def _compute_combat_bonuses(p) -> dict:
         if void_p == "entropy" and p.equipped_weapon:
             atk_t = int(p.equipped_weapon.attack * 0.20)
             def_t = int(p.equipped_weapon.defence * 0.20)
-            cb["atk"] += def_t - atk_t
-            cb["def"] += atk_t - def_t
+            cb["atk"] += def_t
+            cb["def"] += atk_t
         elif void_p == "void echo" and p.equipped_weapon:
-            cb["atk"] += int(p.equipped_weapon.attack * 0.15)
+            cb["atk"] += int(p.equipped_weapon.attack * 0.30)
 
     # Inner Sanctum Recovery — permanent ATK malus scaling with points spent
     # in the path (see apply_stat_effects). Monster-independent, always active.
@@ -198,7 +200,7 @@ def _compute_combat_bonuses(p) -> dict:
             p.equipped_armor and _normalize(p.equipped_armor.passive) == "transcendence"
         ):
             pct = _SST["transcendence"][ss_transcendence - 1]
-            cb["atk"] += int((p.get_total_attack() + p.get_total_defence()) * pct / 100)
+            cb["atk"] += int((p.flat_atk + p.flat_def) * pct / 100)
 
         ss_juggernaut = p.get_soul_stone_passive("juggernaut")
         if ss_juggernaut and not (
@@ -209,12 +211,10 @@ def _compute_combat_bonuses(p) -> dict:
         res = ApexMechanics.get_resonance_multipliers(p.soul_stone)
         tyr_pct = res.get("tyr_pct", 0.0)
         if tyr_pct > 0:
-            cur_atk = p.get_total_attack()
-            cur_def = p.get_total_defence()
-            combined = int((cur_atk + cur_def) * (1 + tyr_pct))
+            combined = int((p.flat_atk + p.flat_def) * (1 + tyr_pct))
             half = combined // 2
-            cb["atk"] += max(0, half - cur_atk)
-            cb["def"] += max(0, half - cur_def)
+            cb["atk"] += max(0, half - p.flat_atk)
+            cb["def"] += max(0, half - p.flat_def)
 
     # Hematurgy Ward Inoculation — converts the current ward pool into flat
     # DEF and doubles Max HP; both fire unconditionally whenever owned (see
@@ -228,7 +228,12 @@ def _compute_combat_bonuses(p) -> dict:
             ward_val = p.get_combat_ward_value()
             if ward_val > 0:
                 cb["def"] += int(ward_val * tier_val("ward_inoculation", wi_tier))
+            # Doubling is anchored to the stable base (bonus_max_hp zeroed
+            # out first) so the preview matches apply_hematurgy_start().
+            saved_bonus = p.bonus_max_hp
+            p.bonus_max_hp = 0
             cb["hp"] += p.total_max_hp
+            p.bonus_max_hp = saved_bonus
 
     return cb
 

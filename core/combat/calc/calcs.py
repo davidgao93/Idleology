@@ -38,10 +38,10 @@ class WeaponPassiveDef:
 WEAPON_PASSIVE_DEFS: dict[str, WeaponPassiveDef] = {
     "burning": WeaponPassiveDef(
         "burning",
-        "Burning (Atk Boost)",
+        "Burning (Increased Dmg)",
         ("Burning I", "Burning II", "Burning III", "Burning IV", "Burning V"),
         0.08,
-        lambda i: f"Atk +{int(i * 0.08 * 100)}%",
+        lambda i: f"+{int(i * 0.08 * 100)}% increased damage on hit",
     ),
     "poison": WeaponPassiveDef(
         "poison",
@@ -143,7 +143,7 @@ ACCESSORY_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
 GLOVE_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
     "ward-touched": lambda lvl: f"Gain {lvl * 25} Ward on Hits",
     "ward-fused": lambda lvl: f"Gain {lvl * 50} Ward on Crits",
-    "instability": lambda lvl: f"Hits are 50% dmg OR {150 + (lvl * 10)}% dmg",
+    "instability": lambda lvl: f"Hits are 50% dmg OR {(lvl * 10)}% dmg",
     "deftness": lambda lvl: f"Crit roll floor raised by {lvl * 5}% of max",
     "adroit": lambda lvl: f"Normal Hit Floor raised by {lvl * 2}%",
     "equilibrium": lambda lvl: f"Gain {lvl * 5}% of Dmg Dealt as XP",

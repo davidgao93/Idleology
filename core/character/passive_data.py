@@ -6,12 +6,12 @@ Lookup tables for all passive/essence descriptions used in the profile hub.
 from core.hematurgy.mechanics import tier_val as _htv
 
 _WEAPON_PASSIVE_DESC: dict[str, str] = {
-    # Burning family — ATK boost (×8% per tier)
-    "burning_1": "On equip: Gain 8% of total ATK as bonus ATK",
-    "burning_2": "On equip: Gain 16% of total ATK as bonus ATK",
-    "burning_3": "On equip: Gain 24% of total ATK as bonus ATK",
-    "burning_4": "On equip: Gain 32% of total ATK as bonus ATK",
-    "burning_5": "On equip: Gain 40% of total ATK as bonus ATK",
+    # Burning family — on-hit increased damage (×8% per tier)
+    "burning_1": "On hit: Deal 8% increased damage. (Accumulates with other sources of increased damage like Piety.)",
+    "burning_2": "On hit: Deal 16% increased damage. (Accumulates with other sources of increased damage like Piety.)",
+    "burning_3": "On hit: Deal 24% increased damage. (Accumulates with other sources of increased damage like Piety.)",
+    "burning_4": "On hit: Deal 32% increased damage. (Accumulates with other sources of increased damage like Piety.)",
+    "burning_5": "On hit: Deal 40% increased damage. (Accumulates with other sources of increased damage like Piety.)",
     # Poison family — Miss damage (×8% per tier)
     "poison_1": "On miss: Deal up to 8% of ATK as damage",
     "poison_2": "On miss: Deal up to 16% of ATK as damage",
@@ -31,11 +31,11 @@ _WEAPON_PASSIVE_DESC: dict[str, str] = {
     "shocking_4": "On hit: Dmg is at least 32% of ATK",
     "shocking_5": "On hit: Dmg is at least 40% of ATK",
     # Sturdy family — DEF boost (×8% per tier)
-    "sturdy_1": "On equip: Gain 8% of total DEF as bonus DEF",
-    "sturdy_2": "On equip: Gain 16% of total DEF as bonus DEF",
-    "sturdy_3": "On equip: Gain 24% of total DEF as bonus DEF",
-    "sturdy_4": "On equip: Gain 32% of total DEF as bonus DEF",
-    "sturdy_5": "On equip: Gain 40% of total DEF as bonus DEF",
+    "sturdy_1": "On equip: Gain 8% of flat DEF as bonus DEF",
+    "sturdy_2": "On equip: Gain 16% of flat DEF as bonus DEF",
+    "sturdy_3": "On equip: Gain 24% of flat DEF as bonus DEF",
+    "sturdy_4": "On equip: Gain 32% of flat DEF as bonus DEF",
+    "sturdy_5": "On equip: Gain 40% of flat DEF as bonus DEF",
     # Piercing family — Crit chance (+5 per tier)
     "piercing_1": "On equip: Crit Chance +5%",
     "piercing_2": "On equip: Crit Chance +10%",
@@ -69,23 +69,23 @@ _WEAPON_PASSIVE_DESC: dict[str, str] = {
 }
 
 _INFERNAL_PASSIVE_DESC: dict[str, str] = {
-    "soulreap": "On victory: Heal to full HP",
+    "soulreap": "On kill: Heal to full HP",
     "inverted edge": "Combat start: Swap weapon ATK and DEF",
     "gilded hunger": "Combat start: Gain ATK equal to 10% of weapon rarity",
-    "cursed precision": "During combat: +20% Crit Chance; your critical damage is unlucky",
-    "diabolic pact": "Combat start: Take 50% max HP as True Damage and double ATK",
-    "perdition": "On miss: Deal 75% of weapon ATK",
-    "voracious": "On hit: Gain a stack of Voracity; Each stack gives +5% Crit Chance. On crit: Lose all stacks.",
-    "last rites": "On crit: Deal an additional 5% of enemy current HP",
+    "cursed precision": "On equip: +20% Crit Chance. During combat: Your critical strike damage is unlucky",
+    "diabolic pact": "Combat start: Take 50% max HP as True Damage and gain 100% of flat ATK as bonus ATK",
+    "perdition": "On miss: Deal 75% of weapon ATK as damage",
+    "voracious": "On hit: Gain a stack of Voracity; Each stack gives +5% Crit Chance. On crit: Lose all stacks",
+    "last rites": "On crit: Deal an additional 5% of monster's current HP",
 }
 
 _ARMOR_PASSIVE_DESC: dict[str, str] = {
     "impregnable": "During combat: Your PDR cap is increased by 10% (90%)",
     "piety": "On hit: 10% chance to deal 600% increased damage",
-    "transcendence": "Combat start: Gain 20% of your total ATK and DEF as bonus ATK",
+    "transcendence": "Combat start: Gain 20% of your flat ATK and DEF as bonus ATK",
     "treasure hunter": "On victory: +3% Special Rarity",
     "unlimited wealth": "Combat start: 20% chance to gain 200% more Rarity as bonus rarity",
-    "alchemist": "During combat: 30% chance to not consume a potion on use",
+    "alchemist": "On potion use: 30% chance to not consume a potion",
 }
 
 _CELESTIAL_PASSIVE_DESC: dict[str, str] = {
@@ -98,8 +98,8 @@ _CELESTIAL_PASSIVE_DESC: dict[str, str] = {
 }
 
 _VOID_PASSIVE_DESC: dict[str, str] = {
-    "entropy": "Combat start: 20% of Weapon ATK added to Weapon DEF and vice versa",
-    "void echo": "Combat start: Gain 15% of Weapon ATK as bonus ATK",
+    "entropy": "Combat start: 20% of flat Weapon ATK gained as bonus Weapon DEF and vice versa",
+    "void echo": "Combat start: Gain 30% of flat Weapon ATK as bonus ATK",
     "unravelling": "Combat start: Reduce monster DEF by 20%",
     "void gaze": "On crit: Gain a Gaze stack, reduce monster ATK by 3% per stack (up to 30)",
     "fracture": "On crit: 5% chance to instantly kill (Ubers are immune)",
@@ -128,7 +128,7 @@ _GLOVE_PASSIVE_FUNCS: dict = {
     "ward-touched": lambda lvl: f"On hit: Gain {lvl * 25} Ward on non-crits",
     "ward-fused": lambda lvl: f"On crit: Gain {lvl * 50} Ward",
     "instability": lambda lvl: (
-        f"On hit: Damage dealt is decreased by 50% or increased by {150 + lvl * 10}%"
+        f"On hit: Damage dealt is decreased by 50% or increased by {lvl * 10}%"
     ),
     "deftness": lambda lvl: (
         f"On crit: Crit damage is increased by at least {lvl * 5}% of max"
@@ -155,7 +155,7 @@ _BOOT_PASSIVE_FUNCS: dict = {
 
 _HELMET_PASSIVE_FUNCS: dict = {
     "juggernaut": lambda lvl: (
-        f"Combat start: Gain {lvl * 4}% of total DEF as bonus ATK"
+        f"Combat start: Gain {lvl * 4}% of flat DEF as bonus ATK"
     ),
     "insight": lambda lvl: f"On equip: Crit Dmg Multiplier +{lvl * 0.1:.1f}×",
     "volatile": lambda lvl: (
@@ -229,8 +229,8 @@ _SLAYER_EMBLEM_FUNCS: dict = {
     "slayer_dmg": lambda t: f"+{t * 5}% damage vs assigned slayer species",
     "boss_dmg": lambda t: f"+{t * 5}% damage vs bosses",
     "combat_dmg": lambda t: f"+{t * 2}% damage vs normal monsters",
-    "slayer_def": lambda t: f"+{t * 2}% defence vs assigned slayer species",
-    "crit_dmg": lambda t: f"+{t * 5}% critical hit damage",
+    "slayer_def": lambda t: f"+{t * 2}% flat DEF as bonus DEF vs assigned slayer species",
+    "crit_dmg": lambda t: f"+{t * 5}% critical strike multiplier",
     "accuracy": lambda t: f"+{t * 2} flat accuracy",
     "gold_find": lambda t: f"+{t * 3}% gold from combat",
     "xp_find": lambda t: f"+{t * 3}% XP from combat",
@@ -243,8 +243,8 @@ _SLAYER_EMBLEM_FUNCS: dict = {
 
 _CODEX_TOME_INFO: dict = {
     "vitality": ("Vitality", lambda v: f"+{v}% Max HP"),
-    "wrath": ("Wrath", lambda v: f"+{v}% of base DEF as bonus ATK"),
-    "bastion": ("Bastion", lambda v: f"+{v}% of base ATK as bonus DEF"),
+    "wrath": ("Wrath", lambda v: f"+{v}% of flat DEF as bonus ATK"),
+    "bastion": ("Bastion", lambda v: f"+{v}% of flat ATK as bonus DEF"),
     "tenacity": ("Tenacity", lambda v: f"{v}% chance per hit to halve damage"),
     # Raw stored tome value is scaled ×10 here — the heal formula in
     # player_turn.py applies it as damage * (value / 10), so the effective
@@ -305,7 +305,7 @@ _HEMATURGY_SHORT_FUNCS: dict = {
         f"On crit: Mark target; next hit deals +{_htv('predators_mark', t) * 100:.0f}% bonus damage"
     ),
     "counterforce": lambda t: (
-        f"During combat: {_htv('counterforce', t) * 100:.0f}% of total DEF added as flat ATK"
+        f"During combat: {_htv('counterforce', t) * 100:.0f}% of flat DEF added as flat ATK"
     ),
     "defiance": lambda t: (
         f"Once per fight: Below 40% HP, gain +{_htv('defiance', t) * 100:.0f}% ATK and DEF"

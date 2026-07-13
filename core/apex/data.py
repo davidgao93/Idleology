@@ -475,17 +475,17 @@ PASSIVE_CATEGORY_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 RESONANCE_TABLE: dict[str, tuple[str, str]] = {
-    "offensive_2": ("Vulcan's Rage", "+10% ATK (final multiplier)"),
-    "offensive_3": ("Vulcan's Fury", "+25% ATK (final multiplier)"),
-    "defensive_2": ("Athena's Stratagem", "+8% DEF (final multiplier)"),
-    "defensive_3": ("Athena's Grand Design", "+15% DEF (final multiplier)"),
+    "offensive_2": ("Vulcan's Rage", "+10% of flat ATK as bonus ATK"),
+    "offensive_3": ("Vulcan's Fury", "+25% of flat ATK as bonus ATK"),
+    "defensive_2": ("Athena's Stratagem", "+8% of flat DEF as bonus DEF"),
+    "defensive_3": ("Athena's Grand Design", "+15% of flat DEF as bonus DEF"),
     "mixed_2": (
         "Tyr's Ruling",
-        "Sum ATK+DEF +5%, redistributed equally at combat start",
+        "Sum of flat ATK+DEF +5%, redistributed equally at combat start",
     ),
     "mixed_3": (
         "Tyr's Adjudication",
-        "Sum ATK+DEF +20%, redistributed equally at combat start",
+        "Sum of flat ATK+DEF +20%, redistributed equally at combat start",
     ),
     "utility_2": ("Midas's Wisdom", "+20% XP (additive)"),
     "utility_3": ("Midas's Blessing", "+20% Gold (additive)"),
