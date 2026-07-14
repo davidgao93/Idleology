@@ -9,6 +9,7 @@ from core.base_layout_view import BaseLayoutView
 from core.codex.mechanics import (
     CodexBoon,
     CodexChapter,
+    apply_hp_entry_cap,
     apply_per_wave_boons,
     apply_respite_boon,
     apply_signature_modifier,
@@ -252,12 +253,12 @@ class CodexRunView(BaseLayoutView):
             "chapters_cleared": self.chapters_cleared,
             "waves_cleared_this_run": self.waves_cleared_this_run,
             "deaths": self.deaths,
-            "cumulative_xp": self.chapter_start_xp
-            if at_chapter_start
-            else self.cumulative_xp,
-            "cumulative_gold": self.chapter_start_gold
-            if at_chapter_start
-            else self.cumulative_gold,
+            "cumulative_xp": (
+                self.chapter_start_xp if at_chapter_start else self.cumulative_xp
+            ),
+            "cumulative_gold": (
+                self.chapter_start_gold if at_chapter_start else self.cumulative_gold
+            ),
             "cleared_chapter_indices": sorted(self.cleared_chapter_indices),
             "page_drops": list(self.page_drops),
             "current_hp": self.player.current_hp,
@@ -347,6 +348,7 @@ class CodexRunView(BaseLayoutView):
         monster = await _generate_codex_wave_monster(player, chapter, 1)
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
+        apply_hp_entry_cap(player)
 
         view = cls(
             bot,
@@ -399,6 +401,30 @@ class CodexRunView(BaseLayoutView):
             self.add_item(self.row1)
             self.add_item(self.row2)
 
+    def _signature_text(self) -> str:
+        """Human-readable line describing the CURRENT chapter's signature.
+
+        Correctly reflects self._current_chapter_nullified — shows the
+        struck-through label instead of the full effect description when this
+        chapter's signature was skipped via a sig_nullify boon (apply_signature_
+        modifier was never called for it, so none of its effects are actually
+        active). Also hints if the NEXT chapter's signature is queued to be
+        nullified. Shared by the combat embed and the respite embed so they
+        never show inconsistent signature info.
+        """
+        chapter = self.current_chapter
+        if self._current_chapter_nullified:
+            sig_text = f"Signature: ~~{chapter.signature_label}~~ (Nullified)"
+        else:
+            sig_text = f"Signature: {chapter.signature_label} — {chapter.signature_description}"
+        if (
+            self.run_state.get("sig_nullify_next")
+            and self.chapter_idx < len(self.chapters) - 1
+        ):
+            next_name = self.chapters[self.chapter_idx + 1].name
+            sig_text += f" | ⚡ Next chapter '{next_name}' signature NULLIFIED"
+        return sig_text
+
     def _combat_layout(self) -> discord.ui.Container:
         chapter = self.current_chapter
         title = (
@@ -413,20 +439,7 @@ class CodexRunView(BaseLayoutView):
             player_avatar_url=self.player_avatar_url,
         )
         container.accent_color = discord.Color.dark_purple()
-        sig_label = chapter.signature_label
-        sig_desc = chapter.signature_description
-        if (
-            self.run_state.get("sig_nullify_next")
-            and self.chapter_idx < len(self.chapters) - 1
-        ):
-            next_name = self.chapters[self.chapter_idx + 1].name
-            sig_text = (
-                f"Signature: {sig_label} — {sig_desc} | "
-                f"⚡ Next chapter '{next_name}' signature NULLIFIED"
-            )
-        else:
-            sig_text = f"Signature: {sig_label} — {sig_desc}"
-        container.add_item(discord.ui.TextDisplay(f"-# {sig_text}"))
+        container.add_item(discord.ui.TextDisplay(f"-# {self._signature_text()}"))
         return container
 
     def _snapshot_wave_baseline(self):
@@ -479,10 +492,15 @@ class CodexRunView(BaseLayoutView):
         self.player.codex_crit_flat = self.chapter_wave_baseline.get(
             "codex_crit_flat", 0
         )
-        # Re-apply HP entry cap each wave (bonus_max_hp already restored above so total_max_hp is correct)
-        if self.player.chapter_hp_entry_pct > 0:
-            cap = int(self.player.total_max_hp * (1 - self.player.chapter_hp_entry_pct))
-            self.player.current_hp = min(self.player.current_hp, cap)
+        # Safety: current_hp must never exceed the (possibly now-lower) restored
+        # Max HP — e.g. entering respite right after a fight where combat-start
+        # passives (Ward Inoculation, etc.) had temporarily inflated Max HP well
+        # above this chapter baseline. The tighter "Enter each fight at X% HP"
+        # cap is intentionally NOT re-applied here — it only makes sense against
+        # the FINAL post-combat-start Max HP for the wave that's about to begin,
+        # which isn't known yet at this point. See apply_hp_entry_cap(), called
+        # after apply_combat_start_passives() in _setup_next_wave.
+        self.player.current_hp = min(self.player.current_hp, self.player.total_max_hp)
 
     def _projected_ward(self) -> int:
         """Ward the player will have at the start of the next wave."""
@@ -491,16 +509,23 @@ class CodexRunView(BaseLayoutView):
     def _run_modifiers_text(self) -> str:
         """Compact summary of all active run-level stat modifiers.
 
-        ATK/DEF/Crit read directly from the authoritative codex_atk_pct/
-        codex_def_pct/codex_crit_flat fields (current chapter's signature +
-        all active boons, already combined — see core/codex/mechanics.py)
-        instead of re-summing active_boons by hand, so this can't drift from
-        what get_total_attack/defence/current_crit_chance actually apply —
-        and, as a side effect, now includes the current chapter's signature,
-        which the old hand-summed version omitted entirely. FDR similarly
-        reads the dedicated boon_fdr accumulator. Ward/Page Rate have no
-        dedicated accumulator field, so those two stay hand-summed from
-        active_boons.
+        ATK/DEF/Max HP/Crit read directly from the authoritative codex_atk_pct/
+        codex_def_pct/codex_max_hp_pct/codex_crit_flat fields (current chapter's
+        signature + all active boons, already combined — see
+        core/codex/mechanics.py) instead of re-summing active_boons by hand, so
+        this can't drift from what get_total_attack/defence/max_hp/
+        current_crit_chance actually apply — and, as a side effect, now
+        includes the current chapter's signature, which the old hand-summed
+        version omitted entirely. FDR similarly reads the dedicated boon_fdr
+        accumulator. Ward/Page Rate have no dedicated accumulator field, so
+        those two stay hand-summed from active_boons.
+
+        This only covers the NUMERIC stat pool (ATK/DEF/Max HP/Crit/FDR/Ward/
+        Page Rate/Fragments/run bonuses) — non-poolable signature-only effects
+        (hit_flat, crit_dmg_pct, pdr_pct, ward_gen_pct, hp_entry_pct,
+        ward_disable) have no boon counterpart to combine with and are fully
+        covered by the chapter signature's own description instead — see
+        _signature_text(), shown separately in the respite embed.
         """
         p = self.player
         parts = []
@@ -521,6 +546,10 @@ class CodexRunView(BaseLayoutView):
             parts.append(f"DEF {def_pct:+.0f}%")
         if p.run_def_penalty:
             parts.append(f"DEF −{p.run_def_penalty}")
+
+        max_hp_pct = p.codex_max_hp_pct * 100
+        if max_hp_pct:
+            parts.append(f"Max HP {max_hp_pct:+.0f}%")
 
         if p.codex_crit_flat:
             parts.append(f"Crit {p.codex_crit_flat:+d}")
@@ -610,9 +639,10 @@ class CodexRunView(BaseLayoutView):
         embed = discord.Embed(
             title=f"⚗️ Respite — {chapter.name}",
             description=(
-                f"A moment of stillness between the waves.\n\n"
+                f"A moment of stillness between the waves.\n"
+                f"Here are your flat stats (no combat start bonuses):\n"
                 f"{stats_block}\n\n"
-                f"Choose a boon:{reroll_hint}"
+                f"Choose a modifier:{reroll_hint}"
             ),
             color=discord.Color.teal(),
         )
@@ -622,6 +652,15 @@ class CodexRunView(BaseLayoutView):
             if boon.downside_label:
                 field_name += f"  ⚠️ {boon.downside_label}"
             embed.add_field(name=field_name, value=boon.description, inline=False)
+        # Shown separately from "Run Modifiers" below — this chapter's raw
+        # signature (monster buffs + player debuffs, including hit/crit-dmg/
+        # PDR/ward-gen/"enter at X% HP" effects that have no numeric stat-pool
+        # equivalent to combine with a boon), same text as the in-combat embed.
+        embed.add_field(
+            name="📖 Chapter Signature",
+            value=self._signature_text().removeprefix("Signature: "),
+            inline=False,
+        )
         embed.add_field(
             name="📊 Run Modifiers",
             value=self._run_modifiers_text(),
@@ -768,6 +807,7 @@ class CodexRunView(BaseLayoutView):
         )
         engine.apply_stat_effects(self.player, self.monster)
         self.logs = engine.apply_combat_start_passives(self.player, self.monster)
+        apply_hp_entry_cap(self.player)
 
         self.combat_logger = CombatLogger(self.player, self.monster)
         self.combat_logger.log_combat_start(self.player, self.monster)

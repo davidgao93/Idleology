@@ -633,7 +633,8 @@ class SlayerTreeView(BaseView):
         self.pts_spent: int = tree_data.get("points_spent", 0)
         self.parent = parent_view
         self._processing = False
-        self._pending_node: str | None = None  # Hunter node awaiting choice
+        self._pending_node: str | None = None  # node awaiting purchase confirmation
+        self._pending_choice: str | None = None  # chosen sub-option, if any
         self.result_msg = ""
         self.active_branch = "taskmaster"
         self.setup_ui()
@@ -659,6 +660,29 @@ class SlayerTreeView(BaseView):
             color=discord.Color.dark_red(),
         )
         embed.set_author(name="Slayer Master Kael", icon_url=SLAYER_MASTER_AUTHOR)
+
+        if self._pending_node:
+            node = SLAYER_TREE_NODES[self._pending_node]
+            if self._pending_choice:
+                desc = next(
+                    (
+                        label
+                        for key, label in node.get("choices", [])
+                        if key == self._pending_choice
+                    ),
+                    self._pending_choice,
+                )
+            else:
+                desc = node.get("desc", "")
+            embed.add_field(
+                name="⏳ Confirm Purchase",
+                value=(
+                    f"**{node['name']}**\n└ *{desc}*\n\n"
+                    f"Cost: **{node['cost']} pts**\n\nConfirm this purchase?"
+                ),
+                inline=False,
+            )
+            return embed
 
         lines = []
         for nid, node in SLAYER_TREE_NODES.items():
@@ -690,6 +714,7 @@ class SlayerTreeView(BaseView):
     def setup_ui(self):
         self.clear_items()
         self._pending_node = None
+        self._pending_choice = None
 
         # Row 0: branch navigation buttons
         _prefix_map = {"taskmaster": "tm", "hunter": "hu", "purveyor": "pu"}
@@ -728,19 +753,25 @@ class SlayerTreeView(BaseView):
             options = []
             for nid in purchasable:
                 node = SLAYER_TREE_NODES[nid]
-                options.append(
-                    SelectOption(
-                        label=f"{node['name']} ({node['cost']} pts)",
-                        value=nid,
-                        description=(
-                            "Choose one option"
-                            if "choices" in node
-                            else node.get("desc", "")
-                        )[:100],
+                if "choices" in node:
+                    for key, label in node["choices"]:
+                        options.append(
+                            SelectOption(
+                                label=f"{label} ({node['cost']} pts)"[:100],
+                                value=f"{nid}|{key}",
+                                description=node["name"][:100],
+                            )
+                        )
+                else:
+                    options.append(
+                        SelectOption(
+                            label=f"{node['name']} ({node['cost']} pts)"[:100],
+                            value=f"{nid}|_",
+                            description=node.get("desc", "")[:100],
+                        )
                     )
-                )
             sel = ui.Select(
-                placeholder="Select a node to purchase…",
+                placeholder="Select an upgrade to purchase…",
                 options=options,
                 row=1,
             )
@@ -763,23 +794,14 @@ class SlayerTreeView(BaseView):
         btn_back.callback = self.go_back
         self.add_item(btn_back)
 
-    def _show_choice_ui(self, node_id: str):
-        """Rebuilds the UI to show choice buttons for a Hunter node."""
+    def _show_confirm_ui(self):
+        """Rebuilds the UI to show a Confirm / Cancel prompt for the pending purchase."""
         self.clear_items()
-        node = SLAYER_TREE_NODES[node_id]
-        self._pending_node = node_id
-        for key, label in node["choices"]:
-            btn = ui.Button(label=label[:80], style=ButtonStyle.primary, row=0)
-            btn.custom_id_key = key  # stored for callback
-
-            # Closure capture
-            async def _choice_cb(interaction: Interaction, k=key):
-                await self._confirm_choice(interaction, node_id, k)
-
-            btn.callback = _choice_cb
-            self.add_item(btn)
-        btn_cancel = ui.Button(label="Cancel", style=ButtonStyle.secondary, row=1)
-        btn_cancel.callback = self._cancel_choice
+        btn_confirm = ui.Button(label="Confirm", style=ButtonStyle.success, row=0)
+        btn_confirm.callback = self._on_confirm_purchase
+        self.add_item(btn_confirm)
+        btn_cancel = ui.Button(label="Cancel", style=ButtonStyle.secondary, row=0)
+        btn_cancel.callback = self._on_cancel_purchase
         self.add_item(btn_cancel)
 
     # --- Callbacks -----------------------------------------------------------
@@ -788,27 +810,21 @@ class SlayerTreeView(BaseView):
         if self._processing:
             await interaction.response.defer()
             return
-        node_id = interaction.data["values"][0]
-        node = SLAYER_TREE_NODES[node_id]
+        value = interaction.data["values"][0]
+        node_id, _, choice = value.partition("|")
+        self._pending_node = node_id
+        self._pending_choice = choice if choice and choice != "_" else None
+        self._show_confirm_ui()
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
-        if "choices" in node:
-            # Show choice picker UI
-            self._show_choice_ui(node_id)
-            await interaction.response.edit_message(embed=self.build_embed(), view=self)
-            return
-
-        # Regular node — purchase immediately
-        await self._purchase_node(interaction, node_id, choice=None)
-
-    async def _cancel_choice(self, interaction: Interaction):
-        self._pending_node = None
+    async def _on_cancel_purchase(self, interaction: Interaction):
         self.setup_ui()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
-    async def _confirm_choice(
-        self, interaction: Interaction, node_id: str, choice: str
-    ):
-        await self._purchase_node(interaction, node_id, choice=choice)
+    async def _on_confirm_purchase(self, interaction: Interaction):
+        await self._purchase_node(
+            interaction, self._pending_node, choice=self._pending_choice
+        )
 
     async def _purchase_node(
         self, interaction: Interaction, node_id: str, choice: str | None

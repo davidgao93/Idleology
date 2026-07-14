@@ -3,6 +3,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
 from core.codex.mechanics import (
+    apply_hp_entry_cap,
     apply_signature_modifier,
     reset_for_new_codex_run,
     select_run_chapters,
@@ -170,6 +171,7 @@ class CodexMenuView(BaseLayoutView):
         monster = await _generate_codex_wave_monster(self.player, chapter, 1)
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
+        apply_hp_entry_cap(self.player)
 
         view = CodexRunView(
             self.bot,

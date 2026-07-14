@@ -494,10 +494,37 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
             player.combat_ward = int(player.combat_ward * mult)
 
         elif mod_type == "hp_entry_pct":
+            # Just records the pct here — do NOT clamp current_hp yet. This
+            # runs before apply_combat_start_passives(), so total_max_hp is
+            # still the pre-combat-start value; clamping now would ignore
+            # Ward Inoculation / any other Max HP-increasing combat-start
+            # passive. See apply_hp_entry_cap() below, called after those fire.
             player.chapter_hp_entry_pct = value
-            player.current_hp = min(
-                player.current_hp, int(player.total_max_hp * (1 - value))
-            )
+
+
+def apply_hp_entry_cap(player: Player) -> None:
+    """
+    Clamps current_hp for the wave that's about to start.
+
+    Must be called AFTER engine.apply_combat_start_passives() — this is the
+    ONLY point where the FINAL total_max_hp (including Ward Inoculation and
+    any other Max HP-increasing combat-start passive) is known. Clamping any
+    earlier (e.g. right when the signature is applied, or when the chapter
+    baseline is restored before the wave's monster/combat-start passives are
+    even generated) clamps against a smaller, stale Max HP — the player then
+    ends up far below the intended entry percentage, since a later Max HP
+    increase is never accounted for.
+
+    If the chapter has an active "Enter each fight at X% HP" signature
+    (chapter_hp_entry_pct > 0), caps to that percentage of the final total.
+    Otherwise falls back to a plain "current_hp can't exceed total_max_hp"
+    safety clamp.
+    """
+    if player.chapter_hp_entry_pct > 0:
+        cap = int(player.total_max_hp * (1 - player.chapter_hp_entry_pct))
+    else:
+        cap = player.total_max_hp
+    player.current_hp = min(player.current_hp, cap)
 
 
 # ---------------------------------------------------------------------------

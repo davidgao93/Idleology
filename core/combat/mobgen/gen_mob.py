@@ -10,7 +10,6 @@ from core.combat.mobgen.modifier_data import (
     make_modifier,
     omnipotent_label,
 )
-from core.inner_sanctum.mechanics import get_tree_bonuses
 from core.images import (
     COMBAT_DUMMY,
     CORRUPTED_MONSTERS,
@@ -21,6 +20,7 @@ from core.images import (
     MONSTER_LUCIFER,
     MONSTER_NEET,
 )
+from core.inner_sanctum.mechanics import get_tree_bonuses
 from core.models import Monster
 
 # Module-level cache for monsters.csv rows — populated on first call, never re-read.
@@ -526,7 +526,7 @@ async def fetch_monster_image(level, monster_data, task_species=None):
         else:
             if level > 110:
                 level = 100
-            min_level = max(1, level - 20)
+            min_level = max(1, level - 30)
             max_level = min(110, level + 10)
             selected_monsters = [
                 monster for monster in monsters if min_level <= monster[2] <= max_level
