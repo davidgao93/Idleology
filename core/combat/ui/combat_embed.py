@@ -103,67 +103,56 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
                 f"  · {player.jewel_acrimony_dot}t left"
             )
 
-    # --- Alchemy: timed buffs ---
+    # --- Alchemy: timed buffs — one consolidated row of icon + remaining
+    # duration each; full descriptions live in the Potion Lab, not here.
+    alchemy_parts: list[str] = []
     if player.alchemy_hit_boost_pct > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['accel']} Accel  +{int(player.alchemy_hit_boost_pct * 100)}% Hit  {player.alchemy_hit_boost_turns}t left"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['accel']}{player.alchemy_hit_boost_turns}t"
         )
     if player.alchemy_atk_boost_pct > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['enrage']} Enrage  +{int(player.alchemy_atk_boost_pct * 100)}% ATK/DEF  {player.alchemy_def_boost_turns}t left"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['enrage']}{player.alchemy_def_boost_turns}t"
         )
     if player.alchemy_eclipse_strikes > 0:
-        bonus_str = (
-            f" (+{int(player.alchemy_eclipse_bonus * 100)}% dmg)"
-            if player.alchemy_eclipse_bonus > 0
-            else ""
-        )
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['eclipse']} Eclipse  ×{player.alchemy_eclipse_strikes} crit{bonus_str}"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['eclipse']}×{player.alchemy_eclipse_strikes}"
         )
     if player.alchemy_shield_hp > 0:
         dur_str = (
-            f"  · {player.alchemy_shield_turns}t"
-            if player.alchemy_shield_turns > 0
-            else ""
+            f"{player.alchemy_shield_turns}t" if player.alchemy_shield_turns > 0 else ""
         )
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['aegis']} Aegis  {player.alchemy_shield_hp:,} shield{dur_str}"
-        )
+        alchemy_parts.append(f"{ALCHEMY_PASSIVE_EMOJI['aegis']}{dur_str}")
     if player.alchemy_enfeeble_turns > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['enfeeble']} Enfeeble  -{int(player.alchemy_enfeeble_pct * 100)}% ATK/DEF"
-            f"  · {player.alchemy_enfeeble_turns}t"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['enfeeble']}{player.alchemy_enfeeble_turns}t"
         )
     if player.alchemy_dmg_reduction_turns > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['painkiller']} Painkiller  -{int(player.alchemy_dmg_reduction_pct * 100)}%"
-            f"  · {player.alchemy_dmg_reduction_turns} hit{'s' if player.alchemy_dmg_reduction_turns != 1 else ''}"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['painkiller']}{player.alchemy_dmg_reduction_turns}h"
         )
     if player.alchemy_linger_turns > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['quench']} Quench  {player.alchemy_linger_hp:,}/turn"
-            f"  · {player.alchemy_linger_turns}t"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['quench']}{player.alchemy_linger_turns}t"
         )
     if player.alchemy_viper_dot_turns > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['viper']} Viper DoT  {player.alchemy_viper_dot_dmg:,}/turn"
-            f"  · {player.alchemy_viper_dot_turns}t"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['viper']}{player.alchemy_viper_dot_turns}t"
         )
     if player.alchemy_barrier_turns > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['barrier']} Barrier  +{player.alchemy_barrier_ward_per_turn:,} Ward/turn"
-            f"  · {player.alchemy_barrier_turns}t"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['barrier']}{player.alchemy_barrier_turns}t"
         )
     if player.alchemy_blood_tithe_hits > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['blood_tithe']} Blood Tithe  {int(player.alchemy_blood_tithe_leech * 100)}% leech"
-            f"  · {player.alchemy_blood_tithe_hits} hit{'s' if player.alchemy_blood_tithe_hits != 1 else ''}"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['blood_tithe']}{player.alchemy_blood_tithe_hits}h"
         )
     if player.alchemy_ailment_immunity_turns > 0:
-        lines.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['panacea']} Panacea  immune  · {player.alchemy_ailment_immunity_turns}t"
+        alchemy_parts.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['panacea']}{player.alchemy_ailment_immunity_turns}t"
         )
+    if alchemy_parts:
+        lines.append(f"**Alchemy**  {'  '.join(alchemy_parts)}")
 
     # --- Weapon / accessory stacks ---
     if player.voracious_stacks > 0:
@@ -177,70 +166,73 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
     if player.lucifer_pdr_burst > 0:
         lines.append(f"{INFERNAL_ENGRAM} PDR Burst  +{player.lucifer_pdr_burst}%")
 
-    # --- Hematurgy passive states ---
+    # --- Hematurgy passive states — one consolidated row of icon + stack/
+    # counter value each; full descriptions live in the Hematurgy hub.
     hp = getattr(player, "hematurgy_passives", None)
     if hp:
         cs = player.cs
+        hema_parts: list[str] = []
 
         if "iron_momentum" in hp and cs.hema_momentum_stacks > 0:
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['iron_momentum']} Momentum {cs.hema_momentum_stacks}/5"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['iron_momentum']}{cs.hema_momentum_stacks}/5"
             )
 
         if "serrated" in hp and cs.hema_serrated_total > 0:
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['serrated']} Serrated  −{cs.hema_serrated_total} Monster ATK"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['serrated']}−{cs.hema_serrated_total}"
             )
 
         if "haemorrhage" in hp and cs.hema_bleed_total > 0:
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['haemorrhage']} Bleed Pool  {cs.hema_bleed_total:,}"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['haemorrhage']}{cs.hema_bleed_total:,}"
             )
 
         if "chain_reaction" in hp and cs.hema_chain_stacks > 0:
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['chain_reaction']} Chained {cs.hema_chain_stacks}/5"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['chain_reaction']}{cs.hema_chain_stacks}/5"
             )
 
         if "phantom_reflex" in hp and cs.hema_phantom_stacks > 0:
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['phantom_reflex']} Phantom {cs.hema_phantom_stacks}/2"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['phantom_reflex']}{cs.hema_phantom_stacks}/2"
             )
 
         if "executioners_rite" in hp and monster is not None:
             if monster.max_hp > 0 and monster.hp / monster.max_hp < 0.30:
-                lines.append(
-                    f"{HEMATURGY_PASSIVE_EMOJI['executioners_rite']} Executioner"
-                )
+                hema_parts.append(f"{HEMATURGY_PASSIVE_EMOJI['executioners_rite']}")
 
         if "fevered_strike" in hp and cs.hema_fevered_count > 0:
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['fevered_strike']} Fevered ×{cs.hema_fevered_count}"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['fevered_strike']}×{cs.hema_fevered_count}"
             )
 
         if "predators_mark" in hp and cs.hema_predators_mark:
-            lines.append(f"{HEMATURGY_PASSIVE_EMOJI['predators_mark']} Marked")
+            hema_parts.append(f"{HEMATURGY_PASSIVE_EMOJI['predators_mark']}")
 
         if "flash_frost" in hp and cs.hema_frost_misses > 0:
             from core.hematurgy.mechanics import tier_val as _hema_tv
 
             threshold = int(_hema_tv("flash_frost", hp["flash_frost"]))
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['flash_frost']} Frost {cs.hema_frost_misses}/{threshold}"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['flash_frost']}{cs.hema_frost_misses}/{threshold}"
             )
 
         if "spectral_waltz" in hp and cs.hema_blade_count > 0:
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['spectral_waltz']} Blades ×{cs.hema_blade_count}"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['spectral_waltz']}×{cs.hema_blade_count}"
             )
 
         if "defiance" in hp and cs.hema_defiance_triggered:
-            lines.append(f"{HEMATURGY_PASSIVE_EMOJI['defiance']} Defiance")
+            hema_parts.append(f"{HEMATURGY_PASSIVE_EMOJI['defiance']}")
 
         if "puncture" in hp and cs.hema_puncture_bleed > 0:
-            lines.append(
-                f"{HEMATURGY_PASSIVE_EMOJI['puncture']} Punctured {cs.hema_puncture_bleed:,}"
+            hema_parts.append(
+                f"{HEMATURGY_PASSIVE_EMOJI['puncture']}{cs.hema_puncture_bleed:,}"
             )
+
+        if hema_parts:
+            lines.append(f"**Hema**  {'  '.join(hema_parts)}")
 
     return "\n".join(lines)
 

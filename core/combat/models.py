@@ -318,6 +318,14 @@ class Monster:
     # 1.0 = normal. Example: 0.5 = 50% less damage.
     damage_more_mult: float = 1.0
 
+    # Inner Sanctum Vice (Special Needs) — set once per combat-start by
+    # apply_stat_effects (idempotent assignment, not accumulation, so it's
+    # safe to re-run across boss phase transitions). Kept separate from
+    # damage_increased_pct / the per-turn crit roll so they aren't entangled
+    # with those fields' own reset/accumulation lifecycle.
+    is_bonus_crit_chance: float = 0.0
+    is_bonus_damage_pct: float = 0.0
+
     @property
     def hard_mode(self) -> bool:
         """True when any difficulty mode is active. Keeps legacy callers working."""
@@ -515,7 +523,7 @@ class Monster:
         "% more" / "% less" effects go into damage_more_mult and are applied
         after the increased pool.
         """
-        increased = 1.0 + self.damage_increased_pct
+        increased = 1.0 + self.damage_increased_pct + self.is_bonus_damage_pct
         return increased * self.damage_more_mult
 
     def reset_combat_bonuses(self) -> None:

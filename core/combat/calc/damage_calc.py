@@ -181,6 +181,11 @@ def roll_monster_damage(
         calc_notes.append(f"inevitable more_mult={monster.damage_more_mult:.2f}")
 
     base_crit_chance = 0.10
+    if monster.is_bonus_crit_chance:
+        base_crit_chance += monster.is_bonus_crit_chance
+        calc_notes.append(
+            f"inner_sanctum_vice crit+{monster.is_bonus_crit_chance:.3f}"
+        )
     if monster.has_modifier("Lethal"):
         base_crit_chance += monster.get_modifier_value("Lethal")
     # Volatile Spikes: each spike stack adds v to monster crit chance

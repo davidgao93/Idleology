@@ -292,6 +292,15 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     is_bonuses = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))
     drops = {}
 
+    # Inner Sanctum Vice — Curio-sity: independent bonus rolls on ANY victory
+    # (boss or not), stacking on top of whatever else drops this kill.
+    if is_bonuses["bonus_curio_chance"] and random.random() < is_bonuses["bonus_curio_chance"]:
+        drops["bonus_curio"] = True
+    if is_bonuses["bonus_puzzlebox_chance"] and random.random() < is_bonuses[
+        "bonus_puzzlebox_chance"
+    ]:
+        drops["bonus_puzzlebox"] = True
+
     # ── Boss encounters ──────────────────────────────────────────────────────
     if monster.is_boss:
         special_bonus = player.get_special_drop_bonus() / 100
@@ -367,11 +376,6 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     )
     special_drop_chance = mod_difficulty_bonus + special_rarity
 
-    # Inner Sanctum Vice — Hoarder's Eye: flat bonus % on rune-specific rolls only
-    # (shatter_rune, rune_of_regret) — deliberately not folded into special_drop_chance
-    # so it doesn't also buff unrelated drops like Guild Tickets or Blueprints.
-    rune_chance_bonus = is_bonuses["rune_chance_pct"]
-
     # Rare monsters always receive the full difficulty cap bonus + a free curio.
     rare_monsters = [
         "Treasure Chest",
@@ -412,9 +416,23 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
             drops["angelic_key"] = True
         if (
             random.random()
-            < SPECIAL_DROP_BASE_CHANCE + special_drop_chance + rune_chance_bonus
+            < SPECIAL_DROP_BASE_CHANCE
+            + special_drop_chance
+            + is_bonuses["rune_shattering_chance_pct"]
         ):
             drops["shatter_rune"] = True
+
+    # Inner Sanctum Vice — Runefinder: independent rolls that make Runes of
+    # Refinement/Potential droppable from regular (non-boss) kills at all —
+    # previously those two were boss-exclusive drops (see boss_configs above).
+    if is_bonuses["rune_refinement_chance_pct"] and random.random() < is_bonuses[
+        "rune_refinement_chance_pct"
+    ]:
+        drops["refinement_rune"] = True
+    if is_bonuses["rune_potential_chance_pct"] and random.random() < is_bonuses[
+        "rune_potential_chance_pct"
+    ]:
+        drops["potential_rune"] = True
 
     if player.level >= 30:
         if random.random() < SOUL_CORE_BASE_CHANCE + special_drop_chance:
@@ -433,10 +451,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
         for item in ("magma_core", "life_root", "spirit_shard"):
             if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
                 drops[item] = True
-        if (
-            random.random()
-            < SPECIAL_DROP_BASE_CHANCE + special_drop_chance + rune_chance_bonus
-        ):
+        if random.random() < SPECIAL_DROP_BASE_CHANCE + special_drop_chance:
             drops["rune_of_regret"] = True
 
     if player.level >= 50:
@@ -549,7 +564,9 @@ async def apply_special_flags(
     For each truthy flag:
       - Simple currency flags    → users DB write + reward_data["special"] append.
       - Elemental boss materials → uber DB write  + reward_data["special"] append.
-      - curio                   → curios currency + reward_data["curios"] = 1.
+      - curio / bonus_curio      → curios currency, additive onto reward_data["curios"].
+      - bonus_puzzlebox          → curio_puzzle_boxes currency (Inner Sanctum Vice).
+      - deicide_dupe_item        → a second unit of a boss rune/key type (Inner Sanctum Deicide).
       - velour_doubled           → doubles current reward_data["special"] list.
       - yvenn_slayer_bonus       → stored in reward_data for slayer integration.
 
@@ -571,7 +588,19 @@ async def apply_special_flags(
 
         elif key == "curio":
             await bot.database.users.modify_currency(user_id, "curios", 1)
-            reward_data["curios"] = 1
+            reward_data["curios"] = reward_data.get("curios", 0) + 1
+
+        elif key == "bonus_curio":
+            # Inner Sanctum Vice — Curio-sity: Grasping Hands. Additive so it
+            # stacks with any "curio" flag that already fired this kill.
+            await bot.database.users.modify_currency(user_id, "curios", 1)
+            reward_data["curios"] = reward_data.get("curios", 0) + 1
+            reward_data["special"].append("Bonus Curio (Curio-sity)")
+
+        elif key == "bonus_puzzlebox":
+            # Inner Sanctum Vice — Curio-sity: Boundless Hoard.
+            await bot.database.users.modify_currency(user_id, "curio_puzzle_boxes", 1)
+            reward_data["special"].append("Bonus Curio Puzzle Box (Curio-sity)")
 
         elif key == "blessed_bismuth":
             await bot.database.skills.increment_blessed_bismuth(user_id, server_id, 1)

@@ -94,6 +94,26 @@ async def generate_encounter(
             10 * (monster.level ** random.uniform(1.6, 1.7))
         )
 
+    if is_treasure:
+        # Treasure monsters are near-harmless pushovers by default — a trivial
+        # kill that exists purely to hand out its guaranteed/boosted loot roll
+        # (see rare_monsters handling in rewards.py). Inner Sanctum Vice's
+        # Curio-sity nodes add back a % of what a normal same-level monster
+        # would have, up to 90% at full investment across all three nodes.
+        normal_attack, normal_defence, normal_hp = (
+            monster.base_attack,
+            monster.base_defence,
+            base_hp,
+        )
+        stat_pct = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))[
+            "treasure_stat_bonus_pct"
+        ]
+        monster.base_attack = 1 + int(normal_attack * stat_pct)
+        monster.base_defence = 1 + int(normal_defence * stat_pct)
+        monster.attack = monster.base_attack
+        monster.defence = monster.base_defence
+        base_hp = 10 + int(normal_hp * stat_pct)
+
     monster.base_max_hp = base_hp
     monster.hp = base_hp
     monster.max_hp = base_hp
@@ -140,7 +160,11 @@ async def generate_encounter(
         if not monster.is_essence:
             _roll_zenith_spawn(monster, player, slayer_tree_nodes or {})
 
-    _apply_inner_sanctum_vice_downside(monster, player)
+        # Vice's Special Needs/Runefinder downside only applies to regular
+        # (non-treasure) monsters — treasure monsters are governed entirely
+        # by the Curio-sity stat scaling above.
+        _apply_inner_sanctum_vice_downside(monster, player)
+
     finalize_monster_spawn(monster)
     return monster
 
@@ -249,14 +273,23 @@ async def generate_ascent_monster(
 
 
 def _apply_inner_sanctum_vice_downside(monster, player) -> None:
-    """Vice path trade-off: every point invested in Vice makes regular
-    monsters slightly tankier/harder-hitting, in exchange for its rarity/loot
-    bonuses (treasure chance, rune chance, special rarity)."""
+    """Vice path trade-off: every rank invested in Special Needs/Runefinder
+    makes regular monsters slightly tankier/harder-hitting, in exchange for
+    Vice's rarity/loot bonuses (special rarity, rune chance, treasure chance).
+
+    Crit/damage use plain assignment (spawn-established, like Empowered) —
+    they're set once per generate_encounter call and never re-entered for a
+    single monster, so there's no double-accumulation risk the way there
+    would be re-applying a `+=` across boss phase transitions."""
     bonuses = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))
     if bonuses["vice_monster_atk_pct"]:
         monster.bonus_attack_pct += bonuses["vice_monster_atk_pct"]
+    if bonuses["vice_monster_def_pct"]:
+        monster.bonus_defence_pct += bonuses["vice_monster_def_pct"]
     if bonuses["vice_monster_hp_pct"]:
         monster.bonus_max_hp_pct += bonuses["vice_monster_hp_pct"]
+    monster.is_bonus_crit_chance = bonuses["vice_monster_crit_pct"]
+    monster.is_bonus_damage_pct = bonuses["vice_monster_dmg_pct"]
 
 
 def _apply_inner_sanctum_deicide_downside(monster, player) -> None:

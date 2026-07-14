@@ -16,8 +16,6 @@ from core.inner_sanctum.data import (
     RECOVERY_NODES,
     RECOVERY_UNLOCK_LEVEL,
     RESET_RUNE_COST,
-    VICE_DOWNSIDE_ATK_PCT_PER_RANK,
-    VICE_DOWNSIDE_HP_PCT_PER_RANK,
     VICE_NODES,
     VICE_UNLOCK_LEVEL,
 )
@@ -87,6 +85,17 @@ def can_purchase(
     return True, cost, ""
 
 
+def _sum_vice_field(owned: dict, field_name: str) -> float:
+    """Sums `rank * node[field_name]` across every Vice node that declares it."""
+    total = 0.0
+    for node_id, node_def in VICE_NODES.items():
+        rank = owned.get(node_id, 0) or 0
+        if rank <= 0:
+            continue
+        total += rank * node_def.get(field_name, 0.0)
+    return total
+
+
 def get_tree_bonuses(nodes_owned: dict) -> dict:
     """Returns all active Inner Sanctum bonus values, keyed by effect name."""
     owned = nodes_owned or {}
@@ -94,20 +103,25 @@ def get_tree_bonuses(nodes_owned: dict) -> dict:
     def rank_of(node_id: str) -> int:
         return owned.get(node_id, 0) or 0
 
-    vice_ranks = total_ranks_in_branch(owned, "vice")
     recovery_ranks = total_ranks_in_branch(owned, "recovery")
     deicide_ranks = total_ranks_in_branch(owned, "deicide")
 
     bonuses = {
-        # Vice
-        "special_rarity_pct": rank_of("vi_rarity")
-        * VICE_NODES["vi_rarity"]["value_per_rank"],
-        "rune_chance_pct": rank_of("vi_rune_chance")
-        * VICE_NODES["vi_rune_chance"]["value_per_rank"],
-        "treasure_chance_pct": rank_of("vi_treasure")
-        * VICE_NODES["vi_treasure"]["value_per_rank"],
-        "vice_monster_atk_pct": vice_ranks * VICE_DOWNSIDE_ATK_PCT_PER_RANK,
-        "vice_monster_hp_pct": vice_ranks * VICE_DOWNSIDE_HP_PCT_PER_RANK,
+        # Vice — every Vice node contributes to one or more of these via its
+        # own *_per_rank keys in data.py; see _sum_vice_field.
+        "special_rarity_pct": _sum_vice_field(owned, "special_rarity_per_rank"),
+        "vice_monster_atk_pct": _sum_vice_field(owned, "monster_atk_per_rank"),
+        "vice_monster_def_pct": _sum_vice_field(owned, "monster_def_per_rank"),
+        "vice_monster_crit_pct": _sum_vice_field(owned, "monster_crit_per_rank"),
+        "vice_monster_hp_pct": _sum_vice_field(owned, "monster_hp_per_rank"),
+        "vice_monster_dmg_pct": _sum_vice_field(owned, "monster_dmg_per_rank"),
+        "rune_refinement_chance_pct": _sum_vice_field(owned, "refine_chance_per_rank"),
+        "rune_potential_chance_pct": _sum_vice_field(owned, "potential_chance_per_rank"),
+        "rune_shattering_chance_pct": _sum_vice_field(owned, "shatter_chance_per_rank"),
+        "treasure_chance_pct": _sum_vice_field(owned, "treasure_encounter_per_rank"),
+        "bonus_curio_chance": _sum_vice_field(owned, "bonus_curio_per_rank"),
+        "bonus_puzzlebox_chance": _sum_vice_field(owned, "bonus_puzzlebox_per_rank"),
+        "treasure_stat_bonus_pct": _sum_vice_field(owned, "treasure_stat_per_rank"),
         # Recovery
         "stamina_save_chance": rank_of("re_stamina_save")
         * RECOVERY_NODES["re_stamina_save"]["value_per_rank"],

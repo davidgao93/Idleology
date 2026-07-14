@@ -96,11 +96,22 @@ class InnerSanctumHubView(BaseView):
             )
             return embed
 
-        lines = [
-            _node_status_line(nid, node, self.nodes_owned)
-            for nid, node in _BRANCH_NODES[branch].items()
-        ]
-        embed.add_field(name=f"{icon} {name}", value="\n".join(lines), inline=False)
+        branch_nodes = _BRANCH_NODES[branch]
+        groups: dict[str, list[str]] = {}
+        for nid, node in branch_nodes.items():
+            group = node.get("group", name)
+            groups.setdefault(group, []).append(
+                _node_status_line(nid, node, self.nodes_owned)
+            )
+
+        if len(groups) > 1:
+            for group_name, lines in groups.items():
+                embed.add_field(
+                    name=f"{icon} {group_name}", value="\n".join(lines), inline=False
+                )
+        else:
+            lines = next(iter(groups.values()))
+            embed.add_field(name=f"{icon} {name}", value="\n".join(lines), inline=False)
         embed.set_footer(
             text=f"Reset Tree: costs {RESET_RUNE_COST} Rune(s) of Regret | refunds 100% of points spent"
         )

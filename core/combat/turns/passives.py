@@ -85,7 +85,7 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
             player.bonus_def += bonus
 
     # Inner Sanctum Recovery — trade-off for stamina/survivability investment:
-    # a small permanent ATK malus scaling with points spent in the path.
+    # a small permanent ATK malus scaling with ranks spent in the path.
     is_nodes = getattr(player, "inner_sanctum_nodes", None)
     if is_nodes:
         from core.inner_sanctum.mechanics import get_tree_bonuses
