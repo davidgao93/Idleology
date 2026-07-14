@@ -1067,9 +1067,7 @@ def process_monster_turn(
                 t_fdr = player.get_total_fdr()
                 thorned_dmg = max(1, int(base_thorned * (1 - t_pdr / 100)) - t_fdr)
                 player.current_hp = max(0, player.current_hp - thorned_dmg)
-                _thorned_msg = (
-                    f"{MOD_THORNED} **Thorned** — you take **{thorned_dmg}** damage for striking!"
-                )
+                _thorned_msg = f"{MOD_THORNED} **Thorned** — you take **{thorned_dmg}** damage for striking!"
                 log.append(_thorned_msg)
                 clog.append(_thorned_msg)
 

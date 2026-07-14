@@ -189,9 +189,7 @@ def roll_monster_damage(
     base_crit_chance = 0.10
     if monster.is_bonus_crit_chance:
         base_crit_chance += monster.is_bonus_crit_chance
-        calc_notes.append(
-            f"inner_sanctum_vice crit+{monster.is_bonus_crit_chance:.3f}"
-        )
+        calc_notes.append(f"inner_sanctum_vice crit+{monster.is_bonus_crit_chance:.3f}")
     if monster.has_modifier("Lethal"):
         base_crit_chance += monster.get_modifier_value("Lethal")
     # Volatile Spikes: each spike stack adds v to monster crit chance
@@ -503,7 +501,9 @@ def calc_crit_damage(
         if second_hit > 0:
             damage += second_hit
             calc_dmg_notes.append(f"+gemini_twin={second_hit}({second_pct:.0%})")
-            log.append(f"{TWIN_STRIKE} **Twin Strike** — a second blow lands! (+{second_hit})")
+            log.append(
+                f"{TWIN_STRIKE} **Twin Strike** — a second blow lands! (+{second_hit})"
+            )
 
     calc.append("  crit_dmg: " + " → ".join(calc_dmg_notes) + f" = {damage}")
 

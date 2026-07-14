@@ -67,7 +67,9 @@ def _node_status_line(node_id: str, node: dict, nodes_owned: dict) -> str:
 class RankAmountModal(ui.Modal):
     """Custom-amount entry for investing multiple ranks in one node at once."""
 
-    def __init__(self, parent_view: "InnerSanctumHubView", node_id: str, max_amount: int):
+    def __init__(
+        self, parent_view: "InnerSanctumHubView", node_id: str, max_amount: int
+    ):
         super().__init__(title="Invest Inner Sanctum Points")
         self.parent_view = parent_view
         self.node_id = node_id
@@ -285,7 +287,9 @@ class InnerSanctumHubView(BaseView):
             btn.callback = _amt_cb
             self.add_item(btn)
 
-        btn_custom = ui.Button(label="Custom Amount…", style=ButtonStyle.secondary, row=1)
+        btn_custom = ui.Button(
+            label="Custom Amount…", style=ButtonStyle.secondary, row=1
+        )
 
         async def _custom_cb(interaction: Interaction):
             await interaction.response.send_modal(
@@ -345,9 +349,7 @@ class InnerSanctumHubView(BaseView):
         self.points_spent += cost
         self.nodes_owned[node_id] = choice
 
-        choice_label = next(
-            (lbl for k, lbl in node["choices"] if k == choice), choice
-        )
+        choice_label = next((lbl for k, lbl in node["choices"] if k == choice), choice)
         self.result_msg = f"✅ {choice_label}"
 
         self.setup_ui()

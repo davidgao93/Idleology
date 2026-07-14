@@ -154,9 +154,7 @@ _BOOT_PASSIVE_FUNCS: dict = {
 }
 
 _HELMET_PASSIVE_FUNCS: dict = {
-    "juggernaut": lambda lvl: (
-        f"Combat start: Gain {lvl * 4}% of flat DEF as bonus ATK"
-    ),
+    "juggernaut": lambda lvl: f"Combat start: Gain {lvl * 4}% of flat DEF as bonus ATK",
     "insight": lambda lvl: f"On equip: Crit Dmg Multiplier +{lvl * 0.1:.1f}×",
     "volatile": lambda lvl: (
         f"During combat: Deal {lvl * 100}% of Max HP as Dmg on ward break"
@@ -229,7 +227,9 @@ _SLAYER_EMBLEM_FUNCS: dict = {
     "slayer_dmg": lambda t: f"+{t * 5}% damage vs assigned slayer species",
     "boss_dmg": lambda t: f"+{t * 5}% damage vs bosses",
     "combat_dmg": lambda t: f"+{t * 2}% damage vs normal monsters",
-    "slayer_def": lambda t: f"+{t * 2}% flat DEF as bonus DEF vs assigned slayer species",
+    "slayer_def": lambda t: (
+        f"+{t * 2}% flat DEF as bonus DEF vs assigned slayer species"
+    ),
     "crit_dmg": lambda t: f"+{t * 5}% critical strike multiplier",
     "accuracy": lambda t: f"+{t * 2} flat accuracy",
     "gold_find": lambda t: f"+{t * 3}% gold from combat",

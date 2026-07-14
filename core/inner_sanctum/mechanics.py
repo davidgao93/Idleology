@@ -157,7 +157,9 @@ def get_tree_bonuses(nodes_owned: dict) -> dict:
         "vice_monster_hp_pct": _sum_vice_field(owned, "monster_hp_per_rank"),
         "vice_monster_dmg_pct": _sum_vice_field(owned, "monster_dmg_per_rank"),
         "rune_refinement_chance_pct": _sum_vice_field(owned, "refine_chance_per_rank"),
-        "rune_potential_chance_pct": _sum_vice_field(owned, "potential_chance_per_rank"),
+        "rune_potential_chance_pct": _sum_vice_field(
+            owned, "potential_chance_per_rank"
+        ),
         "rune_shattering_chance_pct": _sum_vice_field(owned, "shatter_chance_per_rank"),
         "treasure_chance_pct": _sum_vice_field(owned, "treasure_encounter_per_rank"),
         "bonus_curio_chance": _sum_vice_field(owned, "bonus_curio_per_rank"),

@@ -294,11 +294,15 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
 
     # Inner Sanctum Vice — Curio-sity: independent bonus rolls on ANY victory
     # (boss or not), stacking on top of whatever else drops this kill.
-    if is_bonuses["bonus_curio_chance"] and random.random() < is_bonuses["bonus_curio_chance"]:
+    if (
+        is_bonuses["bonus_curio_chance"]
+        and random.random() < is_bonuses["bonus_curio_chance"]
+    ):
         drops["bonus_curio"] = True
-    if is_bonuses["bonus_puzzlebox_chance"] and random.random() < is_bonuses[
-        "bonus_puzzlebox_chance"
-    ]:
+    if (
+        is_bonuses["bonus_puzzlebox_chance"]
+        and random.random() < is_bonuses["bonus_puzzlebox_chance"]
+    ):
         drops["bonus_puzzlebox"] = True
 
     # ── Boss encounters ──────────────────────────────────────────────────────
@@ -425,13 +429,15 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     # Inner Sanctum Vice — Runefinder: independent rolls that make Runes of
     # Refinement/Potential droppable from regular (non-boss) kills at all —
     # previously those two were boss-exclusive drops (see boss_configs above).
-    if is_bonuses["rune_refinement_chance_pct"] and random.random() < is_bonuses[
-        "rune_refinement_chance_pct"
-    ]:
+    if (
+        is_bonuses["rune_refinement_chance_pct"]
+        and random.random() < is_bonuses["rune_refinement_chance_pct"]
+    ):
         drops["refinement_rune"] = True
-    if is_bonuses["rune_potential_chance_pct"] and random.random() < is_bonuses[
-        "rune_potential_chance_pct"
-    ]:
+    if (
+        is_bonuses["rune_potential_chance_pct"]
+        and random.random() < is_bonuses["rune_potential_chance_pct"]
+    ):
         drops["potential_rune"] = True
 
     if player.level >= 30:

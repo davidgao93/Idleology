@@ -205,7 +205,9 @@ def _desc(pid: str, tier: int) -> str:
                 f"again (each successive re-echo is 50% less likely)."
             )
         case "soothing_venom":
-            return f"{pct(v)} of your weapon's Poison passive miss-damage is gained as HP."
+            return (
+                f"{pct(v)} of your weapon's Poison passive miss-damage is gained as HP."
+            )
         case "iron_momentum":
             return (
                 f"Each consecutive hit grants +{pct(v)} ATK (max 5 stacks). "
@@ -256,8 +258,7 @@ def _desc(pid: str, tier: int) -> str:
             )
         case "counterforce":
             return (
-                f"During combat, {pct(v)} of your flat DEF is added "
-                f"as flat bonus ATK."
+                f"During combat, {pct(v)} of your flat DEF is added as flat bonus ATK."
             )
         case "defiance":
             return (

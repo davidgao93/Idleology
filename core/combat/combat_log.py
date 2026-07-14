@@ -96,7 +96,7 @@ class CombatLogger:
         # Collapse the double spaces left behind by emoji removal, but keep
         # leading indentation intact (used throughout for nested log lines).
         indent = line[: len(line) - len(line.lstrip(" "))]
-        body = re.sub(r" {2,}", " ", line[len(indent):]).rstrip()
+        body = re.sub(r" {2,}", " ", line[len(indent) :]).rstrip()
         self._file.write(indent + body + "\n")
 
     def _compute_stats(

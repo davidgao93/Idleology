@@ -1035,6 +1035,11 @@ class CombatView(BaseLayoutView):
                 bonus_parts.append(f"{diff_emoji} {diff_name} Mode +{hard_mode_pct}%")
             if streak_pct > 0:
                 bonus_parts.append(f"{WIN_STREAK} Streak +{streak_pct}%")
+            if difficulty_xp_pct > 0:
+                bonus_parts.append(
+                    f"🎲 Modifier Difficulty +{difficulty_xp_pct * 100:.0f}% XP "
+                    f"/ +{difficulty_drop_pct * 100:.0f}% Rarity"
+                )
             value_lines = [" | ".join(bonus_parts)]
             if total_bonus_pct > 0:
                 value_lines.append(f"+{bonus_xp:,} XP  •  +{bonus_gold:,} Gold")
