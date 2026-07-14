@@ -955,8 +955,6 @@ class CombatView(BaseLayoutView):
             return  # Keep view alive for next phase
 
         # --- FINAL VICTORY ---
-        self.combat_logger.log_combat_end(self.player, self.monster, "victory")
-
         # Streak bonus is based on the pre-fight streak (what was shown in the footer
         # during combat), so the player always receives exactly what was advertised.
         _DIFFICULTY_REWARD_PCT = [0, 50, 75, 100, 150]
@@ -975,6 +973,10 @@ class CombatView(BaseLayoutView):
             message,
             self.combat_logger,
         )
+
+        # log_rewards (inside apply_victory_rewards) must run before the file
+        # is closed, so log_combat_end — which closes the log file — comes last.
+        self.combat_logger.log_combat_end(self.player, self.monster, "victory")
 
         # Increment streak after base rewards are applied (avoids DB write ordering issues).
         new_streak = await self.bot.database.users.increment_combat_streak(self.user_id)

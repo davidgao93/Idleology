@@ -138,6 +138,17 @@ class CombatState:
     chapter_hp_entry_pct: float = (
         0.0  # fraction of max HP the player may not exceed on wave entry
     )
+    # Codex signature/boon layer — net value for the CURRENT chapter (that
+    # chapter's signature debuff + the sum of all active_boons of the matching
+    # type, combined additively). Applied as the LAST step inside
+    # get_total_attack/get_total_defence/get_total_max_hp/get_current_crit_chance
+    # — i.e. after flat + bonus_pool + pct_pool + run_*_penalty are fully
+    # resolved — so it can never compound with combat-start passives or drift
+    # from what the stats page/combat log show. See core/codex/mechanics.py.
+    codex_atk_pct: float = 0.0
+    codex_def_pct: float = 0.0
+    codex_max_hp_pct: float = 0.0
+    codex_crit_flat: int = 0
     # Apex zone state (set at combat start by ApexMechanics.apply_zone_modifier)
     apex_zone: Optional[str] = None  # active zone key, or None for normal combat
     # Prestige gathering boss (Artisan Mastery) transient
@@ -1054,6 +1065,38 @@ class Player:
         self.cs.chapter_hp_entry_pct = v
 
     @property
+    def codex_atk_pct(self) -> float:
+        return self.cs.codex_atk_pct
+
+    @codex_atk_pct.setter
+    def codex_atk_pct(self, v: float) -> None:
+        self.cs.codex_atk_pct = v
+
+    @property
+    def codex_def_pct(self) -> float:
+        return self.cs.codex_def_pct
+
+    @codex_def_pct.setter
+    def codex_def_pct(self, v: float) -> None:
+        self.cs.codex_def_pct = v
+
+    @property
+    def codex_max_hp_pct(self) -> float:
+        return self.cs.codex_max_hp_pct
+
+    @codex_max_hp_pct.setter
+    def codex_max_hp_pct(self, v: float) -> None:
+        self.cs.codex_max_hp_pct = v
+
+    @property
+    def codex_crit_flat(self) -> int:
+        return self.cs.codex_crit_flat
+
+    @codex_crit_flat.setter
+    def codex_crit_flat(self, v: int) -> None:
+        self.cs.codex_crit_flat = v
+
+    @property
     def apex_zone(self) -> Optional[str]:
         return self.cs.apex_zone
 
@@ -1269,6 +1312,20 @@ class Player:
             )
             base = new_base
 
+        # Codex signature/boon layer — last step, a single net % of the fully
+        # resolved total (current chapter's signature debuff — see
+        # core/codex/mechanics.py; no per-chapter Max HP boon currently exists,
+        # only the one-shot permanent run_max_hp_bonus conversion above).
+        if self.codex_max_hp_pct:
+            new_base = int(base * (1 + self.codex_max_hp_pct))
+            contributions.append(
+                (
+                    f"Codex Signature/Boons ({self.codex_max_hp_pct * 100:+.0f}%)",
+                    new_base - base,
+                )
+            )
+            base = new_base
+
         base = max(1, base)
         if explain:
             return base, contributions
@@ -1381,6 +1438,10 @@ class Player:
         self.cs.chapter_ward_gen_mult = 1.0
         self.cs.chapter_crit_dmg_reduction = 0.0
         self.cs.chapter_hp_entry_pct = 0.0
+        self.cs.codex_atk_pct = 0.0
+        self.cs.codex_def_pct = 0.0
+        self.cs.codex_max_hp_pct = 0.0
+        self.cs.codex_crit_flat = 0
 
     def reset_combat_state(self) -> None:
         """
@@ -1579,6 +1640,20 @@ class Player:
             contributions.append(("Codex Run Penalty", -self.run_atk_penalty))
         total -= self.run_atk_penalty
 
+        # Codex signature/boon layer — last step, a single net % of the fully
+        # resolved total (current chapter's signature debuff + all active
+        # ATK boons, combined additively — see core/codex/mechanics.py), so
+        # it never compounds with any other ATK% source above.
+        if self.codex_atk_pct:
+            new_total = int(total * (1 + self.codex_atk_pct))
+            contributions.append(
+                (
+                    f"Codex Signature/Boons ({self.codex_atk_pct * 100:+.0f}%)",
+                    new_total - total,
+                )
+            )
+            total = new_total
+
         total = max(0, total)
         if explain:
             return total, contributions
@@ -1720,6 +1795,20 @@ class Player:
         if self.run_def_penalty:
             contributions.append(("Codex Run Penalty", -self.run_def_penalty))
         total -= self.run_def_penalty
+
+        # Codex signature/boon layer — last step, a single net % of the fully
+        # resolved total (current chapter's signature debuff + all active
+        # DEF boons, combined additively — see core/codex/mechanics.py), so
+        # it never compounds with any other DEF% source above.
+        if self.codex_def_pct:
+            new_total = int(total * (1 + self.codex_def_pct))
+            contributions.append(
+                (
+                    f"Codex Signature/Boons ({self.codex_def_pct * 100:+.0f}%)",
+                    new_total - total,
+                )
+            )
+            total = new_total
 
         total = max(0, total)
         if explain:
@@ -2015,6 +2104,16 @@ class Player:
                 (f"Crit Multiplier (x{self.crit_multiplier:.2f})", new_chance - chance)
             )
             chance = new_chance
+
+        # Codex signature/boon layer — last step, a flat point add (current
+        # chapter's signature debuff + all active crit boons, combined
+        # additively — see core/codex/mechanics.py). Crit is already a flat
+        # percentage stat, so unlike ATK/DEF/Max HP this isn't scaled by TOTAL;
+        # applied after every other crit source (including the multiplicative
+        # layer above) so it can never compound with them.
+        if self.codex_crit_flat:
+            chance += self.codex_crit_flat
+            contributions.append(("Codex Signature/Boons", self.codex_crit_flat))
 
         chance = max(0, chance)
         if explain:

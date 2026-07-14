@@ -8,11 +8,13 @@ from core.combat.calc.hit_calc import calculate_monster_hit_chance
 from core.combat.calc.ward_system import _add_ward
 from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
 from core.emojis import (
+    ALCHEMY_PASSIVE_EMOJI,
     CELESTIAL_ENGRAM,
     GOLD_COIN,
     INFERNAL_ENGRAM,
     MOD_FLASHFIRE,
     MOD_PRESSURE_SURGE,
+    SIG_EVE,
     STAT_WARD,
     VOID_ENGRAM,
 )
@@ -56,7 +58,7 @@ def process_monster_turn(
         if player.alchemy_ailment_immunity_turns > 0:
             # Simple representation: player is protected this turn
             log.append(
-                f"🌿 **Panacea** — protected from ailments this turn ({player.alchemy_ailment_immunity_turns} remaining)."
+                f"{ALCHEMY_PASSIVE_EMOJI['panacea']} **Panacea** — protected from ailments this turn ({player.alchemy_ailment_immunity_turns} remaining)."
             )
 
     # Decrement Enrage duration unconditionally each monster turn (it's advertised as
@@ -81,7 +83,7 @@ def process_monster_turn(
             monster.bonus_attack_pct += player.alchemy_enfeeble_pct
             monster.bonus_defence_pct += player.alchemy_enfeeble_pct
             player.alchemy_enfeeble_pct = 0.0
-            log.append("🌊 **Enfeeble** wears off.")
+            log.append(f"{ALCHEMY_PASSIVE_EMOJI['enfeeble']} **Enfeeble** wears off.")
 
     celestial = player.get_celestial_armor_passive()
     helmet_passive = player.get_helmet_passive()
@@ -854,12 +856,14 @@ def process_monster_turn(
                     player.alchemy_shield_hp = max(0, shield_hp - absorb)
                     total_damage -= absorb
                     if absorb > 0:
-                        _shield_msg = f"🛡️ **Aegis** absorbs **{absorb}** damage!"
+                        _shield_msg = f"{ALCHEMY_PASSIVE_EMOJI['aegis']} **Aegis** absorbs **{absorb}** damage!"
                         log.append(_shield_msg)
                         clog.append(_shield_msg)
                     if player.alchemy_shield_hp <= 0:
                         player.alchemy_shield_turns = 0
-                        log.append("🛡️ Aegis shield has been depleted.")
+                        log.append(
+                            f"{ALCHEMY_PASSIVE_EMOJI['aegis']} Aegis shield has been depleted."
+                        )
 
                 if (
                     celestial == "celestial_vow"
@@ -986,12 +990,13 @@ def process_monster_turn(
                     # skip in compact — subtle buff
 
             # Artefact: Seal of Duality — on ward break, DEF +15-35% for the
-            # rest of combat (rolled on drop).
+            # rest of combat (rolled on drop). Also triggers via Aphrodite
+            # glove (any ward damage counts as "broken").
             if (
                 player.has_artefact("seal_of_duality")
                 and not player.seal_of_duality_triggered
-                and player.combat_ward == 0
                 and previous_ward > 0
+                and (player.combat_ward == 0 or aphrodite_glove_active)
             ):
                 player.seal_of_duality_triggered = True
                 log.append(
@@ -1141,7 +1146,7 @@ def process_monster_turn(
             player.potions -= potions_needed
             player.current_hp = player.total_max_hp
             log.append(
-                f"💊 **Final Stand Lv.{player.active_partner.sig_combat_lvl}**"
+                f"{SIG_EVE} **Final Stand Lv.{player.active_partner.sig_combat_lvl}**"
                 f" — Intercepted a fatal blow! Consumed {potions_needed} potion(s). "
                 f"You recover to full HP before taking the blow!"
             )

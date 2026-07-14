@@ -56,6 +56,10 @@ def build_wave_baseline(player: Player) -> dict:
         "chapter_ward_gen_mult": player.chapter_ward_gen_mult,
         "chapter_crit_dmg_reduction": player.chapter_crit_dmg_reduction,
         "chapter_hp_entry_pct": player.chapter_hp_entry_pct,
+        "codex_atk_pct": player.codex_atk_pct,
+        "codex_def_pct": player.codex_def_pct,
+        "codex_max_hp_pct": player.codex_max_hp_pct,
+        "codex_crit_flat": player.codex_crit_flat,
     }
 
 
@@ -467,6 +471,14 @@ class CodexRunView(BaseLayoutView):
         self.player.chapter_hp_entry_pct = self.chapter_wave_baseline.get(
             "chapter_hp_entry_pct", 0.0
         )
+        self.player.codex_atk_pct = self.chapter_wave_baseline.get("codex_atk_pct", 0.0)
+        self.player.codex_def_pct = self.chapter_wave_baseline.get("codex_def_pct", 0.0)
+        self.player.codex_max_hp_pct = self.chapter_wave_baseline.get(
+            "codex_max_hp_pct", 0.0
+        )
+        self.player.codex_crit_flat = self.chapter_wave_baseline.get(
+            "codex_crit_flat", 0
+        )
         # Re-apply HP entry cap each wave (bonus_max_hp already restored above so total_max_hp is correct)
         if self.player.chapter_hp_entry_pct > 0:
             cap = int(self.player.total_max_hp * (1 - self.player.chapter_hp_entry_pct))
@@ -477,58 +489,46 @@ class CodexRunView(BaseLayoutView):
         return self.chapter_wave_baseline.get("combat_ward", self.player.combat_ward)
 
     def _run_modifiers_text(self) -> str:
-        """Compact summary of all active run-level stat modifiers from boons and their downsides."""
+        """Compact summary of all active run-level stat modifiers.
+
+        ATK/DEF/Crit read directly from the authoritative codex_atk_pct/
+        codex_def_pct/codex_crit_flat fields (current chapter's signature +
+        all active boons, already combined — see core/codex/mechanics.py)
+        instead of re-summing active_boons by hand, so this can't drift from
+        what get_total_attack/defence/current_crit_chance actually apply —
+        and, as a side effect, now includes the current chapter's signature,
+        which the old hand-summed version omitted entirely. FDR similarly
+        reads the dedicated boon_fdr accumulator. Ward/Page Rate have no
+        dedicated accumulator field, so those two stay hand-summed from
+        active_boons.
+        """
         p = self.player
         parts = []
 
-        atk_boost = sum(b.value for b in self.active_boons if b.type == "atk_boost")
-        def_boost = sum(b.value for b in self.active_boons if b.type == "def_boost")
-        crit_boost = sum(
-            int(b.value) for b in self.active_boons if b.type == "crit_boost"
-        )
-        fdr_boost = sum(
-            int(b.value) for b in self.active_boons if b.type == "fdr_boost"
-        )
         ward_boost = sum(b.value for b in self.active_boons if b.type == "ward_boost")
         page_rate_boost = sum(
             b.value for b in self.active_boons if b.type == "page_rate_boost"
         )
 
-        atk_pen_pct = sum(
-            b.downside_value
-            for b in self.active_boons
-            if b.downside_type == "atk_penalty"
-        )
-        def_pen_pct = sum(
-            b.downside_value
-            for b in self.active_boons
-            if b.downside_type == "def_penalty"
-        )
-        crit_pen_pw = sum(
-            int(b.downside_value)
-            for b in self.active_boons
-            if b.downside_type == "crit_penalty"
-        )
-
-        if atk_boost or atk_pen_pct:
-            net = atk_boost - atk_pen_pct
-            parts.append(f"ATK {'+' if net >= 0 else ''}{net:.0f}%")
+        atk_pct = p.codex_atk_pct * 100
+        if atk_pct:
+            parts.append(f"ATK {atk_pct:+.0f}%")
         if p.run_atk_penalty:
             parts.append(f"ATK −{p.run_atk_penalty}")
 
-        if def_boost or def_pen_pct:
-            net = def_boost - def_pen_pct
-            parts.append(f"DEF {'+' if net >= 0 else ''}{net:.0f}%")
+        def_pct = p.codex_def_pct * 100
+        if def_pct:
+            parts.append(f"DEF {def_pct:+.0f}%")
         if p.run_def_penalty:
             parts.append(f"DEF −{p.run_def_penalty}")
 
-        total_crit_pen = crit_pen_pw + p.run_crit_penalty
-        if crit_boost or total_crit_pen:
-            net = crit_boost - total_crit_pen
-            parts.append(f"Crit {'+' if net >= 0 else ''}{net}")
+        if p.codex_crit_flat:
+            parts.append(f"Crit {p.codex_crit_flat:+d}")
+        if p.run_crit_penalty:
+            parts.append(f"Crit −{p.run_crit_penalty}")
 
-        if fdr_boost:
-            parts.append(f"FDR +{fdr_boost}")
+        if p.boon_fdr:
+            parts.append(f"FDR +{p.boon_fdr}")
         if ward_boost:
             parts.append(f"Ward +{ward_boost:.0f}%")
         if page_rate_boost:
@@ -563,47 +563,22 @@ class CodexRunView(BaseLayoutView):
         fdr = p.get_total_fdr()
         pdr = p.get_total_pdr()
 
-        # Hit chance — mirrors profile_ui logic
-        _HIT_BASE_PCT = 60
-        hit_pct = (
-            int(p.equipped_weapon.hit_chance * 100)
-            if p.equipped_weapon
-            else _HIT_BASE_PCT
-        )
-        hit_ascension = p.get_ascension_bonuses()["hit"] if p.ascension_unlocks else 0
-        hit_deadeye = 0
-        if p.equipped_weapon:
-            for _passive in (
-                p.equipped_weapon.passive,
-                p.equipped_weapon.p_passive,
-                p.equipped_weapon.u_passive,
-            ):
-                if _passive and "deadeye" in _passive.lower():
-                    try:
-                        hit_deadeye += int(_passive.lower().split("_")[-1]) * 4
-                    except (ValueError, IndexError):
-                        pass
-        hit_companion = p._get_companion_bonus("hit")
-        hit_emblem = p.get_emblem_bonus("accuracy") * 2
-        hit_total = (
-            hit_pct
-            + hit_ascension
-            + hit_deadeye
-            + hit_companion
-            + hit_emblem
-            - p.chapter_hit_penalty
-        )
-        # NEET glove corrupted essence forces accuracy to 0 in combat
+        # Hit chance — canonical getter (matches the stats page exactly:
+        # 95% base cap, essence hit_pct, Alchemy Enrage, Deadeye, emblem,
+        # companion, and Codex chapter_hit_penalty are all included).
         if p.get_glove_corrupted_essence() == "neet":
             hit_total = 0
+        else:
+            hit_total = p.get_total_hit_chance()
 
         # Crit chance — includes piercing passive + partner bonus (matches engine)
         crit_chance = calculate_crit_chance(p)
 
-        # Crit multiplier — reduced by chapter dullness modifier if active
+        # Crit multiplier — canonical getter (matches the stats page exactly).
+        # chapter_crit_dmg_reduction is intentionally NOT part of this total —
+        # same treatment as Nullifying, applied downstream at damage-calc time
+        # rather than baked into the "stat" itself.
         crit_multi = p.get_weapon_crit_multi()
-        if p.chapter_crit_dmg_reduction > 0:
-            crit_multi *= 1 - p.chapter_crit_dmg_reduction
 
         block = p.get_total_block()
         evasion = p.get_total_evasion()
@@ -880,6 +855,12 @@ class CodexRunView(BaseLayoutView):
     ):
         """Swap to respite state with 2 randomly weighted boons."""
         self._boon_processing = False
+        # Wipe mid-fight transient noise (stacks, ward changes, etc.) left over
+        # from the wave that just ended before showing stats — respite should
+        # display the clean chapter baseline the next wave will actually start
+        # from, matching the stats page's methodology, not whatever combat-start
+        # passives happened to be active when the last monster died.
+        self._restore_wave_baseline()
         boons = roll_boons(2)
         reroll_available = self.chapter_idx not in self.reroll_used_chapters
         self._sync_respite_items(boons, reroll_available)

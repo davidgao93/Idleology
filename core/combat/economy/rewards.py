@@ -28,7 +28,7 @@ from core.combat.economy.config import (
     STAT_INVEST_GOLD_PER_POINT,
     VOID_FRAG_BASE_CHANCE,
 )
-from core.emojis import INFERNAL_ENGRAM
+from core.emojis import INFERNAL_ENGRAM, SIG_FLORA
 from core.models import Monster, Player
 
 # Rite of Convergence entry keys — RAID-DESIGN.md: "Each key drops
@@ -266,7 +266,7 @@ def calculate_rewards(
         results["gold"] = max(0, results["gold"] - converted)
         results["flora_skilling_gold"] = converted
         results["msgs"].append(
-            f"🌿 **Nature's Bounty (Lv.{partner_sig_lvl})** — "
+            f"{SIG_FLORA} **Nature's Bounty (Lv.{partner_sig_lvl})** — "
             f"{converted:,} GP converted into skilling materials!"
         )
 

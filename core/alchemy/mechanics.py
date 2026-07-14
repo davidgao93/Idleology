@@ -3,13 +3,23 @@ import random
 from typing import Optional
 
 from core.emojis import (
+    ALCHEMY_ACCEL,
+    ALCHEMY_AEGIS,
+    ALCHEMY_BARRIER,
+    ALCHEMY_ECLIPSE,
+    ALCHEMY_ENFEEBLE,
+    ALCHEMY_ENRAGE,
+    ALCHEMY_PAINKILLER,
+    ALCHEMY_PANACEA,
+    ALCHEMY_QUENCH,
+    ALCHEMY_TITHE,
+    ALCHEMY_VIPER,
     ANGEL_KEY,
     BLESSED_BISMUTH,
     CAPRICIOUS_CARP,
     COSMIC_DUST,
     DRAGON_KEY,
     INFERNAL_ENGRAM,
-    QUENCH,
     SOUL_CORE,
     SPARKLING_SPRIG,
     VOID_FRAG,
@@ -363,7 +373,7 @@ class DistillationMechanics:
     POWERFUL_PASSIVES: dict[str, dict] = {
         "panacea": {
             "name": "Panacea",
-            "emoji": "🌿",
+            "emoji": ALCHEMY_PANACEA,
             "desc": "On potion use: {value:.0f}% chance to cleanse all ailments and grant {duration:.0f} turns of ailment immunity.",
             "value_min": 20.0,
             "value_max": 100.0,
@@ -373,7 +383,7 @@ class DistillationMechanics:
         },
         "eclipse": {
             "name": "Eclipse",
-            "emoji": "🌑",
+            "emoji": ALCHEMY_ECLIPSE,
             "desc": "On potion use: Your next {duration:.0f} attacks deal {value:.0f}% increased damage and are guaranteed crits.",
             "value_min": 40.0,
             "value_max": 100.0,
@@ -383,7 +393,7 @@ class DistillationMechanics:
         },
         "aegis": {
             "name": "Aegis",
-            "emoji": "🛡️",
+            "emoji": ALCHEMY_AEGIS,
             "desc": "On potion use: Gain a shield equal to {value:.0f}% of max HP for {duration:.0f} turns.",
             "value_min": 30.0,
             "value_max": 80.0,
@@ -393,7 +403,7 @@ class DistillationMechanics:
         },
         "enfeeble": {
             "name": "Enfeeble",
-            "emoji": "🌊",
+            "emoji": ALCHEMY_ENFEEBLE,
             "desc": "On potion use: Monster suffers {value:.0f}% reduced ATK and DEF for the next {duration:.0f} of its turns.",
             "value_min": 15.0,
             "value_max": 40.0,
@@ -403,7 +413,7 @@ class DistillationMechanics:
         },
         "blood_tithe": {
             "name": "Blood Tithe",
-            "emoji": "🩸",
+            "emoji": ALCHEMY_TITHE,
             "desc": "On potion use: Your attacks leech {value:.0f}% of damage dealt as HP for the next {duration:.0f} hits.",
             "value_min": 2.0,
             "value_max": 5.0,
@@ -413,7 +423,7 @@ class DistillationMechanics:
         },
         "accel": {
             "name": "Accel",
-            "emoji": "⚡",
+            "emoji": ALCHEMY_ACCEL,
             "desc": "On potion use: Gain +{value:.0f}% hit chance for {duration:.0f} turns.",
             "value_min": 15.0,
             "value_max": 35.0,
@@ -423,7 +433,7 @@ class DistillationMechanics:
         },
         "quench": {
             "name": "Quench",
-            "emoji": QUENCH,
+            "emoji": ALCHEMY_QUENCH,
             "desc": "On potion use: Heal an additional {value:.0f}% of max HP, then restore 5% max HP at the start of each of your next {duration:.0f} turns.",
             "value_min": 20.0,
             "value_max": 50.0,
@@ -433,7 +443,7 @@ class DistillationMechanics:
         },
         "viper": {
             "name": "Viper",
-            "emoji": "🐍",
+            "emoji": ALCHEMY_VIPER,
             "desc": "On potion use: Deal {value:.0f}% of the heal amount as instant damage, then deal a DoT based on that hit per turn as venom for {duration:.0f} turns.",
             "value_min": 100.0,
             "value_max": 500.0,
@@ -443,7 +453,7 @@ class DistillationMechanics:
         },
         "enrage": {
             "name": "Enrage",
-            "emoji": "💪",
+            "emoji": ALCHEMY_ENRAGE,
             "desc": "On potion use: Gain {value:.0f}% ATK and DEF for the next {duration:.0f} monster turns.",
             "value_min": 25.0,
             "value_max": 75.0,
@@ -453,7 +463,7 @@ class DistillationMechanics:
         },
         "barrier": {
             "name": "Barrier",
-            "emoji": "🔮",
+            "emoji": ALCHEMY_BARRIER,
             "desc": "On potion use: Add Ward equal to {value:.0f}% of the heal amount at the start of each of your next {duration:.0f} turns.",
             "value_min": 50.0,
             "value_max": 150.0,
@@ -463,7 +473,7 @@ class DistillationMechanics:
         },
         "painkiller": {
             "name": "Painkiller",
-            "emoji": "🩹",
+            "emoji": ALCHEMY_PAINKILLER,
             "desc": "On potion use: Reduce damage from the monster's next {duration:.0f} hits by {value:.0f}%.",
             "value_min": 30.0,
             "value_max": 80.0,

@@ -13,17 +13,18 @@ import discord
 
 from core.character.prestige_display import format_prestige_name
 from core.emojis import (
+    ALCHEMY_PASSIVE_EMOJI,
     HEMATURGY_PASSIVE_EMOJI,
     INFERNAL_ENGRAM,
     MOD_FLASHFIRE,
     MOD_PRESSURE_SURGE,
-    QUENCH,
     STAT_ATK,
     STAT_DEF,
     STAT_FDR,
     STAT_HP,
     STAT_PDR,
     STAT_WARD,
+    VOID_ENGRAM,
 )
 from core.models import Monster, Player
 
@@ -105,11 +106,11 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
     # --- Alchemy: timed buffs ---
     if player.alchemy_hit_boost_pct > 0:
         lines.append(
-            f"⚡ Accel  +{int(player.alchemy_hit_boost_pct * 100)}% Hit  {player.alchemy_hit_boost_turns}t left"
+            f"{ALCHEMY_PASSIVE_EMOJI['accel']} Accel  +{int(player.alchemy_hit_boost_pct * 100)}% Hit  {player.alchemy_hit_boost_turns}t left"
         )
     if player.alchemy_atk_boost_pct > 0:
         lines.append(
-            f"💪 Enrage  +{int(player.alchemy_atk_boost_pct * 100)}% ATK/DEF  {player.alchemy_def_boost_turns}t left"
+            f"{ALCHEMY_PASSIVE_EMOJI['enrage']} Enrage  +{int(player.alchemy_atk_boost_pct * 100)}% ATK/DEF  {player.alchemy_def_boost_turns}t left"
         )
     if player.alchemy_eclipse_strikes > 0:
         bonus_str = (
@@ -117,46 +118,52 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
             if player.alchemy_eclipse_bonus > 0
             else ""
         )
-        lines.append(f"🌑 Eclipse  ×{player.alchemy_eclipse_strikes} crit{bonus_str}")
+        lines.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['eclipse']} Eclipse  ×{player.alchemy_eclipse_strikes} crit{bonus_str}"
+        )
     if player.alchemy_shield_hp > 0:
         dur_str = (
             f"  · {player.alchemy_shield_turns}t"
             if player.alchemy_shield_turns > 0
             else ""
         )
-        lines.append(f"🛡️ Aegis  {player.alchemy_shield_hp:,} shield{dur_str}")
+        lines.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['aegis']} Aegis  {player.alchemy_shield_hp:,} shield{dur_str}"
+        )
     if player.alchemy_enfeeble_turns > 0:
         lines.append(
-            f"🌊 Enfeeble  -{int(player.alchemy_enfeeble_pct * 100)}% ATK/DEF"
+            f"{ALCHEMY_PASSIVE_EMOJI['enfeeble']} Enfeeble  -{int(player.alchemy_enfeeble_pct * 100)}% ATK/DEF"
             f"  · {player.alchemy_enfeeble_turns}t"
         )
     if player.alchemy_dmg_reduction_turns > 0:
         lines.append(
-            f"🩹 Painkiller  -{int(player.alchemy_dmg_reduction_pct * 100)}%"
+            f"{ALCHEMY_PASSIVE_EMOJI['painkiller']} Painkiller  -{int(player.alchemy_dmg_reduction_pct * 100)}%"
             f"  · {player.alchemy_dmg_reduction_turns} hit{'s' if player.alchemy_dmg_reduction_turns != 1 else ''}"
         )
     if player.alchemy_linger_turns > 0:
         lines.append(
-            f"{QUENCH} Quench  {player.alchemy_linger_hp:,}/turn"
+            f"{ALCHEMY_PASSIVE_EMOJI['quench']} Quench  {player.alchemy_linger_hp:,}/turn"
             f"  · {player.alchemy_linger_turns}t"
         )
     if player.alchemy_viper_dot_turns > 0:
         lines.append(
-            f"🐍 Viper DoT  {player.alchemy_viper_dot_dmg:,}/turn"
+            f"{ALCHEMY_PASSIVE_EMOJI['viper']} Viper DoT  {player.alchemy_viper_dot_dmg:,}/turn"
             f"  · {player.alchemy_viper_dot_turns}t"
         )
     if player.alchemy_barrier_turns > 0:
         lines.append(
-            f"{STAT_WARD} Barrier  +{player.alchemy_barrier_ward_per_turn:,} Ward/turn"
+            f"{ALCHEMY_PASSIVE_EMOJI['barrier']} Barrier  +{player.alchemy_barrier_ward_per_turn:,} Ward/turn"
             f"  · {player.alchemy_barrier_turns}t"
         )
     if player.alchemy_blood_tithe_hits > 0:
         lines.append(
-            f"🩸 Blood Tithe  {int(player.alchemy_blood_tithe_leech * 100)}% leech"
+            f"{ALCHEMY_PASSIVE_EMOJI['blood_tithe']} Blood Tithe  {int(player.alchemy_blood_tithe_leech * 100)}% leech"
             f"  · {player.alchemy_blood_tithe_hits} hit{'s' if player.alchemy_blood_tithe_hits != 1 else ''}"
         )
     if player.alchemy_ailment_immunity_turns > 0:
-        lines.append(f"🌿 Panacea  immune  · {player.alchemy_ailment_immunity_turns}t")
+        lines.append(
+            f"{ALCHEMY_PASSIVE_EMOJI['panacea']} Panacea  immune  · {player.alchemy_ailment_immunity_turns}t"
+        )
 
     # --- Weapon / accessory stacks ---
     if player.voracious_stacks > 0:
@@ -164,7 +171,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
     if player.gaze_stacks > 0:
         lines.append(f"👁️ Void Gaze  {player.gaze_stacks}/30")
     if player.hunger_stacks > 0:
-        lines.append(f"⬛ Hunger  {player.hunger_stacks}/10")
+        lines.append(f"{VOID_ENGRAM} Hunger  {player.hunger_stacks}/10")
 
     # --- Lucifer PDR burst (ward-shatter bonus) ---
     if player.lucifer_pdr_burst > 0:

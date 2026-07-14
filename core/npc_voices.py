@@ -135,6 +135,16 @@ _VOICES: dict[str, list[str]] = {
         "The monsters aren't going to slay themselves. Get moving.",
         "I've seen veterans crumble on these tasks. I don't think you will. Prove me right.",
     ],
+    "slayer_emblem": [
+        "Essences and hearts, adventurer. Essences and hearts.",
+        "Your next task is - oh, you don't want a task? Just the emblem? Oh okay.",
+        "May your upgrades be lucky and your rerolls sound.",
+    ],
+    "slayer_shop": [
+        "Points are worth more spent than admired.",
+        "What would you like to unlock next?",
+        "Pick wisely, lest you want to give me your essence for free.",
+    ],
     "quest_shop": [
         "Oh good, you're here. Those tokens burning a hole in your pocket? I've got just the thing.",
         "Spend wisely. I only restock what's worth stocking.",

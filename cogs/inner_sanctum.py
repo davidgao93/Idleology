@@ -2,6 +2,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.emojis import INNER_SANC
 from core.inner_sanctum.data import VICE_UNLOCK_LEVEL
 from core.inner_sanctum.views import InnerSanctumHubView
 
@@ -27,7 +28,7 @@ class InnerSanctum(commands.Cog, name="inner_sanctum"):
         player_level = existing_user["level"]
         if player_level < VICE_UNLOCK_LEVEL:
             embed = discord.Embed(
-                title="🔮 Inner Sanctum — Locked",
+                title=f"{INNER_SANC} Inner Sanctum — Locked",
                 description=(
                     f"The Inner Sanctum awakens at **level {VICE_UNLOCK_LEVEL}**.\n"
                     "Keep fighting — you'll feel it stir soon enough."

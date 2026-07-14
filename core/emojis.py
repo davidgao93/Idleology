@@ -275,6 +275,64 @@ WIN_STREAK = "<:win_streak:1525652742213734525>"
 # ── Settlement and loot ─────────────────────────────────────────────────────
 ZEAL = "<:zeal:1525652741731520712>"
 
+# ── Alchemy potion passives (Potion Lab / Distillation / combat status icons) ─
+ALCHEMY_ENRAGE = "<:alchemy_enrage:1526349277616410696>"
+ALCHEMY_ENFEEBLE = "<:alchemy_enfeeble:1526349276018643005>"
+ALCHEMY_ECLIPSE = "<:alchemy_eclipse:1526349274760085674>"
+ALCHEMY_BARRIER = "<:alchemy_barrier:1526349273896321055>"
+ALCHEMY_AEGIS = "<:alchemy_aegis:1526349272235380969>"
+ALCHEMY_ACCEL = "<:alchemy_accel:1526349271207645235>"
+ALCHEMY_VIPER = "<:alchemy_viper:1526349270880616712>"
+ALCHEMY_TITHE = "<:alchemy_tithe:1526349270037565531>"
+ALCHEMY_QUENCH = "<:alchemy_quench:1526349269320335475>"
+ALCHEMY_PANACEA = "<:alchemy_panacea:1526349268473085983>"
+ALCHEMY_PAINKILLER = "<:alchemy_painkiller:1526349267759923330>"
+
+ALCHEMY_PASSIVE_EMOJI: dict[str, str] = {
+    "enrage": ALCHEMY_ENRAGE,
+    "enfeeble": ALCHEMY_ENFEEBLE,
+    "eclipse": ALCHEMY_ECLIPSE,
+    "barrier": ALCHEMY_BARRIER,
+    "aegis": ALCHEMY_AEGIS,
+    "accel": ALCHEMY_ACCEL,
+    "viper": ALCHEMY_VIPER,
+    "blood_tithe": ALCHEMY_TITHE,
+    "quench": ALCHEMY_QUENCH,
+    "panacea": ALCHEMY_PANACEA,
+    "painkiller": ALCHEMY_PAINKILLER,
+}
+
+# ── Inner Sanctum branding & branch icons ──────────────────────────────────
+INNER_SANC = "<:inner_sanc:1526349264329113621>"
+SANC_RECOVERY = "<:sanc_recovery:1526349266883186858>"
+SANC_GREED = "<:sanc_greed:1526349266040131776>"
+SANC_DEICIDE = "<:sanc_deicide:1526349265360916490>"
+
+INNER_SANCTUM_BRANCH_EMOJI: dict[str, str] = {
+    "vice": SANC_GREED,
+    "recovery": SANC_RECOVERY,
+    "deicide": SANC_DEICIDE,
+}
+
+# ── Partner signature skill icons (6★ partners) ────────────────────────────
+SIG_FLORA = "<:flora:1526349263905358025>"
+SIG_EVE = "<:eve:1526349263217360906>"
+SIG_YVENN = "<:yvenn:1526349262655590624>"
+SIG_VELOUR = "<:velour:1526349261980307598>"
+SIG_SKOL = "<:skol_sig:1526349260801577132>"
+SIG_SIGMUND = "<:sigmund_sig:1526349260071632917>"
+SIG_KAY = "<:kay_sig:1526349259279171645>"
+
+PARTNER_SIG_EMOJI: dict[str, str] = {
+    "skol": SIG_SKOL,
+    "eve": SIG_EVE,
+    "kay": SIG_KAY,
+    "sigmund": SIG_SIGMUND,
+    "velour": SIG_VELOUR,
+    "flora": SIG_FLORA,
+    "yvenn": SIG_YVENN,
+}
+
 # ── RESOURCE_EMOJI ─────────────────────────────────────────────────────────
 # Single source of truth for gathering/settlement/Black Market material icons.
 # Several views used to hardcode their own emoji per resource key (and
@@ -510,4 +568,27 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "mod_pressure_surge": ("Pressure Surge", MOD_PRESSURE_SURGE),
     "win_streak": ("Win Streak", WIN_STREAK),
     "zeal": ("Zeal", ZEAL),
+    # Appended for the 2026-07-13 emoji batch (alchemy passives, inner sanctum, partner signatures).
+    "alchemy_enrage": ("Enrage", ALCHEMY_ENRAGE),
+    "alchemy_enfeeble": ("Enfeeble", ALCHEMY_ENFEEBLE),
+    "alchemy_eclipse": ("Eclipse", ALCHEMY_ECLIPSE),
+    "alchemy_barrier": ("Barrier", ALCHEMY_BARRIER),
+    "alchemy_aegis": ("Aegis", ALCHEMY_AEGIS),
+    "alchemy_accel": ("Accel", ALCHEMY_ACCEL),
+    "alchemy_viper": ("Viper", ALCHEMY_VIPER),
+    "alchemy_tithe": ("Blood Tithe", ALCHEMY_TITHE),
+    "alchemy_quench": ("Quench", ALCHEMY_QUENCH),
+    "alchemy_panacea": ("Panacea", ALCHEMY_PANACEA),
+    "alchemy_painkiller": ("Painkiller", ALCHEMY_PAINKILLER),
+    "inner_sanc": ("Inner Sanctum", INNER_SANC),
+    "sanc_recovery": ("Sanctum Recovery", SANC_RECOVERY),
+    "sanc_greed": ("Sanctum Greed", SANC_GREED),
+    "sanc_deicide": ("Sanctum Deicide", SANC_DEICIDE),
+    "flora": ("Flora Signature", SIG_FLORA),
+    "eve": ("Eve Signature", SIG_EVE),
+    "yvenn": ("Yvenn Signature", SIG_YVENN),
+    "velour": ("Velour Signature", SIG_VELOUR),
+    "skol_sig": ("Skol Signature", SIG_SKOL),
+    "sigmund_sig": ("Sigmund Signature", SIG_SIGMUND),
+    "kay_sig": ("Kay Signature", SIG_KAY),
 }

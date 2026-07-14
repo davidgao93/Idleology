@@ -283,9 +283,10 @@ class EmblemView(BaseView):
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="💀 Slayer Emblem",
-            description="Enhance your combat prowess.",
+            description=f"*{get_quip('slayer_emblem')}*\n\nEnhance your combat prowess.",
             color=discord.Color.dark_purple(),
         )
+        embed.set_author(name="Slayer Master Kael", icon_url=SLAYER_MASTER_AUTHOR)
         embed.set_thumbnail(url=SLAYER_EMBLEM)
         # Display Slots
         unlock_reqs = {1: 1, 2: 20, 3: 40, 4: 60, 5: 80}
@@ -650,12 +651,14 @@ class SlayerTreeView(BaseView):
         embed = discord.Embed(
             title=f"💀 Slayer Shop — {icon} {name}",
             description=(
+                f"*{get_quip('slayer_shop')}*\n\n"
                 f"**Slayer Points:** {pts} | 🩸 **Violent Essence:** {ess}\n"
                 f"*Points spent: {self.pts_spent}*\n\n"
                 + (f"**{self.result_msg}**\n" if self.result_msg else "")
             ),
             color=discord.Color.dark_red(),
         )
+        embed.set_author(name="Slayer Master Kael", icon_url=SLAYER_MASTER_AUTHOR)
 
         lines = []
         for nid, node in SLAYER_TREE_NODES.items():

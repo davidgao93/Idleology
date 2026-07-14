@@ -22,7 +22,7 @@ from core.combat.calc.damage_calc import (
 from core.combat.calc.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
 from core.combat.calc.ward_system import _add_ward, generate_player_ward_on_hit
 from core.combat.turns.helpers import PlayerTurnResult, capture_compact_events
-from core.emojis import CELESTIAL_ENGRAM, QUENCH, STAT_WARD
+from core.emojis import ALCHEMY_PASSIVE_EMOJI, CELESTIAL_ENGRAM, SIG_SIGMUND, STAT_WARD
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -167,11 +167,11 @@ def process_heal(player: Player, monster=None) -> str:
                 if hasattr(player.cs, attr):
                     setattr(player.cs, attr, 0)
             msg += (
-                f"\n🌿 **Panacea** triggers! All ailments cleansed. "
+                f"\n{ALCHEMY_PASSIVE_EMOJI['panacea']} **Panacea** triggers! All ailments cleansed. "
                 f"Protected for **{player.alchemy_ailment_immunity_turns}** turns!"
             )
         else:
-            msg += "\n🌿 **Panacea** — the cleansing fails to trigger this time."
+            msg += f"\n{ALCHEMY_PASSIVE_EMOJI['panacea']} **Panacea** — the cleansing fails to trigger this time."
 
     eclipse = potion_passives_by_type.get("eclipse", 0)
     if eclipse:
@@ -181,7 +181,7 @@ def process_heal(player: Player, monster=None) -> str:
             player.alchemy_eclipse_bonus, eclipse / 100.0
         )
         msg += (
-            f"\n🌑 **Eclipse** — your next **{strikes}** attack(s) are guaranteed crits "
+            f"\n{ALCHEMY_PASSIVE_EMOJI['eclipse']} **Eclipse** — your next **{strikes}** attack(s) are guaranteed crits "
             f"with **+{eclipse:.0f}%** damage!"
         )
 
@@ -192,7 +192,7 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_shield_hp = player.alchemy_shield_hp + shield
         player.alchemy_shield_turns = max(player.alchemy_shield_turns, dur)
         msg += (
-            f"\n🛡️ **Aegis** — you gain a **{shield}** HP shield for "
+            f"\n{ALCHEMY_PASSIVE_EMOJI['aegis']} **Aegis** — you gain a **{shield}** HP shield for "
             f"**{player.alchemy_shield_turns}** turns!"
         )
 
@@ -212,7 +212,7 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_enfeeble_pct = max(player.alchemy_enfeeble_pct, new_pct)
         player.alchemy_enfeeble_turns = max(player.alchemy_enfeeble_turns, dur)
         msg += (
-            f"\n🌊 **Enfeeble** — monster suffers **-{enfeeble:.0f}%** ATK/DEF "
+            f"\n{ALCHEMY_PASSIVE_EMOJI['enfeeble']} **Enfeeble** — monster suffers **-{enfeeble:.0f}%** ATK/DEF "
             f"for **{player.alchemy_enfeeble_turns}** of its turns!"
         )
 
@@ -223,14 +223,14 @@ def process_heal(player: Player, monster=None) -> str:
             player.alchemy_blood_tithe_leech, blood_tithe / 100.0
         )
         player.alchemy_blood_tithe_hits = max(player.alchemy_blood_tithe_hits, dur)
-        msg += f"\n🩸 **Blood Tithe** — leech {blood_tithe:.0f}% of damage for the next **{dur}** hits!"
+        msg += f"\n{ALCHEMY_PASSIVE_EMOJI['blood_tithe']} **Blood Tithe** — leech {blood_tithe:.0f}% of damage for the next **{dur}** hits!"
 
     accel = potion_passives_by_type.get("accel", 0)
     if accel:
         dur = max(2, int(potion_durations_by_type.get("accel", 2.0)))
         player.alchemy_hit_boost_pct = max(player.alchemy_hit_boost_pct, accel / 100.0)
         player.alchemy_hit_boost_turns = max(player.alchemy_hit_boost_turns, dur)
-        msg += f"\n⚡ **Accel** — +{accel:.0f}% Hit Chance for **{dur}** turns!"
+        msg += f"\n{ALCHEMY_PASSIVE_EMOJI['accel']} **Accel** — +{accel:.0f}% Hit Chance for **{dur}** turns!"
 
     if quench:
         dur = max(2, int(potion_durations_by_type.get("quench", 2.0)))
@@ -238,7 +238,7 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_linger_hp = regen_per_turn
         player.alchemy_linger_turns = max(player.alchemy_linger_turns, dur)
         msg += (
-            f"\n{QUENCH} **Quench** — healed extra {quench:.0f}% of max HP, "
+            f"\n{ALCHEMY_PASSIVE_EMOJI['quench']} **Quench** — healed extra {quench:.0f}% of max HP, "
             f"then +{regen_per_turn:,} HP/turn for **{dur}** turns!"
         )
 
@@ -252,7 +252,7 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_viper_dot_dmg = dot_per_turn
         player.alchemy_viper_dot_turns = dur
         msg += (
-            f"\n🐍 **Viper** — **{burst_dmg}** burst damage! "
+            f"\n{ALCHEMY_PASSIVE_EMOJI['viper']} **Viper** — **{burst_dmg}** burst damage! "
             f"DoT: **{dot_per_turn:,}**/turn for **{dur}** turns!"
         )
 
@@ -263,7 +263,7 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_def_boost_pct = max(player.alchemy_def_boost_pct, enrage / 100.0)
         player.alchemy_def_boost_turns = max(player.alchemy_def_boost_turns, dur)
         msg += (
-            f"\n💪 **Enrage** — +{enrage:.0f}% ATK and DEF for "
+            f"\n{ALCHEMY_PASSIVE_EMOJI['enrage']} **Enrage** — +{enrage:.0f}% ATK and DEF for "
             f"**{player.alchemy_def_boost_turns}** monster turns!"
         )
 
@@ -273,7 +273,7 @@ def process_heal(player: Player, monster=None) -> str:
         ward_per_turn = max(1, int(heal_amount * (barrier / 100.0)))
         player.alchemy_barrier_ward_per_turn = ward_per_turn
         player.alchemy_barrier_turns = max(player.alchemy_barrier_turns, dur)
-        msg += f"\n{STAT_WARD} **Barrier** — +{ward_per_turn:,} Ward/turn for **{dur}** turns!"
+        msg += f"\n{ALCHEMY_PASSIVE_EMOJI['barrier']} **Barrier** — +{ward_per_turn:,} Ward/turn for **{dur}** turns!"
 
     painkiller = potion_passives_by_type.get("painkiller", 0)
     if painkiller:
@@ -284,7 +284,7 @@ def process_heal(player: Player, monster=None) -> str:
         player.alchemy_dmg_reduction_turns = max(
             player.alchemy_dmg_reduction_turns, dur
         )
-        msg += f"\n🩹 **Painkiller** — -{painkiller:.0f}% damage from the monster's next **{dur}** hits!"
+        msg += f"\n{ALCHEMY_PASSIVE_EMOJI['painkiller']} **Painkiller** — -{painkiller:.0f}% damage from the monster's next **{dur}** hits!"
 
     msg += f"\n**{player.potions}** potions left."
 
@@ -348,7 +348,7 @@ def _pt_post_hit_effects(
         if leech > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + leech)
             log.append(
-                f"🩸 **Blood Tithe** leeches **{leech}** HP! "
+                f"{ALCHEMY_PASSIVE_EMOJI['blood_tithe']} **Blood Tithe** leeches **{leech}** HP! "
                 f"({player.alchemy_blood_tithe_hits - 1} hit{'s' if player.alchemy_blood_tithe_hits - 1 != 1 else ''} left)"
             )
         player.alchemy_blood_tithe_hits -= 1
@@ -486,7 +486,7 @@ def _pt_partner_effects(
     if sigmund_proc:
         sig_lvl = partner.sig_combat_lvl
         parts.append(
-            f"🐕 **Decisive Strike Lv.{sig_lvl}** — the hounds drive your strike to double power!"
+            f"{SIG_SIGMUND} **Decisive Strike Lv.{sig_lvl}** — the hounds drive your strike to double power!"
         )
 
     partner_log = "\n".join(parts)
@@ -571,7 +571,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
             player.total_max_hp, player.current_hp + player.alchemy_linger_hp
         )
         log.append(
-            f"{QUENCH} **Quench** restores **{player.alchemy_linger_hp}** HP! "
+            f"{ALCHEMY_PASSIVE_EMOJI['quench']} **Quench** restores **{player.alchemy_linger_hp}** HP! "
             f"({player.alchemy_linger_turns - 1} turn{'s' if player.alchemy_linger_turns - 1 != 1 else ''} left)"
         )
         player.alchemy_linger_turns -= 1
@@ -580,7 +580,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         dot_dmg = player.alchemy_viper_dot_dmg
         monster.hp = max(0, monster.hp - dot_dmg)
         log.append(
-            f"🐍 **Viper** DoT deals **{dot_dmg:,}** damage! "
+            f"{ALCHEMY_PASSIVE_EMOJI['viper']} **Viper** DoT deals **{dot_dmg:,}** damage! "
             f"({player.alchemy_viper_dot_turns - 1} turn{'s' if player.alchemy_viper_dot_turns - 1 != 1 else ''} left)"
         )
         player.alchemy_viper_dot_turns -= 1
@@ -591,7 +591,7 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
         added = _barrier_add_ward(player, player.alchemy_barrier_ward_per_turn, [])
         if added > 0:
             log.append(
-                f"{STAT_WARD} **Barrier** adds **{added}** Ward! "
+                f"{ALCHEMY_PASSIVE_EMOJI['barrier']} **Barrier** adds **{added}** Ward! "
                 f"({player.alchemy_barrier_turns - 1} turn{'s' if player.alchemy_barrier_turns - 1 != 1 else ''} left)"
             )
         player.alchemy_barrier_turns -= 1

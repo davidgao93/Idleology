@@ -433,6 +433,7 @@ class _DisenchantItemSelect(ui.Select):
                 label=d["name"][:100],
                 description=d["select_desc"][:100],
                 value=d["col"],
+                emoji=d["emoji"],
             )
             for d in options_data
             if d["owned"] > 0
@@ -639,7 +640,7 @@ class _DisenchantSelectView(BaseView):
                     "emoji": "💎",
                     "owned": owned,
                     "yield": jewel_yield,
-                    "select_desc": f"Own: {owned}  ·  {jewel_yield:,} {COSMIC_DUST}/jewel  ·  4h/jewel",
+                    "select_desc": f"Own: {owned}  ·  {jewel_yield:,} Cosmic Dust/jewel  ·  4h/jewel",
                 }
             ]
         else:
@@ -668,7 +669,7 @@ class _DisenchantSelectView(BaseView):
                         "emoji": emojis_map[col],
                         "owned": owned,
                         "yield": yield_map[col],
-                        "select_desc": f"Own: {owned}  ·  {yield_map[col]} {COSMIC_DUST}/item  ·  {mins}min/item",
+                        "select_desc": f"Own: {owned}  ·  {yield_map[col]} Cosmic Dust/item  ·  {mins}min/item",
                     }
                 )
 
@@ -718,6 +719,7 @@ class _SynthesizeItemSelect(ui.Select):
                 label=d["name"][:100],
                 description=d["select_desc"][:100],
                 value=d["col"],
+                emoji=d["emoji"],
             )
             for d in options_data
         ]
@@ -843,7 +845,7 @@ class _SynthesizeSelectView(BaseView):
                     "emoji": AlchemyMechanics.KEY_EMOJIS[col],
                     "dust_cost": dust_cost,
                     "gold_cost": AlchemyMechanics.SYNTHESIS_GOLD_COST,
-                    "select_desc": f"{dust_cost:,} {COSMIC_DUST} + 100k {GOLD_COIN} → 1× {name}",
+                    "select_desc": f"{dust_cost:,} Cosmic Dust + 100k Gold → 1× {name}",
                 }
             )
         options_data.append(
@@ -853,7 +855,7 @@ class _SynthesizeSelectView(BaseView):
                 "emoji": "💎",
                 "dust_cost": _JEWEL_SYNTH_DUST,
                 "gold_cost": _JEWEL_SYNTH_GOLD,
-                "select_desc": f"{_JEWEL_SYNTH_DUST:,} {COSMIC_DUST} + 10M {GOLD_COIN} → 1× Jewel of Paradise",
+                "select_desc": f"{_JEWEL_SYNTH_DUST:,} Cosmic Dust + 10M Gold → 1× Jewel of Paradise",
             }
         )
         self._options_data = options_data

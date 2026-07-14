@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
+from core.emojis import INNER_SANC, INNER_SANCTUM_BRANCH_EMOJI, RUNE_REGRET
 from core.images import INNER_SANCTUM_THUMBNAIL
 from core.inner_sanctum.data import (
     ALL_NODES,
@@ -21,7 +22,7 @@ _BRANCH_NODES = {
     "recovery": RECOVERY_NODES,
     "deicide": DEICIDE_NODES,
 }
-_BRANCH_ICONS = {"vice": "🃏", "recovery": "💚", "deicide": "☠️"}
+_BRANCH_ICONS = INNER_SANCTUM_BRANCH_EMOJI
 _BRANCH_NAMES = {"vice": "Vice", "recovery": "Recovery", "deicide": "Deicide"}
 _BRANCH_UNLOCK = {
     "vice": VICE_UNLOCK_LEVEL,
@@ -74,11 +75,11 @@ class InnerSanctumHubView(BaseView):
         unlock_lvl = _BRANCH_UNLOCK[branch]
 
         embed = discord.Embed(
-            title=f"🔮 Inner Sanctum — {icon} {name}",
+            title=f"{INNER_SANC} Inner Sanctum — {icon} {name}",
             description=(
                 f"**Inner Sanctum Points:** {self.points_available} "
                 f"| *Spent: {self.points_spent}*\n"
-                f"🔮 **Rune of Regret:** {self.rune_count}\n\n"
+                f"{RUNE_REGRET} **Rune of Regret:** {self.rune_count}\n\n"
                 + (f"**{self.result_msg}**\n\n" if self.result_msg else "")
                 + get_quip("inner_sanctum")
             ),
@@ -117,8 +118,8 @@ class InnerSanctumHubView(BaseView):
         for branch in ("vice", "recovery", "deicide"):
             locked = self.player_level < _BRANCH_UNLOCK[branch]
             btn = ui.Button(
-                label=f"{_BRANCH_ICONS[branch]} {_BRANCH_NAMES[branch]}"
-                + (" 🔒" if locked else ""),
+                label=_BRANCH_NAMES[branch] + (" 🔒" if locked else ""),
+                emoji=_BRANCH_ICONS[branch],
                 style=ButtonStyle.primary
                 if branch == self.active_branch
                 else ButtonStyle.secondary,
@@ -169,6 +170,7 @@ class InnerSanctumHubView(BaseView):
             can_reset = bool(self.nodes_owned) and self.rune_count >= RESET_RUNE_COST
             btn_reset = ui.Button(
                 label=f"Reset Tree ({RESET_RUNE_COST} Rune of Regret)",
+                emoji=RUNE_REGRET,
                 style=ButtonStyle.danger,
                 disabled=not can_reset,
                 row=2,
@@ -294,6 +296,7 @@ class InnerSanctumHubView(BaseView):
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def on_close(self, interaction: Interaction):
+        await interaction.response.defer()
         self.bot.state_manager.clear_active(self.user_id)
-        await interaction.response.edit_message(view=None)
+        await interaction.delete_original_response()
         self.stop()

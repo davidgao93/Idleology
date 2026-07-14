@@ -7,7 +7,7 @@ from discord.ui import Button, Modal, Select, TextInput
 
 from core.base_view import BaseView
 from core.character.tutorial import TutorialView
-from core.emojis import GOLD_COIN
+from core.emojis import GOLD_COIN, RUNE_REGRET
 from core.images import DEFAULT_SILHOUETTE
 
 _CLASS_DESCRIPTIONS = {
@@ -344,7 +344,8 @@ class StatInvestView(BaseView):
             self.add_item(btn)
 
         rune_btn = discord.ui.Button(
-            label=f"🔮 Rune of Regret ({runes})",
+            label=f"Rune of Regret ({runes})",
+            emoji=RUNE_REGRET,
             style=discord.ButtonStyle.secondary,
             disabled=runes <= 0
             or not any(

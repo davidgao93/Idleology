@@ -1,3 +1,5 @@
+from core.emojis import PARTNER_SIG_EMOJI
+
 # ---------------------------------------------------------------------------
 # Skill display name mapping
 # ---------------------------------------------------------------------------
@@ -24,6 +26,12 @@ _SIG_SKILL_NAMES: dict[str, str] = {
 
 def _sig_display_name(key: str) -> str:
     return _SIG_SKILL_NAMES.get(key, "Signature")
+
+
+def _sig_emoji(key: str) -> str | None:
+    """Partner-specific signature icon for a `sig_co_<name>` / `sig_di_<name>` key."""
+    partner_name = key.removeprefix("sig_co_").removeprefix("sig_di_")
+    return PARTNER_SIG_EMOJI.get(partner_name)
 
 
 _SKILL_DISPLAY_NAMES = {

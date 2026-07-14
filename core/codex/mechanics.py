@@ -399,6 +399,37 @@ def restore_clean_stats(player: Player) -> None:
     player.reset_combat_bonus()  # zeros bonus_atk/def/crit/max_hp, multipliers, chapter fields
 
 
+def reset_for_new_codex_run(player: Player) -> None:
+    """
+    Full reset for the start of a brand-new Codex run — must be called before
+    chapter 1's apply_signature_modifier.
+
+    A fresh `/codex` invocation always gets a clean, freshly-`load_player()`'d
+    object, so this is a no-op in that case. But `CodexRunCompleteView` ->
+    "Begin Run" reuses the SAME in-memory Player the just-finished run was
+    using, and restore_clean_stats()/apply_signature_modifier() only ever
+    apply relative (+=/-=) deltas — with no reset, any leftover bonus_crit,
+    atk/def multipliers, chapter_* fields, or CodexRunState (run_atk_penalty
+    etc.) values from the previous run silently carry into the new one.
+
+    Covers everything a truly fresh run needs:
+    - Full CombatState wipe (bonus_atk/def/crit/max_hp, atk_multiplier/
+      def_multiplier, all chapter_*/codex_* fields, ward, transients — the
+      lot).
+    - A fresh CodexRunState (run_atk_penalty/def_penalty/crit_penalty/
+      max_hp_bonus/bonus_rarity/boon_fdr) — never reset anywhere else, since
+      it's meant to persist across a run but not across two DIFFERENT runs.
+    - Jewel of Paradise skill_charges — lives outside CombatState (on the
+      DB-persisted jewel_of_paradise dict), so still needs its own reset.
+    """
+    from core.combat import jewel_engine as _je
+    from core.combat.models import CodexRunState
+
+    player.reset_combat_state()
+    player.run = CodexRunState()
+    _je.reset_jewel_charges(player)
+
+
 # ---------------------------------------------------------------------------
 # Signature Modifier Application
 # ---------------------------------------------------------------------------
@@ -408,25 +439,31 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
     """
     Applies all of the chapter's player_mods to the player.
     Must be called AFTER restore_clean_stats and BEFORE apply_per_wave_boons.
-    HP reductions go into bonus_max_hp so max_hp stays immutable.
     Ward generation reduction also scales back the current starting ward.
 
-    atk_multiplier/def_multiplier are additive accumulators here (1.0 + net %),
-    matching Player.get_total_attack/defence's stat model — every ATK/DEF % source
-    across the whole game sums into one pool instead of compounding. Always use
-    += / -= on these fields, never *=.
+    atk_pct/def_pct/max_hp_pct/crit_pct write into the dedicated
+    codex_atk_pct/codex_def_pct/codex_max_hp_pct/codex_crit_flat fields
+    (Player.get_total_attack/defence/max_hp/current_crit_chance apply these
+    as the LAST step, after every other stat source — see their docstrings),
+    NOT the shared atk_multiplier/def_multiplier/bonus_crit/bonus_max_hp pool
+    real combat-start passives use. Always use += / -= on these fields, never
+    *=, so multiple signature/boon sources for the same stat sum additively
+    (e.g. a -40% signature and +56% of boons net to +16%, not 0.6×1.56).
     """
     _ward_failsafe = player.get_helmet_corrupted_essence() == "aphrodite"
 
     for mod_type, value in chapter.player_mods:
         if mod_type == "atk_pct":
-            player.atk_multiplier -= value
+            player.codex_atk_pct -= value
 
         elif mod_type == "def_pct":
-            player.def_multiplier -= value
+            player.codex_def_pct -= value
 
         elif mod_type == "max_hp_pct":
-            player.bonus_max_hp -= int(player.max_hp * value)
+            # % of the fully-resolved total, not base max_hp — recalculated
+            # fresh every get_total_max_hp() call via codex_max_hp_pct, so
+            # this scales correctly even if other Max HP sources change later.
+            player.codex_max_hp_pct -= value
             player.current_hp = min(player.current_hp, player.total_max_hp)
 
         elif mod_type == "ward_disable":
@@ -435,7 +472,7 @@ def apply_signature_modifier(player: Player, chapter: CodexChapter) -> None:
             player.combat_ward = 0
 
         elif mod_type == "crit_pct":
-            player.bonus_crit -= int(value)
+            player.codex_crit_flat -= int(value)
 
         elif mod_type == "hit_flat":
             player.chapter_hit_penalty += int(value)
@@ -473,28 +510,29 @@ def apply_per_wave_boons(player: Player, active_boons: list[CodexBoon]) -> None:
     Re-applies accumulated per-wave stat boons after restore + signature.
     Must be called AFTER apply_signature_modifier so boons layer on top.
 
-    atk_multiplier/def_multiplier are additive accumulators (see
-    apply_signature_modifier) — two +20% ATK boons sum to +40%, not 1.2×1.2=+44%.
+    codex_atk_pct/codex_def_pct/codex_crit_flat are additive accumulators
+    (see apply_signature_modifier) — two +20% ATK boons sum to +40%, not
+    1.2×1.2=+44%.
     """
     for boon in active_boons:
         t, v = boon.type, boon.value
         if t == "atk_boost":
-            player.atk_multiplier += v / 100
+            player.codex_atk_pct += v / 100
         elif t == "def_boost":
-            player.def_multiplier += v / 100
+            player.codex_def_pct += v / 100
         elif t == "crit_boost":
-            player.bonus_crit += int(v)
+            player.codex_crit_flat += int(v)
         elif t == "ward_boost":
             player.combat_ward += int(player.total_max_hp * (v / 100))
         elif t == "page_rate_boost":
             # Downside only — the page rate bonus itself is applied at chapter clear time
             dt, dv = boon.downside_type, boon.downside_value
             if dt == "atk_penalty":
-                player.atk_multiplier -= dv / 100
+                player.codex_atk_pct -= dv / 100
             elif dt == "def_penalty":
-                player.def_multiplier -= dv / 100
+                player.codex_def_pct -= dv / 100
             elif dt == "crit_penalty":
-                player.bonus_crit -= int(dv)
+                player.codex_crit_flat -= int(dv)
         elif t == "fdr_boost":
             player.boon_fdr += int(v)
 

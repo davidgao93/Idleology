@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import random
 
+from core.emojis import ALCHEMY_PASSIVE_EMOJI
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -256,7 +257,7 @@ def build_attack_multiplier(
         add_pool_bonus += player.alchemy_eclipse_bonus
         add_pool_parts.append(f"eclipse+{int(player.alchemy_eclipse_bonus * 100)}%")
         log.append(
-            f"🌑 **Eclipse** empowers your strike! (+{int(player.alchemy_eclipse_bonus * 100)}% damage bonus)"
+            f"{ALCHEMY_PASSIVE_EMOJI['eclipse']} **Eclipse** empowers your strike! (+{int(player.alchemy_eclipse_bonus * 100)}% damage bonus)"
         )
 
     # Partner signature — Sigmund: chance for bonus damage

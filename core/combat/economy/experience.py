@@ -1,6 +1,7 @@
 import json
 import random
 
+from core.emojis import INNER_SANC
 from core.hall_of_firsts import triggers as hof_triggers
 from core.models import Player
 
@@ -138,7 +139,9 @@ class ExperienceManager:
 
                 if server_id:
                     await bot.database.inner_sanctum.add_points(user_id, server_id, 10)
-                    changes["msgs"].append("🔮 Gained **10** Inner Sanctum Points!")
+                    changes["msgs"].append(
+                        f"{INNER_SANC} Gained **10** Inner Sanctum Points!"
+                    )
 
             # Normal Level Up (pre-100): generate packages instead of applying stats.
             else:
@@ -195,7 +198,7 @@ class ExperienceManager:
                             user_id, server_id, 25
                         )
                         changes["msgs"].append(
-                            "🔮 **The Inner Sanctum awakens!** Gained **25** Inner "
+                            f"{INNER_SANC} **The Inner Sanctum awakens!** Gained **25** Inner "
                             "Sanctum Points! Use `/inner_sanctum` to spend them."
                         )
                     elif player.level > 25:

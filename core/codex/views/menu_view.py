@@ -2,14 +2,17 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
-from core.codex.mechanics import apply_signature_modifier, select_run_chapters
+from core.codex.mechanics import (
+    apply_signature_modifier,
+    reset_for_new_codex_run,
+    select_run_chapters,
+)
 from core.codex.views.run_view import (
     CodexRunView,
     _generate_codex_wave_monster,
     build_wave_baseline,
 )
 from core.codex.views.tomes_view import CodexTomsView
-from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
 from core.combat.turns import engine
 from core.images import SERAPHINE_PORTRAIT, SERAPHINE_THUMBNAIL
@@ -150,7 +153,7 @@ class CodexMenuView(BaseLayoutView):
 
         self.bot.state_manager.set_active(self.user_id, "codex")
 
-        _je.reset_jewel_charges(self.player)
+        reset_for_new_codex_run(self.player)
 
         # Clear active task species — prevents slayer task completion and species-gated
         # emblem bonuses (slayer_dmg / slayer_def), which are tied to assigned tasks.

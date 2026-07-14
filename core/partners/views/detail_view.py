@@ -23,6 +23,7 @@ from core.partners.mechanics import (
 from core.partners.resources import (
     _rarity_colour,
     _sig_display_name,
+    _sig_emoji,
     _skill_display_name,
 )
 from core.partners.ui import _build_partner_embed
@@ -138,14 +139,15 @@ class PartnerSkillsView(PartnerBaseView):
                     f" | Upgrade: **{sig_cost}** 🔷" if sig_cost else " | **MAX**"
                 )
                 marker = "▶ " if self.selected == "sig" else ""
+                sig_emoji = _sig_emoji(p.sig_combat_key) or ""
                 if sig_lvl > 0:
                     lines.append(
-                        f"{marker}`SIG` **{_sig_display_name(p.sig_combat_key)}** Lv.{sig_lvl}/{MAX_SIG_LEVEL} — "
+                        f"{marker}{sig_emoji} `SIG` **{_sig_display_name(p.sig_combat_key)}** Lv.{sig_lvl}/{MAX_SIG_LEVEL} — "
                         f"{get_sig_combat_effect_text(p.partner_id, sig_lvl)}{cost_str}"
                     )
                 else:
                     lines.append(
-                        f"{marker}`SIG` **{_sig_display_name(p.sig_combat_key)}** — *Locked*{cost_str}"
+                        f"{marker}{sig_emoji} `SIG` **{_sig_display_name(p.sig_combat_key)}** — *Locked*{cost_str}"
                     )
             elif self.mode == "dispatch" and p.sig_dispatch_key:
                 sig_lvl = p.sig_dispatch_lvl
@@ -154,14 +156,15 @@ class PartnerSkillsView(PartnerBaseView):
                     f" | Upgrade: **{sig_cost}** 🔷" if sig_cost else " | **MAX**"
                 )
                 marker = "▶ " if self.selected == "sig" else ""
+                sig_emoji = _sig_emoji(p.sig_dispatch_key) or ""
                 if sig_lvl > 0:
                     lines.append(
-                        f"{marker}`SIG` **{_sig_display_name(p.sig_dispatch_key)}** Lv.{sig_lvl}/{MAX_SIG_LEVEL} — "
+                        f"{marker}{sig_emoji} `SIG` **{_sig_display_name(p.sig_dispatch_key)}** Lv.{sig_lvl}/{MAX_SIG_LEVEL} — "
                         f"{get_sig_dispatch_effect_text(p.partner_id, sig_lvl)}{cost_str}"
                     )
                 else:
                     lines.append(
-                        f"{marker}`SIG` **{_sig_display_name(p.sig_dispatch_key)}** — *Locked*{cost_str}"
+                        f"{marker}{sig_emoji} `SIG` **{_sig_display_name(p.sig_dispatch_key)}** — *Locked*{cost_str}"
                     )
 
         embed.description = "\n\n".join(lines)
@@ -228,6 +231,7 @@ class PartnerSkillsView(PartnerBaseView):
                 label=label[:100],
                 description=cost_str[:100],
                 value="sig",
+                emoji=_sig_emoji(sig_key),
                 default=(self.selected == "sig"),
             )
 

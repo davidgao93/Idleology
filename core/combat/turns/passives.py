@@ -6,6 +6,8 @@ from core.emojis import (
     GOLD_COIN,
     HEMATURGY_ICON,
     INFERNAL_ENGRAM,
+    SIG_SKOL,
+    SIG_YVENN,
     STAT_ATK,
     STAT_DEF,
     STAT_PDR,
@@ -308,13 +310,13 @@ def _apply_partner_combat_start(
                     player.lucifer_pdr_burst += 10
                     buff_msgs.append(f"{STAT_PDR} +10% PDR burst")
             parts.append(
-                f"💀 **Essence Communion Lv.{sig_lvl}** — "
+                f"{SIG_SKOL} **Essence Communion Lv.{sig_lvl}** — "
                 f"{n} essence buff(s): {', '.join(buff_msgs)}"
             )
         elif sig_key == "sig_co_yvenn":
             player.active_task_species = monster.species
             parts.append(
-                f"🗡️ **Apex Hunter Lv.{sig_lvl}** — "
+                f"{SIG_YVENN} **Apex Hunter Lv.{sig_lvl}** — "
                 f"All monsters treated as slayer targets!"
             )
 

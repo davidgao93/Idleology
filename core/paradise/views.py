@@ -494,10 +494,15 @@ class _ManageSkillsView(BaseView):
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def _cut_jewel_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         unlocked = self.data.get("unlocked_skills", [])
         remaining = [sk for sk in SKILL_JEWELS if sk not in unlocked]
         if not remaining:
+            self._processing = False
             return
         view = _SkillPickView(
             self.bot,
@@ -868,6 +873,9 @@ class _ManagePassivesView(BaseView):
         self.stop()
 
     async def _cut_jewel_callback(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
         needed = M.jewels_to_next_slot(self.data)
         modal = _PassiveInvestModal(self, needed)
         await interaction.response.send_modal(modal)
@@ -1086,6 +1094,10 @@ class _RerollActionView(BaseView):
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
     async def _on_back(self, interaction: Interaction) -> None:
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
         await interaction.response.defer()
         data, jewel_count, dust = await _fetch_passives_data(
             self.bot, self.user_id, self.server_id
