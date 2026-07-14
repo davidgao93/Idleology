@@ -6,6 +6,7 @@ Toggle via config.json:  "combat_logging": true
 
 import json
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,10 @@ from core.models import Monster, Player
 
 _CONFIG_PATH = Path(__file__).resolve().parents[2] / "config.json"
 _LOG_DIR = Path(__file__).resolve().parents[2] / "logs" / "combat"
+
+# Discord custom emoji tags, e.g. <:stat_ward:1524443414555525243> or
+# <a:name:1234567890>. These are unreadable noise in a plain-text log.
+_CUSTOM_EMOJI_RE = re.compile(r"<a?:\w+:\d+>")
 
 logger = logging.getLogger("discord_bot")
 
@@ -85,8 +90,14 @@ class CombatLogger:
     # ------------------------------------------------------------------
 
     def _w(self, line: str) -> None:
-        if self._file:
-            self._file.write(line + "\n")
+        if not self._file:
+            return
+        line = _CUSTOM_EMOJI_RE.sub("", line)
+        # Collapse the double spaces left behind by emoji removal, but keep
+        # leading indentation intact (used throughout for nested log lines).
+        indent = line[: len(line) - len(line.lstrip(" "))]
+        body = re.sub(r" {2,}", " ", line[len(indent):]).rstrip()
+        self._file.write(indent + body + "\n")
 
     def _compute_stats(
         self, player: Player, monster: Monster

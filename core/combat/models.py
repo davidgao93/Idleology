@@ -1495,7 +1495,7 @@ class Player:
         """
         contributions: list[tuple[str, float]] = []
         flat = self.flat_atk  # Base + Equipment; pre-computed, immutable during combat
-        contributions.append(("FLAT ATK: Base + Equipment + Essences + Barracks", flat))
+        contributions.append(("FLAT ATK: Base + Equipment + Essences", flat))
 
         # ---- Flat bonus pool (gear/companion/tome sources) ----
         bonus_pool = self.bonus_atk
@@ -1669,7 +1669,7 @@ class Player:
         """
         contributions: list[tuple[str, float]] = []
         flat = self.flat_def  # Base + Equipment; pre-computed, immutable during combat
-        contributions.append(("Base + Equipment + Essence + Barracks", flat))
+        contributions.append(("Base + Equipment + Essence", flat))
 
         # ---- Flat bonus pool ----
         bonus_pool = self.bonus_def

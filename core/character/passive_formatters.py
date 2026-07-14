@@ -281,7 +281,7 @@ _CATEGORY_RULES: list[tuple[str, str]] = [
 
 # Fixed display order for grouped buckets (skipped when empty). Base/Equipment/
 # Barracks are only ever populated manually by callers that split the merged
-# "Base + Equipment (+Barracks)" contribution (ATK/DEF) — every other bucket
+# "Base + Equipment + Essences" contribution (ATK/DEF) — every other bucket
 # is reachable directly from categorize_contribution().
 CATEGORY_ORDER: list[str] = [
     "Base",

@@ -112,13 +112,6 @@ class SlayerDashboardView(BaseView):
         btn_emblem.callback = self.open_emblem
         self.add_item(btn_emblem)
 
-        if self.tree_nodes.get("pu_3") or self.tree_nodes.get("pu_4"):
-            btn_shop = ui.Button(
-                label="Shop", style=ButtonStyle.success, emoji="🛒", row=1
-            )
-            btn_shop.callback = self.open_shop
-            self.add_item(btn_shop)
-
         btn_close = ui.Button(
             label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
         )
@@ -198,15 +191,6 @@ class SlayerDashboardView(BaseView):
         )
         view = SlayerTreeView(
             self.bot, self.user_id, self.server_id, self.profile, tree_data, self
-        )
-        await interaction.response.edit_message(embed=view.build_embed(), view=view)
-
-    async def open_shop(self, interaction: Interaction):
-        self.profile = await self.bot.database.slayer.get_profile(
-            self.user_id, self.server_id
-        )
-        view = SlayerShopView(
-            self.bot, self.user_id, self.server_id, self.profile, self.tree_nodes, self
         )
         await interaction.response.edit_message(embed=view.build_embed(), view=view)
 
@@ -626,6 +610,9 @@ def _node_value_display(node_id: str, nodes_owned: dict) -> str:
 class SlayerTreeView(BaseView):
     """Displays the Slayer Tree, handles node purchasing and resets."""
 
+    _ESS_COST = 40
+    _HEART_COST = 1200
+
     def __init__(self, bot, user_id, server_id, profile, tree_data, parent_view):
         super().__init__(bot, user_id, server_id)
         self.profile = profile
@@ -704,6 +691,19 @@ class SlayerTreeView(BaseView):
             lines.append(f"{status} **{node['name']}** {cost_str}\n└ *{desc}*")
         embed.add_field(name=f"{icon} {name}", value="\n".join(lines), inline=False)
 
+        if branch == "purveyor":
+            ess_unlocked = bool(self.tree_nodes.get("pu_3"))
+            heart_unlocked = bool(self.tree_nodes.get("pu_4"))
+            shop_lines = [
+                f"{'🩸' if ess_unlocked else '🔒'} **Violent Essence** — {self._ESS_COST} pts"
+                + ("" if ess_unlocked else " *(requires Material Market)*"),
+                f"{'❤️' if heart_unlocked else '🔒'} **Imbued Heart** — {self._HEART_COST} pts"
+                + ("" if heart_unlocked else " *(requires Essence Exchange)*"),
+            ]
+            embed.add_field(
+                name="🛒 Black Market", value="\n".join(shop_lines), inline=False
+            )
+
         embed.set_footer(
             text=f"Reset: costs {TREE_RESET_COST} Violent Essence | refunds 80% of points spent"
         )
@@ -778,6 +778,32 @@ class SlayerTreeView(BaseView):
             sel.callback = self.on_node_select
             self.add_item(sel)
 
+        # Row 2: Purveyor black market purchases (disabled until unlocked)
+        if self.active_branch == "purveyor":
+            pts = self.profile["points"]
+            ess_unlocked = bool(self.tree_nodes.get("pu_3"))
+            heart_unlocked = bool(self.tree_nodes.get("pu_4"))
+
+            btn_ess = ui.Button(
+                label=f"Buy Essence ({self._ESS_COST} pts)",
+                style=ButtonStyle.primary,
+                emoji="🩸",
+                disabled=(not ess_unlocked or pts < self._ESS_COST),
+                row=2,
+            )
+            btn_ess.callback = self.buy_essence
+            self.add_item(btn_ess)
+
+            btn_heart = ui.Button(
+                label=f"Buy Heart ({self._HEART_COST} pts)",
+                style=ButtonStyle.danger,
+                emoji="❤️",
+                disabled=(not heart_unlocked or pts < self._HEART_COST),
+                row=2,
+            )
+            btn_heart.callback = self.buy_heart
+            self.add_item(btn_heart)
+
         can_reset = (
             bool(self.tree_nodes) and self.profile["violent_essence"] >= TREE_RESET_COST
         )
@@ -785,12 +811,12 @@ class SlayerTreeView(BaseView):
             label=f"Reset Tree ({TREE_RESET_COST} Essence)",
             style=ButtonStyle.danger,
             disabled=not can_reset,
-            row=2,
+            row=3,
         )
         btn_reset.callback = self.on_reset
         self.add_item(btn_reset)
 
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
+        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=3)
         btn_back.callback = self.go_back
         self.add_item(btn_back)
 
@@ -869,9 +895,9 @@ class SlayerTreeView(BaseView):
         if choice:
             for k, label in node.get("choices", []):
                 if k == choice:
-                    choice_label = f" → **{label}**"
+                    choice_label = f" → {label}"
                     break
-        self.result_msg = f"✅ Unlocked **{node_name}**!{choice_label}"
+        self.result_msg = f"✅ Unlocked {node_name}!{choice_label}"
 
         # Sync parent tree state
         self.parent.tree_nodes = self.tree_nodes
@@ -880,6 +906,53 @@ class SlayerTreeView(BaseView):
         self._processing = False
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
+    async def _buy_material(
+        self, interaction: Interaction, col: str, cost: int, label: str
+    ):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        fresh = await self.bot.database.slayer.get_profile(self.user_id, self.server_id)
+        self.profile = fresh
+        if fresh["points"] < cost:
+            self._processing = False
+            self.result_msg = f"❌ Not enough Slayer Points (need {cost})."
+            self.setup_ui()
+            return await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+
+        await self.bot.database.slayer.add_rewards(
+            self.user_id, self.server_id, 0, -cost
+        )
+        await self.bot.database.slayer.modify_materials(
+            self.user_id, self.server_id, col, 1
+        )
+        self.profile = await self.bot.database.slayer.get_profile(
+            self.user_id, self.server_id
+        )
+        self.result_msg = f"✅ Purchased 1 {label}!"
+
+        # Sync parent profile (materials shown on the dashboard)
+        self.parent.profile = self.profile
+
+        self._processing = False
+        self.setup_ui()
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
+    async def buy_essence(self, interaction: Interaction):
+        await self._buy_material(
+            interaction, "violent_essence", self._ESS_COST, "Violent Essence"
+        )
+
+    async def buy_heart(self, interaction: Interaction):
+        await self._buy_material(
+            interaction, "imbued_heart", self._HEART_COST, "Imbued Heart"
+        )
 
     async def on_reset(self, interaction: Interaction):
         if self._processing:
@@ -915,137 +988,12 @@ class SlayerTreeView(BaseView):
         self.parent.pts_spent = 0
 
         self.result_msg = (
-            f"🔄 Tree reset! Refunded **{refund}** Slayer Points "
+            f"🔄 Tree reset! Refunded {refund} Slayer Points "
             f"(consumed {TREE_RESET_COST} Violent Essence)."
         )
         self._processing = False
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
-
-    async def go_back(self, interaction: Interaction):
-        self.parent.profile = await self.bot.database.slayer.get_profile(
-            self.user_id, self.server_id
-        )
-        self.parent.setup_buttons()
-        await interaction.response.edit_message(
-            embed=self.parent.build_embed(), view=self.parent
-        )
-        self.stop()
-
-
-# ---------------------------------------------------------------------------
-# Slayer Shop (pu_3 / pu_4)
-# ---------------------------------------------------------------------------
-
-
-class SlayerShopView(BaseView):
-    """Lets players spend Slayer Points on materials unlocked via the Purveyor branch."""
-
-    _ESS_COST = 40
-    _HEART_COST = 1200
-
-    def __init__(self, bot, user_id, server_id, profile, tree_nodes, parent_view):
-        super().__init__(bot, user_id, server_id)
-        self.profile = profile
-        self.tree_nodes = tree_nodes
-        self.parent = parent_view
-        self._processing = False
-        self.result_msg = ""
-        self.setup_ui()
-
-    def build_embed(self) -> discord.Embed:
-        pts = self.profile["points"]
-        embed = discord.Embed(
-            title="🛒 Slayer Shop",
-            description=(
-                f"**Slayer Points:** {pts}\n"
-                f"🩸 **Violent Essence:** {self.profile['violent_essence']} | "
-                f"❤️ **Imbued Hearts:** {self.profile['imbued_heart']}\n\n"
-                + (f"**{self.result_msg}**\n" if self.result_msg else "")
-            ),
-            color=discord.Color.dark_gold(),
-        )
-        if self.tree_nodes.get("pu_3"):
-            embed.add_field(
-                name=f"🩸 Violent Essence — {self._ESS_COST} pts",
-                value="Purchase 1 Violent Essence from the black market.",
-                inline=False,
-            )
-        if self.tree_nodes.get("pu_4"):
-            embed.add_field(
-                name=f"❤️ Imbued Heart — {self._HEART_COST} pts",
-                value="Purchase 1 Imbued Heart from the black market.",
-                inline=False,
-            )
-        return embed
-
-    def setup_ui(self):
-        self.clear_items()
-        pts = self.profile["points"]
-
-        if self.tree_nodes.get("pu_3"):
-            btn_ess = ui.Button(
-                label=f"Buy Essence ({self._ESS_COST} pts)",
-                style=ButtonStyle.primary,
-                emoji="🩸",
-                disabled=(pts < self._ESS_COST),
-                row=0,
-            )
-            btn_ess.callback = self.buy_essence
-            self.add_item(btn_ess)
-
-        if self.tree_nodes.get("pu_4"):
-            btn_heart = ui.Button(
-                label=f"Buy Heart ({self._HEART_COST} pts)",
-                style=ButtonStyle.danger,
-                emoji="❤️",
-                disabled=(pts < self._HEART_COST),
-                row=0,
-            )
-            btn_heart.callback = self.buy_heart
-            self.add_item(btn_heart)
-
-        btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
-        btn_back.callback = self.go_back
-        self.add_item(btn_back)
-
-    async def _buy(self, interaction: Interaction, col: str, cost: int, label: str):
-        if self._processing:
-            await interaction.response.defer()
-            return
-        self._processing = True
-        await interaction.response.defer()
-
-        fresh = await self.bot.database.slayer.get_profile(self.user_id, self.server_id)
-        if fresh["points"] < cost:
-            self._processing = False
-            self.result_msg = f"❌ Not enough Slayer Points (need {cost})."
-            self.setup_ui()
-            return await interaction.edit_original_response(
-                embed=self.build_embed(), view=self
-            )
-
-        await self.bot.database.slayer.add_rewards(
-            self.user_id, self.server_id, 0, -cost
-        )
-        await self.bot.database.slayer.modify_materials(
-            self.user_id, self.server_id, col, 1
-        )
-        self.profile = await self.bot.database.slayer.get_profile(
-            self.user_id, self.server_id
-        )
-        self.result_msg = f"✅ Purchased 1 {label}!"
-        self._processing = False
-        self.setup_ui()
-        await interaction.edit_original_response(embed=self.build_embed(), view=self)
-
-    async def buy_essence(self, interaction: Interaction):
-        await self._buy(
-            interaction, "violent_essence", self._ESS_COST, "Violent Essence"
-        )
-
-    async def buy_heart(self, interaction: Interaction):
-        await self._buy(interaction, "imbued_heart", self._HEART_COST, "Imbued Heart")
 
     async def go_back(self, interaction: Interaction):
         self.parent.profile = await self.bot.database.slayer.get_profile(
