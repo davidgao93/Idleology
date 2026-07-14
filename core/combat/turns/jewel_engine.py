@@ -10,7 +10,7 @@ import random
 from typing import TYPE_CHECKING
 
 from core.combat.calc.ward_system import _add_ward
-from core.emojis import STAT_WARD
+from core.emojis import JEWEL_SKILL_EMOJI, STAT_WARD
 from core.paradise import mechanics as M
 from core.paradise.data import SKILL_JEWELS
 
@@ -57,7 +57,9 @@ def _unleash_surge(
     dmg = max(1, int(atk * pct / 100 * total_mult))
     dmg = min(dmg, max(1, monster.hp))
     monster.hp = max(0, monster.hp - dmg)
-    log.append(f"⚡ **Surge** unleashes a lightning storm for 🗡️ **{dmg}** damage!")
+    log.append(
+        f"{JEWEL_SKILL_EMOJI['surge']} **Surge** unleashes a lightning storm for 🗡️ **{dmg}** damage!"
+    )
     return dmg
 
 
@@ -71,7 +73,7 @@ def _unleash_cataclysm(player: "Player", data: dict, log: list[str]) -> None:
     player.jewel_cataclysm_primed = True
     player.jewel_cataclysm_bonus_multi = final_bonus / 100  # stored as multiplier bonus
     log.append(
-        f"💥 **Cataclysm** primes! Next attack: guaranteed crit (+{final_bonus:.0f}% crit multi)."
+        f"{JEWEL_SKILL_EMOJI['cataclysm']} **Cataclysm** primes! Next attack: guaranteed crit (+{final_bonus:.0f}% crit multi)."
     )
 
 
@@ -97,8 +99,8 @@ def _unleash_acrimony(
     player.jewel_acrimony_dot_dmg = dot_per_turn
 
     log.append(
-        f"🐍 **Acrimony** venom bursts for 🗡️ **{imm_dmg}** damage"
-        f" + 🐍 **{dot_per_turn}**/turn DoT for 4 turns!"
+        f"{JEWEL_SKILL_EMOJI['acrimony']} **Acrimony** venom bursts for 🗡️ **{imm_dmg}** damage"
+        f" + {JEWEL_SKILL_EMOJI['acrimony']} **{dot_per_turn}**/turn DoT for 4 turns!"
     )
     return imm_dmg
 
@@ -117,7 +119,7 @@ def _unleash_wardforge(player: "Player", data: dict, log: list[str]) -> None:
     bonus_dmg = int(player.combat_ward * 0.30)
     player.jewel_wardforge_bonus_dmg = bonus_dmg
     log.append(
-        f"🛡️ **Wardforge** erupts: +{STAT_WARD} **{added}** ward!"
+        f"{JEWEL_SKILL_EMOJI['wardforge']} **Wardforge** erupts: +{STAT_WARD} **{added}** ward!"
         f" Next attack gains **{bonus_dmg}** bonus damage from ward!"
     )
 
@@ -136,7 +138,7 @@ def _unleash_bastion(
     reflect = min(reflect, max(1, monster.hp))
     monster.hp = max(0, monster.hp - reflect)
     log.append(
-        f"🔱 **Bastion** reflects 🗡️ **{reflect}** damage back at {monster.name}!"
+        f"{JEWEL_SKILL_EMOJI['bastion']} **Bastion** reflects 🗡️ **{reflect}** damage back at {monster.name}!"
     )
     return reflect
 
@@ -157,11 +159,13 @@ def _unleash_siphon(player: "Player", data: dict, log: list[str]) -> int:
     if ward_from_heal > 0:
         added = _add_ward(player, ward_from_heal, log, "Siphon")
         log.append(
-            f"💚 **Siphon** restores 💚 **{actual_hp_heal}** HP"
+            f"{JEWEL_SKILL_EMOJI['siphon']} **Siphon** restores {JEWEL_SKILL_EMOJI['siphon']} **{actual_hp_heal}** HP"
             f" and generates {STAT_WARD} **{added}** ward!"
         )
     else:
-        log.append(f"💚 **Siphon** restores 💚 **{actual_hp_heal}** HP!")
+        log.append(
+            f"{JEWEL_SKILL_EMOJI['siphon']} **Siphon** restores {JEWEL_SKILL_EMOJI['siphon']} **{actual_hp_heal}** HP!"
+        )
     return actual_hp_heal
 
 
@@ -175,7 +179,7 @@ def _unleash_onslaught(player: "Player", data: dict, log: list[str]) -> None:
     player.jewel_onslaught_primed = True
     player.jewel_onslaught_bonus_pct = final_bonus  # stored as %
     log.append(
-        f"🔥 **Onslaught** surges! Next attack: +**{final_bonus:.0f}%** ATK multiplier."
+        f"{JEWEL_SKILL_EMOJI['onslaught']} **Onslaught** surges! Next attack: +**{final_bonus:.0f}%** ATK multiplier."
     )
 
 
@@ -194,7 +198,9 @@ def _unleash_draught(player: "Player", data: dict, log: list[str]) -> None:
     actual_potions = generated - overflow
     player.potions += actual_potions
 
-    parts = [f"🧪 **Draught** distills **{actual_potions}** potion(s)!"]
+    parts = [
+        f"{JEWEL_SKILL_EMOJI['draught']} **Draught** distills **{actual_potions}** potion(s)!"
+    ]
     if overflow > 0:
         ward_gain = overflow * 200
         added = _add_ward(player, ward_gain, log, "Draught overflow")
@@ -323,7 +329,7 @@ def tick_acrimony_dot(player: "Player", monster: "Monster", log: list[str]) -> N
         actual = min(dot_dmg, monster.hp)
         monster.hp = max(0, monster.hp - actual)
         log.append(
-            f"🐍 **Acrimony** venom pulses for **{actual}** DoT damage! ({player.jewel_acrimony_dot - 1} turns left)"
+            f"{JEWEL_SKILL_EMOJI['acrimony']} **Acrimony** venom pulses for **{actual}** DoT damage! ({player.jewel_acrimony_dot - 1} turns left)"
         )
     player.jewel_acrimony_dot -= 1
     if player.jewel_acrimony_dot <= 0:

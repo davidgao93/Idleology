@@ -7,7 +7,7 @@ from core.combat.mobgen.gen_mob import generate_uber_gemini
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
-from core.emojis import BOUND_ENGRAM, BOUND_SIGIL
+from core.emojis import BALANCED_PROTECTION, BOUND_ENGRAM, BOUND_SIGIL, TWIN_STRIKE
 from core.images import BOSS_GEMINI
 from core.models import Monster, Player
 
@@ -70,8 +70,8 @@ class UberGeminiLobbyView(BaseView):
             f"**Entry Cost:** 3 {BOUND_SIGIL} Bound Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "⚡ **Balanced Protection** — globally reduces all incoming damage by 60%.\n"
-            "⚡ **Twin Strike** — every other turn, deal a ward-piercing blow."
+            f"{BALANCED_PROTECTION} **Balanced Protection** — globally reduces all incoming damage by 60%.\n"
+            f"{TWIN_STRIKE} **Twin Strike** — every other turn, deal a ward-piercing blow."
         )
         embed.description = desc
 

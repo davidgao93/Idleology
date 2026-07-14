@@ -14,7 +14,12 @@ from core.inner_sanctum.data import (
     VICE_NODES,
     VICE_UNLOCK_LEVEL,
 )
-from core.inner_sanctum.mechanics import can_purchase, get_node_cost
+from core.inner_sanctum.mechanics import (
+    can_purchase,
+    can_purchase_ranks,
+    get_node_cost,
+    get_ranks_cost,
+)
 from core.npc_voices import get_quip
 
 _BRANCH_NODES = {
@@ -31,22 +36,68 @@ _BRANCH_UNLOCK = {
 }
 
 
+def _plural(n: int) -> str:
+    return "" if n == 1 else "s"
+
+
 def _node_status_line(node_id: str, node: dict, nodes_owned: dict) -> str:
     if node.get("is_choice"):
         owned = nodes_owned.get(node_id)
         if owned:
             label = next((lbl for key, lbl in node["choices"] if key == owned), owned)
-            return f"✅ **{node['name']}** → {label}"
-        return f"⬜ **{node['name']}** ({node['cost']} pts) — *choose an affinity*"
+            return f"✅ {label}"
+        return f"⬜ Choose an affinity ({node['cost']} pts)"
 
     rank = nodes_owned.get(node_id, 0) or 0
     max_rank = node["max_rank"]
-    effect = node["desc"](rank) if rank > 0 else "*not invested*"
+    per_rank_effect = node["desc"](1)  # flat per-rank amount, not cumulative
+    status_icon = "✅" if rank > 0 else "⬜"
+
     if rank >= max_rank:
-        cost_str = "MAX"
-    else:
-        cost_str = f"{node['costs'][rank]} pts → rank {rank + 1}"
-    return f"{'✅' if rank > 0 else '⬜'} **{node['name']}** ({rank}/{max_rank}) — {effect}\n└ Next: {cost_str}"
+        return f"{status_icon} {node['desc'](rank)} **(MAXED {rank}/{max_rank})**"
+
+    current = f" — currently: {node['desc'](rank)}" if rank > 0 else ""
+    cost = node["costs"][rank]
+    return (
+        f"{status_icon} {per_rank_effect} *(per rank)*{current}\n"
+        f"└ {rank}/{max_rank} invested · next rank costs {cost} pt{_plural(cost)}"
+    )
+
+
+class RankAmountModal(ui.Modal):
+    """Custom-amount entry for investing multiple ranks in one node at once."""
+
+    def __init__(self, parent_view: "InnerSanctumHubView", node_id: str, max_amount: int):
+        super().__init__(title="Invest Inner Sanctum Points")
+        self.parent_view = parent_view
+        self.node_id = node_id
+        self.max_amount = max_amount
+        self.amount_input = ui.TextInput(
+            label=f"How many ranks? (max {max_amount})",
+            placeholder=f"1 – {max_amount}",
+            min_length=1,
+            max_length=3,
+        )
+        self.add_item(self.amount_input)
+
+    async def on_submit(self, interaction: Interaction) -> None:
+        try:
+            amount = int(self.amount_input.value.strip())
+            if amount <= 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            await interaction.response.send_message(
+                "Please enter a positive whole number.", ephemeral=True
+            )
+            return
+        if amount > self.max_amount:
+            await interaction.response.send_message(
+                f"You can invest at most **{self.max_amount}** more rank"
+                f"{_plural(self.max_amount)} here.",
+                ephemeral=True,
+            )
+            return
+        await self.parent_view._purchase_ranks(interaction, self.node_id, amount)
 
 
 class InnerSanctumHubView(BaseView):
@@ -160,20 +211,22 @@ class InnerSanctumHubView(BaseView):
             if purchasable:
                 options = []
                 for nid, node, cost in purchasable:
-                    desc = (
-                        "Choose an affinity"
-                        if node.get("is_choice")
-                        else node["desc"](self.nodes_owned.get(nid, 0) or 0)
-                    )
+                    if node.get("is_choice"):
+                        label = "Choose an affinity"
+                        desc = f"{cost} pts"
+                    else:
+                        rank = self.nodes_owned.get(nid, 0) or 0
+                        label = node["desc"](1)  # flat per-rank amount
+                        desc = f"{rank}/{node['max_rank']} invested · {cost} pt{_plural(cost)}/rank"
                     options.append(
                         SelectOption(
-                            label=f"{node['name']} ({cost} pts)",
+                            label=label[:100],
                             value=nid,
                             description=desc[:100],
                         )
                     )
                 sel = ui.Select(
-                    placeholder="Select a node to invest in…", options=options, row=1
+                    placeholder="Select an effect to invest in…", options=options, row=1
                 )
                 sel.callback = self.on_node_select
                 self.add_item(sel)
@@ -194,6 +247,7 @@ class InnerSanctumHubView(BaseView):
         self.add_item(btn_close)
 
     def _show_choice_ui(self, node_id: str):
+        """Single-purchase choice nodes (e.g. Deicide's Marked Prey) — pick one option."""
         self.clear_items()
         node = ALL_NODES[node_id]
         self._pending_choice_node = node_id
@@ -209,6 +263,42 @@ class InnerSanctumHubView(BaseView):
         btn_cancel.callback = self._cancel_choice
         self.add_item(btn_cancel)
 
+    def _show_quantity_ui(self, node_id: str):
+        """Ranked nodes — quick-amount buttons + a custom-amount modal, so a
+        10-rank node doesn't require 10 separate select-menu round trips."""
+        self.clear_items()
+        node = ALL_NODES[node_id]
+        self._pending_choice_node = node_id
+        rank = self.nodes_owned.get(node_id, 0) or 0
+        remaining = node["max_rank"] - rank
+
+        quick_amounts = sorted({a for a in (1, 5, remaining) if 0 < a <= remaining})
+        for amt in quick_amounts:
+            cost = get_ranks_cost(node_id, self.nodes_owned, amt)
+            prefix = "Max " if amt == remaining else ""
+            label = f"{prefix}+{amt} ({cost} pt{_plural(cost)})"
+            btn = ui.Button(label=label[:80], style=ButtonStyle.primary, row=0)
+
+            async def _amt_cb(interaction: Interaction, a=amt):
+                await self._purchase_ranks(interaction, node_id, a)
+
+            btn.callback = _amt_cb
+            self.add_item(btn)
+
+        btn_custom = ui.Button(label="Custom Amount…", style=ButtonStyle.secondary, row=1)
+
+        async def _custom_cb(interaction: Interaction):
+            await interaction.response.send_modal(
+                RankAmountModal(self, node_id, remaining)
+            )
+
+        btn_custom.callback = _custom_cb
+        self.add_item(btn_custom)
+
+        btn_cancel = ui.Button(label="Cancel", style=ButtonStyle.secondary, row=1)
+        btn_cancel.callback = self._cancel_choice
+        self.add_item(btn_cancel)
+
     # ------------------------------------------------------------------
     # Callbacks
     # ------------------------------------------------------------------
@@ -218,17 +308,16 @@ class InnerSanctumHubView(BaseView):
         node = ALL_NODES[node_id]
         if node.get("is_choice"):
             self._show_choice_ui(node_id)
-            await interaction.response.edit_message(embed=self.build_embed(), view=self)
-            return
-        await self._purchase_node(interaction, node_id, choice=None)
+        else:
+            self._show_quantity_ui(node_id)
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def _cancel_choice(self, interaction: Interaction):
         self.setup_ui()
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
-    async def _purchase_node(
-        self, interaction: Interaction, node_id: str, choice: str | None
-    ):
+    async def _purchase_node(self, interaction: Interaction, node_id: str, choice: str):
+        """Purchases a single-purchase choice node."""
         await interaction.response.defer()
 
         # Re-fetch to avoid acting on stale points if the tree changed elsewhere.
@@ -248,25 +337,56 @@ class InnerSanctumHubView(BaseView):
             )
 
         node = ALL_NODES[node_id]
-        if node.get("is_choice"):
-            value = choice
-        else:
-            value = (self.nodes_owned.get(node_id, 0) or 0) + 1
-
         await self.bot.database.inner_sanctum.purchase_node(
-            self.user_id, self.server_id, node_id, cost, value
+            self.user_id, self.server_id, node_id, cost, choice
         )
 
         self.points_available -= cost
         self.points_spent += cost
-        self.nodes_owned[node_id] = value
+        self.nodes_owned[node_id] = choice
 
-        choice_label = ""
-        if choice:
-            choice_label = " → " + next(
-                (lbl for k, lbl in node["choices"] if k == choice), choice
+        choice_label = next(
+            (lbl for k, lbl in node["choices"] if k == choice), choice
+        )
+        self.result_msg = f"✅ {choice_label}"
+
+        self.setup_ui()
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
+    async def _purchase_ranks(self, interaction: Interaction, node_id: str, count: int):
+        """Purchases `count` ranks of a ranked node in a single transaction."""
+        await interaction.response.defer()
+
+        # Re-fetch to avoid acting on stale points if the tree changed elsewhere.
+        fresh = await self.bot.database.inner_sanctum.get(self.user_id, self.server_id)
+        self.points_available = fresh["points_available"]
+        self.points_spent = fresh["points_spent"]
+        self.nodes_owned = fresh["nodes_owned"]
+
+        ok, cost, reason = can_purchase_ranks(
+            node_id, self.nodes_owned, self.player_level, self.points_available, count
+        )
+        if not ok:
+            self.result_msg = f"❌ {reason}"
+            self.setup_ui()
+            return await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
             )
-        self.result_msg = f"✅ Invested in **{node['name']}**!{choice_label}"
+
+        node = ALL_NODES[node_id]
+        new_rank = (self.nodes_owned.get(node_id, 0) or 0) + count
+        await self.bot.database.inner_sanctum.purchase_node(
+            self.user_id, self.server_id, node_id, cost, new_rank
+        )
+
+        self.points_available -= cost
+        self.points_spent += cost
+        self.nodes_owned[node_id] = new_rank
+
+        self.result_msg = (
+            f"✅ +{count} rank{_plural(count)} ({cost} pt{_plural(cost)}): "
+            f"{node['desc'](count)}"
+        )
 
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)

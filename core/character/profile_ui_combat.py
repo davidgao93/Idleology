@@ -193,7 +193,7 @@ class CombatProfileBuilder:
         )
         hp_lines = [f"{p.current_hp:,} / {total_hp:,}"]
         hp_lines += render_flat_bonus_total_lines(
-            "hp", flat_hp, hp_buckets, total_hp, cs_hp
+            "hp", flat_hp, hp_buckets, total_hp, cs_hp, total_label="Max HP (in Combat)"
         )
 
         embed.add_field(

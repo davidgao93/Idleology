@@ -16,7 +16,10 @@ from core.emojis import (
     ALCHEMY_PASSIVE_EMOJI,
     HEMATURGY_PASSIVE_EMOJI,
     INFERNAL_ENGRAM,
+    JEWEL_SKILL_EMOJI,
+    MOD_CORROSION,
     MOD_FLASHFIRE,
+    MOD_HEMORRHAGE,
     MOD_PRESSURE_SURGE,
     STAT_ATK,
     STAT_DEF,
@@ -90,16 +93,18 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         lines.append(f"{emoji} **{name}**  {charges} / {threshold}")
 
         if skill_key == "cataclysm" and player.jewel_cataclysm_primed:
-            lines.append("💥 Cataclysm  **PRIMED**")
+            lines.append(f"{JEWEL_SKILL_EMOJI['cataclysm']} Cataclysm  **PRIMED**")
         if skill_key == "onslaught" and player.jewel_onslaught_primed:
             lines.append(
-                f"🔥 Onslaught  **PRIMED** (+{player.jewel_onslaught_bonus_pct:.0f}%)"
+                f"{JEWEL_SKILL_EMOJI['onslaught']} Onslaught  **PRIMED** (+{player.jewel_onslaught_bonus_pct:.0f}%)"
             )
         if skill_key == "wardforge" and player.jewel_wardforge_bonus_dmg > 0:
-            lines.append(f"🛡️ Wardforge  +{player.jewel_wardforge_bonus_dmg:,} pending")
+            lines.append(
+                f"{JEWEL_SKILL_EMOJI['wardforge']} Wardforge  +{player.jewel_wardforge_bonus_dmg:,} pending"
+            )
         if skill_key == "acrimony" and player.jewel_acrimony_dot > 0:
             lines.append(
-                f"🐍 Acrimony DoT  {player.jewel_acrimony_dot_dmg:,}/turn"
+                f"{JEWEL_SKILL_EMOJI['acrimony']} Acrimony DoT  {player.jewel_acrimony_dot_dmg:,}/turn"
                 f"  · {player.jewel_acrimony_dot}t left"
             )
 
@@ -116,7 +121,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         )
     if player.alchemy_eclipse_strikes > 0:
         alchemy_parts.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['eclipse']}×{player.alchemy_eclipse_strikes}"
+            f"{ALCHEMY_PASSIVE_EMOJI['eclipse']}{player.alchemy_eclipse_strikes}t"
         )
     if player.alchemy_shield_hp > 0:
         dur_str = (
@@ -129,7 +134,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         )
     if player.alchemy_dmg_reduction_turns > 0:
         alchemy_parts.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['painkiller']}{player.alchemy_dmg_reduction_turns}h"
+            f"{ALCHEMY_PASSIVE_EMOJI['painkiller']}{player.alchemy_dmg_reduction_turns}t"
         )
     if player.alchemy_linger_turns > 0:
         alchemy_parts.append(
@@ -145,7 +150,7 @@ def build_status_text(player: Player, monster: Monster | None = None) -> str:
         )
     if player.alchemy_blood_tithe_hits > 0:
         alchemy_parts.append(
-            f"{ALCHEMY_PASSIVE_EMOJI['blood_tithe']}{player.alchemy_blood_tithe_hits}h"
+            f"{ALCHEMY_PASSIVE_EMOJI['blood_tithe']}{player.alchemy_blood_tithe_hits}t"
         )
     if player.alchemy_ailment_immunity_turns > 0:
         alchemy_parts.append(
@@ -249,7 +254,7 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
         v = monster.get_modifier_value("Hemorrhage")
         bleed_per_turn = int(player.total_max_hp * v * monster.bleed_stacks)
         lines.append(
-            f"🩸 Hemorrhage  {monster.bleed_stacks} stacks  ({bleed_per_turn:,}/turn)"
+            f"{MOD_HEMORRHAGE} Hemorrhage  {monster.bleed_stacks} stacks  ({bleed_per_turn:,}/turn)"
         )
 
     if monster.has_modifier("Pressure Surge") and monster.pressure_stacks > 0:
@@ -257,7 +262,9 @@ def build_afflictions_text(player: Player, monster: Monster) -> str:
 
     if monster.has_modifier("Corrosion") and monster.corrode_stacks > 0:
         pdr_loss = monster.corrode_stacks * int(monster.get_modifier_value("Corrosion"))
-        lines.append(f"🧪 Corroded  {monster.corrode_stacks} stacks  (−{pdr_loss} PDR)")
+        lines.append(
+            f"{MOD_CORROSION} Corroded  {monster.corrode_stacks} stacks  (−{pdr_loss} PDR)"
+        )
 
     if monster.has_modifier("Impending Doom") and monster.doom_stacks > 0:
         doom_threshold = int(monster.get_modifier_value("Impending Doom"))

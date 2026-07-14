@@ -275,6 +275,52 @@ WIN_STREAK = "<:win_streak:1525652742213734525>"
 # ── Settlement and loot ─────────────────────────────────────────────────────
 ZEAL = "<:zeal:1525652741731520712>"
 
+# ── Uber boss element protections & signature abilities ────────────────────
+CELESTIAL_PROTECTION = "<:celestial_protection:1526627323619704913>"
+BALANCED_PROTECTION = "<:balanced_protection:1526609685031948288>"
+INFERNAL_PROTECTION = "<:infernal_protection:1526627322386448494>"
+CORRUPTED_PROTECTION = "<:corrupted_protection:1526609682490331238>"
+VOID_PROTECTION = "<:void_protection:1526609671106986024>"
+TWIN_STRIKE = "<:twin_strike:1526609670452678910>"
+ALABASTER_SKIN = "<:alabaster_skin:1526611204494332014>"
+VOID_DRAIN = "<:void_drain:1526627320947933294>"
+ORIGIN_CORRUPTION = "<:origin_corruption:1526611201747062847>"
+INFERNAL_STRENGTH = "<:infernal_strength:1526627324525674557>"
+
+UBER_PROTECTION_EMOJI: dict[str, str] = {
+    "Radiant Protection": CELESTIAL_PROTECTION,
+    "Infernal Protection": INFERNAL_PROTECTION,
+    "Balanced Protection": BALANCED_PROTECTION,
+    "Void Protection": VOID_PROTECTION,
+    "Corrupted Protection": CORRUPTED_PROTECTION,
+}
+
+# ── Monster modifiers: Hemorrhage / Corrosion / Thorned ─────────────────────
+MOD_HEMORRHAGE = "<:hemorrhage:1526627321652576397>"
+MOD_CORROSION = "<:corrosion:1526609681911644191>"
+MOD_THORNED = "<:thorned:1526609673812181145>"
+
+# ── Paradise Jewel skill icons (see core/paradise/data.py: SKILL_JEWELS) ────
+JEWEL_SURGE = "<:jewel_surge:1526609671895646299>"
+JEWEL_WARDFORGE = "<:jewel_wardforge:1526609672860209303>"
+JEWEL_DRAUGHT = "<:jewel_draught:1526609675053830324>"
+JEWEL_ONSLAUGHT = "<:jewel_onslaught:1526609676022583468>"
+JEWEL_SIPHON = "<:jewel_siphon:1526609677096456243>"
+JEWEL_ACRIMONY = "<:jewel_acrimony:1526609677960347859>"
+JEWEL_BASTION = "<:jewel_bastion:1526609679168569354>"
+JEWEL_CATACLYSM = "<:jewel_cataclysm:1526609680653353000>"
+
+JEWEL_SKILL_EMOJI: dict[str, str] = {
+    "surge": JEWEL_SURGE,
+    "wardforge": JEWEL_WARDFORGE,
+    "draught": JEWEL_DRAUGHT,
+    "onslaught": JEWEL_ONSLAUGHT,
+    "siphon": JEWEL_SIPHON,
+    "acrimony": JEWEL_ACRIMONY,
+    "bastion": JEWEL_BASTION,
+    "cataclysm": JEWEL_CATACLYSM,
+}
+
 # ── Alchemy potion passives (Potion Lab / Distillation / combat status icons) ─
 ALCHEMY_ENRAGE = "<:alchemy_enrage:1526349277616410696>"
 ALCHEMY_ENFEEBLE = "<:alchemy_enfeeble:1526349276018643005>"
@@ -591,4 +637,26 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "skol_sig": ("Skol Signature", SIG_SKOL),
     "sigmund_sig": ("Sigmund Signature", SIG_SIGMUND),
     "kay_sig": ("Kay Signature", SIG_KAY),
+    # Appended for the 2026-07-14 emoji batch (uber protections, monster modifiers, jewels).
+    "celestial_protection": ("Celestial Protection", CELESTIAL_PROTECTION),
+    "balanced_protection": ("Balanced Protection", BALANCED_PROTECTION),
+    "infernal_protection": ("Infernal Protection", INFERNAL_PROTECTION),
+    "corrupted_protection": ("Corrupted Protection", CORRUPTED_PROTECTION),
+    "void_protection": ("Void Protection", VOID_PROTECTION),
+    "twin_strike": ("Twin Strike", TWIN_STRIKE),
+    "alabaster_skin": ("Alabaster Skin", ALABASTER_SKIN),
+    "void_drain": ("Void Drain", VOID_DRAIN),
+    "origin_corruption": ("Origin of Corruption", ORIGIN_CORRUPTION),
+    "infernal_strength": ("Infernal Strength", INFERNAL_STRENGTH),
+    "hemorrhage": ("Hemorrhage", MOD_HEMORRHAGE),
+    "corrosion": ("Corrosion", MOD_CORROSION),
+    "thorned": ("Thorned", MOD_THORNED),
+    "jewel_surge": ("Jewel: Surge", JEWEL_SURGE),
+    "jewel_wardforge": ("Jewel: Wardforge", JEWEL_WARDFORGE),
+    "jewel_draught": ("Jewel: Draught", JEWEL_DRAUGHT),
+    "jewel_onslaught": ("Jewel: Onslaught", JEWEL_ONSLAUGHT),
+    "jewel_siphon": ("Jewel: Siphon", JEWEL_SIPHON),
+    "jewel_acrimony": ("Jewel: Acrimony", JEWEL_ACRIMONY),
+    "jewel_bastion": ("Jewel: Bastion", JEWEL_BASTION),
+    "jewel_cataclysm": ("Jewel: Cataclysm", JEWEL_CATACLYSM),
 }

@@ -7,7 +7,12 @@ from core.combat.mobgen.gen_mob import generate_uber_aphrodite
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
-from core.emojis import CELESTIAL_ENGRAM, CELESTIAL_SIGIL
+from core.emojis import (
+    ALABASTER_SKIN,
+    CELESTIAL_ENGRAM,
+    CELESTIAL_PROTECTION,
+    CELESTIAL_SIGIL,
+)
 from core.images import BOSS_APHRODITE
 from core.models import Monster, Player
 
@@ -66,8 +71,8 @@ class UberAphroditeLobbyView(BaseView):
             f"**Entry Cost:** 3 {CELESTIAL_SIGIL} Celestial Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "🛡️ **Radiant Protection** — globally reduces all incoming damage by 60%.\n"
-            "🛡️ **Alabaster Skin** — HP is doubled. "
+            f"{CELESTIAL_PROTECTION} **Radiant Protection** — globally reduces all incoming damage by 60%.\n"
+            f"{ALABASTER_SKIN} **Alabaster Skin** — HP is doubled. "
         )
         embed.description = desc
 

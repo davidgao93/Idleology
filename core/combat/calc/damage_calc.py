@@ -20,7 +20,13 @@ from __future__ import annotations
 import math
 import random
 
-from core.emojis import INFERNAL_ENGRAM, STAT_WARD, VOID_ENGRAM
+from core.emojis import (
+    INFERNAL_ENGRAM,
+    STAT_WARD,
+    TWIN_STRIKE,
+    UBER_PROTECTION_EMOJI,
+    VOID_ENGRAM,
+)
 from core.models import Monster, Player
 
 _DMG_VARIANCE_CEIL = 1.35
@@ -497,7 +503,7 @@ def calc_crit_damage(
         if second_hit > 0:
             damage += second_hit
             calc_dmg_notes.append(f"+gemini_twin={second_hit}({second_pct:.0%})")
-            log.append(f"⚖️ **Twin Strike** — a second blow lands! (+{second_hit})")
+            log.append(f"{TWIN_STRIKE} **Twin Strike** — a second blow lands! (+{second_hit})")
 
     calc.append("  crit_dmg: " + " → ".join(calc_dmg_notes) + f" = {damage}")
 
@@ -763,7 +769,9 @@ def apply_monster_damage_reduction(
         if monster.has_modifier(prot_name) and damage > 0:
             reduction = int(damage * 0.60)
             damage = max(0, damage - reduction)
-            log.append(f"✨ **{prot_name}** mitigates {reduction} damage!")
+            log.append(
+                f"{UBER_PROTECTION_EMOJI[prot_name]} **{prot_name}** mitigates {reduction} damage!"
+            )
             break
 
     if damage != pre:

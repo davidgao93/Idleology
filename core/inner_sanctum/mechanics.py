@@ -23,7 +23,9 @@ from core.inner_sanctum.data import (
 __all__ = [
     "RESET_RUNE_COST",
     "can_purchase",
+    "can_purchase_ranks",
     "get_node_cost",
+    "get_ranks_cost",
     "get_tree_bonuses",
 ]
 
@@ -60,26 +62,65 @@ def get_node_cost(node_id: str, nodes_owned: dict) -> int | None:
     return node_def["costs"][rank]
 
 
+_BRANCH_UNLOCK_LEVEL = {
+    "vice": VICE_UNLOCK_LEVEL,
+    "recovery": RECOVERY_UNLOCK_LEVEL,
+    "deicide": DEICIDE_UNLOCK_LEVEL,
+}
+
+
 def can_purchase(
     node_id: str, nodes_owned: dict, player_level: int, points_available: int
 ) -> tuple[bool, int | None, str]:
-    """Returns (ok, cost, reason). reason is empty string when ok."""
+    """Returns (ok, cost, reason). reason is empty string when ok.
+    Single-purchase check — used for choice nodes (e.g. Deicide's Marked Prey)."""
     node_def = ALL_NODES.get(node_id)
     if not node_def:
         return False, None, "Unknown node."
 
-    branch = node_def["branch"]
-    unlock_level = {
-        "vice": VICE_UNLOCK_LEVEL,
-        "recovery": RECOVERY_UNLOCK_LEVEL,
-        "deicide": DEICIDE_UNLOCK_LEVEL,
-    }[branch]
+    unlock_level = _BRANCH_UNLOCK_LEVEL[node_def["branch"]]
     if player_level < unlock_level:
         return False, None, f"Requires level {unlock_level}."
 
     cost = get_node_cost(node_id, nodes_owned)
     if cost is None:
         return False, None, "Already at max rank."
+    if points_available < cost:
+        return False, cost, "Not enough Inner Sanctum points."
+    return True, cost, ""
+
+
+def get_ranks_cost(node_id: str, nodes_owned: dict, count: int) -> int | None:
+    """Total cost to buy `count` additional ranks of node_id in one go, or
+    None if node_id is a choice node, count <= 0, or it would exceed max_rank."""
+    node_def = ALL_NODES.get(node_id)
+    if not node_def or node_def.get("is_choice") or count <= 0:
+        return None
+    rank = nodes_owned.get(node_id, 0) or 0
+    if rank + count > node_def["max_rank"]:
+        return None
+    return sum(node_def["costs"][rank : rank + count])
+
+
+def can_purchase_ranks(
+    node_id: str,
+    nodes_owned: dict,
+    player_level: int,
+    points_available: int,
+    count: int,
+) -> tuple[bool, int | None, str]:
+    """Bulk version of can_purchase — buy `count` ranks of a ranked node at once."""
+    node_def = ALL_NODES.get(node_id)
+    if not node_def:
+        return False, None, "Unknown node."
+
+    unlock_level = _BRANCH_UNLOCK_LEVEL[node_def["branch"]]
+    if player_level < unlock_level:
+        return False, None, f"Requires level {unlock_level}."
+
+    cost = get_ranks_cost(node_id, nodes_owned, count)
+    if cost is None:
+        return False, None, "Not enough ranks remaining."
     if points_available < cost:
         return False, cost, "Not enough Inner Sanctum points."
     return True, cost, ""

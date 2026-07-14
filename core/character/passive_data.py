@@ -128,7 +128,7 @@ _GLOVE_PASSIVE_FUNCS: dict = {
     "ward-touched": lambda lvl: f"On hit: Gain {lvl * 25} Ward on non-crits",
     "ward-fused": lambda lvl: f"On crit: Gain {lvl * 50} Ward",
     "instability": lambda lvl: (
-        f"On hit: Damage dealt is decreased by 50% or increased by {lvl * 10}%"
+        f"On hit: Damage dealt is decreased by 50% or increased by {50 + lvl * 10}%"
     ),
     "deftness": lambda lvl: (
         f"On crit: Crit damage is increased by at least {lvl * 5}% of max"

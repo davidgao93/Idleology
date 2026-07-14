@@ -6,6 +6,17 @@ All values here are source-of-truth; nothing is hardcoded elsewhere.
 from dataclasses import dataclass
 from typing import Optional
 
+from core.emojis import (
+    JEWEL_ACRIMONY,
+    JEWEL_BASTION,
+    JEWEL_CATACLYSM,
+    JEWEL_DRAUGHT,
+    JEWEL_ONSLAUGHT,
+    JEWEL_SIPHON,
+    JEWEL_SURGE,
+    JEWEL_WARDFORGE,
+)
+
 # ---------------------------------------------------------------------------
 # Skill Jewels
 # ---------------------------------------------------------------------------
@@ -41,7 +52,7 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
         unleash_template_lv1="Lightning storm deals **5–8%** of total ATK as bonus damage.",
         unleash_template_lv20="Lightning storm deals **100–180%** of total ATK as bonus damage.",
         unleash_template_lv30="Lightning storm deals **200–380%** of total ATK as bonus damage.",
-        emoji="⚡",
+        emoji=JEWEL_SURGE,
     ),
     "cataclysm": SkillJewelDef(
         key="cataclysm",
@@ -54,7 +65,7 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
         unleash_template_lv1="Next attack is a guaranteed crit with **+50%** bonus crit multiplier.",
         unleash_template_lv20="Next attack is a guaranteed crit with **+150%** bonus crit multiplier.",
         unleash_template_lv30="Next attack is a guaranteed crit with **+250%** bonus crit multiplier.",
-        emoji="💥",
+        emoji=JEWEL_CATACLYSM,
     ),
     "acrimony": SkillJewelDef(
         key="acrimony",
@@ -67,7 +78,7 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
         unleash_template_lv1="Venom burst deals **40–80%** total ATK + 25% of that as DoT for 4 turns.",
         unleash_template_lv20="Venom burst deals **150–250%** total ATK + 25% of that as DoT for 4 turns.",
         unleash_template_lv30="Venom burst deals **300–450%** total ATK + 25% of that as DoT for 4 turns.",
-        emoji="🐍",
+        emoji=JEWEL_ACRIMONY,
     ),
     "wardforge": SkillJewelDef(
         key="wardforge",
@@ -80,7 +91,7 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
         unleash_template_lv1="Generate **80–150** bonus ward; next attack gains 30% of current ward as bonus damage.",
         unleash_template_lv20="Generate **400–700** bonus ward; next attack gains 30% of current ward as bonus damage.",
         unleash_template_lv30="Generate **800–1200** bonus ward; next attack gains 30% of current ward as bonus damage.",
-        emoji="🛡️",
+        emoji=JEWEL_WARDFORGE,
     ),
     "bastion": SkillJewelDef(
         key="bastion",
@@ -93,7 +104,7 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
         unleash_template_lv1="Reflect **200–400%** of the triggering hit back at the monster.",
         unleash_template_lv20="Reflect **600–1000%** of the triggering hit back at the monster.",
         unleash_template_lv30="Reflect **1200–1800%** of the triggering hit back at the monster.",
-        emoji="🔱",
+        emoji=JEWEL_BASTION,
     ),
     "siphon": SkillJewelDef(
         key="siphon",
@@ -106,7 +117,7 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
         unleash_template_lv1="Burst heal **30–60%** of max HP; 50% of heal becomes ward.",
         unleash_template_lv20="Burst heal **40–80%** of max HP; 50% of heal becomes ward.",
         unleash_template_lv30="Burst heal **50–100%** of max HP; 50% of heal becomes ward.",
-        emoji="💚",
+        emoji=JEWEL_SIPHON,
     ),
     "onslaught": SkillJewelDef(
         key="onslaught",
@@ -119,7 +130,7 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
         unleash_template_lv1="Next attack gains **+60–120%** ATK multiplier.",
         unleash_template_lv20="Next attack gains **+200–350%** ATK multiplier.",
         unleash_template_lv30="Next attack gains **+400–600%** ATK multiplier.",
-        emoji="🔥",
+        emoji=JEWEL_ONSLAUGHT,
     ),
     "draught": SkillJewelDef(
         key="draught",
@@ -132,7 +143,7 @@ SKILL_JEWELS: dict[str, SkillJewelDef] = {
         unleash_template_lv1="Generates **0–1** potions (overflow converts to ward).",
         unleash_template_lv20="Generates **0–2** potions (overflow converts to ward).",
         unleash_template_lv30="Generates **0–3** potions (overflow converts to ward).",
-        emoji="🧪",
+        emoji=JEWEL_DRAUGHT,
     ),
 }
 

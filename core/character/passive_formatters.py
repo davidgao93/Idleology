@@ -365,12 +365,15 @@ def render_flat_bonus_total_lines(
     *,
     suffix: str = "",
     decimals: int = 0,
+    total_label: str = "Total",
 ) -> list[str]:
-    """Renders the nested Flat / Bonus / Total breakdown used by the stats
+    """Renders the nested Total / Flat / Bonus breakdown used by the stats
     page for ATK, DEF, and Max HP — mirrors the turn-1 baseline stat
     breakdown in combat_log.py (Total = Flat + Bonus + Combat Start, where
     Combat Start is the deterministic apply_combat_start_passives() preview
     measured as a real before/after diff, never a hand-derived approximation).
+    Total is rendered first (with its Flat/Bonus/Combat Start sub-lines),
+    followed by the Flat and Bonus breakdowns themselves.
 
     flat_total: player.flat_atk / flat_def, or the Flat-bucket sum for HP.
     buckets: full group_contributions() dict for this stat (Base/Equipment/
@@ -380,12 +383,21 @@ def render_flat_bonus_total_lines(
         on a freshly-loaded Player) — equals flat_total + bonus_total exactly.
     combat_start_delta: the before/after diff once combat-start bonuses are
         seeded into bonus_atk/bonus_def/bonus_max_hp.
+    total_label: display label for the top-line total (e.g. "Max HP (in
+        Combat)" for HP, since "Total" doesn't distinguish it from current HP).
     """
     flat_buckets, bonus_buckets = split_flat_bonus_buckets(buckets, stat_key)
     bonus_total = baseline_total - flat_total
     grand_total = baseline_total + combat_start_delta
 
-    lines = [f"**Flat: {flat_total:,.{decimals}f}{suffix}**"]
+    lines = [f"**{total_label}: {grand_total:,.{decimals}f}{suffix}**"]
+    lines.append(f"↳ Flat: {flat_total:,.{decimals}f}{suffix}")
+    if bonus_total:
+        lines.append(f"↳ Bonus: {bonus_total:,.{decimals}f}{suffix}")
+    if combat_start_delta:
+        lines.append(f"↳ Combat Start: {combat_start_delta:,.{decimals}f}{suffix}")
+
+    lines.append(f"**Flat: {flat_total:,.{decimals}f}{suffix}**")
     lines += render_bucket_lines(flat_buckets, suffix=suffix, decimals=decimals)
     lines.append(f"**Bonus: {bonus_total:,.{decimals}f}{suffix}**")
     lines += render_bucket_lines(
@@ -394,12 +406,6 @@ def render_flat_bonus_total_lines(
         decimals=decimals,
         label_overrides={"Bonus": "Other bonus sources"},
     )
-    lines.append(f"**Total: {grand_total:,.{decimals}f}{suffix}**")
-    lines.append(f"↳ Flat: {flat_total:,.{decimals}f}{suffix}")
-    if bonus_total:
-        lines.append(f"↳ Bonus: {bonus_total:,.{decimals}f}{suffix}")
-    if combat_start_delta:
-        lines.append(f"↳ Combat Start: {combat_start_delta:,.{decimals}f}{suffix}")
     return lines
 
 

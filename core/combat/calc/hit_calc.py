@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import random
 
-from core.emojis import ALCHEMY_PASSIVE_EMOJI
+from core.emojis import ALCHEMY_PASSIVE_EMOJI, JEWEL_SKILL_EMOJI
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -250,7 +250,9 @@ def build_attack_multiplier(
     if onslaught_bonus > 0:
         add_pool_bonus += onslaught_bonus / 100
         add_pool_parts.append(f"onslaught+{onslaught_bonus:.0f}%")
-        log.append(f"🔥 **Onslaught** unleashes fury! (+{onslaught_bonus:.0f}% ATK)")
+        log.append(
+            f"{JEWEL_SKILL_EMOJI['onslaught']} **Onslaught** unleashes fury! (+{onslaught_bonus:.0f}% ATK)"
+        )
 
     # Alchemy: Eclipse — bonus damage for the remaining guaranteed-crit potion strikes
     if player.alchemy_eclipse_strikes > 0 and player.alchemy_eclipse_bonus > 0:

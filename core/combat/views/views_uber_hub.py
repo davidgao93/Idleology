@@ -86,7 +86,7 @@ class UberHubView(BaseLayoutView):
         btn_aphro = ui.Button(
             label="Aphrodite",
             style=ButtonStyle.blurple,
-            emoji="🌌",
+            emoji=CELESTIAL_SIGIL,
             disabled=lvl < self._BOSS_LEVELS["aphrodite"],
         )
         btn_aphro.callback = self.open_aphrodite
@@ -95,7 +95,7 @@ class UberHubView(BaseLayoutView):
         btn_lucifer = ui.Button(
             label="Lucifer",
             style=ButtonStyle.danger,
-            emoji="🔥",
+            emoji=INFERNAL_SIGIL,
             disabled=lvl < self._BOSS_LEVELS["lucifer"],
         )
         btn_lucifer.callback = self.open_lucifer
@@ -104,7 +104,7 @@ class UberHubView(BaseLayoutView):
         btn_gemini = ui.Button(
             label="Gemini",
             style=ButtonStyle.blurple,
-            emoji="♊",
+            emoji=BOUND_SIGIL,
             disabled=lvl < self._BOSS_LEVELS["gemini"],
         )
         btn_gemini.callback = self.open_gemini
@@ -113,16 +113,16 @@ class UberHubView(BaseLayoutView):
         btn_neet = ui.Button(
             label="NEET",
             style=ButtonStyle.secondary,
-            emoji="⬛",
+            emoji=VOID_SIGIL,
             disabled=lvl < self._BOSS_LEVELS["neet"],
         )
         btn_neet.callback = self.open_neet
-        row0.add_item(btn_neet)
+        row1.add_item(btn_neet)
 
         btn_evelynn = ui.Button(
             label="Evelynn",
             style=ButtonStyle.danger,
-            emoji="☠️",
+            emoji=CORRUPTION_SIGIL,
             disabled=lvl < self._BOSS_LEVELS["evelynn"],
         )
         btn_evelynn.callback = self.open_evelynn

@@ -12,10 +12,16 @@ from core.emojis import (
     CELESTIAL_ENGRAM,
     GOLD_COIN,
     INFERNAL_ENGRAM,
+    MOD_CORROSION,
     MOD_FLASHFIRE,
+    MOD_HEMORRHAGE,
     MOD_PRESSURE_SURGE,
+    MOD_THORNED,
+    ORIGIN_CORRUPTION,
     SIG_EVE,
     STAT_WARD,
+    TWIN_STRIKE,
+    VOID_DRAIN,
     VOID_ENGRAM,
 )
 from core.models import Monster, Player
@@ -133,7 +139,7 @@ def process_monster_turn(
         if bleed_dmg > 0:
             player.current_hp = max(0, player.current_hp - bleed_dmg)
             log.append(
-                f"🩸 **Hemorrhage** — {monster.bleed_stacks} bleed stacks deal **{bleed_dmg}** true damage!"
+                f"{MOD_HEMORRHAGE} **Hemorrhage** — {monster.bleed_stacks} bleed stacks deal **{bleed_dmg}** true damage!"
             )
     capture_compact_events(log, clog, start)
 
@@ -193,7 +199,7 @@ def process_monster_turn(
             monster.corrode_stacks += 1
         v = int(monster.get_modifier_value("Corrosion"))
         log.append(
-            f"🧪 **Corrosion** — your armour degrades! Corrode stack {monster.corrode_stacks}/5 (−{monster.corrode_stacks * v} PDR)"
+            f"{MOD_CORROSION} **Corrosion** — your armour degrades! Corrode stack {monster.corrode_stacks}/5 (−{monster.corrode_stacks * v} PDR)"
         )
         # skip in compact — PDR change visible in Afflictions field
 
@@ -243,7 +249,7 @@ def process_monster_turn(
         player.bonus_atk -= drain_atk
         player.bonus_def -= drain_def
         log.append(
-            f"🌑 **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
+            f"{VOID_DRAIN} **Void Drain** siphons **{drain_atk}** ATK and **{drain_def}** DEF!"
         )
     capture_compact_events(log, clog, start)
 
@@ -361,7 +367,7 @@ def process_monster_turn(
             hp_healed = ward_drain * 10
             monster.hp = min(monster.max_hp, monster.hp + hp_healed)
             log.append(
-                f"💀 **Origin of Corruption awakens!** A wave of primordial rot drains **{ward_drain}** ward, "
+                f"{ORIGIN_CORRUPTION} **Origin of Corruption awakens!** A wave of primordial rot drains **{ward_drain}** ward, "
                 f"healing Evelynn for **{hp_healed}** HP!"
             )
             # skip in compact — ward/HP changes visible in HP bars
@@ -1062,7 +1068,7 @@ def process_monster_turn(
                 thorned_dmg = max(1, int(base_thorned * (1 - t_pdr / 100)) - t_fdr)
                 player.current_hp = max(0, player.current_hp - thorned_dmg)
                 _thorned_msg = (
-                    f"🩸 **Thorned** — you take **{thorned_dmg}** damage for striking!"
+                    f"{MOD_THORNED} **Thorned** — you take **{thorned_dmg}** damage for striking!"
                 )
                 log.append(_thorned_msg)
                 clog.append(_thorned_msg)
@@ -1091,7 +1097,7 @@ def process_monster_turn(
                 )
                 twin_dmg = max(1, int(twin_raw * balanced_pct))
                 player.current_hp = max(0, player.current_hp - twin_dmg)
-                _bs_msg = f"⚡ **Balanced Strikes!** The bound sovereigns strike as one for **{twin_dmg}** damage! *(Bypasses ward)*"
+                _bs_msg = f"{TWIN_STRIKE} **Balanced Strikes!** The bound sovereigns strike as one for **{twin_dmg}** damage! *(Bypasses ward)*"
                 log.append(_bs_msg)
                 clog.append(_bs_msg)
 

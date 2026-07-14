@@ -7,7 +7,7 @@ from core.combat.mobgen.gen_mob import generate_uber_neet
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
-from core.emojis import VOID_ENGRAM, VOID_SIGIL
+from core.emojis import VOID_DRAIN, VOID_ENGRAM, VOID_PROTECTION, VOID_SIGIL
 from core.images import BOSS_NEET
 from core.models import Monster, Player
 
@@ -68,8 +68,8 @@ class UberNEETLobbyView(BaseView):
             f"**Entry Cost:** 3 {VOID_SIGIL} Void Sigils\n"
             f"**Owned:** {self.shards}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "⬛ **Void Protection** — globally reduces all incoming damage by 60%.\n"
-            "⬛ **Void Drain** siphons 0.5% of your ATK and DEF each round."
+            f"{VOID_PROTECTION} **Void Protection** — globally reduces all incoming damage by 60%.\n"
+            f"{VOID_DRAIN} **Void Drain** siphons 0.5% of your ATK and DEF each round."
         )
         embed.description = desc
 

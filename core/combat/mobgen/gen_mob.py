@@ -873,7 +873,7 @@ def generate_uber_neet(player, monster):
 
     monster = calculate_monster_stats(monster)
 
-    base_hp = random.randint(0, 9) + int(10 * (monster.level**1.4))
+    base_hp = random.randint(0, 9) + int(10 * (monster.level**1.7))
     monster.base_max_hp = int(base_hp * 2)
     monster.hp = monster.base_max_hp
     monster.max_hp = monster.base_max_hp

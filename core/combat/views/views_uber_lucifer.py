@@ -7,7 +7,12 @@ from core.combat.mobgen.gen_mob import generate_uber_lucifer
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
-from core.emojis import INFERNAL_ENGRAM, INFERNAL_SIGIL
+from core.emojis import (
+    INFERNAL_ENGRAM,
+    INFERNAL_PROTECTION,
+    INFERNAL_SIGIL,
+    INFERNAL_STRENGTH,
+)
 from core.images import BOSS_LUCIFER
 from core.models import Monster, Player
 
@@ -70,8 +75,8 @@ class UberLuciferLobbyView(BaseView):
             f"**Entry Cost:** 3 {INFERNAL_SIGIL} Infernal Sigils\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            f"{INFERNAL_ENGRAM} **Infernal Protection** — globally reduces all incoming damage by 60%.\n"
-            f"{INFERNAL_ENGRAM} **Infernal Strength** — ATK is doubled. "
+            f"{INFERNAL_PROTECTION} **Infernal Protection** — globally reduces all incoming damage by 60%.\n"
+            f"{INFERNAL_STRENGTH} **Infernal Strength** — ATK is doubled. "
         )
         embed.description = desc
 

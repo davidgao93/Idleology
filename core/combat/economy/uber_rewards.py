@@ -24,6 +24,7 @@ from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
 from core.combat.turns.boundary import fire_on_victory_effects
 from core.combat.views.views_lucifer import InfernalContractView
+from core.emojis import ORIGIN_CORRUPTION
 from core.images import (
     VICTORY_CELESTIAL,
     VICTORY_EVELYNN,
@@ -110,7 +111,7 @@ UBER_CONFIGS: dict[str, dict] = {
         "stone_msg": "☠️ **The corruption yields a Corrupted Core.**",
         "victory_image": VICTORY_EVELYNN,
         "image_fn": "set_image",
-        "embed_title": "☠️ Origin of Corruption Shattered!",
+        "embed_title": f"{ORIGIN_CORRUPTION} Origin of Corruption Shattered!",
     },
 }
 

@@ -7,7 +7,12 @@ from core.combat.mobgen.gen_mob import generate_uber_evelynn
 from core.combat.turns import engine
 from core.combat.views.views import CombatView
 from core.combat.views.views_uber_hub import UberHubView, UberReturnView
-from core.emojis import CORRUPTION_ENGRAM, CORRUPTION_SIGIL
+from core.emojis import (
+    CORRUPTED_PROTECTION,
+    CORRUPTION_ENGRAM,
+    CORRUPTION_SIGIL,
+    ORIGIN_CORRUPTION,
+)
 from core.images import CORRUPTION_GATE
 from core.models import Monster
 
@@ -69,8 +74,8 @@ class UberEvelynnLobbyView(BaseView):
             f"**Entry Cost:** 3 {CORRUPTION_SIGIL} Sigils of Corruption\n"
             f"**Owned:** {self.sigils}\n\n"
             f"**Assessment:** {self.readiness_text}\n\n"
-            "☠️ **Corrupted Protection** — globally reduces all incoming damage by 60%.\n"
-            "☠️ **Origin of Corruption** — every 3 turns, drains 10% of your ward and heals Evelynn for 10× that amount.\n"
+            f"{CORRUPTED_PROTECTION} **Corrupted Protection** — globally reduces all incoming damage by 60%.\n"
+            f"{ORIGIN_CORRUPTION} **Origin of Corruption** — every 3 turns, drains 10% of your ward and heals Evelynn for 10× that amount.\n"
             "☠️ **All Corrupted Modifiers** — carries every common and rare modifier at max tier."
         )
         embed.description = desc
