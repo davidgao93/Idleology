@@ -81,6 +81,8 @@ def construction_dt_cost(building_type: str, event_effects: dict | None = None) 
     base = PROJECT_CONSTRUCTION_DT.get(building_type, 12)
     if event_effects and event_effects.get("construction_dt_halved"):
         base = max(1, base // 2)
+    if event_effects and event_effects.get("construction_dt_surcharge"):
+        base = int(base * 1.5)
     return base
 
 
@@ -97,6 +99,8 @@ def upgrade_dt_cost(
         base = max(1, _UPGRADE_DT_TABLE.get(target_tier, 50))
     if event_effects and event_effects.get("construction_dt_halved"):
         base = max(1, base // 2)
+    if event_effects and event_effects.get("construction_dt_surcharge"):
+        base = int(base * 1.5)
     return base
 
 
@@ -110,6 +114,8 @@ def meta_construction_dt_cost(
     base = max(1, gold // 1000)
     if event_effects and event_effects.get("construction_dt_halved"):
         base = max(1, base // 2)
+    if event_effects and event_effects.get("construction_dt_surcharge"):
+        base = int(base * 1.5)
     return base
 
 
@@ -278,7 +284,8 @@ async def process_next_turn(
         await bot.database.settlement.remove_event(ev["id"])
         ev_name = ev_def.get("name", ev["event_key"])
         if fx_result.get("zeal_granted"):
-            ev_name = f"{ev_name} (+{fx_result['zeal_granted']} Zeal)"
+            _zg = fx_result["zeal_granted"]
+            ev_name = f"{ev_name} ({'+' if _zg >= 0 else ''}{_zg} Zeal)"
         if ev_def.get("effects", {}).get("spawn_combat"):
             entry: dict = {"name": ev_name}
             if fx_result.get("plague_losses"):
@@ -589,9 +596,12 @@ async def _apply_event_effects(
     result: dict = {}
 
     if "grant_zeal" in effects:
-        val = _resolve_band(effects["grant_zeal"], ev_data)
-        await bot.database.settlement.add_zeal(user_id, server_id, int(val))
-        result["zeal_granted"] = int(val)
+        val = int(_resolve_band(effects["grant_zeal"], ev_data))
+        if val < 0:
+            zeal_data = await bot.database.settlement.get_zeal_data(user_id, server_id)
+            val = -min(-val, zeal_data.get("settlement_zeal", 0))
+        await bot.database.settlement.add_zeal(user_id, server_id, val)
+        result["zeal_granted"] = val
 
     if "grant_blueprints" in effects:
         val = _resolve_band(effects["grant_blueprints"], ev_data)
@@ -670,6 +680,10 @@ async def _check_schedule_events(
 
         if not should_trigger:
             continue
+
+        chance = ev_def.get("trigger_chance", 1.0)
+        if chance < 1.0 and random.random() >= chance:
+            continue  # Missed the roll — re-checked at the next recurring_interval.
 
         # Check building requirements (at least one must be present).
         requires = ev_def.get("requires_buildings", [])

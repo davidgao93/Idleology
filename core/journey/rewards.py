@@ -366,7 +366,7 @@ MILESTONES = [
         "reward_desc": "500,000 Gold",
         "systems": [
             "Apex Hunts — fight terrifying Apex monsters for exclusive rewards",
-            "Soul System — collect Soul Cores from Apex hunts to power permanent upgrades",
+            "Soul System — imbue your soul lattice with passives from gear",
         ],
         "commands": ["/apex", "/soul"],
         "image": APEX_HUB,
@@ -379,7 +379,7 @@ MILESTONES = [
         "systems": [
             "Ascent Mode — climb numbered floors for permanent stat bonuses",
             "Prestige Hall — available since Level 1, but its titles, emblems, avatars, renames, and monument quotes cost hundreds of millions of gold, so most players can only afford to start spending here",
-            "Rite of Convergence — the ultimate endgame raid; collect all 5 Rite keys from Uber and Corrupted encounters to enter",
+            "Rite of Convergence — the ultimate endgame raid; collect all 5 Rite keys from combat to enter",
         ],
         "commands": ["/ascent", "/prestige", "/rite", "/artefact"],
         "image": CORRUPTION_GATE,

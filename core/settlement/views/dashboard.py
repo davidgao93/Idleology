@@ -11,6 +11,7 @@ from core.emojis import (
     GOLD_COIN,
     LIFE_ROOT,
     MAGMA_CORE,
+    MONSTER_EGG,
     SPIRIT_SHARD,
     ZEAL,
 )
@@ -738,17 +739,10 @@ class SettlementDashboardView(SettlementBaseView):
 
         # --- Row 1: primary actions ---
         _zeal = self._cached_zeal_data.get("settlement_zeal", 0)
-        next_turn_btn = ui.Button(
-            label="Next",
-            style=ButtonStyle.success,
-            emoji="⏭️",
-            row=1,
-            disabled=_zeal < ZEAL_TO_DT,
-        )
-        next_turn_btn.callback = self.on_next_turn
-        self.add_item(next_turn_btn)
 
         # Crisis confront button — appears when a spawn_combat event is upcoming.
+        # Computed before the turn buttons so the 3T fast-forward button can be
+        # omitted (row 1 caps at 5 components) and disabled while it's pending.
         confront_event = next(
             (
                 ev
@@ -760,6 +754,31 @@ class SettlementDashboardView(SettlementBaseView):
             ),
             None,
         )
+
+        next_turn_btn = ui.Button(
+            label="Next",
+            style=ButtonStyle.success,
+            emoji="⏭️",
+            row=1,
+            disabled=_zeal < ZEAL_TO_DT,
+        )
+        next_turn_btn.callback = self.on_next_turn
+        self.add_item(next_turn_btn)
+
+        # 3-turn fast-forward — hidden while a crisis event is pending confrontation
+        # (both to force single-turn play while it's ignored, and to keep row 1 at
+        # its 5-component cap alongside the Confront button below).
+        if not confront_event:
+            three_turn_btn = ui.Button(
+                label="3T",
+                style=ButtonStyle.success,
+                emoji="⏩",
+                row=1,
+                disabled=_zeal < 3 * ZEAL_TO_DT,
+            )
+            three_turn_btn.callback = self.on_next_turn_x3
+            self.add_item(three_turn_btn)
+
         if confront_event:
             ev_def = SETTLEMENT_EVENTS.get(confront_event["event_key"], {})
             enemy_name = (
@@ -875,7 +894,7 @@ class SettlementDashboardView(SettlementBaseView):
         hatchery_btn = ui.Button(
             label="Hatchery",
             style=ButtonStyle.secondary,
-            emoji="🥚",
+            emoji=MONSTER_EGG,
             row=2,
             disabled=not has_hatchery,
         )
@@ -1310,6 +1329,135 @@ class SettlementDashboardView(SettlementBaseView):
 
             # Extreme-value deals can roll far more reward types than fit in an
             # embed field — send the untruncated breakdown ephemerally instead.
+            reward_parts = (summary.get("deal_rewards") or {}).get("summary_lines", [])
+            full_reward_text = " | ".join(reward_parts)
+            if len(full_reward_text) > 300:
+                await self._send_chunked_ephemeral(
+                    interaction,
+                    "🎁 **Full Black Market Deal Rewards:**",
+                    reward_parts,
+                )
+        finally:
+            self._processing = False
+
+    async def on_next_turn_x3(self, interaction: Interaction):
+        """Fast-forwards 3 Development Turns at once for 3×ZEAL_TO_DT Zeal."""
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        try:
+            uid, sid = self.user_id, self.server_id
+            cost = ZEAL_TO_DT * 3
+
+            zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
+            zeal = zeal_data.get("settlement_zeal", 0)
+
+            if zeal < cost:
+                await interaction.followup.send(
+                    f"You need **{cost} Zeal** to advance 3 turns. "
+                    f"You have **{zeal}** Zeal. Gather more from combat, quests, or passive generation!",
+                    ephemeral=True,
+                )
+                return
+
+            await self.bot.database.settlement.spend_zeal(uid, sid, cost)
+
+            try:
+                from core.quests.mechanics import (
+                    send_quest_complete_notice,
+                    tick_quest_progress,
+                )
+
+                _q_msgs = await tick_quest_progress(
+                    self.bot, uid, sid, "zeal_spent", cost
+                )
+                await send_quest_complete_notice(interaction, _q_msgs)
+            except Exception:
+                pass
+
+            # Process 3 turns back-to-back, merging their summaries for display.
+            summary: dict = {
+                "turns_gained": 0,
+                "zeal_spent": cost,
+                "projects_completed": [],
+                "deal_completed": None,
+                "deal_rewards": None,
+                "events_fired": [],
+                "crisis_events_fired": [],
+                "events_expired": [],
+                "workers_from_nursery": 0,
+                "nursery_ideology": "",
+                "idlem_from_foundry": 0,
+                "dt_resources": {},
+            }
+            for _ in range(3):
+                _turn = await process_next_turn(
+                    self.bot, uid, sid, self.settlement.town_hall_tier
+                )
+                summary["turns_gained"] += _turn.get("turns_gained", 1)
+                summary["projects_completed"].extend(
+                    _turn.get("projects_completed", [])
+                )
+                if _turn.get("deal_completed"):
+                    summary["deal_completed"] = _turn["deal_completed"]
+                    summary["deal_rewards"] = _turn.get("deal_rewards")
+                summary["events_fired"].extend(_turn.get("events_fired", []))
+                summary["crisis_events_fired"].extend(
+                    _turn.get("crisis_events_fired", [])
+                )
+                summary["events_expired"].extend(_turn.get("events_expired", []))
+                summary["workers_from_nursery"] += _turn.get("workers_from_nursery", 0)
+                if _turn.get("nursery_ideology"):
+                    summary["nursery_ideology"] = _turn["nursery_ideology"]
+                summary["idlem_from_foundry"] += _turn.get("idlem_from_foundry", 0)
+                for _k, _v in (_turn.get("dt_resources") or {}).items():
+                    summary["dt_resources"][_k] = summary["dt_resources"].get(_k, 0) + _v
+
+            # Reload fresh data
+            self.settlement = await self.bot.database.settlement.get_settlement(
+                uid, sid
+            )
+            _user_row = await self.bot.database.users.get(uid, sid)
+            if _user_row and _user_row["ideology"]:
+                self.follower_count = await self.bot.database.social.get_follower_count(
+                    _user_row["ideology"]
+                )
+            _plot_rows = await self.bot.database.plots.get_plots(uid, sid)
+            self.plots = [
+                Plot(
+                    plot_index=r["plot_index"],
+                    is_developed=bool(r["is_developed"]),
+                    bonus_type=r["bonus_type"],
+                )
+                for r in _plot_rows
+            ]
+            turns_data = await self.bot.database.settlement.get_turns_data(uid, sid)
+            zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
+            active_events = await self.bot.database.settlement.get_active_events(
+                uid, sid
+            )
+            projects = await self.bot.database.settlement.get_projects(uid, sid)
+            pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
+
+            self._cached_pending_deal = pending_deal
+            self._rebuild_ui()
+            embed = self.build_embed(
+                turn_summary=summary,
+                turns_data=turns_data,
+                zeal_data=zeal_data,
+                active_events=active_events,
+                projects=projects,
+                pending_deal=pending_deal,
+            )
+            try:
+                await interaction.edit_original_response(embed=embed, view=self)
+            except Exception:
+                if self.message:
+                    await self.message.edit(embed=embed, view=self)
+
             reward_parts = (summary.get("deal_rewards") or {}).get("summary_lines", [])
             full_reward_text = " | ".join(reward_parts)
             if len(full_reward_text) > 300:

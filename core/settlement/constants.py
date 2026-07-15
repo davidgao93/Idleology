@@ -523,42 +523,52 @@ BM_TREE_NODES: dict[str, dict] = {
 # ---------------------------------------------------------------------------
 # Each event: event_key → {name, type, description, trigger_at, recurring_interval,
 #   effects, modifier_bands?, duration_bands?, requires_buildings?,
-#   targets_any_building?, targets_building_types?, advance_warning_turns?}
+#   targets_any_building?, targets_building_types?, advance_warning_turns?,
+#   trigger_chance?}
 #
 # Effects whose value is "band" are resolved at scheduling time by picking a
 # random entry from modifier_bands and storing the result in the event's data
 # JSON column.  "neg_band" means the band value is negated (penalty).
 # Duration is picked from duration_bands at scheduling time and stored as
-# data["duration"].
+# data["duration"]. Ongoing events always roll a duration of at least 7 turns
+# (7-12 range) so players have room to react using the 1T/3T turn buttons.
 # Crisis events store data["target_building"] and data["target_building_label"]
 # when targets_any_building or targets_building_types is set.
+#
+# trigger_chance (0-1, default 1.0): once an event becomes due on the turn
+# schedule, this is the odds it actually fires instead of being skipped for
+# that cycle (it will be re-checked at the next recurring_interval). Crisis
+# events use a lower chance to reduce how often they interrupt play; negative
+# events use a slightly higher chance than positive ones.
 SETTLEMENT_EVENTS: dict[str, dict] = {
     # ── POSITIVE EVENTS ──────────────────────────────────────────────────────
     "merchant_caravan": {
         "name": "🐪 Merchant Caravan",
         "type": "ongoing",
         "description": "A merchant caravan is in town — Black Market offer values are {band_pct}% higher. Submit resource bundles now to get extra returns.",
-        "duration_bands": [4, 5, 6],
+        "duration_bands": [7, 8, 9],
         "effects": {"bm_value_bonus": "band"},
         "modifier_bands": [0.15, 0.20, 0.25, 0.30, 0.35],
         "requires_buildings": ["black_market"],
         "trigger_at": [15, 40, 80, 130, 190],
         "recurring_interval": 50,
+        "trigger_chance": 0.85,
     },
     "inspiration_surge": {
         "name": "💡 Inspiration Surge",
         "type": "ongoing",
         "description": "Construction DT costs are halved. Queue up new builds or upgrades before this expires.",
-        "duration_bands": [2, 3, 4],
+        "duration_bands": [7, 8, 9],
         "effects": {"construction_dt_halved": True},
         "trigger_at": [20, 60, 110, 170],
         "recurring_interval": 50,
+        "trigger_chance": 0.85,
     },
     "resource_windfall": {
         "name": "🌾 Resource Windfall",
         "type": "ongoing",
         "description": "Favorable conditions boost all generator output by {band_pct}%. Your workers benefit automatically — no action needed.",
-        "duration_bands": [3, 4, 5],
+        "duration_bands": [8, 9, 10],
         "effects": {"generator_bonus": "band"},
         "modifier_bands": [0.20, 0.30, 0.40, 0.50, 0.60],
         "requires_buildings": [
@@ -570,6 +580,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         ],
         "trigger_at": [10, 35, 70, 120, 180],
         "recurring_interval": 45,
+        "trigger_chance": 0.85,
     },
     "zeal_rally": {
         "name": "🔥 Ideological Rally",
@@ -579,17 +590,19 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "modifier_bands": [50, 75, 100, 125],
         "trigger_at": [5, 25, 55, 95, 145, 205],
         "recurring_interval": 60,
+        "trigger_chance": 0.85,
     },
     "worker_boom": {
         "name": "👶 Baby Boom",
         "type": "ongoing",
         "description": "Population surges — Nursery produces {band}× output. Advance turns while it lasts to convert this into extra workers.",
-        "duration_bands": [4, 5, 6],
+        "duration_bands": [9, 10, 11],
         "effects": {"nursery_mult": "band"},
         "modifier_bands": [1.5, 2.0, 2.5],
         "requires_buildings": ["nursery"],
         "trigger_at": [30, 90, 160],
         "recurring_interval": 80,
+        "trigger_chance": 0.85,
     },
     "wandering_scholar": {
         "name": "📚 Wandering Scholar",
@@ -598,46 +611,50 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "effects": {"grant_blueprints": 1},
         "trigger_at": [18, 65, 130],
         "recurring_interval": 70,
+        "trigger_chance": 0.85,
     },
     "idlem_surge": {
         "name": "⚗️ Foundry Surge",
         "type": "ongoing",
         "description": "Ley line energy spikes — the Idlem Foundry runs at {band}× output. Spend Development Turns to stockpile Idlem for the Black Market tree.",
-        "duration_bands": [3, 4],
+        "duration_bands": [8, 9],
         "effects": {"idlem_mult": "band"},
         "modifier_bands": [1.5, 2.0],
         "requires_buildings": ["idlem_foundry"],
         "trigger_at": [45, 100, 175],
         "recurring_interval": 70,
+        "trigger_chance": 0.85,
     },
     "artisan_week": {
         "name": "⚙️ Artisan's Week",
         "type": "ongoing",
         "description": "Skilled craftspeople visit — converter buildings are {band_pct}% more efficient. Keep them stocked with raw materials.",
-        "duration_bands": [3, 4, 5],
+        "duration_bands": [9, 10, 11],
         "effects": {"converter_bonus": "band"},
         "modifier_bands": [0.20, 0.30, 0.40],
         "requires_buildings": ["foundry", "sawmill", "reliquary"],
         "trigger_at": [28, 72, 135, 195],
         "recurring_interval": 65,
+        "trigger_chance": 0.85,
     },
     "trade_boom": {
         "name": f"{GOLD_COIN} Trade Boom",
         "type": "ongoing",
         "description": "Demand is high — Market gold output is {band_pct}% higher. Staff your Market fully to maximize returns.",
-        "duration_bands": [3, 4, 5],
+        "duration_bands": [8, 9, 10],
         "effects": {"market_gold_bonus": "band"},
         "modifier_bands": [0.20, 0.30, 0.40, 0.50],
         "requires_buildings": ["market"],
         "trigger_at": [22, 58, 105, 162],
         "recurring_interval": 55,
+        "trigger_chance": 0.85,
     },
     # ── NEGATIVE EVENTS ──────────────────────────────────────────────────────
     "worker_fatigue": {
         "name": "😴 Worker Fatigue",
         "type": "ongoing",
         "description": "Workers are exhausted — generator output is reduced by {band_pct}%. This will resolve on its own; no action required.",
-        "duration_bands": [3, 4, 5],
+        "duration_bands": [7, 8, 9],
         "effects": {"generator_bonus": "neg_band"},
         "modifier_bands": [0.10, 0.15, 0.20, 0.25],
         "requires_buildings": [
@@ -649,28 +666,98 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         ],
         "trigger_at": [12, 38, 78, 128, 188],
         "recurring_interval": 55,
+        "trigger_chance": 0.95,
     },
     "supply_disruption": {
         "name": "📦 Supply Disruption",
         "type": "ongoing",
         "description": "Raw material shipments delayed — converter efficiency is reduced by {band_pct}%. No action required; this will resolve on its own.",
-        "duration_bands": [3, 4],
+        "duration_bands": [7, 8],
         "effects": {"converter_bonus": "neg_band"},
         "modifier_bands": [0.10, 0.15, 0.20, 0.25],
         "requires_buildings": ["foundry", "sawmill", "reliquary"],
         "trigger_at": [32, 82, 148],
         "recurring_interval": 65,
+        "trigger_chance": 0.95,
     },
     "market_slump": {
         "name": "📉 Market Slump",
         "type": "ongoing",
         "description": "Trade is slow — Market gold output is down {band_pct}%. Wait for it to pass.",
-        "duration_bands": [3, 4],
+        "duration_bands": [8, 9],
         "effects": {"market_gold_bonus": "neg_band"},
         "modifier_bands": [0.15, 0.25, 0.35],
         "requires_buildings": ["market"],
         "trigger_at": [42, 95, 165],
         "recurring_interval": 70,
+        "trigger_chance": 0.95,
+    },
+    "black_market_slump": {
+        "name": "📉 Black Market Slump",
+        "type": "ongoing",
+        "description": "Traders are wary — Black Market offer values are {band_pct}% lower until this passes.",
+        "duration_bands": [7, 8, 9],
+        "effects": {"bm_value_bonus": "neg_band"},
+        "modifier_bands": [0.15, 0.20, 0.25, 0.30],
+        "requires_buildings": ["black_market"],
+        "trigger_at": [16, 48, 95, 155, 215],
+        "recurring_interval": 55,
+        "trigger_chance": 0.95,
+    },
+    "construction_delay": {
+        "name": "🚧 Construction Delay",
+        "type": "ongoing",
+        "description": "Permits and red tape pile up — construction & upgrade DT costs are increased by 50% until this passes.",
+        "duration_bands": [7, 8, 9],
+        "effects": {"construction_dt_surcharge": True},
+        "trigger_at": [24, 68, 125, 185],
+        "recurring_interval": 55,
+        "trigger_chance": 0.95,
+    },
+    "gold_cost_hike": {
+        "name": "💸 Gold Cost Hike",
+        "type": "ongoing",
+        "description": "Materials are scarce — construction gold costs are up {band_pct}% until this passes.",
+        "duration_bands": [7, 8, 9],
+        "effects": {"construction_gold_surcharge": "band"},
+        "modifier_bands": [0.20, 0.30, 0.40],
+        "trigger_at": [26, 74, 140, 205],
+        "recurring_interval": 60,
+        "trigger_chance": 0.95,
+    },
+    "nursery_slowdown": {
+        "name": "😷 Nursery Slowdown",
+        "type": "ongoing",
+        "description": "An illness passes through the nursery — worker production is reduced to {band}× output.",
+        "duration_bands": [7, 8, 9],
+        "effects": {"nursery_mult": "band"},
+        "modifier_bands": [0.4, 0.5, 0.6],
+        "requires_buildings": ["nursery"],
+        "trigger_at": [38, 98, 168],
+        "recurring_interval": 85,
+        "trigger_chance": 0.95,
+    },
+    "idlem_slump": {
+        "name": "⚗️ Foundry Slump",
+        "type": "ongoing",
+        "description": "Ley line energy dips — the Idlem Foundry runs at {band}× output until this passes.",
+        "duration_bands": [7, 8],
+        "effects": {"idlem_mult": "band"},
+        "modifier_bands": [0.5, 0.6],
+        "requires_buildings": ["idlem_foundry"],
+        "trigger_at": [52, 108, 182],
+        "recurring_interval": 75,
+        "trigger_chance": 0.95,
+    },
+    "zeal_drain": {
+        "name": "😔 Waning Fervor",
+        "type": "instant",
+        "description": "Doubt spreads among your followers — {band} Zeal lost immediately.",
+        "effects": {"grant_zeal": "neg_band"},
+        "modifier_bands": [20, 30, 40],
+        "trigger_at": [8, 28, 58, 98, 148, 208],
+        "recurring_interval": 65,
+        "trigger_chance": 0.95,
     },
     # ── CRISIS EVENTS ────────────────────────────────────────────────────────
     "bandit_raid": {
@@ -685,6 +772,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "trigger_at": [25, 75, 140, 220],
         "recurring_interval": 80,
         "advance_warning_turns": 3,
+        "trigger_chance": 0.65,
     },
     "plague_outbreak": {
         "name": "🦠 Plague Outbreak",
@@ -698,6 +786,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "trigger_at": [50, 120, 200],
         "recurring_interval": 90,
         "advance_warning_turns": 4,
+        "trigger_chance": 0.65,
     },
     "void_incursion": {
         "name": "🌑 Void Incursion",
@@ -717,6 +806,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "trigger_at": [100, 200],
         "recurring_interval": 120,
         "advance_warning_turns": 5,
+        "trigger_chance": 0.65,
     },
     "fire_hazard": {
         "name": "🔥 Fire Hazard",
@@ -736,6 +826,7 @@ SETTLEMENT_EVENTS: dict[str, dict] = {
         "trigger_at": [35, 85, 150, 225],
         "recurring_interval": 85,
         "advance_warning_turns": 2,
+        "trigger_chance": 0.65,
     },
 }
 

@@ -46,13 +46,16 @@ class BuildConstructionView(SettlementBaseView):
     # -------------------------------------------------------------------------
 
     def _apply_discounts(self, cost: dict) -> dict:
-        """Return a copy of *cost* with plot-bonus discounts applied."""
+        """Return a copy of *cost* with plot-bonus discounts and event surcharges applied."""
         c = dict(cost)
         if self.plot_bonus_type == "gold_vein":
             c["gold"] = int(c.get("gold", 0) * 0.65)
         if self.plot_bonus_type == "ancient_foundation":
             c["timber"] = int(c.get("timber", 0) * 0.70)
             c["stone"] = int(c.get("stone", 0) * 0.70)
+        gold_surcharge = self.event_effects.get("construction_gold_surcharge", 0)
+        if gold_surcharge:
+            c["gold"] = int(c.get("gold", 0) * (1 + gold_surcharge))
         return c
 
     # -------------------------------------------------------------------------
@@ -78,6 +81,11 @@ class BuildConstructionView(SettlementBaseView):
             )
         if self.event_effects.get("construction_dt_halved"):
             discount_note += "\n💡 **Inspiration Surge:** Construction & upgrade DT costs are halved!"
+        if self.event_effects.get("construction_dt_surcharge"):
+            discount_note += "\n🚧 **Construction Delay:** Construction & upgrade DT costs are up 50%!"
+        gold_surcharge = self.event_effects.get("construction_gold_surcharge", 0)
+        if gold_surcharge:
+            discount_note += f"\n💸 **Gold Cost Hike:** Construction gold cost is up {int(gold_surcharge * 100)}%!"
 
         embed = discord.Embed(
             title="🏗️ Construction Site",

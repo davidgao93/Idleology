@@ -645,6 +645,8 @@ class PlotDetailView(SettlementBaseView):
                     )
                     if self.event_effects.get("construction_dt_halved"):
                         cost_str += " _(Inspiration Surge — halved!)_"
+                    if self.event_effects.get("construction_dt_surcharge"):
+                        cost_str += " _(Construction Delay — up 50%!)_"
                     if "specials" in cost:
                         for s in cost["specials"]:
                             s_emoji = RESOURCE_EMOJI.get(s["key"], "✨")

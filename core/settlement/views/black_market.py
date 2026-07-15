@@ -773,7 +773,9 @@ class OfferBuilderView(SettlementBaseView):
                 offer_lines.append(f"• {label}: **{qty:,}** (≈ {val:,} value)")
             value_label = f"🧾 Current Offer (Value ≈ {estimated:,})"
             if self._event_value_bonus:
-                value_label += f" [🐪 +{int(self._event_value_bonus * 100)}%]"
+                _pct = int(self._event_value_bonus * 100)
+                _icon = "🐪" if _pct >= 0 else "📉"
+                value_label += f" [{_icon} {'+' if _pct >= 0 else ''}{_pct}%]"
             embed.add_field(
                 name=value_label,
                 value="\n".join(offer_lines),
