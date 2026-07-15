@@ -1237,12 +1237,11 @@ class Player:
 
     @property
     def rarity(self) -> int:
-        """Gear rarity from weapon and accessory. Use get_total_rarity() for the full total."""
+        """Flat gear rarity (weapon only — accessory rarity is a % more multiplier,
+        applied in get_total_rarity()). Use get_total_rarity() for the full total."""
         total = 0
         if self.equipped_weapon:
             total += self.equipped_weapon.rarity
-        if self.equipped_accessory:
-            total += self.equipped_accessory.rarity
         return total
 
     @property
@@ -1374,8 +1373,7 @@ class Player:
         total = self.base_attack
         if self.equipped_weapon:
             total += self.equipped_weapon.attack
-        if self.equipped_accessory:
-            total += self.equipped_accessory.attack
+        # Accessory attack is a % bonus applied in get_total_attack(), not flat.
         if self.equipped_armor and self.equipped_armor.main_stat_type == "atk":
             total += self.equipped_armor.main_stat
         if self.equipped_glove:
@@ -1397,8 +1395,7 @@ class Player:
         total = self.base_defence
         if self.equipped_weapon:
             total += self.equipped_weapon.defence
-        if self.equipped_accessory:
-            total += self.equipped_accessory.defence
+        # Accessory defence is a % bonus applied in get_total_defence(), not flat.
         if self.equipped_armor and self.equipped_armor.main_stat_type == "def":
             total += self.equipped_armor.main_stat
         if self.equipped_glove:
@@ -1543,6 +1540,17 @@ class Player:
 
         # ---- Percentage-of-flat pool (every "+X% ATK" source sums here) ----
         pct_pool = 0.0
+
+        # Accessory: % of flat ATK (rolled range, see ACC_STAT_CAPS)
+        if self.equipped_accessory and self.equipped_accessory.attack:
+            acc_pct = self.equipped_accessory.attack / 100
+            pct_pool += acc_pct
+            contributions.append(
+                (
+                    f"Accessory (+{self.equipped_accessory.attack}% ATK)",
+                    int(flat * acc_pct),
+                )
+            )
 
         # Unified multiplier (codex signature/boon + diabolic_pact, etc.)
         if self.atk_multiplier != 1.0:
@@ -1707,6 +1715,17 @@ class Player:
 
         # ---- Percentage-of-flat pool ----
         pct_pool = 0.0
+
+        # Accessory: % of flat DEF (rolled range, see ACC_STAT_CAPS)
+        if self.equipped_accessory and self.equipped_accessory.defence:
+            acc_pct = self.equipped_accessory.defence / 100
+            pct_pool += acc_pct
+            contributions.append(
+                (
+                    f"Accessory (+{self.equipped_accessory.defence}% DEF)",
+                    int(flat * acc_pct),
+                )
+            )
 
         # Unified multiplier
         if self.def_multiplier != 1.0:
@@ -2302,36 +2321,48 @@ class Player:
     def get_total_rarity(
         self, explain: bool = False
     ) -> "int | tuple[int, list[tuple[str, float]]]":
-        """Full rarity total: gear + (companion + Providence % more, additive) + codex boon bonus."""
+        """Full rarity total: gear (weapon) + (accessory + companion + Providence
+        % more, additive) + codex boon bonus."""
         contributions: list[tuple[str, float]] = []
-        total = self.rarity  # Gear only (weapon + accessory)
+        total = self.rarity  # Gear only (weapon)
         if total:
             contributions.append(("Equipment", total))
 
-        # Companion rarity and Providence tome both provide "% more rarity" and sum additively
-        # before being applied as a single multiplier to gear rarity.
+        # Accessory rarity, Companion rarity, and Providence tome all provide
+        # "% more rarity" and sum additively before being applied as a single
+        # multiplier to gear rarity.
+        acc_pct = (
+            self.equipped_accessory.rarity
+            if self.equipped_accessory and self.equipped_accessory.rarity
+            else 0
+        )
         comp_rarity_pct = self._get_companion_bonus("rarity")
         prov_pct = self.get_tome_bonus("providence")
-        combined_more_pct = comp_rarity_pct + prov_pct
+        more_pct_sources = [
+            (f"Accessory (+{acc_pct}%)", acc_pct),
+            (f"Companions (+{comp_rarity_pct:.1f}%)", comp_rarity_pct),
+            (f"Providence Tome (+{prov_pct:.1f}%)", prov_pct),
+        ]
+        combined_more_pct = sum(pct for _, pct in more_pct_sources)
         if combined_more_pct > 0 and total > 0:
             new_total = int(total * (1 + combined_more_pct / 100))
             gain = new_total - total
             # Split the combined multiplicative gain proportionally between
             # sources by their %-more share — int rounding means an exact
-            # per-source split isn't otherwise possible, but this reconciles
-            # to `gain` exactly (comp_share + remainder = gain).
-            if comp_rarity_pct > 0 and prov_pct > 0:
-                comp_share = int(gain * comp_rarity_pct / combined_more_pct)
-                contributions.append(
-                    (f"Companions (+{comp_rarity_pct:.1f}%)", comp_share)
-                )
-                contributions.append(
-                    (f"Providence Tome (+{prov_pct:.1f}%)", gain - comp_share)
-                )
-            elif comp_rarity_pct > 0:
-                contributions.append((f"Companions (+{comp_rarity_pct:.1f}%)", gain))
-            else:
-                contributions.append((f"Providence Tome (+{prov_pct:.1f}%)", gain))
+            # per-source split isn't otherwise possible, but the running
+            # remainder reconciles to `gain` exactly.
+            remaining_gain = gain
+            remaining_pct = combined_more_pct
+            for label, pct in more_pct_sources:
+                if pct <= 0:
+                    continue
+                if pct == remaining_pct:
+                    share = remaining_gain
+                else:
+                    share = int(gain * pct / combined_more_pct)
+                contributions.append((label, share))
+                remaining_gain -= share
+                remaining_pct -= pct
             total = new_total
 
         # Codex rarity boon accumulator

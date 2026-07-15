@@ -71,6 +71,18 @@ PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
             "label": "Seraph Warrior",
             "url": PRESTIGE_AVATARS_FEMALE["warriorangel"],
         },
+        "aurora": {"label": "Aurora Enchantress", "url": PRESTIGE_AVATARS_FEMALE["aurora"]},
+        "butterfly": {"label": "Butterfly Spirit", "url": PRESTIGE_AVATARS_FEMALE["butterfly"]},
+        "cosmos": {"label": "Cosmic Weaver", "url": PRESTIGE_AVATARS_FEMALE["cosmos"]},
+        "fire_magic": {"label": "Flame Conjurer", "url": PRESTIGE_AVATARS_FEMALE["fire_magic"]},
+        "frostfire": {"label": "Frostfire Mage", "url": PRESTIGE_AVATARS_FEMALE["frostfire"]},
+        "ice": {"label": "Frost Maiden", "url": PRESTIGE_AVATARS_FEMALE["ice"]},
+        "mirrors": {"label": "Mirror Mage", "url": PRESTIGE_AVATARS_FEMALE["mirrors"]},
+        "panther": {"label": "Panther Stalker", "url": PRESTIGE_AVATARS_FEMALE["panther"]},
+        "pearl": {"label": "Pearl Enchantress", "url": PRESTIGE_AVATARS_FEMALE["pearl"]},
+        "petals": {"label": "Petal Dancer", "url": PRESTIGE_AVATARS_FEMALE["petals"]},
+        "voidsong": {"label": "Voidsong Mystic", "url": PRESTIGE_AVATARS_FEMALE["voidsong"]},
+        "water_magic": {"label": "Tide Conjurer", "url": PRESTIGE_AVATARS_FEMALE["water_magic"]},
     },
     "female_ss": {
         "bride": {"label": "Eternal Bride", "url": PRESTIGE_AVATARS_FEMALE_SS["bride"]},
@@ -126,6 +138,8 @@ PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
             "label": "Samurai Lord",
             "url": PRESTIGE_AVATARS_MALE_SS["samurai_lord"],
         },
+        "diamond": {"label": "Diamond Sovereign", "url": PRESTIGE_AVATARS_MALE_SS["diamond"]},
+        "lightning": {"label": "Lightning Sovereign", "url": PRESTIGE_AVATARS_MALE_SS["lightning"]},
     },
 }
 

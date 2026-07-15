@@ -470,6 +470,18 @@ PRESTIGE_AVATARS_FEMALE = {
     "sorc": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246946045231205/female_sorc-1.gif?ex=6a4f0d17&is=6a4dbb97&hm=33c590d13b89e8df3f252dff088918b1b53f11e3ba2690582415c2cd5cf16810&",
     "void": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246968837210182/female_void-1.gif?ex=6a4f0d1c&is=6a4dbb9c&hm=57a08357e84551fd742193fb609b759da2d5a0c548c16e9a337cbd56fe921ceb&",
     "warriorangel": "https://cdn.discordapp.com/attachments/1334637411363323996/1524246978341634048/female_warriorangel-1.gif?ex=6a4f0d1e&is=6a4dbb9e&hm=b15e25efc6acc71b957834d898adf10c9aca2c83e262876d3e7b75d4e668e3f7&",
+    "aurora": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045213426679848/female_aurora.gif?ex=6a593b2e&is=6a57e9ae&hm=9ada46f89761efc0df9768a63f28cdff866c66c5a497d469a29ff8f8b95bcfea&",
+    "butterfly": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045221614096545/female_butterfly.gif?ex=6a593b2f&is=6a57e9af&hm=f9abf257e82e38d69554b430968af891c79024447f7ad6bd22341a431b347baa&",
+    "cosmos": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045228966445056/female_cosmos.gif?ex=6a593b31&is=6a57e9b1&hm=43833e8b648fdecbf108a5af36ed7ec34c46e6e27f29eb57900e28d8046fb292&",
+    "fire_magic": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045237397258331/female_fire_magic.gif?ex=6a593b33&is=6a57e9b3&hm=350e5df023827cfb548ec39672d34f50256f548b55b605fb266d80c601c1d900&",
+    "frostfire": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045245513240766/female_frostfire.gif?ex=6a593b35&is=6a57e9b5&hm=e0579645d30dfadf942f6ebc762d36360188527034cd6f7ea5a230138f3eec10&",
+    "ice": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045253469700277/female_ice.gif?ex=6a593b37&is=6a57e9b7&hm=1f3298b550c9adaf9753913c91b279547e7baf83cc159c8a541b6def2ea0598e&",
+    "mirrors": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045261103468784/female_mirrors.gif?ex=6a593b39&is=6a57e9b9&hm=5c694ba133b3e3dd0e72f9e85db263eb303f0fc7633ec91fe3f822f4e1acaa87&",
+    "panther": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045268963594421/female_panther.gif?ex=6a593b3b&is=6a57e9bb&hm=14e8e0e5a0b47fc2312eb8843e57597518f6eb04be57c01229dd583a46607941&",
+    "pearl": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045276987293776/female_pearl.gif?ex=6a593b3d&is=6a57e9bd&hm=2f1ee719d0cf9b526bd9affa5342745a2c48bac9a608fbf27b5976d0f2739127&",
+    "petals": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045284578725898/female_petals.gif?ex=6a593b3e&is=6a57e9be&hm=0acd9fdc62c8710ef8d0b931b38a32f4c6aee18112004e78495f36ec37419c35&",
+    "voidsong": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045292954878032/female_void.gif?ex=6a593b40&is=6a57e9c0&hm=4403bed63d90d8864372909ea790036bed15a1f5a7abcd1d33bf7cfa666d0856&",
+    "water_magic": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045300605292634/female_water_magic.gif?ex=6a593b42&is=6a57e9c2&hm=6b973eff18c762f3464139d090dc468cc1486c70a211440e01b5f62fa63476e0&",
 }
 
 PRESTIGE_AVATARS_FEMALE_SS = {
@@ -494,4 +506,6 @@ PRESTIGE_AVATARS_MALE_SS = {
     "cyber_emperor": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248433575956530/male_ss_cyber_emperor.gif?ex=6a52b1cc&is=6a51604c&hm=a4243ed80d01bcafc17798f0458bd2e98bb078e9ddd37f99a378f1a4fa5d3084&",
     "dragon": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248440756600872/male_ss_dragon.gif?ex=6a52b1ce&is=6a51604e&hm=d067b360b7dadcab215ab86fbf502a879edc7c67ff043784001ab2b73792a001&",
     "samurai_lord": "https://cdn.discordapp.com/attachments/1334637411363323996/1525248448574525470/male_ss_samurai_lord.gif?ex=6a52b1cf&is=6a51604f&hm=e82d1936c7eb3126a6e85080559b57e6f9f8895ca58ff37e37a1514392eb06aa&",
+    "diamond": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045308201308330/male_diamond.gif?ex=6a593b44&is=6a57e9c4&hm=ef501c5abceb67b641ce48e1c76d8465c7b3066daacad1c47250feb28248b5fa&",
+    "lightning": "https://cdn.discordapp.com/attachments/1334637411363323996/1527045315482488914/male_lightning.gif?ex=6a593b46&is=6a57e9c6&hm=5e234e01930f1238e5cf6921a4627163e89839b393b5b7585ecbd7fbee23d412&",
 }

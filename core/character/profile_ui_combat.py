@@ -92,8 +92,7 @@ class CombatProfileBuilder:
         gear_atk = 0
         if p.equipped_weapon:
             gear_atk += p.equipped_weapon.attack
-        if p.equipped_accessory:
-            gear_atk += p.equipped_accessory.attack
+        # Accessory ATK is a % bonus, not flat — shown via atk_contribs below.
         if p.equipped_armor and p.equipped_armor.main_stat_type == "atk":
             gear_atk += p.equipped_armor.main_stat
         if p.equipped_glove:
@@ -118,8 +117,7 @@ class CombatProfileBuilder:
         gear_def = 0
         if p.equipped_weapon:
             gear_def += p.equipped_weapon.defence
-        if p.equipped_accessory:
-            gear_def += p.equipped_accessory.defence
+        # Accessory DEF is a % bonus, not flat — shown via def_contribs below.
         if p.equipped_armor and p.equipped_armor.main_stat_type == "def":
             gear_def += p.equipped_armor.main_stat
         if p.equipped_glove:

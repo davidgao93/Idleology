@@ -18,13 +18,13 @@ from core.combat.economy.loot import (
     generate_helmet,
     generate_weapon,
 )
-from core.emojis import ASCENT_EMOJI
-from core.hall_of_firsts import triggers as hof_triggers
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
+from core.emojis import ASCENT_EMOJI, POTION
+from core.hall_of_firsts import triggers as hof_triggers
 from core.images import VALE_PORTRAIT, VALE_THUMBNAIL
-from core.npc_voices import get_quip
 from core.models import Monster, Player
+from core.npc_voices import get_quip
 
 # ---------------------------------------------------------------------------
 # Milestone reward helpers (every 5 floors)
@@ -100,7 +100,9 @@ async def _grant_milestone_rewards(
 
 
 class AscentLobbyRow(discord.ui.ActionRow["AscentLobbyView"]):
-    @discord.ui.button(label="Begin Run", style=ButtonStyle.danger, emoji="🏔️")
+    @discord.ui.button(
+        label="Begin Run", style=ButtonStyle.danger, emoji=f"{ASCENT_EMOJI}"
+    )
     async def begin_run_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_begin_run(interaction)
 
@@ -369,7 +371,7 @@ class AscentCombatRow(discord.ui.ActionRow["AscentView"]):
     async def attack_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_attack(interaction)
 
-    @discord.ui.button(label="Heal", style=ButtonStyle.success, emoji="🩹")
+    @discord.ui.button(label="Heal", style=ButtonStyle.success, emoji=f"{POTION}")
     async def heal_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_heal(interaction)
 

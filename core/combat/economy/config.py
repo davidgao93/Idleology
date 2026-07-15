@@ -205,10 +205,14 @@ CO_GOLD_BOOST_PER_LEVEL: float = 0.05
 # ---------------------------------------------------------------------------
 
 WEAPON_STAT_CAPS: dict = {"attack": 80, "defence": 80, "rarity": 200}
+# Accessory attack/defence/rarity are % bonuses (of flat ATK/DEF, and of gear
+# rarity respectively) rather than flat points — see Player.get_total_attack /
+# get_total_defence / get_total_rarity. Caps are kept well under Companion and
+# Codex Tome ceilings since accessories are common loot, not a curated sink.
 ACC_STAT_CAPS: dict = {
-    "attack": 80,
-    "defence": 80,
-    "rarity": 200,
+    "attack": 15,
+    "defence": 15,
+    "rarity": 20,
     "ward": 60,
     "crit": 20,
 }

@@ -308,11 +308,11 @@ def _glove_boot_fields(embed, item, passive_funcs: dict):
 def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
     if getattr(item, "attack", 0):
         embed.add_field(
-            name=f"{STAT_ATK} Attack", value=f"{item.attack:,}", inline=True
+            name=f"{STAT_ATK} Attack", value=f"{item.attack:,}%", inline=True
         )
     if getattr(item, "defence", 0):
         embed.add_field(
-            name=f"{STAT_DEF} Defence", value=f"{item.defence:,}", inline=True
+            name=f"{STAT_DEF} Defence", value=f"{item.defence:,}%", inline=True
         )
     if getattr(item, "rarity", 0):
         embed.add_field(name=f"{RARITY} Rarity", value=f"{item.rarity:,}%", inline=True)
@@ -437,11 +437,12 @@ class InventoryUI:
                 if item.evasion > 0:
                     details.append(f"{item.evasion}% {DODGE_EVASION}Evasion")
 
-            # Base stats
+            # Base stats (accessory attack/defence are % of flat, not flat points)
+            acc_suffix = "%" if isinstance(item, Accessory) else ""
             if hasattr(item, "attack") and item.attack > 0:
-                details.append(f"{item.attack} {STAT_ATK}ATK")
+                details.append(f"{item.attack}{acc_suffix} {STAT_ATK}ATK")
             if hasattr(item, "defence") and item.defence > 0:
-                details.append(f"{item.defence} {STAT_DEF}DEF")
+                details.append(f"{item.defence}{acc_suffix} {STAT_DEF}DEF")
             if hasattr(item, "rarity") and item.rarity > 0:
                 details.append(f"{item.rarity}% {RARITY}Rarity")
             # 2. Defensive Stats (PDR/FDR/Ward) - Applies to Armor, Gloves, Boots, Helmets
@@ -537,10 +538,11 @@ class InventoryUI:
     def _build_equipped_stats(item) -> str:
         """Compact multi-line stats string for the equipped item panel in the gear embed."""
         parts = []
+        acc_suffix = "%" if isinstance(item, Accessory) else ""
         if getattr(item, "attack", 0) > 0:
-            parts.append(f"{STAT_ATK} ATK: {item.attack}")
+            parts.append(f"{STAT_ATK} ATK: {item.attack}{acc_suffix}")
         if getattr(item, "defence", 0) > 0:
-            parts.append(f"{STAT_DEF} DEF: {item.defence}")
+            parts.append(f"{STAT_DEF} DEF: {item.defence}{acc_suffix}")
         if getattr(item, "rarity", 0) > 0:
             parts.append(f"{RARITY} Rarity: {item.rarity}%")
         if getattr(item, "ward", 0) > 0:

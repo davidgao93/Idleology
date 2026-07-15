@@ -149,8 +149,10 @@ class GearView(BaseView):
     def _build_select_description(item) -> str:
         """One-line stat summary for the Select option description (max 100 chars)."""
         parts = []
+        # Accessory attack/defence are % of flat, not flat points
+        acc_suffix = "%" if isinstance(item, Accessory) else ""
         if getattr(item, "attack", 0) > 0:
-            parts.append(f"ATK:{item.attack}")
+            parts.append(f"ATK:{item.attack}{acc_suffix}")
         if isinstance(item, Armor):
             main_stat_type = getattr(item, "main_stat_type", "def")
             main_stat = getattr(item, "main_stat", 0)
@@ -158,7 +160,7 @@ class GearView(BaseView):
                 label = "ATK" if main_stat_type == "atk" else "DEF"
                 parts.append(f"{label}:{main_stat}")
         elif getattr(item, "defence", 0) > 0:
-            parts.append(f"DEF:{item.defence}")
+            parts.append(f"DEF:{item.defence}{acc_suffix}")
         if getattr(item, "rarity", 0) > 0:
             parts.append(f"Rar:{item.rarity}%")
         if getattr(item, "ward", 0) > 0:

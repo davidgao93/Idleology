@@ -141,10 +141,10 @@ async def generate_accessory(user_id: str, level: int) -> Accessory:
     stat = random.choices(["attack", "defence", "rarity", "ward", "crit"], k=1)[0]
     if stat == "attack":
         acc.attack = int(get_scaled_stat(level, _ACC_CAPS["attack"]))
-        acc.description += f"+{acc.attack} Attack"
+        acc.description += f"+{acc.attack}% Attack"
     elif stat == "defence":
         acc.defence = int(get_scaled_stat(level, _ACC_CAPS["defence"]))
-        acc.description += f"+{acc.defence} Defence"
+        acc.description += f"+{acc.defence}% Defence"
     elif stat == "rarity":
         acc.rarity = int(get_scaled_stat(level, _ACC_CAPS["rarity"]))
         acc.description += f"+{acc.rarity}% Rarity"

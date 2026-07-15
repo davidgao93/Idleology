@@ -70,9 +70,9 @@ def _describe_item(item, item_type: str) -> str:
             parts.append(f"Reinf.Lv{item.reinforcement_lvl}")
     elif item_type == "accessory":
         if item.attack:
-            parts.append(f"ATK:{item.attack}")
+            parts.append(f"ATK:{item.attack}%")
         if item.defence:
-            parts.append(f"DEF:{item.defence}")
+            parts.append(f"DEF:{item.defence}%")
         if item.rarity:
             parts.append(f"Rar:{item.rarity}%")
         if item.ward:
@@ -125,8 +125,8 @@ def _stat_lines(item, item_type: str) -> list:
         lines.append(f"FDR: {item.fdr}")
         lines.append(f"Reinforce Lv.{item.reinforcement_lvl}")
     elif item_type == "accessory":
-        lines.append(f"ATK: {item.attack}")
-        lines.append(f"DEF: {item.defence}")
+        lines.append(f"ATK: {item.attack}%")
+        lines.append(f"DEF: {item.defence}%")
         lines.append(f"Rarity: {item.rarity}%")
         lines.append(f"Ward: {item.ward}%")
         lines.append(f"Crit: {item.crit}")
@@ -182,8 +182,8 @@ def _stat_lines_after(target, source, item_type: str, new_level: int) -> list:
             f"Reinforce: {arrow(target.reinforcement_lvl, source.reinforcement_lvl, lv)}"
         )
     elif item_type == "accessory":
-        lines.append(f"ATK: {arrow(target.attack, source.attack)}")
-        lines.append(f"DEF: {arrow(target.defence, source.defence)}")
+        lines.append(f"ATK: {arrow(target.attack, source.attack, pct)}")
+        lines.append(f"DEF: {arrow(target.defence, source.defence, pct)}")
         lines.append(f"Rarity: {arrow(target.rarity, source.rarity, pct)}")
         lines.append(f"Ward: {arrow(target.ward, source.ward, pct)}")
         lines.append(f"Crit: {arrow(target.crit, source.crit)}")
