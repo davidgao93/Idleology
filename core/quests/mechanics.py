@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from core.emojis import (
     ANGEL_KEY,
+    CODEX_FRAGMENT_EMOJI,
     DRAGON_KEY,
     GOLD_COIN,
     SOUL_CORE,
@@ -488,7 +489,7 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
 
         elif path_id == "antiquarian":
             await bot.database.users.modify_currency(user_id, "codex_fragments", 50)
-            msgs.append("📚 +50 Codex Fragments")
+            msgs.append(f"{CODEX_FRAGMENT_EMOJI} +50 Codex Fragments")
 
         elif path_id == "blood_compact":
             await bot.database.hematurgy.modify_blood(user_id, "primordial", 250)

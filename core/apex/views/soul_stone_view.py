@@ -24,7 +24,14 @@ from core.apex.models import (
     soul_stone_from_db,
 )
 from core.base_view import BaseView
-from core.emojis import APEX_IMPRINT_EMOJI, APEX_SHARD_EMOJI, SOUL_FRAGMENT
+from core.emojis import (
+    APEX_IMPRINT_EMOJI,
+    APEX_SHARD_EMOJI,
+    SOUL_FRAGMENT,
+    SOUL_RESONANCE,
+    SOUL_SLOT,
+    SOUL_STONE,
+)
 from core.images import APEX_SOUL_STONE
 
 _CAT_EMOJI: dict[str, str] = {
@@ -139,7 +146,7 @@ def _build_soul_stone_embed(
 ) -> discord.Embed:
     """Builds the main Soul Stone display embed."""
     embed = discord.Embed(
-        title="💎 Soul Stone",
+        title=f"{SOUL_STONE} Soul Stone",
         description=(
             f"**{player_name}**'s permanent passive lattice.\n"
             "Imprint passives extracted from your gear. Up to 3 slots available."
@@ -165,25 +172,27 @@ def _build_soul_stone_embed(
                 f"  ↳ Category: *{cat}*\n"
                 f"  ↳ {desc_line}"
             )
-    embed.add_field(name="🔮 Slots", value="\n".join(slot_lines), inline=False)
+    embed.add_field(name=f"{SOUL_SLOT} Slots", value="\n".join(slot_lines), inline=False)
 
     # --- Resonance ---
     res = ApexMechanics.get_resonance(soul_stone)
     if res:
         res_name, res_desc = res
         embed.add_field(
-            name=f"✨ Resonance — {res_name}",
+            name=f"{SOUL_RESONANCE} Resonance — {res_name}",
             value=res_desc,
             inline=False,
         )
     else:
         hint = _resonance_hint_text(soul_stone)
         if hint:
-            embed.add_field(name="✨ Resonance Paths", value=hint, inline=False)
+            embed.add_field(
+                name=f"{SOUL_RESONANCE} Resonance Paths", value=hint, inline=False
+            )
         else:
             # No passives yet — brief intro so the player knows the system exists.
             embed.add_field(
-                name="✨ Resonance",
+                name=f"{SOUL_RESONANCE} Resonance",
                 value=(
                     "*No resonance active. Fill 2 or 3 slots with the same category "
                     "(Offensive / Defensive / Mixed / Utility) to unlock a permanent combat bonus.*"
@@ -205,6 +214,11 @@ class SoulStoneView(BaseView):
         super().__init__(bot, user_id, server_id)
         self.player = player
         self._processing = False
+
+    def apply_gating(self, soul_stone: SoulStone) -> None:
+        """Disables Imprint when no slot is free and Clear Slot when nothing is filled."""
+        self.imprint_btn.disabled = soul_stone.first_empty_slot is None
+        self.clear_btn.disabled = not any(not s.is_empty for s in soul_stone.slots)
 
     async def _load_data(self):
         ss_row = await self.bot.database.apex.get_or_create_soul_stone(
@@ -323,13 +337,6 @@ class SoulStoneView(BaseView):
         view.message = await interaction.original_response()
         self._processing = False
         self.stop()
-
-    @discord.ui.button(label="Refresh", style=ButtonStyle.secondary, emoji="🔄", row=0)
-    async def refresh_btn(self, interaction: Interaction, button: Button):
-        await interaction.response.defer()
-        soul_stone, shards, meta = await self._load_data()
-        embed = _build_soul_stone_embed(soul_stone, shards, meta, self.player.name)
-        await interaction.edit_original_response(embed=embed, view=self)
 
     @discord.ui.button(label="← Lobby", style=ButtonStyle.secondary, emoji="🏹", row=1)
     async def lobby_btn(self, interaction: Interaction, button: Button):
@@ -460,6 +467,7 @@ class _ClearSlotView(BaseView):
         meta = meta_shards_from_db(meta_row)
 
         view = SoulStoneView(self.bot, self.user_id, self.server_id, self.player)
+        view.apply_gating(soul_stone)
         embed = _build_soul_stone_embed(soul_stone, shards, meta, self.player.name)
         await interaction.edit_original_response(embed=embed, view=view)
         view.message = await interaction.original_response()

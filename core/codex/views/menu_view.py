@@ -16,6 +16,7 @@ from core.codex.views.run_view import (
 from core.codex.views.tomes_view import CodexTomsView
 from core.combat import ui as combat_ui
 from core.combat.turns import engine
+from core.emojis import CODEX_FRAGMENT_EMOJI, CODEX_PAGE_EMOJI, CODEX_TOME_EMOJI
 from core.images import SERAPHINE_PORTRAIT, SERAPHINE_THUMBNAIL
 from core.npc_voices import get_quip
 from core.models import Player
@@ -26,7 +27,7 @@ class CodexMenuRow(discord.ui.ActionRow["CodexMenuView"]):
     async def begin_run_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_begin_run(interaction)
 
-    @discord.ui.button(label="Tomes", style=ButtonStyle.primary, emoji="📚")
+    @discord.ui.button(label="Tomes", style=ButtonStyle.primary, emoji=CODEX_TOME_EMOJI)
     async def tomes_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_view_tomes(interaction)
 
@@ -72,7 +73,7 @@ class CodexMenuView(BaseLayoutView):
     def build_embed(self) -> discord.Embed:
         tomes = self.player.codex_tomes
         embed = discord.Embed(
-            title="📖 The Codex",
+            title=f"{CODEX_TOME_EMOJI} The Codex",
             description=(
                 f"*{get_quip('codex')}*\n\n"
                 "An onslaught of curated chapters, each more brutal than the last.\n"
@@ -85,8 +86,9 @@ class CodexMenuView(BaseLayoutView):
         embed.add_field(
             name="Resources",
             value=(
-                f"📖 {self.antique_tomes} Antique Tome(s)  |  "
-                f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages"
+                f"{CODEX_TOME_EMOJI} {self.antique_tomes} Antique Tome(s)  |  "
+                f"{CODEX_FRAGMENT_EMOJI} {self.fragments} Fragments  |  "
+                f"{CODEX_PAGE_EMOJI} {self.pages} Pages"
             ),
             inline=False,
         )

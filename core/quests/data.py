@@ -6,7 +6,13 @@ from __future__ import annotations
 
 import random
 
-from core.emojis import SOUL_CORE, SPIRIT_STONE, VOID_FRAG
+from core.emojis import (
+    CODEX_FRAGMENT_EMOJI,
+    CODEX_TOME_EMOJI,
+    SOUL_CORE,
+    SPIRIT_STONE,
+    VOID_FRAG,
+)
 
 # ---------------------------------------------------------------------------
 # Daily Quest Pool
@@ -321,7 +327,7 @@ HORIZON_PATHS = {
         "goal": 3,
         "token_reward": 5,
         "level_required": 80,
-        "loot_preview": "📚 +50 Codex Fragments",
+        "loot_preview": f"{CODEX_FRAGMENT_EMOJI} +50 Codex Fragments",
     },
     "apex": {
         "name": "The Apex Covenant",
@@ -529,7 +535,7 @@ async def grant_checkin_day(
         if level >= 80:
             await bot.database.users.modify_currency(user_id, "antique_tome", 1)
             await bot.database.quests.add_tokens(user_id, 2)
-            rewards += ["📖 +1 Antique Tome", "🎫 +2 Quest Tokens"]
+            rewards += [f"{CODEX_TOME_EMOJI} +1 Antique Tome", "🎫 +2 Quest Tokens"]
         elif level >= 50:
             mat_pool = ["magma_core", "life_root", "spirit_shard"]
             count = random.randint(1, 3)
@@ -664,7 +670,7 @@ async def grant_checkin_day(
         if level >= 80:
             await bot.database.users.modify_currency(user_id, "antique_tome", 1)
             await bot.database.users.modify_currency(user_id, "curios", 1)
-            rewards += ["📖 +1 Antique Tome", "📦 +1 Curio"]
+            rewards += [f"{CODEX_TOME_EMOJI} +1 Antique Tome", "📦 +1 Curio"]
         elif level >= 70:
             rune_pool = ["refinement_runes", "potential_runes", "shatter_runes"]
             count = random.randint(1, 3)

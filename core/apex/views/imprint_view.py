@@ -31,6 +31,8 @@ from core.emojis import (
     HELMET_SLOT,
     PRIMAL_ESSENCE,
     SHARPENED_FANG,
+    SOUL_SLOT,
+    SOUL_STONE,
     SOUL_VESSEL,
     WEAPON_SLOT,
 )
@@ -223,7 +225,7 @@ class ImprintView(BaseView):
                     label=f"Lv.{e['level']} {e['item_name']}"[:100],
                     value=e["key"],
                     description=f"Passive: {passive_display}"[:100],
-                    emoji="💎",
+                    emoji=SOUL_STONE,
                 )
             )
         item_select = Select(
@@ -326,6 +328,7 @@ class ImprintView(BaseView):
 
         shard_type = PASSIVE_SHARD_MAP.get(self._selected_passive, "fortune")
         has_shard = self.shards.get(shard_type) >= 1
+        has_empty_slot = self.soul_stone.first_empty_slot is not None
 
         # Row 0 — primary actions
         confirm = Button(
@@ -333,7 +336,7 @@ class ImprintView(BaseView):
             style=ButtonStyle.danger,
             emoji=APEX_IMPRINT_EMOJI,
             row=0,
-            disabled=not has_shard,
+            disabled=not has_shard or not has_empty_slot,
         )
         confirm.callback = self._confirm_extract
         self.add_item(confirm)
@@ -679,6 +682,7 @@ class ImprintView(BaseView):
         meta = meta_shards_from_db(meta_row)
 
         view = SoulStoneView(self.bot, self.user_id, self.server_id, self.player)
+        view.apply_gating(soul_stone)
         embed = _build_soul_stone_embed(soul_stone, shards, meta, self.player.name)
         await interaction.edit_original_response(embed=embed, view=view)
         view.message = await interaction.original_response()
@@ -741,7 +745,7 @@ class ImprintView(BaseView):
                     f"**Slot {i}:** {passive_display} T{slot.tier} *(occupied)*"
                 )
         embed.add_field(
-            name="💎 Current Slots", value="\n".join(slot_lines), inline=False
+            name=f"{SOUL_SLOT} Current Slots", value="\n".join(slot_lines), inline=False
         )
 
         # Shard Inventory / Meta Shards — only shown here and in UpgradeView, not

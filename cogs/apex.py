@@ -141,6 +141,7 @@ class Apex(commands.Cog, name="apex"):
 
         embed = _build_soul_stone_embed(soul_stone, shards, meta, player.name)
         view = SoulStoneView(self.bot, user_id, server_id, player)
+        view.apply_gating(soul_stone)
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 

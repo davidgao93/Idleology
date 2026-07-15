@@ -3,6 +3,7 @@ from collections import defaultdict
 
 from core.combat.economy.drops import roll_essence_drop
 from core.emojis import (
+    CODEX_TOME_EMOJI,
     GOLD_COIN,
     PINNACLE_KEY,
     RUNE_POTENTIAL,
@@ -35,7 +36,7 @@ REWARD_EMOJIS = {
     "Essences": "🧪",
     "Elemental Keys": "🗝️",
     "Pinnacle Keys": PINNACLE_KEY,
-    "Antique Tomes": "📜",
+    "Antique Tomes": CODEX_TOME_EMOJI,
     "Settler Materials": "⚒️",
 }
 

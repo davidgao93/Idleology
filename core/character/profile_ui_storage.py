@@ -21,6 +21,7 @@ from core.emojis import (
     CELESTIAL_SIGIL,
     CELESTIAL_STONE,
     COAL_ORE,
+    CODEX_TOME_EMOJI,
     CONSUME_ICON,
     CORRUPTION_CORE,
     CORRUPTION_ENGRAM,
@@ -171,7 +172,7 @@ class StorageProfileBuilder:
                 f"{CURIO} Curios: {curios}\n"
                 f"{PUZZLE_BOX} Puzzle Boxes: {puzzle_boxes}\n"
                 f"🎫 Guild Tickets: {guild_tickets}\n"
-                f"📖 Antique Tomes: {antique_tomes}\n{PINNACLE_KEY} Pinnacle Keys: {pinnacle_keys}"
+                f"{CODEX_TOME_EMOJI} Antique Tomes: {antique_tomes}\n{PINNACLE_KEY} Pinnacle Keys: {pinnacle_keys}"
             ),
             inline=True,
         )

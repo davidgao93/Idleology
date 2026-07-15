@@ -16,7 +16,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import NETHER_MARKET_PLUNDER
+from core.emojis import GOLD_COIN, NETHER_MARKET_PLUNDER
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import VEX_PORTRAIT, VEX_THUMBNAIL
 from core.nether_market.data import WEALTH_TIERS
@@ -144,7 +144,7 @@ class NetherMarketHubView(BaseView):
                 sign = "+" if dev >= 0 else ""
                 held_tag = f" \U0001f4e6×{offer['held']}" if offer["held"] > 0 else ""
                 line = (
-                    f"{offer['emoji']} **{item['name']}**{held_tag} — \U0001f4b0 {offer['price']:,} "
+                    f"{offer['emoji']} **{item['name']}**{held_tag} — {GOLD_COIN} {offer['price']:,} "
                     f"({sign}{dev:.0f}%)"
                 )
                 if show_true_value:
@@ -152,7 +152,7 @@ class NetherMarketHubView(BaseView):
                 lines.append(line)
             embed.add_field(name=tier_label, value="\n".join(lines), inline=False)
 
-        embed.add_field(name="Gold", value=f"\U0001f4b0 {self.gold:,}", inline=True)
+        embed.add_field(name="Gold", value=f"{GOLD_COIN} {self.gold:,}", inline=True)
         embed.add_field(
             name="Holdings",
             value=f"{self.held_count} / {self.cap} slots (worth ~{value:,})",
@@ -192,7 +192,7 @@ class NetherMarketHubView(BaseView):
                 haul_parts.append(", ".join(item_lines))
             if notice.get("overflow_gold"):
                 haul_parts.append(
-                    f"\U0001f4b0 {notice['overflow_gold']:,} gold (overflow)"
+                    f"{GOLD_COIN} {notice['overflow_gold']:,} gold (overflow)"
                 )
             haul = "; ".join(haul_parts) if haul_parts else "nothing of value"
             embed.insert_field_at(
@@ -519,14 +519,14 @@ class ConfirmTransactionView(BaseView):
         embed.set_author(name="Vex, the Fence", icon_url=VEX_PORTRAIT)
         embed.description = (
             f'*"You are about to **{verb}** {self.qty}x **{item["name"]}** '
-            f'{preposition} \U0001f4b0 {total:,} gold, are you sure?"*'
+            f'{preposition} {GOLD_COIN} {total:,} gold, are you sure?"*'
         )
         embed.add_field(
-            name="Current Gold", value=f"\U0001f4b0 {self.current_gold:,}", inline=True
+            name="Current Gold", value=f"{GOLD_COIN} {self.current_gold:,}", inline=True
         )
         embed.add_field(
             name="Gold After Transaction",
-            value=f"\U0001f4b0 {expected_gold:,}",
+            value=f"{GOLD_COIN} {expected_gold:,}",
             inline=True,
         )
         return embed

@@ -246,7 +246,7 @@ def process_heal(player: Player, monster=None) -> str:
     if viper and monster is not None and monster.hp > 0:
         dur = max(2, int(potion_durations_by_type.get("viper", 2.0)))
         burst_dmg = int(heal_amount * (viper / 100.0))
-        dot_pool = int(heal_amount * 20.0)
+        dot_pool = int(burst_dmg)
         dot_per_turn = max(1, int(dot_pool * 0.20))
         monster.hp = max(0, monster.hp - burst_dmg)
         player.alchemy_viper_dot_dmg = dot_per_turn

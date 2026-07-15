@@ -27,6 +27,9 @@ from core.combat.economy.rewards import calculate_rewards
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
 from core.emojis import (
+    CODEX_FRAGMENT_EMOJI,
+    CODEX_PAGE_EMOJI,
+    CODEX_TOME_EMOJI,
     DODGE_EVASION,
     GOLD_COIN,
     STAT_ATK,
@@ -428,7 +431,7 @@ class CodexRunView(BaseLayoutView):
     def _combat_layout(self) -> discord.ui.Container:
         chapter = self.current_chapter
         title = (
-            f"📖 Codex — {chapter.name} | Wave {self.wave_num}/7 "
+            f"{CODEX_TOME_EMOJI} Codex — {chapter.name} | Wave {self.wave_num}/7 "
             f"(Chapter {self.chapter_idx + 1}/5)"
         )
         container = combat_ui.create_combat_layout(
@@ -574,7 +577,7 @@ class CodexRunView(BaseLayoutView):
             )
 
         if self.run_state.get("guaranteed_page_this_chapter"):
-            parts.append("📄 Page (this chapter)")
+            parts.append(f"{CODEX_PAGE_EMOJI} Page (this chapter)")
         if self.run_state.get("sig_nullify_next"):
             parts.append("⚡ Sig Nullified")
 
@@ -657,7 +660,7 @@ class CodexRunView(BaseLayoutView):
         # PDR/ward-gen/"enter at X% HP" effects that have no numeric stat-pool
         # equivalent to combine with a boon), same text as the in-combat embed.
         embed.add_field(
-            name="📖 Chapter Signature",
+            name=f"{CODEX_TOME_EMOJI} Chapter Signature",
             value=self._signature_text().removeprefix("Signature: "),
             inline=False,
         )
@@ -681,7 +684,9 @@ class CodexRunView(BaseLayoutView):
         embed.add_field(name=f"{GOLD_COIN} Gold", value=f"{gold:,}", inline=True)
         if page_dropped:
             embed.add_field(
-                name="📄 Codex Page", value="A Codex Page dropped!", inline=False
+                name=f"{CODEX_PAGE_EMOJI} Codex Page",
+                value="A Codex Page dropped!",
+                inline=False,
             )
         next_idx = self.chapter_idx + 1
         if next_idx < len(self.chapters):
@@ -693,7 +698,7 @@ class CodexRunView(BaseLayoutView):
                 else (f"{next_ch.signature_label}: {next_ch.signature_description}")
             )
             embed.add_field(
-                name=f"📖 Next: {next_ch.name}",
+                name=f"{CODEX_TOME_EMOJI} Next: {next_ch.name}",
                 value=sig_info,
                 inline=False,
             )
@@ -719,7 +724,7 @@ class CodexRunView(BaseLayoutView):
         else:
             description = f"{self.chapters_cleared}/5 chapters cleared."
         embed = discord.Embed(
-            title="📕 Codex Run Complete",
+            title=f"{CODEX_TOME_EMOJI} Codex Run Complete",
             description=description,
             color=discord.Color.gold() if is_perfect else discord.Color.blurple(),
         )
@@ -737,10 +742,16 @@ class CodexRunView(BaseLayoutView):
                 value=str(exp_changes["ascensions_gained"]),
                 inline=True,
             )
-        embed.add_field(name="🔷 Fragments Earned", value=str(fragments), inline=True)
+        embed.add_field(
+            name=f"{CODEX_FRAGMENT_EMOJI} Fragments Earned",
+            value=str(fragments),
+            inline=True,
+        )
         if pages_dropped > 0:
             embed.add_field(
-                name="📄 Codex Pages", value=str(pages_dropped), inline=True
+                name=f"{CODEX_PAGE_EMOJI} Codex Pages",
+                value=str(pages_dropped),
+                inline=True,
             )
         if self.deaths > 0:
             embed.add_field(
@@ -1331,7 +1342,7 @@ class CodexAbandonConfirmView(BaseLayoutView):
         self.stop()
 
         embed = discord.Embed(
-            title="📕 Codex Abandoned",
+            title=f"{CODEX_TOME_EMOJI} Codex Abandoned",
             description=(
                 f"**{rv.player.name}** abandoned the run.\n"
                 f"Chapters cleared: **{rv.chapters_cleared}/5** — No rewards."

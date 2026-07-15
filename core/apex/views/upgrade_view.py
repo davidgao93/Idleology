@@ -377,6 +377,7 @@ class UpgradeView(BaseView):
         meta = meta_shards_from_db(meta_row)
 
         view = SoulStoneView(self.bot, self.user_id, self.server_id, self.player)
+        view.apply_gating(soul_stone)
         embed = _build_soul_stone_embed(soul_stone, shards, meta, self.player.name)
         await interaction.edit_original_response(embed=embed, view=view)
         view.message = await interaction.original_response()

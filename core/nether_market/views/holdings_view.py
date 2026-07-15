@@ -9,6 +9,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import GOLD_COIN
 from core.images import VEX_PORTRAIT, VEX_THUMBNAIL
 from core.nether_market.data import ITEM_POOL
 from core.nether_market.mechanics import NetherMarketMechanics as M
@@ -73,7 +74,7 @@ class HoldingsView(BaseView):
         )
         embed.add_field(name="Total Slots", value=f"{held_count} / {cap}", inline=True)
         embed.add_field(
-            name="Total Value", value=f"\U0001f4b0 ~{total_value:,}", inline=True
+            name="Total Value", value=f"{GOLD_COIN} ~{total_value:,}", inline=True
         )
         embed.set_footer(
             text=f"{get_quip('nether_market_holdings')}\n"

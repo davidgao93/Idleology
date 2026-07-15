@@ -7,6 +7,9 @@ from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
 from core.hall_of_firsts import triggers as hof_triggers
 from core.emojis import (
+    CODEX_FRAGMENT_EMOJI,
+    CODEX_PAGE_EMOJI,
+    CODEX_TOME_EMOJI,
     HEMATURGY_ICON,
     RARITY,
     STAT_ATK,
@@ -282,12 +285,15 @@ class CodexTomsView(BaseLayoutView):
 
     def _build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="📚 Codex Tomes",
+            title=f"{CODEX_TOME_EMOJI} Codex Tomes",
             color=discord.Color.dark_purple(),
         )
         embed.add_field(
             name="Resources",
-            value=f"🔷 {self.fragments} Fragments  |  📄 {self.pages} Pages  |  🔁 {self.rerolls} Reroll Tokens",
+            value=(
+                f"{CODEX_FRAGMENT_EMOJI} {self.fragments} Fragments  |  "
+                f"{CODEX_PAGE_EMOJI} {self.pages} Pages"
+            ),
             inline=False,
         )
         tomes = self.player.codex_tomes

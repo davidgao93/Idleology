@@ -159,12 +159,12 @@ async def _uber_defeat(
         dmg_frac=dmg_frac,
         killing_blow=view.killing_blow,
     )
+    await view.bot.database.users.update_from_player_object(view.player)
+    await _je.save_jewel_state(view.bot, view.user_id, view.player)
     view.post_combat_view.set_content(embed)
     await message.edit(view=view.post_combat_view)
     view.post_combat_view.message = message
     view.bot.state_manager.clear_active(view.user_id)
-    await view.bot.database.users.update_from_player_object(view.player)
-    await _je.save_jewel_state(view.bot, view.user_id, view.player)
     view.stop()
 
 

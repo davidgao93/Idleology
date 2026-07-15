@@ -25,7 +25,7 @@ from core.apex.models import (
 )
 from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
-from core.emojis import APEX_SHARD_EMOJI, SOUL_FRAGMENT
+from core.emojis import APEX_SHARD_EMOJI, SOUL_FRAGMENT, SOUL_STONE
 from core.images import APEX_HUB, LUCIEN_PORTRAIT, LUCIEN_THUMBNAIL
 from core.npc_voices import get_quip
 
@@ -219,7 +219,7 @@ class ApexLobbyView(BaseLayoutView):
         ss_btn = Button(
             label="Soul Stone",
             style=ButtonStyle.secondary,
-            emoji="💎",
+            emoji=SOUL_STONE,
         )
         ss_btn.callback = self._open_soul_stone
         row1.add_item(ss_btn)
@@ -516,6 +516,7 @@ class ApexLobbyView(BaseLayoutView):
         # SoulStoneView stays classic — a genuine scene change out of the
         # apex hunt loop — so it gets a fresh message rather than reusing
         # this one.
+        view.apply_gating(soul_stone)
         embed = _build_soul_stone_embed(soul_stone, shards, meta, player.name)
         await combat_ui.freeze_and_handoff(interaction.message, embed, view)
         self.stop()  # lobby view is superseded; SoulStoneView has the "← Lobby" back button

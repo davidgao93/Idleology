@@ -12,6 +12,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
+from core.emojis import GOLD_COIN
 from core.nether_market.mechanics import NetherMarketMechanics as M
 
 
@@ -178,11 +179,11 @@ class PlunderView(BaseView):
                     result_lines.append(
                         f"You made off with a cut of {self.target_display_name}'s holdings: "
                         f"**{total_items}** item{'s' if total_items != 1 else ''} worth an estimated "
-                        f"\U0001f4b0 {true_value_total:,} gold."
+                        f"{GOLD_COIN} {true_value_total:,} gold."
                     )
                     if overflow_gold:
                         result_lines.append(
-                            f"No room for the rest — \U0001f4b0 {overflow_gold:,} of that fenced instantly for gold."
+                            f"No room for the rest — {GOLD_COIN} {overflow_gold:,} of that fenced instantly for gold."
                         )
                 else:
                     result_lines.append(
@@ -205,7 +206,7 @@ class PlunderView(BaseView):
                     )
                 if overflow_gold:
                     result_lines.append(
-                        f"No room for the rest — it fences instantly for \U0001f4b0 {overflow_gold:,} gold."
+                        f"No room for the rest — it fences instantly for {GOLD_COIN} {overflow_gold:,} gold."
                     )
                 if not moved and not overflow_gold:
                     result_lines.append(

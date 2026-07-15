@@ -101,9 +101,10 @@ class AffinityView(PartnerBaseView):
 
     def _refresh(self):
         self.clear_items()
-        if self.partners:
+        selectable = [p for p in self.partners if p.affinity_story_seen < 4]
+        if selectable:
             options = []
-            for p in self.partners:
+            for p in selectable:
                 story_idx = next_available_story(
                     p.affinity_encounters, p.affinity_story_seen
                 )

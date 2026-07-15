@@ -321,6 +321,17 @@ JEWEL_SKILL_EMOJI: dict[str, str] = {
     "cataclysm": JEWEL_CATACLYSM,
 }
 
+# ── Apex Soul Stone (slots, resonance, stone icon) ─────────────────────────
+SOUL_RESONANCE = "<:soul_resonance:1526690278960926831>"
+SOUL_SLOT = "<:soul_slot:1526690278692491275>"
+SOUL_STONE = "<:soul_stone:1526690277753098240>"
+
+# ── Codex materials (Tomes hub / loot / currency displays) ─────────────────
+# NOTE: named _EMOJI to avoid colliding with core.images.CODEX_TOME (a thumbnail URL)
+CODEX_TOME_EMOJI = "<:codex_tome:1526690279917097023>"
+CODEX_PAGE_EMOJI = "<:codex_page:1526690280655552632>"
+CODEX_FRAGMENT_EMOJI = "<:codex_fragment:1526690281276182690>"
+
 # ── Alchemy potion passives (Potion Lab / Distillation / combat status icons) ─
 ALCHEMY_ENRAGE = "<:alchemy_enrage:1526349277616410696>"
 ALCHEMY_ENFEEBLE = "<:alchemy_enfeeble:1526349276018643005>"
@@ -659,4 +670,11 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "jewel_acrimony": ("Jewel: Acrimony", JEWEL_ACRIMONY),
     "jewel_bastion": ("Jewel: Bastion", JEWEL_BASTION),
     "jewel_cataclysm": ("Jewel: Cataclysm", JEWEL_CATACLYSM),
+    # Appended for the 2026-07-15 emoji batch (soul stone, codex materials).
+    "soul_resonance": ("Soul Resonance", SOUL_RESONANCE),
+    "soul_slot": ("Soul Slot", SOUL_SLOT),
+    "soul_stone": ("Soul Stone", SOUL_STONE),
+    "codex_tome": ("Antique Tome", CODEX_TOME_EMOJI),
+    "codex_page": ("Codex Page", CODEX_PAGE_EMOJI),
+    "codex_fragment": ("Codex Fragment", CODEX_FRAGMENT_EMOJI),
 }

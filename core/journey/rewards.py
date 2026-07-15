@@ -1,6 +1,12 @@
 import random
 
-from core.emojis import BLESSED_BISMUTH, CAPRICIOUS_CARP, GOLD_COIN, SPARKLING_SPRIG
+from core.emojis import (
+    BLESSED_BISMUTH,
+    CAPRICIOUS_CARP,
+    CODEX_TOME_EMOJI,
+    GOLD_COIN,
+    SPARKLING_SPRIG,
+)
 from core.images import (
     ALCHEMY_HUB,
     APEX_HUB,
@@ -151,7 +157,7 @@ async def _grant_level_70(bot, user_id: str, server_id: str) -> list:
 
 async def _grant_level_80(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_currency(user_id, "antique_tome", 1)
-    return ["📖 **+1 Antique Tome**"]
+    return [f"{CODEX_TOME_EMOJI} **+1 Antique Tome**"]
 
 
 async def _grant_level_90(bot, user_id: str, server_id: str) -> list:
