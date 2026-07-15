@@ -131,16 +131,16 @@ class ExperienceManager:
                 player.exp -= exp_threshold
                 changes["ascensions_gained"] += 1
 
-                await bot.database.users.modify_currency(user_id, "passive_points", 2)
+                await bot.database.users.modify_currency(user_id, "passive_points", 10)
                 changes["msgs"].append(
                     f"🌟 **ASCENSION LEVEL UP!** ({player.ascension})"
                 )
-                changes["msgs"].append("✨ Gained **2** Passive Points!")
+                changes["msgs"].append("✨ Gained **10** Passive Points!")
 
                 if server_id:
-                    await bot.database.inner_sanctum.add_points(user_id, server_id, 10)
+                    await bot.database.inner_sanctum.add_points(user_id, server_id, 5)
                     changes["msgs"].append(
-                        f"{INNER_SANC} Gained **10** Inner Sanctum Points!"
+                        f"{INNER_SANC} Gained **5** Inner Sanctum Points!"
                     )
 
             # Normal Level Up (pre-100): generate packages instead of applying stats.

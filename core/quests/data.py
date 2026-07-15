@@ -432,9 +432,9 @@ TOKEN_SHOP_ITEMS = [
     },
     {
         "id": "prospector_license",
-        "label": "Prospector's License",
+        "label": "Bountiful Quests",
         "cost": 50,
-        "description": "Receive a free gathering materials cache on every quest turn-in. One-time unlock.",
+        "description": "Receive a free mining, woodcutting, or fishing materials cache on every quest turn-in. One-time unlock.",
         "one_time": True,
         "unlock_field": "prospector_unlocked",
         "category": "upgrades",

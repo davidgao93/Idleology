@@ -6,6 +6,7 @@ from typing import List, Optional
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.emojis import UBER_EMOJI
 from core.images import PARTNERS_BOSS_PARTY, PARTNERS_HUB
 from core.models import Partner
 from core.partners.data import PARTNER_DATA
@@ -239,7 +240,7 @@ class DispatchView(PartnerBaseView):
 
         embed.set_footer(
             text=(
-                f"🎫 {self.items.get('guild_tickets', 0)} tickets  |  "
+                f"{self.items.get('guild_tickets', 0)} tickets  |  "
                 f"📋 {self.items.get('dispatch_skill_shards', 0)} dispatch shards"
             )
         )
@@ -320,7 +321,7 @@ class DispatchView(PartnerBaseView):
             collect_btn.disabled = True
             self.add_item(collect_btn)
         boss_raid_btn = ui.Button(
-            label="Boss Raid", style=ButtonStyle.danger, emoji="🔱", row=2
+            label="Boss Raid", style=ButtonStyle.danger, emoji=UBER_EMOJI, row=2
         )
         boss_raid_btn.callback = self._boss_raid
         self.add_item(boss_raid_btn)

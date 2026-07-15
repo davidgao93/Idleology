@@ -16,6 +16,7 @@ from core.emojis import (
     INFINITE_MAW,
     NETHER_MARKET_PLUNDER,
     QUEST_COMPLETE,
+    UBER_EMOJI,
     ZEAL,
 )
 from core.items.factory import load_player
@@ -31,7 +32,7 @@ class CardProfileBuilder:
         active = await bot.database.prestige.get_active(user_id)
 
         embed = discord.Embed(title="Adventurer License", color=discord.Color.gold())
-        embed.set_thumbnail(url=user["appearance"])
+        embed.set_image(url=user["appearance"])
 
         display_name = active.get("display_name") or user["name"]
         title_text = active.get("title") or ""
@@ -47,9 +48,9 @@ class CardProfileBuilder:
                 emblem_emoji = entry[1]
         name_str = format_prestige_name(display_name, title_text, emblem_emoji)
 
-        embed.add_field(name="Name", value=f"**{name_str}**", inline=True)
+        embed.add_field(name="🪪 Name", value=f"**{name_str}**", inline=True)
         embed.add_field(
-            name="Level",
+            name="⭐ Level",
             value=f"{user['level']} (Ascension {user['ascension']})",
             inline=True,
         )
@@ -85,11 +86,13 @@ class CardProfileBuilder:
                     )
         except Exception:
             _exp_str = f"{_exp:,}"
-        embed.add_field(name="Experience", value=_exp_str, inline=True)
+        embed.add_field(name="📈 Experience", value=_exp_str, inline=True)
 
-        embed.add_field(name="Ideology", value=f"{user['ideology']}", inline=True)
-        embed.add_field(name="Followers", value=f"{followers:,}", inline=True)
-        embed.add_field(name="Gold", value=f"{user['gold']:,} {GOLD_COIN}", inline=True)
+        embed.add_field(name="🏛️ Ideology", value=f"{user['ideology']}", inline=True)
+        embed.add_field(name="👥 Followers", value=f"{followers:,}", inline=True)
+        embed.add_field(
+            name=f"{GOLD_COIN} Gold", value=f"{user['gold']:,}", inline=True
+        )
 
         return embed
 
@@ -471,11 +474,11 @@ class CardProfileBuilder:
                     bp_done = min(bp_cap, int(bp_elapsed))
                     if bp_done >= bp_cap:
                         pc_lines.append(
-                            f"🔱 **Boss Raid** — {bp_cap}/{bp_cap} hours completed (ready!)"
+                            f"{UBER_EMOJI} **Boss Raid** — {bp_cap}/{bp_cap} hours completed (ready!)"
                         )
                     else:
                         pc_lines.append(
-                            f"🔱 **Boss Raid** — {bp_done}/{bp_cap} hours completed"
+                            f"{UBER_EMOJI} **Boss Raid** — {bp_done}/{bp_cap} hours completed"
                         )
             except Exception:
                 pass

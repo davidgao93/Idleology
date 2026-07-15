@@ -16,14 +16,27 @@ _SHOP_COLOR = 0xF0A500
 
 
 class TokenShopView(BaseView):
-    def __init__(self, bot, parent: "BaseView", tokens: int = 0, player_level: int = 1):
+    def __init__(
+        self,
+        bot,
+        parent: "BaseView",
+        tokens: int = 0,
+        player_level: int = 1,
+        meta: dict | None = None,
+    ):
         super().__init__(bot, parent=parent)
         self._processing = False
         self._selected_item_id: str | None = None
         self._tokens = tokens
         self._player_level = player_level
+        self._meta = meta or {}
         self._active_category = next(iter(SHOP_CATEGORIES))
         self._build_components()
+
+    def _is_owned(self, item: dict) -> bool:
+        return bool(item.get("one_time")) and bool(
+            self._meta.get(item.get("unlock_field", ""))
+        )
 
     def _visible_items(self) -> list:
         """Return shop items visible at this player's level in the active category."""
@@ -49,11 +62,15 @@ class TokenShopView(BaseView):
         embed.set_author(name="Lira", icon_url=QUEST_SHOP_AUTHOR)
         embed.set_thumbnail(url=QUEST_SHOP)
         for item in self._visible_items():
-            one_time = " *(One-time)*" if item.get("one_time") else ""
             selected = item["id"] == self._selected_item_id
             name_prefix = "➤ " if selected else ""
+            if self._is_owned(item):
+                cost_display = "✅ UNLOCKED"
+            else:
+                one_time = " *(One-time)*" if item.get("one_time") else ""
+                cost_display = f"{item['cost']}🎫{one_time}"
             embed.add_field(
-                name=f"{name_prefix}{item['label']} — {item['cost']}🎫{one_time}",
+                name=f"{name_prefix}{item['label']} — {cost_display}",
                 value=item["description"],
                 inline=False,
             )
@@ -65,6 +82,8 @@ class TokenShopView(BaseView):
         # Item select
         options = []
         for item in self._visible_items():
+            if self._is_owned(item):
+                continue
             options.append(
                 discord.SelectOption(
                     label=f"{item['label']} ({item['cost']}🎫)",
@@ -134,15 +153,21 @@ class TokenShopView(BaseView):
                 return
 
             meta = await self.bot.database.quests.get_meta(self.user_id)
+            self._meta = meta
 
-            # Check one-time unlock
-            if item_def.get("one_time"):
-                field = item_def.get("unlock_field", "")
-                if meta.get(field):
-                    await interaction.followup.send(
-                        "You have already unlocked this upgrade.", ephemeral=True
-                    )
-                    return
+            # Check one-time unlock (shouldn't normally be reachable — owned
+            # upgrades are excluded from the select — but guard against stale views)
+            if self._is_owned(item_def):
+                self._selected_item_id = None
+                self._build_components()
+                embed = self.build_embed()
+                embed.add_field(
+                    name="✅ Already Unlocked",
+                    value=f"You've already unlocked **{item_def['label']}**.",
+                    inline=False,
+                )
+                await interaction.edit_original_response(embed=embed, view=self)
+                return
 
             # Spend tokens
             ok = await self.bot.database.quests.spend_tokens(
@@ -162,6 +187,9 @@ class TokenShopView(BaseView):
 
             # Apply effect
             result_msg = await self._apply_item(item_def, meta)
+            if item_def.get("one_time"):
+                self._meta[item_def.get("unlock_field", "")] = 1
+            self._build_components()
 
             embed = self.build_embed()
             embed.add_field(name="✅ Purchase Complete", value=result_msg, inline=False)
@@ -266,7 +294,7 @@ class TokenShopView(BaseView):
             await self.bot.database.quests.set_meta_field(
                 self.user_id, "prospector_unlocked", 1
             )
-            return "Prospector's License unlocked! Gathering cache granted on every quest turn-in."
+            return "Bountiful Quests unlocked! Gathering cache granted on every quest turn-in."
 
         elif item_id == "quest_veteran":
             await self.bot.database.quests.set_meta_field(

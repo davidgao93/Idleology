@@ -234,8 +234,8 @@ def _desc(pid: str, tier: int) -> str:
             return f"On monster kill: restore {pct(v)} of Max HP."
         case "phantom_reflex":
             return (
-                f"On miss: gain +{pct(v)} Evasion for 1 round (max 2 stacks). "
-                f"Lose stacks when hit."
+                f"On miss: gain a stack of +{pct(v)} Evasion (max 2 stacks, persists "
+                f"until consumed). Lose 1 stack when a hit connects."
             )
         case "chain_reaction":
             return (

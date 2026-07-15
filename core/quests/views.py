@@ -368,11 +368,11 @@ class QuestBoardView(BaseView):
         shop_btn.callback = self._on_open_shop
         self.add_item(shop_btn)
 
-        # Close
+        # Close — contracts haven't been taken yet, warn before closing
         close_btn = discord.ui.Button(
             label="Close", style=ButtonStyle.secondary, emoji="✖️", row=2
         )
-        close_btn.callback = self._on_close
+        close_btn.callback = self._on_close_board
         self.add_item(close_btn)
 
     def _add_contract_components(self, tokens: int) -> None:
@@ -738,15 +738,35 @@ class QuestBoardView(BaseView):
 
         tokens = self.meta.get("tokens", 0)
         shop = TokenShopView(
-            self.bot, parent=self, tokens=tokens, player_level=self._player_level
+            self.bot,
+            parent=self,
+            tokens=tokens,
+            player_level=self._player_level,
+            meta=self.meta,
         )
         embed = shop.build_embed()
         await interaction.edit_original_response(embed=embed, view=shop)
 
     async def _on_close(self, interaction: Interaction) -> None:
+        await interaction.response.defer()
+        await self._execute_close(interaction)
+
+    async def _on_close_board(self, interaction: Interaction) -> None:
+        """Close button while the board is rolled but contracts haven't been
+        taken yet — warn the player first since nothing tracks progress until
+        they hit Take Contracts."""
+        await interaction.response.defer()
+        confirm = _CloseWarningConfirmView(self.bot, self)
+        embed = _build_warning_embed(
+            "⚠️ Contracts Not Taken",
+            "You haven't taken today's contracts yet! Nothing will track your "
+            "progress until you hit **Take Contracts**.\n\nClose anyway?",
+        )
+        await interaction.edit_original_response(embed=embed, view=confirm)
+
+    async def _execute_close(self, interaction: Interaction) -> None:
         self.bot.state_manager.clear_active(self.user_id)
         self.stop()
-        await interaction.response.defer()
         await interaction.message.delete()
 
 
@@ -843,6 +863,33 @@ class _AbandonConfirmView(BaseView):
         self.stop()
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary)
+    async def cancel_btn(self, interaction: Interaction, button: ui.Button):
+        self.main_view._build_view_components()
+        await interaction.response.edit_message(
+            content=None, embed=self.main_view.build_embed(), view=self.main_view
+        )
+        self.stop()
+
+
+class _CloseWarningConfirmView(BaseView):
+    """Inline confirmation before closing the board without taking contracts."""
+
+    def __init__(self, bot, parent: QuestBoardView):
+        super().__init__(bot, parent=parent)
+        self.main_view = parent
+        self._done = False
+
+    @ui.button(label="Close Anyway", style=ButtonStyle.danger)
+    async def confirm_btn(self, interaction: Interaction, button: ui.Button):
+        if self._done:
+            await interaction.response.defer()
+            return
+        self._done = True
+        await interaction.response.defer()
+        await self.main_view._execute_close(interaction)
+        self.stop()
+
+    @ui.button(label="Back", style=ButtonStyle.secondary)
     async def cancel_btn(self, interaction: Interaction, button: ui.Button):
         self.main_view._build_view_components()
         await interaction.response.edit_message(

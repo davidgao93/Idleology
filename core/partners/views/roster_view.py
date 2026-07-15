@@ -5,7 +5,7 @@ from typing import List
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.emojis import GUILD_TICKET
+from core.emojis import GUILD_TICKET, UBER_EMOJI
 from core.images import PARTNERS_DISPATCH
 from core.models import Partner
 from core.partners.data import PARTNER_DATA
@@ -282,7 +282,7 @@ class PartnerMainView(PartnerBaseView):
             else:
                 progress_str = f"⏱️ {progress_pct}% complete"
             embed.add_field(
-                name="🔱 Boss Raid",
+                name=f"{UBER_EMOJI} Boss Raid",
                 value=f"{names}\n{progress_str}",
                 inline=False,
             )
@@ -352,7 +352,7 @@ class PartnerMainView(PartnerBaseView):
         view.message = self.message
         await interaction.edit_original_response(embed=view.build_embed(), view=view)
 
-    @ui.button(label="Pull", style=ButtonStyle.success, emoji="🎫")
+    @ui.button(label="Pull", style=ButtonStyle.success, emoji=GUILD_TICKET)
     async def pull_btn(self, interaction: Interaction, button: ui.Button):
         from core.partners.views.gacha_view import PullView
 

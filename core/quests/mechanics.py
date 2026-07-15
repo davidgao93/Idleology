@@ -326,7 +326,7 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
     gold_note = " *(+50% Enrichment)*" if meta.get("enrichment_unlocked") else ""
     msgs.append(f"{GOLD_COIN} +{gold:,} Gold{gold_note}")
 
-    # Prospector perk: grant a small gathering cache on every turn-in
+    # Bountiful Quests perk: grant a small gathering cache on every turn-in
     if meta.get("prospector_unlocked"):
         try:
             import random as _random
@@ -344,9 +344,9 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
                 await bot.database.skills.update_batch(
                     user_id, server_id, skill_type, resources
                 )
-                msgs.append(f"⛏️ Prospector's Cache: +{skill_type.title()} materials")
+                msgs.append(f"⛏️ Bountiful Cache: +{skill_type.title()} materials")
         except Exception as e:
-            print(f"[Prospector perk error]: {e}")
+            print(f"[Bountiful Quests perk error]: {e}")
 
     # Grant Zeal for quest completion (30 for 1★, 90 for 3★)
     try:

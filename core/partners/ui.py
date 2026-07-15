@@ -100,7 +100,7 @@ def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
     char_shards = items.get("char_shards", 0)
     embed.set_footer(
         text=(
-            f"🎫 {items.get('guild_tickets', 0)} tickets  |  "
+            f"{items.get('guild_tickets', 0)} tickets  |  "
             f"⚔️ {items.get('combat_skill_shards', 0)} combat shards  |  "
             f"📋 {items.get('dispatch_skill_shards', 0)} dispatch shards"
             + (f"  |  🔷 {char_shards} char shards" if partner.rarity >= 6 else "")
@@ -114,7 +114,7 @@ def _build_roster_embed(partners: List[Partner], items: dict) -> discord.Embed:
     embed = discord.Embed(title="🤝 Partner Roster", colour=0xBEBEFE)
     if not partners:
         embed.description = "You have no partners yet! Use **Pull** to obtain some."
-        embed.set_footer(text=f"🎫 {items.get('guild_tickets', 0)} tickets")
+        embed.set_footer(text=f"{items.get('guild_tickets', 0)} tickets")
         return embed
 
     lines = []
@@ -129,7 +129,7 @@ def _build_roster_embed(partners: List[Partner], items: dict) -> discord.Embed:
 
     embed.description = "\n".join(lines)
     embed.set_footer(
-        text=f"🎫 {items.get('guild_tickets', 0)} tickets  |  Select a partner to manage"
+        text=f"{items.get('guild_tickets', 0)} tickets  |  Select a partner to manage"
     )
     embed.set_thumbnail(url=PARTNERS_DISPATCH)
     return embed

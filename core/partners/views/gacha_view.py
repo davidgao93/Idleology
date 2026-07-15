@@ -73,13 +73,19 @@ class PullResultView(PartnerBaseView):
             self.add_item(right)
 
         again1 = ui.Button(
-            label="Pull Again (1 ticket)", style=ButtonStyle.primary, row=1
+            label="Pull Again (1 ticket)",
+            style=ButtonStyle.primary,
+            emoji=GUILD_TICKET,
+            row=1,
         )
         again1.callback = self._pull_again
         self.add_item(again1)
 
         again10 = ui.Button(
-            label="Pull ×10 (10 tickets)", style=ButtonStyle.success, row=1
+            label="Pull ×10 (10 tickets)",
+            style=ButtonStyle.success,
+            emoji=GUILD_TICKET,
+            row=1,
         )
         again10.callback = self._pull_ten
         self.add_item(again10)
@@ -93,11 +99,11 @@ class PullResultView(PartnerBaseView):
             data = self.new_partners[self.current_index]
             static = data["static"]
             rarity = data["rarity"]
-            title = f"🎫 New Partner! {_stars(rarity)} {static['name']}"
+            title = f"{GUILD_TICKET} New Partner! {_stars(rarity)} {static['name']}"
         else:
             static = self.highest_dup["static"]
             rarity = self.highest_dup["rarity"]
-            title = f"🎫 Pull Results — {_stars(rarity)} {static['name']} (Duplicate)"
+            title = f"{GUILD_TICKET} Pull Results — {_stars(rarity)} {static['name']} (Duplicate)"
 
         embed = discord.Embed(
             title=title,
@@ -157,7 +163,7 @@ class PullView(PartnerBaseView):
 
     def build_embed(self, items: dict) -> discord.Embed:
         embed = discord.Embed(
-            title="🎫 Partner Pull",
+            title=f"{GUILD_TICKET} Partner Pull",
             colour=0xFFD700,
         )
         embed.description = (
@@ -176,11 +182,13 @@ class PullView(PartnerBaseView):
         embed.set_image(url=PARTNERS_INTRO)
         return embed
 
-    @ui.button(label="Pull ×1 (1 ticket)", style=ButtonStyle.primary)
+    @ui.button(label="Pull ×1 (1 ticket)", style=ButtonStyle.primary, emoji=GUILD_TICKET)
     async def pull_one(self, interaction: Interaction, button: ui.Button):
         await self._do_pull(interaction, count=1)
 
-    @ui.button(label="Pull ×10 (10 tickets)", style=ButtonStyle.success)
+    @ui.button(
+        label="Pull ×10 (10 tickets)", style=ButtonStyle.success, emoji=GUILD_TICKET
+    )
     async def pull_ten(self, interaction: Interaction, button: ui.Button):
         await self._do_pull(interaction, count=10)
 
@@ -201,7 +209,8 @@ class PullView(PartnerBaseView):
         if not ok:
             self._processing = False
             await interaction.response.send_message(
-                f"Not enough tickets! You need **{ticket_cost}** 🎫.", ephemeral=True
+                f"Not enough tickets! You need **{ticket_cost}** {GUILD_TICKET}.",
+                ephemeral=True,
             )
             return
 
@@ -241,7 +250,7 @@ class PullView(PartnerBaseView):
             6: GACHA_BANNER_6STAR,
         }
         banner_embed = discord.Embed(
-            title="🎫 Recruiting...",
+            title=f"{GUILD_TICKET} Recruiting...",
             description="The clerk hands you a scroll, you unfurl it...",
             colour=_rarity_colour(max_rarity),
         )
@@ -300,7 +309,7 @@ class PullView(PartnerBaseView):
                                 self.user_id, _MAX_TICKET_GRANT
                             )
                             result_lines.append(
-                                f"{emoji} {_stars(rarity)} **{static['name']}** (Sig MAX) → +{_MAX_TICKET_GRANT} 🎫"
+                                f"{emoji} {_stars(rarity)} **{static['name']}** (Sig MAX) → +{_MAX_TICKET_GRANT} {GUILD_TICKET}"
                             )
                         else:
                             char_shards_gained[partner_id] = (
@@ -386,7 +395,7 @@ class PullView(PartnerBaseView):
                 colour=0xFFD700,
             )
             plethora_embed.set_footer(
-                text=f"Pity: {new_pity}/100  |  🎫 {items_after.get('guild_tickets', 0)} tickets"
+                text=f"Pity: {new_pity}/100  |  {items_after.get('guild_tickets', 0)} tickets"
             )
             await interaction.edit_original_response(embed=plethora_embed, view=None)
 
@@ -436,12 +445,22 @@ class SinglePullDetailView(PartnerBaseView):
     def build_embed(self) -> discord.Embed:
         return _build_partner_embed(self.partner, {})
 
-    @ui.button(label="Pull Again (1 ticket)", style=ButtonStyle.primary, row=1)
+    @ui.button(
+        label="Pull Again (1 ticket)",
+        style=ButtonStyle.primary,
+        emoji=GUILD_TICKET,
+        row=1,
+    )
     async def pull_one(self, interaction: Interaction, button: ui.Button):
         await self.pull_view._do_pull(interaction, count=1)
         self.stop()
 
-    @ui.button(label="Pull ×10 (10 tickets)", style=ButtonStyle.success, row=1)
+    @ui.button(
+        label="Pull ×10 (10 tickets)",
+        style=ButtonStyle.success,
+        emoji=GUILD_TICKET,
+        row=1,
+    )
     async def pull_ten(self, interaction: Interaction, button: ui.Button):
         await self.pull_view._do_pull(interaction, count=10)
         self.stop()
@@ -488,11 +507,21 @@ class NewPartnersBrowserView(PartnerBaseView):
             right.callback = self._next
             self.add_item(right)
 
-        one = ui.Button(label="Pull Again (1 ticket)", style=ButtonStyle.primary, row=1)
+        one = ui.Button(
+            label="Pull Again (1 ticket)",
+            style=ButtonStyle.primary,
+            emoji=GUILD_TICKET,
+            row=1,
+        )
         one.callback = self._pull_one
         self.add_item(one)
 
-        ten = ui.Button(label="Pull ×10 (10 tickets)", style=ButtonStyle.success, row=1)
+        ten = ui.Button(
+            label="Pull ×10 (10 tickets)",
+            style=ButtonStyle.success,
+            emoji=GUILD_TICKET,
+            row=1,
+        )
         ten.callback = self._pull_ten
         self.add_item(ten)
 
@@ -504,7 +533,7 @@ class NewPartnersBrowserView(PartnerBaseView):
         partner = self.new_partners[self.current_index]
         embed = _build_partner_embed(partner, {})
         embed.title = (
-            f"🎫 New Partner Acquired! {_stars(partner.rarity)} {partner.name}"
+            f"{GUILD_TICKET} New Partner Acquired! {_stars(partner.rarity)} {partner.name}"
         )
         if len(self.new_partners) > 1:
             embed.set_footer(
@@ -560,12 +589,22 @@ class PullRecapView(PartnerBaseView):
         except Exception:
             pass
 
-    @ui.button(label="Pull Again (1 ticket)", style=ButtonStyle.primary, row=1)
+    @ui.button(
+        label="Pull Again (1 ticket)",
+        style=ButtonStyle.primary,
+        emoji=GUILD_TICKET,
+        row=1,
+    )
     async def pull_one(self, interaction: Interaction, button: ui.Button):
         await self.pull_view._do_pull(interaction, count=1)
         self.stop()
 
-    @ui.button(label="Pull ×10 (10 tickets)", style=ButtonStyle.success, row=1)
+    @ui.button(
+        label="Pull ×10 (10 tickets)",
+        style=ButtonStyle.success,
+        emoji=GUILD_TICKET,
+        row=1,
+    )
     async def pull_ten(self, interaction: Interaction, button: ui.Button):
         await self.pull_view._do_pull(interaction, count=10)
         self.stop()
