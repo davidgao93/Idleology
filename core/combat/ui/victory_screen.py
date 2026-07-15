@@ -32,6 +32,7 @@ from core.emojis import (
     DIVINER_ROD,
     DRAGON_KEY,
     GOLD_COIN,
+    GUILD_TICKET,
     INFERNAL_CINDER,
     INFERNAL_ENGRAM,
     INFERNAL_SIGIL,
@@ -187,7 +188,7 @@ def create_victory_embed(
         "Unidentified Blueprint": RESOURCE_EMOJI["unidentified_blueprint"],
         "Diviner's Rod": DIVINER_ROD,
         "Antique Tome": CODEX_TOME_EMOJI,
-        "Guild Ticket": "🎫",
+        "Guild Ticket": GUILD_TICKET,
         "Sigil of Corruption": CORRUPTION_SIGIL,
         "Celestial Sigil": CELESTIAL_SIGIL,
         "Infernal Sigil": INFERNAL_SIGIL,
@@ -222,8 +223,11 @@ def create_victory_embed(
         loot_lines.append(f"✦ **Essence of {emoji} {label}**")
 
     # 4. Equipment Drops
-    for item_desc in rewards.get("items", []):
-        loot_lines.append(f"💠 {item_desc}")
+    from core.inventory.views._slot_defs import SLOT_EMOJIS
+
+    for item in rewards.get("items", []):
+        slot_emoji = SLOT_EMOJIS.get(item["type"], "💠")
+        loot_lines.append(f"{slot_emoji} {item['desc']}")
 
     # 5. Apex Shard drops (from apex hunt victory)
     if rewards.get("apex_shards"):

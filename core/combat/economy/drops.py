@@ -290,7 +290,7 @@ class DropManager:
                 item_desc = item.description
 
             if item_desc:
-                reward_data["items"].append(item_desc)
+                reward_data["items"].append({"type": chosen_slot, "desc": item_desc})
 
 
 # ---------------------------------------------------------------------------

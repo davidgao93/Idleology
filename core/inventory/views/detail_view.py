@@ -9,18 +9,22 @@ from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
 from core.emojis import (
     CELESTIAL_ENGRAM,
+    GEAR_ENCHANT,
+    GEAR_REINFORCE,
     INFERNAL_ENGRAM,
     RUNE_GENERIC,
     RUNE_IMBUE,
     RUNE_MIRAGE_PERFECT,
-    RUNE_POTENTIAL,
     RUNE_REFINEMENT,
     RUNE_SHATTER,
     VOID_ENGRAM,
     VOID_KEY,
+    WEAPON_FORGE,
+    WEAPON_REFINE,
 )
 from core.images import VEYRA_AUTHOR
 from core.inventory.inventory import InventoryUI
+from core.inventory.views._slot_defs import SLOT_EMOJIS
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.items.essence_mechanics import get_essence_slots
 from core.inventory.upgrades import (
@@ -51,7 +55,7 @@ class DiscardConfirmView(BaseView):
     async def interaction_check(self, interaction: Interaction) -> bool:
         return str(interaction.user.id) == self.origin_view.user_id
 
-    @discord.ui.button(label="Discard", style=ButtonStyle.danger)
+    @discord.ui.button(label="Discard", style=ButtonStyle.danger, emoji="🗑️")
     async def confirm(self, interaction: Interaction, button: Button):
         # Call back to the main view to handle logic
         await self.origin_view.finalize_discard(interaction)
@@ -105,7 +109,9 @@ class ItemDetailView(BaseView):
 
         label = "Unequip" if self.is_equipped else "Equip"
         style = ButtonStyle.primary
-        equip_btn = Button(label=label, style=style)
+        equip_btn = Button(
+            label=label, style=style, emoji=SLOT_EMOJIS.get(self._get_db_type())
+        )
         equip_btn.callback = self.toggle_equip
         self.add_item(equip_btn)
 
@@ -113,10 +119,10 @@ class ItemDetailView(BaseView):
         if isinstance(self.item, Weapon):
             if self.item.forges_remaining > 0:
                 self.add_upgrade_button(
-                    "Forge", ButtonStyle.success, "forge", emoji=RUNE_GENERIC
+                    "Forge", ButtonStyle.success, "forge", emoji=WEAPON_FORGE
                 )
             self.add_upgrade_button(
-                "Refine", ButtonStyle.secondary, "refine", emoji=RUNE_REFINEMENT
+                "Refine", ButtonStyle.secondary, "refine", emoji=WEAPON_REFINE
             )
 
             if (
@@ -144,7 +150,7 @@ class ItemDetailView(BaseView):
                     "Imbue", ButtonStyle.primary, "imbue", emoji=RUNE_IMBUE
                 )
             self.add_upgrade_button(
-                "Reinforce", ButtonStyle.primary, "reinforce", emoji=RUNE_SHATTER
+                "Reinforce", ButtonStyle.primary, "reinforce", emoji=GEAR_REINFORCE
             )
             self.add_upgrade_button(
                 "Engram", ButtonStyle.danger, "engram", emoji=CELESTIAL_ENGRAM
@@ -162,7 +168,7 @@ class ItemDetailView(BaseView):
                 and self.item.passive_lvl < max_lvl
             ):
                 self.add_upgrade_button(
-                    "Enchant", ButtonStyle.success, "potential", emoji=RUNE_POTENTIAL
+                    "Enchant", ButtonStyle.success, "potential", emoji=GEAR_ENCHANT
                 )
             if isinstance(self.item, Accessory):
                 self.add_upgrade_button(
@@ -173,7 +179,7 @@ class ItemDetailView(BaseView):
                 )
             if isinstance(self.item, (Glove, Boot, Helmet)):
                 self.add_upgrade_button(
-                    "Reinforce", ButtonStyle.primary, "reinforce", emoji=RUNE_SHATTER
+                    "Reinforce", ButtonStyle.primary, "reinforce", emoji=GEAR_REINFORCE
                 )
                 essence_btn = Button(
                     label="Essences", style=ButtonStyle.primary, emoji="💎"
@@ -188,7 +194,7 @@ class ItemDetailView(BaseView):
             )
 
         # 4. Standard Actions
-        discard_btn = Button(label="Discard", style=ButtonStyle.danger)
+        discard_btn = Button(label="Discard", style=ButtonStyle.danger, emoji="🗑️")
         discard_btn.callback = self.discard_item
         self.add_item(discard_btn)
 
@@ -445,13 +451,13 @@ class ItemDetailView(BaseView):
         await asyncio.sleep(1.0)  # Wait 1.5s
 
         # Return to List View
-        embed = await self.parent.get_current_embed(interaction.user.display_name)
+        embed = await self.parent.get_current_embed()
         await interaction.edit_original_response(embed=embed, view=self.parent)
 
     async def go_back(self, interaction: Interaction):
         # Back navigation within inventory session (detail -> list). Do not clear_active.
         self.parent.update_buttons()
-        embed = await self.parent.get_current_embed(interaction.user.display_name)
+        embed = await self.parent.get_current_embed()
         await interaction.response.edit_message(embed=embed, view=self.parent)
         self.message = await interaction.original_response()
 

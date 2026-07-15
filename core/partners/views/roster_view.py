@@ -5,6 +5,7 @@ from typing import List
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.emojis import GUILD_TICKET
 from core.images import PARTNERS_DISPATCH
 from core.models import Partner
 from core.partners.data import PARTNER_DATA
@@ -177,7 +178,7 @@ class PartnerMainView(PartnerBaseView):
         embed.add_field(
             name="Welcome Traveler!",
             value=(
-                "Recruit new Partners with 🎫 Guild Tickets!\n"
+                f"Recruit new Partners with {GUILD_TICKET} Guild Tickets!\n"
                 "They can join you for ⚔️ Combat...\n"
                 "Or 📋 Dispatch them for passive rewards, the choice is yours.\n"
                 "Best of luck, adventurer!"
@@ -289,7 +290,7 @@ class PartnerMainView(PartnerBaseView):
         embed.add_field(
             name="💼 Inventory",
             value=(
-                f"🎫 **{items.get('guild_tickets', 0)}** Guild Tickets\n"
+                f"{GUILD_TICKET} **{items.get('guild_tickets', 0)}** Guild Tickets\n"
                 f"⚔️ **{items.get('combat_skill_shards', 0)}** Combat Shards\n"
                 f"📋 **{items.get('dispatch_skill_shards', 0)}** Dispatch Shards"
             ),

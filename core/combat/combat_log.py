@@ -499,7 +499,7 @@ class CombatLogger:
         # Gear items
         items = reward_data.get("items", [])
         for item in items:
-            first_line = item.split("\n")[0].replace("**", "")
+            first_line = item["desc"].split("\n")[0].replace("**", "")
             self._w(f"[ITEM]      {first_line}")
 
         # Special drops (keys, runes, materials, sigils)

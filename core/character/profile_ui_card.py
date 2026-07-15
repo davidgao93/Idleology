@@ -15,6 +15,7 @@ from core.emojis import (
     GOLD_COIN,
     INFINITE_MAW,
     NETHER_MARKET_PLUNDER,
+    QUEST_COMPLETE,
     ZEAL,
 )
 from core.items.factory import load_player
@@ -307,7 +308,7 @@ class CardProfileBuilder:
                     board_str = "Ready!"
             else:
                 board_str = "Ready!"
-            daily_lines.append(f"📋 **Quest Board** — {board_str}")
+            daily_lines.append(f"{QUEST_COMPLETE} **Quest Board** — {board_str}")
         except Exception:
             pass
 

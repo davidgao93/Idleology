@@ -4,7 +4,13 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from core.emojis import GOLD_COIN, RARITY, RUNE_REFINEMENT
+from core.emojis import (
+    GOLD_COIN,
+    QUEST_COMPLETE,
+    RARITY,
+    RUNE_REFINEMENT,
+    WEAPON_REFINE,
+)
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import HARLAN_AUTHOR, UPGRADE_REFINE
 from core.inventory.upgrades.base import BaseUpgradeView
@@ -50,7 +56,9 @@ class RefineView(BaseUpgradeView):
 
         self.clear_items()
 
-        action_btn = Button(label="Refine", style=ButtonStyle.success)
+        action_btn = Button(
+            label="Refine", style=ButtonStyle.success, emoji=WEAPON_REFINE
+        )
 
         if not has_refines:
             desc += (
@@ -65,12 +73,16 @@ class RefineView(BaseUpgradeView):
         action_btn.callback = self.confirm_refine
         self.add_item(action_btn)
 
-        maxx_btn = Button(label="Refinemaxx", style=ButtonStyle.danger)
+        maxx_btn = Button(
+            label="Refinemaxx", style=ButtonStyle.danger, emoji=WEAPON_REFINE
+        )
         maxx_btn.disabled = not (has_refines and has_funds and has_mats)
         maxx_btn.callback = self.refinemaxx_preview
         self.add_item(maxx_btn)
 
-        maxx_rune_btn = Button(label="Refinemaxx ✨", style=ButtonStyle.danger)
+        maxx_rune_btn = Button(
+            label="Refinemaxx (Rune)", style=ButtonStyle.danger, emoji=WEAPON_REFINE
+        )
         maxx_rune_btn.disabled = runes == 0
         maxx_rune_btn.callback = self.refinemaxx_with_runes_preview
         self.add_item(maxx_rune_btn)
@@ -81,7 +93,9 @@ class RefineView(BaseUpgradeView):
             discord.Color.blue() if (has_funds and has_mats) else discord.Color.red()
         )
         self.embed = discord.Embed(
-            title=f"Refine {self.item.name}", description=desc, color=color
+            title=f"{WEAPON_REFINE} Refine {self.item.name}",
+            description=desc,
+            color=color,
         )
         self.embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         self.embed.set_thumbnail(url=UPGRADE_REFINE)
@@ -188,7 +202,7 @@ class RefineView(BaseUpgradeView):
             )
 
             embed = discord.Embed(
-                title="Refine Complete! ✨", color=discord.Color.green()
+                title=f"{WEAPON_REFINE} Refine Complete!", color=discord.Color.green()
             )
             embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
             embed.set_thumbnail(url=UPGRADE_REFINE)
@@ -205,7 +219,9 @@ class RefineView(BaseUpgradeView):
                 self.user_id, "refinement_runes"
             )
             if self.item.refines_remaining > 0 or runes > 0:
-                again_btn = Button(label="Refine Again", style=ButtonStyle.primary)
+                again_btn = Button(
+                    label="Refine Again", style=ButtonStyle.primary, emoji=WEAPON_REFINE
+                )
                 again_btn.callback = self.render
                 self.add_item(again_btn)
 
@@ -420,7 +436,7 @@ class RefineView(BaseUpgradeView):
         )
 
         embed = discord.Embed(
-            title="Refinemaxx Complete! ⚡", color=discord.Color.gold()
+            title=f"{WEAPON_REFINE} Refinemaxx Complete!", color=discord.Color.gold()
         )
         embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REFINE)
@@ -438,7 +454,9 @@ class RefineView(BaseUpgradeView):
             self.user_id, "refinement_runes"
         )
         if self.item.refines_remaining > 0 or runes > 0:
-            again_btn = Button(label="Back to Refine", style=ButtonStyle.primary)
+            again_btn = Button(
+                label="Back to Refine", style=ButtonStyle.primary, emoji=WEAPON_REFINE
+            )
             again_btn.callback = self.render
             self.add_item(again_btn)
         self.add_back_button()
@@ -543,7 +561,8 @@ class RefineView(BaseUpgradeView):
         )
 
         embed = discord.Embed(
-            title="⚠️ Refinemaxx ✨ Confirmation", color=discord.Color.orange()
+            title=f"⚠️ {WEAPON_REFINE} Refinemaxx Confirmation",
+            color=discord.Color.orange(),
         )
         embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REFINE)
@@ -677,7 +696,7 @@ class RefineView(BaseUpgradeView):
         )
 
         embed = discord.Embed(
-            title="Refinemaxx ✨ Complete!", color=discord.Color.gold()
+            title=f"{WEAPON_REFINE} Refinemaxx Complete!", color=discord.Color.gold()
         )
         embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REFINE)
@@ -692,7 +711,9 @@ class RefineView(BaseUpgradeView):
         )
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         self.clear_items()

@@ -32,6 +32,7 @@ from core.emojis import (
     CODEX_TOME_EMOJI,
     DODGE_EVASION,
     GOLD_COIN,
+    QUEST_COMPLETE,
     STAT_ATK,
     STAT_BLOCK,
     STAT_DEF,
@@ -765,7 +766,9 @@ class CodexRunView(BaseLayoutView):
             )
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
         chapters_text = "\n".join(
             f"{'✅' if i in self.cleared_chapter_indices else '❌'} {ch.name}"

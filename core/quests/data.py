@@ -9,6 +9,7 @@ import random
 from core.emojis import (
     CODEX_FRAGMENT_EMOJI,
     CODEX_TOME_EMOJI,
+    GUILD_TICKET,
     SOUL_CORE,
     SPIRIT_STONE,
     VOID_FRAG,
@@ -491,7 +492,7 @@ async def grant_checkin_day(
     if day == 1:
         await bot.database.users.modify_currency(user_id, "curios", 3)
         await bot.database.partners.add_tickets(user_id, 3)
-        rewards += ["📦 +3 Curios", "🎫 +3 Guild Tickets"]
+        rewards += ["📦 +3 Curios", f"{GUILD_TICKET} +3 Guild Tickets"]
 
     elif day == 2:
         if level >= 70:
@@ -529,7 +530,7 @@ async def grant_checkin_day(
         else:
             await bot.database.quests.add_tokens(user_id, 2)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +2 Quest Tokens", "🎫 +3 Guild Tickets"]
+            rewards += ["🎫 +2 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
 
     elif day == 3:
         if level >= 80:
@@ -556,7 +557,7 @@ async def grant_checkin_day(
         else:
             await bot.database.quests.add_tokens(user_id, 2)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +2 Quest Tokens", "🎫 +3 Guild Tickets"]
+            rewards += ["🎫 +2 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
 
     elif day == 4:
         if level >= 60:
@@ -623,12 +624,12 @@ async def grant_checkin_day(
         else:
             await bot.database.quests.add_tokens(user_id, 2)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +2 Quest Tokens", "🎫 +3 Guild Tickets"]
+            rewards += ["🎫 +2 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
 
     elif day == 7:
         await bot.database.users.modify_currency(user_id, "curios", 5)
         await bot.database.partners.add_tickets(user_id, 5)
-        rewards += ["📦 +5 Curios", "🎫 +5 Guild Tickets"]
+        rewards += ["📦 +5 Curios", f"{GUILD_TICKET} +5 Guild Tickets"]
 
     elif day == 8:
         if level >= 100:
@@ -664,7 +665,7 @@ async def grant_checkin_day(
         else:
             await bot.database.quests.add_tokens(user_id, 3)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +3 Quest Tokens", "🎫 +3 Guild Tickets"]
+            rewards += ["🎫 +3 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
 
     elif day == 9:
         if level >= 80:
@@ -725,7 +726,7 @@ async def grant_checkin_day(
         else:
             await bot.database.quests.add_tokens(user_id, 2)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +2 Quest Tokens", "🎫 +3 Guild Tickets"]
+            rewards += ["🎫 +2 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
 
     elif day == 11:
         if level >= 100:
@@ -767,7 +768,7 @@ async def grant_checkin_day(
         else:
             await bot.database.quests.add_tokens(user_id, 3)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +3 Quest Tokens", "🎫 +3 Guild Tickets"]
+            rewards += ["🎫 +3 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
 
     elif day == 12:
         if level >= 50:
@@ -794,6 +795,6 @@ async def grant_checkin_day(
     elif day == 14:
         await bot.database.users.modify_currency(user_id, "curios", 10)
         await bot.database.partners.add_tickets(user_id, 10)
-        rewards += ["📦 +10 Curios", "🎫 +10 Guild Tickets"]
+        rewards += ["📦 +10 Curios", f"{GUILD_TICKET} +10 Guild Tickets"]
 
     return rewards

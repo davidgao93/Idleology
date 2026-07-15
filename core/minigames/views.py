@@ -6,7 +6,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button, Modal, TextInput
 
 from core.base_view import BaseView
-from core.emojis import GOLD_COIN
+from core.emojis import GOLD_COIN, QUEST_COMPLETE
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import CASINO_AUTHOR, TAVERN_CASINO
 from core.npc_voices import get_quip
@@ -193,7 +193,9 @@ class RouletteView(BaseView):
         )
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
         self.clear_items()
         embed.set_footer(text="Game Over")
@@ -715,7 +717,9 @@ class BlackjackView(BaseView):
 
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         total_bet = sum(h["bet"] for h in self.hands) + self.insurance_bet
@@ -1130,7 +1134,9 @@ class CrashView(BaseView):
         )
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         await self.original_interaction.edit_original_response(
@@ -1186,7 +1192,9 @@ class CrashView(BaseView):
         )
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         self.clear_items()
@@ -1372,7 +1380,9 @@ class HorseRaceView(BaseView):
 
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         self.clear_items()
@@ -1602,7 +1612,9 @@ class OneVOneView(BaseView):
         embed.color = discord.Color.gold() if won else discord.Color.red()
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         self.clear_items()

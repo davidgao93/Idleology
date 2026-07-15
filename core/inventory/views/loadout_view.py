@@ -44,7 +44,7 @@ class RenameLoadoutModal(discord.ui.Modal, title="Rename Loadout"):
         await self.parent_view._reload()
         self.parent_view.update_components()
         await interaction.response.edit_message(
-            embed=self.parent_view.build_embed(interaction.user.display_name),
+            embed=self.parent_view.build_embed(),
             view=self.parent_view,
         )
         self.parent_view.message = await interaction.original_response()
@@ -62,6 +62,7 @@ class LoadoutView(BaseView):
         *,
         mode: str = "standalone",
         parent_view=None,
+        player_name: str = "",
     ):
         super().__init__(bot, user_id, server_id=server_id)
         self.loadouts = loadouts
@@ -71,6 +72,7 @@ class LoadoutView(BaseView):
         )
         self.mode = mode
         self.parent_view = parent_view
+        self.player_name = player_name or getattr(parent_view, "player_name", "")
         self.selected_slot_index = None
         self._processing = False
         self.update_components()
@@ -88,6 +90,7 @@ class LoadoutView(BaseView):
         *,
         mode: str = "standalone",
         parent_view=None,
+        player_name: str = "",
     ) -> "LoadoutView":
         slots_unlocked = await bot.database.loadouts.get_slots_unlocked(user_id)
         await bot.database.loadouts.ensure_default_rows(user_id, slots_unlocked)
@@ -106,6 +109,7 @@ class LoadoutView(BaseView):
             item_names_by_slot,
             mode=mode,
             parent_view=parent_view,
+            player_name=player_name,
         )
 
     # ------------------------------------------------------------------
@@ -232,11 +236,11 @@ class LoadoutView(BaseView):
     # Embed builder
     # ------------------------------------------------------------------
 
-    def build_embed(self, user_name: str) -> discord.Embed:
+    def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="📦 Gear Loadouts",
             description=(
-                f"**{user_name}** · {self.slots_unlocked} slot{'s' if self.slots_unlocked != 1 else ''}\n"
+                f"**{self.player_name}** · {self.slots_unlocked} slot{'s' if self.slots_unlocked != 1 else ''}\n"
                 "Select a loadout to apply, save your current gear to it, or rename it."
             ),
             color=discord.Color.blurple(),
@@ -268,9 +272,7 @@ class LoadoutView(BaseView):
     async def _handle_select(self, interaction: Interaction, select: discord.ui.Select):
         self.selected_slot_index = int(select.values[0])
         self.update_components()
-        await interaction.response.edit_message(
-            embed=self.build_embed(interaction.user.display_name), view=self
-        )
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
         self.message = await interaction.original_response()
 
     async def _apply_callback(self, interaction: Interaction):
@@ -299,9 +301,7 @@ class LoadoutView(BaseView):
 
         await self._reload()
         self.update_components()
-        await interaction.edit_original_response(
-            embed=self.build_embed(interaction.user.display_name), view=self
-        )
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
         msg = f"✅ **{selected['name']}** applied!"
         if skipped:
@@ -346,9 +346,7 @@ class LoadoutView(BaseView):
 
         await self._reload()
         self.update_components()
-        await interaction.edit_original_response(
-            embed=self.build_embed(interaction.user.display_name), view=self
-        )
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
         refreshed = self._get_selected()
         saved_name = refreshed["name"] if refreshed else selected["name"]
         await interaction.followup.send(
@@ -391,9 +389,7 @@ class LoadoutView(BaseView):
         await self.bot.database.loadouts.ensure_default_rows(self.user_id, next_slot)
         await self._reload()
         self.update_components()
-        await interaction.edit_original_response(
-            embed=self.build_embed(interaction.user.display_name), view=self
-        )
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
         await interaction.followup.send(
             f"🔓 Slot {next_slot} unlocked for **{cost:,}** gold!", ephemeral=True
         )
@@ -403,7 +399,7 @@ class LoadoutView(BaseView):
         if self.parent_view is not None and hasattr(self.parent_view, "_processing"):
             self.parent_view._processing = False
         await interaction.response.edit_message(
-            embed=self.parent_view.build_embed(interaction.user.display_name),
+            embed=self.parent_view.build_embed(),
             view=self.parent_view,
         )
         self.message = await interaction.original_response()

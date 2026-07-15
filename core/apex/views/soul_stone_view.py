@@ -172,7 +172,9 @@ def _build_soul_stone_embed(
                 f"  ↳ Category: *{cat}*\n"
                 f"  ↳ {desc_line}"
             )
-    embed.add_field(name=f"{SOUL_SLOT} Slots", value="\n".join(slot_lines), inline=False)
+    embed.add_field(
+        name=f"{SOUL_SLOT} Slots", value="\n".join(slot_lines), inline=False
+    )
 
     # --- Resonance ---
     res = ApexMechanics.get_resonance(soul_stone)
@@ -403,6 +405,7 @@ class _ClearSlotView(BaseView):
             btn = Button(
                 label=f"Clear Slot {slot_num} ({passive_display})",
                 style=ButtonStyle.danger,
+                emoji="🗑️",
                 custom_id=f"clear_{slot_num}",
             )
             btn.callback = self._make_clear_callback(slot_num)

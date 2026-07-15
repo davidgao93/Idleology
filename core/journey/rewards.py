@@ -5,6 +5,7 @@ from core.emojis import (
     CAPRICIOUS_CARP,
     CODEX_TOME_EMOJI,
     GOLD_COIN,
+    GUILD_TICKET,
     SPARKLING_SPRIG,
 )
 from core.images import (
@@ -62,7 +63,7 @@ async def _grant_level_5(bot, user_id: str, server_id: str) -> list:
 async def _grant_level_10(bot, user_id: str, server_id: str) -> list:
     await bot.database.partners.ensure_items_row(user_id)
     await bot.database.partners.add_tickets(user_id, 10)
-    return ["🎫 **+10 Guild Tickets**"]
+    return [f"{GUILD_TICKET} **+10 Guild Tickets**"]
 
 
 async def _grant_level_20(bot, user_id: str, server_id: str) -> list:

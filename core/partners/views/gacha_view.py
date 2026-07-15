@@ -7,6 +7,7 @@ from typing import List, Optional
 import discord
 from discord import ButtonStyle, Interaction, ui
 
+from core.emojis import GUILD_TICKET
 from core.images import (
     GACHA_BANNER_4STAR,
     GACHA_BANNER_5STAR,
@@ -166,7 +167,7 @@ class PullView(PartnerBaseView):
         )
         embed.add_field(
             name="Your Tickets",
-            value=f"🎫 **{items.get('guild_tickets', 0)}** tickets",
+            value=f"{GUILD_TICKET} **{items.get('guild_tickets', 0)}** tickets",
         )
         embed.add_field(
             name="Pity",

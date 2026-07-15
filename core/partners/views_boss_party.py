@@ -22,7 +22,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import GOLD_COIN
+from core.emojis import GOLD_COIN, GUILD_TICKET
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import PARTNERS_BOSS_PARTY, VICTORY_APHRODITE_GEMINI
 from core.models import Partner
@@ -628,7 +628,7 @@ class BossPartyProgressView(BaseView):
             f"🔮 **{sigil_count}×** {sigil_label}",
         ]
         if rewards["guild_ticket"]:
-            lines.append("🎫 **1×** Guild Ticket")
+            lines.append(f"{GUILD_TICKET} **1×** Guild Ticket")
         for role, partner in [
             ("attacker", attacker),
             ("tank", tank),

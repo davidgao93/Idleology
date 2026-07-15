@@ -58,13 +58,19 @@ class GearView(BaseView):
     """
 
     def __init__(
-        self, bot, user_id: str, all_items: dict, initial_slot: str = "weapon"
+        self,
+        bot,
+        user_id: str,
+        all_items: dict,
+        initial_slot: str = "weapon",
+        player_name: str = "",
     ):
         super().__init__(bot=bot, user_id=user_id)
         self.bot = bot
         self.user_id = user_id
         self.all_items = all_items  # dict[slot -> List[item model]]
         self.active_slot = initial_slot
+        self.player_name = player_name
         self.current_page = 0
         self._processing = False
 
@@ -111,9 +117,9 @@ class GearView(BaseView):
         """Alias used by ItemDetailView and MassDiscardModal."""
         self.update_components()
 
-    async def get_current_embed(self, user_name: str) -> discord.Embed:
+    async def get_current_embed(self) -> discord.Embed:
         """Alias used by ItemDetailView.go_back."""
-        return self.build_embed(user_name)
+        return self.build_embed()
 
     def _get_db_type(self) -> str:
         """Alias used by MassDiscardModal."""
@@ -328,9 +334,9 @@ class GearView(BaseView):
     # Embed builder
     # ------------------------------------------------------------------
 
-    def build_embed(self, user_name: str) -> discord.Embed:
+    def build_embed(self) -> discord.Embed:
         return InventoryUI.get_gear_embed(
-            user_name,
+            self.player_name,
             self.all_items,
             self.active_slot,
             self.equipped_ids,
@@ -349,9 +355,7 @@ class GearView(BaseView):
         self.active_slot = slot_key
         self.current_page = 0
         self.update_components()
-        await interaction.response.edit_message(
-            embed=self.build_embed(interaction.user.display_name), view=self
-        )
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
         self.message = await interaction.original_response()
 
     async def _handle_select(self, interaction: Interaction, select: discord.ui.Select):
@@ -375,17 +379,13 @@ class GearView(BaseView):
     async def prev_page(self, interaction: Interaction):
         self.current_page = max(0, self.current_page - 1)
         self.update_components()
-        await interaction.response.edit_message(
-            embed=self.build_embed(interaction.user.display_name), view=self
-        )
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
         self.message = await interaction.original_response()
 
     async def next_page(self, interaction: Interaction):
         self.current_page = min(self._get_total_pages() - 1, self.current_page + 1)
         self.update_components()
-        await interaction.response.edit_message(
-            embed=self.build_embed(interaction.user.display_name), view=self
-        )
+        await interaction.response.edit_message(embed=self.build_embed(), view=self)
         self.message = await interaction.original_response()
 
     async def mass_discard_callback(self, interaction: Interaction):
@@ -399,14 +399,17 @@ class GearView(BaseView):
         server_id = str(interaction.guild_id)
         try:
             view = await LoadoutView.create(
-                self.bot, self.user_id, server_id, mode="from_gear", parent_view=self
+                self.bot,
+                self.user_id,
+                server_id,
+                mode="from_gear",
+                parent_view=self,
+                player_name=self.player_name,
             )
         except Exception:
             self._processing = False
             raise
-        await interaction.response.edit_message(
-            embed=view.build_embed(interaction.user.display_name), view=view
-        )
+        await interaction.response.edit_message(embed=view.build_embed(), view=view)
         self.message = await interaction.original_response()
 
     async def close_view(self, interaction: Interaction):

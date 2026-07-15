@@ -332,6 +332,24 @@ CODEX_TOME_EMOJI = "<:codex_tome:1526690279917097023>"
 CODEX_PAGE_EMOJI = "<:codex_page:1526690280655552632>"
 CODEX_FRAGMENT_EMOJI = "<:codex_fragment:1526690281276182690>"
 
+# ── Profile Hub tabs ────────────────────────────────────────────────────────
+MISC_PASSIVES = "<:misc_passives:1526938107927072938>"
+GEAR_PASSIVES = "<:gear_passives:1526938107016904816>"
+UBER_EMOJI = "<:uber:1526938108547956827>"
+
+# ── Quests ──────────────────────────────────────────────────────────────────
+QUEST_COMPLETE = "<:quest_complete:1526938103162470400>"
+
+# ── Guild Ticket (standardized — do not use plain 🎫 for this currency) ────
+GUILD_TICKET = "<:guild_ticket:1526938101988196492>"
+
+# ── Gear upgrade action icons (launcher buttons; the underlying rune/material
+# icon stays on any secondary "use rune" sub-option, e.g. Enchant's Use Rune) ─
+GEAR_ENCHANT = "<:gear_enchant:1526938101065322576>"
+GEAR_REINFORCE = "<:gear_reinforce:1526938103674048658>"
+WEAPON_FORGE = "<:weapon_forge:1526938104810700941>"
+WEAPON_REFINE = "<:weapon_refine:1526938105603555388>"
+
 # ── Alchemy potion passives (Potion Lab / Distillation / combat status icons) ─
 ALCHEMY_ENRAGE = "<:alchemy_enrage:1526349277616410696>"
 ALCHEMY_ENFEEBLE = "<:alchemy_enfeeble:1526349276018643005>"
@@ -677,4 +695,14 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "codex_tome": ("Antique Tome", CODEX_TOME_EMOJI),
     "codex_page": ("Codex Page", CODEX_PAGE_EMOJI),
     "codex_fragment": ("Codex Fragment", CODEX_FRAGMENT_EMOJI),
+    # Appended for the 2026-07-16 emoji batch (profile hub, quests, gear upgrades).
+    "misc_passives": ("Misc Passives", MISC_PASSIVES),
+    "gear_passives": ("Gear Passives", GEAR_PASSIVES),
+    "uber": ("Uber", UBER_EMOJI),
+    "quest_complete": ("Quest Complete", QUEST_COMPLETE),
+    "guild_ticket": ("Guild Ticket", GUILD_TICKET),
+    "gear_enchant": ("Enchant", GEAR_ENCHANT),
+    "gear_reinforce": ("Reinforce", GEAR_REINFORCE),
+    "weapon_forge": ("Forge", WEAPON_FORGE),
+    "weapon_refine": ("Refine", WEAPON_REFINE),
 }

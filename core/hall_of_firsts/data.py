@@ -7,6 +7,8 @@ core/hall_of_firsts/triggers.py, not here.
 
 from dataclasses import dataclass
 
+from core.emojis import QUEST_COMPLETE
+
 # Channel the bot posts a celebratory announcement to whenever a category is claimed.
 HALL_ANNOUNCE_CHANNEL_ID = 1521953415528316938
 
@@ -31,7 +33,10 @@ CATEGORIES: list[CategoryDef] = [
         "looksmaxxer", "Looksmaxxer", "💅", "First to purchase a Prestige avatar."
     ),
     CategoryDef(
-        "really_board", "Really Board", "📋", "First to 300 lifetime quest completions."
+        "really_board",
+        "Really Board",
+        QUEST_COMPLETE,
+        "First to 300 lifetime quest completions.",
     ),
     CategoryDef(
         "king", "King", "👑", "First to fully develop all 20 settlement plots."

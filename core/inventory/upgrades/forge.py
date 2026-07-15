@@ -6,7 +6,7 @@ from discord.ui import Button
 
 from core.combat.calc.calcs import fmt_weapon_passive
 from core.character.passive_formatters import get_weapon_passive_description
-from core.emojis import GOLD_COIN, RESOURCE_EMOJI
+from core.emojis import GOLD_COIN, RESOURCE_EMOJI, WEAPON_FORGE
 from core.images import HARLAN_AUTHOR, UPGRADE_FORGE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.npc_voices import get_quip
@@ -42,7 +42,7 @@ class ForgeView(BaseUpgradeView):
         )
 
         self.embed = discord.Embed(
-            title=f"Forge {self.item.name}",
+            title=f"{WEAPON_FORGE} Forge {self.item.name}",
             description=get_quip("forge"),
             color=discord.Color.green() if has_res else discord.Color.red(),
         )
@@ -60,13 +60,19 @@ class ForgeView(BaseUpgradeView):
         self.clear_items()
 
         forge_btn = Button(
-            label="Forge!", style=ButtonStyle.success, disabled=not has_res
+            label="Forge!",
+            style=ButtonStyle.success,
+            emoji=WEAPON_FORGE,
+            disabled=not has_res,
         )
         forge_btn.callback = self.confirm_forge
         self.add_item(forge_btn)
 
         forgemaxx_btn = Button(
-            label="Forgemaxx", style=ButtonStyle.danger, disabled=not has_res
+            label="Forgemaxx",
+            style=ButtonStyle.danger,
+            emoji=WEAPON_FORGE,
+            disabled=not has_res,
         )
         forgemaxx_btn.callback = self.forgemaxx_preview
         self.add_item(forgemaxx_btn)
@@ -137,7 +143,7 @@ class ForgeView(BaseUpgradeView):
 
         success, new_passive = EquipmentMechanics.roll_forge_outcome(self.item)
 
-        result_embed = discord.Embed(title="Forge Result")
+        result_embed = discord.Embed(title=f"{WEAPON_FORGE} Forge Result")
         if success:
             self.item.forges_remaining -= 1
             self.item.passive = new_passive
@@ -179,11 +185,15 @@ class ForgeView(BaseUpgradeView):
         self.clear_items()
 
         if self.item.forges_remaining > 0:
-            again_btn = Button(label="Forge Again", style=ButtonStyle.success)
+            again_btn = Button(
+                label="Forge Again", style=ButtonStyle.success, emoji=WEAPON_FORGE
+            )
             again_btn.callback = self.render
             self.add_item(again_btn)
 
-            forgemaxx_btn = Button(label="Forgemaxx", style=ButtonStyle.danger)
+            forgemaxx_btn = Button(
+                label="Forgemaxx", style=ButtonStyle.danger, emoji=WEAPON_FORGE
+            )
             forgemaxx_btn.callback = self.forgemaxx_preview
             self.add_item(forgemaxx_btn)
 
@@ -446,7 +456,7 @@ class ForgeView(BaseUpgradeView):
             else ""
         )
         result_embed = discord.Embed(
-            title="⚒️ Forgemaxx Complete",
+            title=f"{WEAPON_FORGE} Forgemaxx Complete",
             color=discord.Color.gold() if successes > 0 else discord.Color.dark_grey(),
         )
         result_embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)

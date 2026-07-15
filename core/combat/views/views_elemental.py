@@ -7,6 +7,7 @@ from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
 from core.combat.turns import engine
+from core.emojis import QUEST_COMPLETE
 from core.images import COMBAT_ELEMENTAL
 from core.items.factory import load_player
 from core.models import Monster, Player
@@ -245,7 +246,9 @@ class ElementalEncounterView(BaseView):
             )
             if quest_msgs:
                 embed.add_field(
-                    name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                    name=f"{QUEST_COMPLETE} Quest Progress",
+                    value="\n".join(quest_msgs),
+                    inline=False,
                 )
             return embed
 

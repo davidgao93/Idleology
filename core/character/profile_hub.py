@@ -7,7 +7,7 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
 from core.character.profile_ui import ProfileBuilder
-from core.emojis import GEAR_BACKPACK
+from core.emojis import GEAR_BACKPACK, GEAR_PASSIVES, MISC_PASSIVES, UBER_EMOJI
 
 # Row 0: Profile | Cooldowns | Inventory | Crafting | Resources
 _ROW0 = [
@@ -21,9 +21,9 @@ _ROW0 = [
 # Row 1: Stats | Gear Passives | Misc Passives | Uber | Close
 _ROW1 = [
     ("stats", "Stats", "📊", 1),
-    ("gear_passives", "Gear Passives", "⚡", 1),
-    ("misc_passives", "Misc Passives", "🔮", 1),
-    ("uber", "Uber", "⚔️", 1),
+    ("gear_passives", "Gear Passives", GEAR_PASSIVES, 1),
+    ("misc_passives", "Misc Passives", MISC_PASSIVES, 1),
+    ("uber", "Uber", UBER_EMOJI, 1),
 ]
 
 

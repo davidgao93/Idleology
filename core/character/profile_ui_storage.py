@@ -41,6 +41,7 @@ from core.emojis import (
     GLOVE_SLOT,
     GOLD_COIN,
     GOLD_ORE,
+    GUILD_TICKET,
     HEARTWOOD_SHARD,
     HELMET_SLOT,
     IDEA_LOGS,
@@ -85,6 +86,7 @@ from core.emojis import (
     STURDY_BONES,
     TIDE_RELIC,
     TITANIUM_BONES,
+    UBER_EMOJI,
     VOID_CRYSTAL,
     VOID_ENGRAM,
     VOID_FRAG,
@@ -171,7 +173,7 @@ class StorageProfileBuilder:
             value=(
                 f"{CURIO} Curios: {curios}\n"
                 f"{PUZZLE_BOX} Puzzle Boxes: {puzzle_boxes}\n"
-                f"🎫 Guild Tickets: {guild_tickets}\n"
+                f"{GUILD_TICKET} Guild Tickets: {guild_tickets}\n"
                 f"{CODEX_TOME_EMOJI} Antique Tomes: {antique_tomes}\n{PINNACLE_KEY} Pinnacle Keys: {pinnacle_keys}"
             ),
             inline=True,
@@ -478,7 +480,9 @@ class StorageProfileBuilder:
         uber_data = await bot.database.uber.get_uber_progress(user_id, server_id)
         specials = await bot.database.settlement_materials.get_uber_materials(user_id)
 
-        embed = discord.Embed(title="Uber Encounters", color=discord.Color.dark_gold())
+        embed = discord.Embed(
+            title=f"{UBER_EMOJI} Uber Encounters", color=discord.Color.dark_gold()
+        )
         embed.set_thumbnail(url=user["appearance"])
 
         def _bp_emoji(unlocked) -> str:

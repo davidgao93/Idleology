@@ -900,7 +900,7 @@ class PlotDetailView(SettlementBaseView):
         btn_demo = ui.Button(
             label="Demolish",
             style=ButtonStyle.danger,
-            emoji="💥",
+            emoji="🗑️",
             row=1,
         )
         btn_demo.callback = self._demolish_confirm

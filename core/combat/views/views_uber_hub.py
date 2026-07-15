@@ -8,6 +8,7 @@ from core.emojis import (
     CELESTIAL_SIGIL,
     CORRUPTION_SIGIL,
     INFERNAL_SIGIL,
+    UBER_EMOJI,
     VOID_SIGIL,
 )
 from core.images import (
@@ -162,7 +163,7 @@ class UberHubView(BaseLayoutView):
 
         children: list = [
             discord.ui.Section(
-                "## ⚔️ Uber Encounters\n"
+                f"## {UBER_EMOJI} Uber Encounters\n"
                 f"**The Arbiter:** *{get_quip('uber')}*\n\n"
                 "These are the most powerful beings in existence. "
                 "Only the truly prepared dare to challenge them.\n\n"
@@ -217,7 +218,7 @@ class UberHubView(BaseLayoutView):
     def build_embed(self) -> discord.Embed:
         lvl = self.player.level
         embed = discord.Embed(
-            title="⚔️ Uber Encounters",
+            title=f"{UBER_EMOJI} Uber Encounters",
             description=(
                 f"*{get_quip('uber')}*\n\n"
                 "These are the most powerful beings in existence. "

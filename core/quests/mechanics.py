@@ -12,6 +12,7 @@ from core.emojis import (
     CODEX_FRAGMENT_EMOJI,
     DRAGON_KEY,
     GOLD_COIN,
+    QUEST_COMPLETE,
     SOUL_CORE,
     SPIRIT_STONE,
     VOID_FRAG,
@@ -214,7 +215,7 @@ async def tick_quest_progress(
                 label = quest_def["label"]
                 progress = min(row["progress"], row["goal"])
                 if row["completed"]:
-                    msgs.append(f"📋 {label}  ✅ Complete!")
+                    msgs.append(f"{QUEST_COMPLETE} {label}  Complete!")
                 else:
                     msgs.append(f"📋 {label}  {progress}/{row['goal']}")
 
@@ -237,7 +238,7 @@ async def tick_quest_progress(
                     path_name = path_def["name"]
                     progress = min(updated_h["progress"], updated_h["goal"])
                     if updated_h["completed"]:
-                        msgs.append(f"🌀 {path_name}  ✅ Complete!")
+                        msgs.append(f"{QUEST_COMPLETE} {path_name}  Complete!")
                     else:
                         msgs.append(f"🌀 {path_name}  {progress}/{updated_h['goal']}")
 
@@ -261,7 +262,7 @@ async def send_quest_complete_notice(interaction, msgs: list) -> None:
         return
     try:
         await interaction.followup.send(
-            "📋 " + "  |  ".join(completed) + "\nTurn in your reward at `/quests`!",
+            "  |  ".join(completed) + "\nTurn in your reward at `/quests`!",
             ephemeral=True,
         )
     except Exception:

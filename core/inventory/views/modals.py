@@ -107,9 +107,7 @@ class MassDiscardModal(discord.ui.Modal, title="Mass Discard"):
         await asyncio.sleep(1.5)
 
         # Revert to List View
-        list_embed = await self.parent_view.get_current_embed(
-            interaction.user.display_name
-        )
+        list_embed = await self.parent_view.get_current_embed()
         await interaction.edit_original_response(
             embed=list_embed, view=self.parent_view
         )

@@ -6,7 +6,13 @@ from core.character.passive_formatters import (
     get_scaled_passive_description,
     get_void_passive_description,
 )
-from core.emojis import GOLD_COIN, RUNE_POTENTIAL, VOID_ENGRAM
+from core.emojis import (
+    GEAR_ENCHANT,
+    GOLD_COIN,
+    QUEST_COMPLETE,
+    RUNE_POTENTIAL,
+    VOID_ENGRAM,
+)
 from core.images import (
     SYLAS_AUTHOR,
     UPGRADE_ENCHANT,
@@ -85,7 +91,7 @@ class PotentialView(BaseUpgradeView):
         self.itype = itype
 
         embed = discord.Embed(
-            title=f"Enchant {self.item.name}",
+            title=f"{GEAR_ENCHANT} Enchant {self.item.name}",
             description=desc,
             color=discord.Color.purple(),
         )
@@ -97,7 +103,10 @@ class PotentialView(BaseUpgradeView):
 
         # Standard Enchant
         btn_std = Button(
-            label=f"Enchant ({base_rate}%)", style=ButtonStyle.primary, row=0
+            label=f"Enchant ({base_rate}%)",
+            style=ButtonStyle.primary,
+            emoji=GEAR_ENCHANT,
+            row=0,
         )
         btn_std.disabled = gold < cost or not has_attempts or is_capped
         btn_std.callback = lambda i: self.confirm_enchant(i, use_rune=False)
@@ -174,7 +183,7 @@ class PotentialView(BaseUpgradeView):
             self.item.potential_remaining,
         )
 
-        result_embed = discord.Embed(title="Enchantment Result")
+        result_embed = discord.Embed(title=f"{GEAR_ENCHANT} Enchantment Result")
         result_embed.set_author(name="Artificer Sylas", icon_url=SYLAS_AUTHOR)
         result_embed.set_thumbnail(url=UPGRADE_ENCHANT)
 
@@ -230,7 +239,9 @@ class PotentialView(BaseUpgradeView):
 
         if quest_msgs:
             result_embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         # UI Refresh
@@ -241,7 +252,9 @@ class PotentialView(BaseUpgradeView):
             else (5 if isinstance(self.item, (Glove, Helmet)) else 6)
         )
         if self.item.potential_remaining > 0 and self.item.passive_lvl < max_lvl:
-            again_btn = Button(label="Enchant Again", style=ButtonStyle.primary)
+            again_btn = Button(
+                label="Enchant Again", style=ButtonStyle.primary, emoji=GEAR_ENCHANT
+            )
             again_btn.callback = self.render
             self.add_item(again_btn)
 

@@ -8,7 +8,14 @@ from core.character.passive_formatters import (
     get_armor_passive_description,
     get_celestial_passive_description,
 )
-from core.emojis import CELESTIAL_ENGRAM, GOLD_COIN, RUNE_POTENTIAL, RUNE_SHATTER
+from core.emojis import (
+    CELESTIAL_ENGRAM,
+    GEAR_REINFORCE,
+    GOLD_COIN,
+    QUEST_COMPLETE,
+    RUNE_POTENTIAL,
+    RUNE_SHATTER,
+)
 from core.images import (
     SYLAS_AUTHOR,
     UPGRADE_CELESTIAL_ENGRAM,
@@ -225,7 +232,9 @@ class TemperView(BaseUpgradeView):
 
         if quest_msgs:
             res_embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         # UI Refresh
@@ -384,7 +393,9 @@ class ReinforceView(BaseUpgradeView):
 
         self.clear_items()
 
-        action_btn = Button(label="Reinforce", style=ButtonStyle.success)
+        action_btn = Button(
+            label="Reinforce", style=ButtonStyle.success, emoji=GEAR_REINFORCE
+        )
         if not has_slots:
             desc += f"\n\n**0 Reinforces left!** Use a Shatter Rune to add a slot? (Owned: {shatter_runes})"
             action_btn.label = "Use Shatter Rune"
@@ -396,7 +407,9 @@ class ReinforceView(BaseUpgradeView):
         action_btn.callback = self.confirm_reinforce
         self.add_item(action_btn)
 
-        shattermaxx_btn = Button(label="Reinforcemaxx", style=ButtonStyle.danger)
+        shattermaxx_btn = Button(
+            label="Reinforcemaxx", style=ButtonStyle.danger, emoji=GEAR_REINFORCE
+        )
         shattermaxx_btn.disabled = shatter_runes == 0 and not (
             has_funds and has_mats and has_slots
         )
@@ -409,7 +422,9 @@ class ReinforceView(BaseUpgradeView):
             discord.Color.blue() if (has_funds and has_mats) else discord.Color.red()
         )
         embed = discord.Embed(
-            title=f"Reinforce {self.item.name}", description=desc, color=color
+            title=f"{GEAR_REINFORCE} Reinforce {self.item.name}",
+            description=desc,
+            color=color,
         )
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_TEMPER)
@@ -503,7 +518,8 @@ class ReinforceView(BaseUpgradeView):
             new_val = getattr(self.item, stat_col)
             suffix = "%" if is_pct else ""
             embed = discord.Embed(
-                title="Reinforce Complete! ✨", color=discord.Color.green()
+                title=f"{GEAR_REINFORCE} Reinforce Complete!",
+                color=discord.Color.green(),
             )
             embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
             embed.set_thumbnail(url=UPGRADE_REINFORCE)
@@ -515,7 +531,9 @@ class ReinforceView(BaseUpgradeView):
             )
 
             self.clear_items()
-            cont_btn = Button(label="Continue", style=ButtonStyle.primary)
+            cont_btn = Button(
+                label="Continue", style=ButtonStyle.primary, emoji=GEAR_REINFORCE
+            )
             cont_btn.callback = self.render
             self.add_item(cont_btn)
             self.add_back_button()
@@ -623,7 +641,10 @@ class ReinforceView(BaseUpgradeView):
             "\n".join(f"  {name}: {qty:,}" for name, qty in mat_totals.items())
             or "  None"
         )
-        embed = discord.Embed(title="⚠️ Confirmation", color=discord.Color.orange())
+        embed = discord.Embed(
+            title=f"⚠️ {GEAR_REINFORCE} Reinforcemaxx Confirmation",
+            color=discord.Color.orange(),
+        )
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REINFORCE)
         embed.description = (
@@ -740,7 +761,9 @@ class ReinforceView(BaseUpgradeView):
 
         suffix = "%" if is_pct else ""
         new_val = getattr(self.item, stat_col)
-        embed = discord.Embed(title="⚒️ Complete", color=discord.Color.gold())
+        embed = discord.Embed(
+            title=f"{GEAR_REINFORCE} Reinforcemaxx Complete", color=discord.Color.gold()
+        )
         embed.set_author(name="Armorsmith Veyra", icon_url=VEYRA_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_REINFORCE)
         embed.description = (
@@ -754,11 +777,15 @@ class ReinforceView(BaseUpgradeView):
         )
         if quest_msgs:
             embed.add_field(
-                name="📋 Quest Progress", value="\n".join(quest_msgs), inline=False
+                name=f"{QUEST_COMPLETE} Quest Progress",
+                value="\n".join(quest_msgs),
+                inline=False,
             )
 
         self.clear_items()
-        cont_btn = Button(label="Continue", style=ButtonStyle.primary)
+        cont_btn = Button(
+            label="Continue", style=ButtonStyle.primary, emoji=GEAR_REINFORCE
+        )
         cont_btn.callback = self.render
         self.add_item(cont_btn)
         self.add_back_button()

@@ -624,7 +624,9 @@ class CompanionDetailView(BaseView):
         self.add_item(btn_engram)
 
         # Release
-        btn_release = ui.Button(label="Release", style=ButtonStyle.danger, row=1)
+        btn_release = ui.Button(
+            label="Release", style=ButtonStyle.danger, emoji="🗑️", row=1
+        )
         btn_release.callback = self.release_confirm
         self.add_item(btn_release)
 

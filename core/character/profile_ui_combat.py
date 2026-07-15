@@ -39,9 +39,11 @@ from core.emojis import (
     BOOT_SLOT,
     CRIT_MULTI,
     DODGE_EVASION,
+    GEAR_PASSIVES,
     GLOVE_SLOT,
     HELMET_SLOT,
     HEMATURGY_ICON,
+    MISC_PASSIVES,
     RARITY,
     STAT_ATK,
     STAT_BLOCK,
@@ -308,7 +310,7 @@ class CombatProfileBuilder:
         data = await bot.database.users.get(user_id, server_id)
         p = await load_player(user_id, data, bot.database)
 
-        embed = discord.Embed(title="Gear Passives", color=0x7B68EE)
+        embed = discord.Embed(title=f"{GEAR_PASSIVES} Gear Passives", color=0x7B68EE)
         embed.set_thumbnail(url=data["appearance"])
 
         has_any = False
@@ -409,7 +411,7 @@ class CombatProfileBuilder:
         data = await bot.database.users.get(user_id, server_id)
         p = await load_player(user_id, data, bot.database)
 
-        embed = discord.Embed(title="Other Passives", color=0x7B68EE)
+        embed = discord.Embed(title=f"{MISC_PASSIVES} Other Passives", color=0x7B68EE)
         embed.set_thumbnail(url=data["appearance"])
 
         has_any = False

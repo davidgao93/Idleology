@@ -5,6 +5,7 @@ from core.combat.economy.drops import roll_essence_drop
 from core.emojis import (
     CODEX_TOME_EMOJI,
     GOLD_COIN,
+    GUILD_TICKET,
     PINNACLE_KEY,
     RUNE_POTENTIAL,
     RUNE_REFINEMENT,
@@ -31,7 +32,7 @@ REWARD_EMOJIS = {
     "Potential Runes": RUNE_POTENTIAL,
     "Refinement Runes": RUNE_REFINEMENT,
     "Shattering Runes": RUNE_SHATTER,
-    "Guild Tickets": "🎫",
+    "Guild Tickets": GUILD_TICKET,
     "Gold": GOLD_COIN,
     "Essences": "🧪",
     "Elemental Keys": "🗝️",

@@ -60,8 +60,14 @@ class Inventory(commands.Cog, name="inventory"):
 
         async def _build():
             all_items = await _fetch_all_slots(self.bot, user_id)
-            view = GearView(self.bot, user_id, all_items, initial_slot=initial_slot)
-            return view.build_embed(interaction.user.display_name), view
+            view = GearView(
+                self.bot,
+                user_id,
+                all_items,
+                initial_slot=initial_slot,
+                player_name=existing_user["name"],
+            )
+            return view.build_embed(), view
 
         if not await self.bot.database.tutorials.has_seen(user_id, "inventory"):
             await self.bot.database.tutorials.mark_seen(user_id, "inventory")
@@ -151,13 +157,17 @@ class Inventory(commands.Cog, name="inventory"):
 
         try:
             view = await LoadoutView.create(
-                self.bot, user_id, server_id, mode="standalone"
+                self.bot,
+                user_id,
+                server_id,
+                mode="standalone",
+                player_name=existing_user["name"],
             )
         except Exception:
             self.bot.state_manager.clear_active(user_id)
             raise
 
-        embed = view.build_embed(interaction.user.display_name)
+        embed = view.build_embed()
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
