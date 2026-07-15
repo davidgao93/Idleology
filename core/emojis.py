@@ -412,8 +412,10 @@ GATHERING_TOOL_TIER_EMOJI: dict[str, dict[str, str]] = {
 # ── Gear upgrade action icons (launcher buttons; the underlying rune/material
 # icon stays on any secondary "use rune" sub-option, e.g. Enchant's Use Rune) ─
 GEAR_ENCHANT = "<:gear_enchant:1526938101065322576>"
+ENCHANT_FAIL = "<:enchant_fail:1527059894509900027>"
 GEAR_REINFORCE = "<:gear_reinforce:1526938103674048658>"
 WEAPON_FORGE = "<:weapon_forge:1526938104810700941>"
+FORGE_FAIL = "<:forge_fail:1527060834910470348>"
 WEAPON_REFINE = "<:weapon_refine:1526938105603555388>"
 
 # ── Alchemy potion passives (Potion Lab / Distillation / combat status icons) ─

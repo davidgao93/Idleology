@@ -7,6 +7,7 @@ from core.character.passive_formatters import (
     get_void_passive_description,
 )
 from core.emojis import (
+    ENCHANT_FAIL,
     GEAR_ENCHANT,
     GOLD_COIN,
     QUEST_COMPLETE,
@@ -233,9 +234,7 @@ class PotentialView(BaseUpgradeView):
             else:
                 passive_line = ""
             result_embed.color = discord.Color.dark_grey()
-            result_embed.description = (
-                f"💔 **Failed.**\nThe magic failed to take hold.{passive_line}"
-            )
+            result_embed.description = f"{ENCHANT_FAIL} **Failed.**\nThe magic failed to take hold.{passive_line}"
 
         if quest_msgs:
             result_embed.add_field(

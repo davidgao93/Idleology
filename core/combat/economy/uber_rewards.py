@@ -24,8 +24,24 @@ from core.combat.economy.experience import ExperienceManager
 from core.combat.economy.rewards import calculate_rewards
 from core.combat.turns.boundary import fire_on_victory_effects
 from core.combat.views.views_lucifer import InfernalContractView
-from core.emojis import ORIGIN_CORRUPTION
+from core.emojis import (
+    BOUND_CRYSTAL,
+    BOUND_ENGRAM,
+    CELESTIAL_ENGRAM,
+    CELESTIAL_STONE,
+    CORRUPTION_CORE,
+    CORRUPTION_ENGRAM,
+    INFERNAL_CINDER,
+    INFERNAL_ENGRAM,
+    ORIGIN_CORRUPTION,
+    RUNE_MIRAGE_IMPERFECT,
+    RUNE_MIRAGE_PERFECT,
+    UBER_EMOJI,
+    VOID_CRYSTAL,
+    VOID_ENGRAM,
+)
 from core.images import (
+    CURIO_PUZZLE_BOX,
     VICTORY_CELESTIAL,
     VICTORY_EVELYNN,
     VICTORY_GEMINI,
@@ -41,74 +57,74 @@ UBER_CONFIGS: dict[str, dict] = {
     "Aphrodite": {
         "engram_fn": "increment_engrams",
         "engram_display": "Celestial Engram",
-        "engram_msg": "🌌 **A Celestial Engram materializes from Aphrodite's shattered form...**",
+        "engram_msg": f"{CELESTIAL_ENGRAM} **A Celestial Engram materializes from Aphrodite's shattered form...**",
         "blueprint_key": "celestial_blueprint_unlocked",
         "blueprint_fn": "set_blueprint_unlocked",
         "blueprint_display": "Celestial Statue Blueprint",
         "blueprint_msg": "📜 **You found the Celestial Statue Blueprint!**",
         "stone_currency": "celestial_stone",
         "stone_display": "Celestial Stone",
-        "stone_msg": "🪨 **You found a Celestial Stone!**",
+        "stone_msg": f"{CELESTIAL_STONE} **You found a Celestial Stone!**",
         "victory_image": VICTORY_CELESTIAL,
         "image_fn": "set_image",
-        "embed_title": "🌌 Apex Shattered!",
+        "embed_title": f"{UBER_EMOJI} Celestial Sovereign defeated!",
     },
     "Lucifer": {
         "engram_fn": "increment_infernal_engrams",
         "engram_display": "Infernal Engram",
-        "engram_msg": "🔥 **An Infernal Engram crystallises from Lucifer's shattered crown...**",
+        "engram_msg": f"{INFERNAL_ENGRAM} **An Infernal Engram crystallises from Lucifer's shattered crown...**",
         "blueprint_key": "infernal_blueprint_unlocked",
         "blueprint_fn": "set_infernal_blueprint_unlocked",
         "blueprint_display": "Infernal Statue Blueprint",
         "blueprint_msg": "📜 **You found the Infernal Statue Blueprint!**",
         "stone_currency": "infernal_cinder",
         "stone_display": "Infernal Cinder",
-        "stone_msg": "🔥 **The forge roars. You extract an Infernal Cinder.**",
+        "stone_msg": f"{INFERNAL_CINDER} **The forge roars. You extract an Infernal Cinder.**",
         "victory_image": VICTORY_INFERNAL,
         "image_fn": "set_image",
-        "embed_title": "🔥 Infernal Sovereign Defeated!",
+        "embed_title": f"{UBER_EMOJI} Infernal Sovereign Defeated!",
     },
     "NEET": {
         "engram_fn": "increment_void_engrams",
         "engram_display": "Void Engram",
-        "engram_msg": "⬛ **A Void Engram crystallises from the collapsing rift...**",
+        "engram_msg": f"{VOID_ENGRAM} **A Void Engram crystallises from the collapsing rift...**",
         "blueprint_key": "void_blueprint_unlocked",
         "blueprint_fn": "set_void_blueprint_unlocked",
         "blueprint_display": "Void Statue Blueprint",
         "blueprint_msg": "📜 **You found the Void Statue Blueprint!**",
         "stone_currency": "void_crystal",
         "stone_display": "Void Crystal",
-        "stone_msg": "🔮 **The void yields a Void Crystal.**",
+        "stone_msg": f"{VOID_CRYSTAL} **The void yields a Void Crystal.**",
         "victory_image": VICTORY_NEET,
         "image_fn": "set_thumbnail",
-        "embed_title": "⬛ Void Sovereign Defeated!",
+        "embed_title": f"{UBER_EMOJI} Void Sovereign Defeated!",
     },
     "Castor": {  # Gemini twins — matched by "Castor" substring
         "engram_fn": "increment_gemini_engrams",
         "engram_display": "Bound Engram",
-        "engram_msg": "♊ **A Bound Engram crystallises from the twins' shattered bond...**",
+        "engram_msg": f"{BOUND_ENGRAM} **A Bound Engram crystallises from the twins' shattered bond...**",
         "blueprint_key": "gemini_blueprint_unlocked",
         "blueprint_fn": "set_gemini_blueprint_unlocked",
         "blueprint_display": "Twin Statue Blueprint",
         "blueprint_msg": "📜 **You found the Twin Statue Blueprint!**",
         "stone_currency": "bound_crystal",
         "stone_display": "Bound Crystal",
-        "stone_msg": "💎 **The twins' bond yields a Bound Crystal.**",
+        "stone_msg": f"{BOUND_CRYSTAL} **The twins' bond yields a Bound Crystal.**",
         "victory_image": VICTORY_GEMINI,
         "image_fn": "set_image",
-        "embed_title": "♊ Bound Sovereigns Defeated!",
+        "embed_title": f"{UBER_EMOJI} Bound Sovereigns Defeated!",
     },
     "Evelynn": {
         "engram_fn": "increment_corruption_engrams",
         "engram_display": "Corruption Engram",
-        "engram_msg": "☠️ **A Corruption Engram crystallises from the primordial rot...**",
+        "engram_msg": f"{CORRUPTION_ENGRAM} **A Corruption Engram crystallises from the primordial rot...**",
         "blueprint_key": "corruption_blueprint_unlocked",
         "blueprint_fn": "set_corruption_blueprint_unlocked",
         "blueprint_display": "Corrupted Statue Blueprint",
         "blueprint_msg": "📜 **You found the Corrupted Statue Blueprint!**",
         "stone_currency": "corrupted_core",
         "stone_display": "Corrupted Core",
-        "stone_msg": "☠️ **The corruption yields a Corrupted Core.**",
+        "stone_msg": f"{CORRUPTION_CORE} **The corruption yields a Corrupted Core.**",
         "victory_image": VICTORY_EVELYNN,
         "image_fn": "set_image",
         "embed_title": f"{ORIGIN_CORRUPTION} Origin of Corruption Shattered!",
@@ -310,7 +326,7 @@ async def _handle_lucifer(view, message) -> None:
         view.bot, view.user_id, view.player, view.server_id, message
     )
     embed.add_field(
-        name="🩸 An Infernal Contract materialises...",
+        name=f"{INFERNAL_ENGRAM} An Infernal Contract materialises...",
         value=contract_view.contract_summary(),
         inline=False,
     )
@@ -349,7 +365,7 @@ async def _handle_evelynn(view, message) -> None:
     await view.bot.database.users.modify_currency(view.user_id, "curio_puzzle_boxes", 1)
     reward_data["special"].append("Curio Puzzle Box")
     reward_data["msgs"].append(
-        "📦 **A Curio Puzzle Box materialises from Evelynn's shattered form...**"
+        f"{CURIO_PUZZLE_BOX} **A Curio Puzzle Box materialises from Evelynn's shattered form...**"
     )
 
     await _handle_engram_and_blueprint(view, reward_data, cfg)
@@ -360,7 +376,7 @@ async def _handle_evelynn(view, message) -> None:
         )
         reward_data["special"].append("Rune of Mirage (Imperfect)")
         reward_data["msgs"].append(
-            "🪞 **A Rune of Mirage (Imperfect) fractures from the Origin's corruption...**"
+            f"{RUNE_MIRAGE_IMPERFECT} **A Rune of Mirage (Imperfect) fractures from the Origin's corruption...**"
         )
 
     if random.random() < EVELYNN_MIRAGE_RUNE_PERFECTED_CHANCE:
@@ -369,7 +385,7 @@ async def _handle_evelynn(view, message) -> None:
         )
         reward_data["special"].append("Rune of Mirage (Perfected)")
         reward_data["msgs"].append(
-            "🪞 **A Rune of Mirage (Perfected) crystallises from the primordial void...**"
+            f"{RUNE_MIRAGE_PERFECT} **A Rune of Mirage (Perfected) crystallises from the primordial void...**"
         )
 
     await _uber_complete_standard(view, message, cfg, reward_data)

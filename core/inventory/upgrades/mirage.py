@@ -2,6 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction
 
 from core.emojis import RUNE_MIRAGE_IMPERFECT, RUNE_MIRAGE_PERFECT
+from core.images import UPGRADE_MIRAGE
 from core.inventory.upgrades.base import BaseUpgradeView
 from core.items.factory import (
     create_accessory,
@@ -334,7 +335,7 @@ class MirageView(BaseUpgradeView):
             )
 
         embed = discord.Embed(
-            title="🪞 Rune of Mirage",
+            title=f"{RUNE_MIRAGE_PERFECT} Rune of Mirage",
             description=(
                 f"**Selected:** Lv.{self.item.level} {self.item.name}\n\n"
                 "Select an item to copy its **stats** onto this item.\n"
@@ -343,7 +344,7 @@ class MirageView(BaseUpgradeView):
             ),
             color=discord.Color.teal(),
         )
-
+        embed.set_thumbnail(url=UPGRADE_MIRAGE)
         await self._send_render(interaction, embed)
 
     async def _on_source_selected(self, interaction: Interaction):
@@ -372,9 +373,10 @@ class MirageView(BaseUpgradeView):
         source_label = f"{'[E] ' if getattr(self.source, 'is_equipped', False) else ''}Lv.{self.source.level} {self.source.name}"
 
         embed = discord.Embed(
-            title="🪞 Rune of Mirage — Preview",
+            title=f"{RUNE_MIRAGE_PERFECT} Rune of Mirage — Preview",
             color=discord.Color.teal(),
         )
+        embed.set_thumbnail(url=UPGRADE_MIRAGE)
         embed.add_field(name=f"Source: {source_label}", value=source_field, inline=True)
         embed.add_field(
             name=f"Target: Lv.{self.item.level} {self.item.name}",

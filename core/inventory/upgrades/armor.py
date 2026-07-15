@@ -10,6 +10,7 @@ from core.character.passive_formatters import (
 )
 from core.emojis import (
     CELESTIAL_ENGRAM,
+    FORGE_FAIL,
     GEAR_REINFORCE,
     GOLD_COIN,
     QUEST_COMPLETE,
@@ -226,9 +227,7 @@ class TemperView(BaseUpgradeView):
                 self.item.temper_remaining,
             )
             res_embed.color = discord.Color.dark_grey()
-            res_embed.description = (
-                "🔨 **Failed.**\nThe metal cooled too quickly. Materials consumed."
-            )
+            res_embed.description = f"{FORGE_FAIL} **Failed.**\nThe metal cooled too quickly. Materials consumed."
 
         if quest_msgs:
             res_embed.add_field(

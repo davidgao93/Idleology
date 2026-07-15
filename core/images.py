@@ -169,7 +169,7 @@ UPGRADE_INFERNAL_ENGRAM = "https://cdn.discordapp.com/attachments/13346374113633
 UPGRADE_GEMINI_ENGRAM = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512889570721822/upgrade_gemini_engram.jpeg?ex=69f8b507&is=69f76387&hm=42f67d4ee1b40c091d83ac15c38d5eaa1a97bf39e2c30ba4986b16a41a9600b6&"
 UPGRADE_VOID_ENGRAM = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512889864196206/upgrade_void_engram.jpeg?ex=69f8b507&is=69f76387&hm=4068a3451ee24db227ba3a948f74c3c6fd6631d3cb99b57377cdb0fb3d0af8ca&"
 UPGRADE_CELESTIAL_ENGRAM = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512890216513587/upgrade_celestial_engram.jpeg?ex=69f8b507&is=69f76387&hm=f167eee54fef7f0069c08a59c2976da49c163a0e61cba166e93e6261e9ecfe61&"
-
+UPGRADE_MIRAGE = "https://cdn.discordapp.com/attachments/1334637411363323996/1527055848994640103/rune_of_mirage_thumbnail.jpg?ex=6a594515&is=6a57f395&hm=9d99d5f1403b942537d672a8207e9c2a0d0d573bc31e55890f4a55fd10a24191&"
 # ── CURIOS ────────────────────────────────────────────────────────────────────
 CURIO_UNOPENED = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512900584968202/curio_unopened.jpeg?ex=69f8b509&is=69f76389&hm=7c3b66af3db495c385674e5e811dfea9e7c6b84fa136ddc1b9e08a5f923b2c20&"
 CURIO_BULK = "https://cdn.discordapp.com/attachments/1334637411363323996/1500512900912250891/curio_bulk.jpeg?ex=69f8b509&is=69f76389&hm=9b8b8dee6c3116097d589dd53231332222463c0931463a9dd32aa21d1478fb20&"

@@ -4,14 +4,14 @@ import discord
 from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
-from core.combat.calc.calcs import fmt_weapon_passive
 from core.character.passive_formatters import get_weapon_passive_description
-from core.emojis import GOLD_COIN, RESOURCE_EMOJI, WEAPON_FORGE
+from core.combat.calc.calcs import fmt_weapon_passive
+from core.emojis import FORGE_FAIL, GOLD_COIN, RESOURCE_EMOJI, WEAPON_FORGE
 from core.images import HARLAN_AUTHOR, UPGRADE_FORGE
 from core.inventory.upgrades.base import BaseUpgradeView
-from core.npc_voices import get_quip
 from core.items.equipment_mechanics import EquipmentMechanics
 from core.models import Weapon
+from core.npc_voices import get_quip
 
 
 class ForgeView(BaseUpgradeView):
@@ -179,7 +179,7 @@ class ForgeView(BaseUpgradeView):
                 "forges_remaining",
                 self.item.forges_remaining,
             )
-            result_embed.description = f"💨 **Failed.**\nThe hammer didn't strike true, resources consumed.\n\nForges Remaining: {self.item.forges_remaining}"
+            result_embed.description = f"{FORGE_FAIL} **Failed.**\nThe hammer didn't strike true, resources consumed.\n\nForges Remaining: {self.item.forges_remaining}"
             result_embed.color = discord.Color.dark_grey()
 
         self.clear_items()
@@ -441,7 +441,7 @@ class ForgeView(BaseUpgradeView):
                     self.item.forge_tier,
                 )
             else:
-                attempt_log.append(f"**#{forges_done}** ❌ Failed")
+                attempt_log.append(f"**#{forges_done}** {FORGE_FAIL} Failed")
 
             await self.bot.database.equipment.update_counter(
                 self.item.item_id,
