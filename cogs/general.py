@@ -653,7 +653,6 @@ class General(commands.Cog, name="general"):
             "👤 Character": [
                 ("register", "Create your adventurer profile"),
                 ("card", "View your profile card"),
-                ("sheet", "Detailed character sheet"),
                 ("stats", "Detailed character statistics"),
                 ("allocate_stats", "Spend stat packages and passive points"),
                 ("inventory", "View your bag summary"),

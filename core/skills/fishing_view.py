@@ -7,6 +7,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
+from core.emojis import GATHERING_TOOL_TIER_EMOJI
 from core.images import MASTERY_FISHING
 from core.skills import mastery as Mastery
 from core.skills.mechanics import SkillMechanics
@@ -92,6 +93,10 @@ class FishingView(BaseView):
         return self.skill_data["fishing_rod"] if self.skill_data else "desiccated"
 
     @property
+    def rod_emoji(self) -> str:
+        return GATHERING_TOOL_TIER_EMOJI["fishing"].get(self.rod_tier, "🎣")
+
+    @property
     def gold(self) -> int:
         return self.user_data["gold"] if self.user_data else 0
 
@@ -123,7 +128,7 @@ class FishingView(BaseView):
 
         if self.state == "idle":
             desc = (
-                f"**Rod:** {tier.title()} Rod\n"
+                f"**Rod:** {self.rod_emoji} {tier.title()} Rod\n"
                 f"**Bait Cost:** {cost:,} GP\n"
                 f"**Balance:** {self.gold:,} GP\n\n"
                 "Choose your approach and cast your line."
@@ -142,7 +147,7 @@ class FishingView(BaseView):
                 cast_line = "🌊 Your line is in the water...\nYou'll be pinged when something bites."
                 color = 0x4A90D9
             desc = (
-                f"**Rod:** {tier.title()} Rod  ·  {approach_label}\n"
+                f"**Rod:** {self.rod_emoji} {tier.title()} Rod  ·  {approach_label}\n"
                 + (f"{focus}\n\n" if focus else "\n")
                 + cast_line
             )

@@ -31,7 +31,7 @@ from core.combat.turns.boundary import (
 )
 from core.combat.views.views_lucifer import LuciferChoiceView
 from core.combat.views.views_prestige_boss import PrestigeBossHarvestView
-from core.emojis import WIN_STREAK
+from core.emojis import BONUS_REWARDS, DIFFICULTY_TIER_EMOJI, UBER_EMOJI, WIN_STREAK
 from core.images import (
     VICTORY_APHRODITE_GEMINI,
     VICTORY_LUCIFER,
@@ -268,6 +268,7 @@ class CombatView(BaseLayoutView):
         disable_potions: bool = False,
         player_avatar_url: str | None = None,
         title_override: str | None = None,
+        nsfw_enabled: bool = False,
     ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
@@ -294,6 +295,7 @@ class CombatView(BaseLayoutView):
         )
         self.combat_streak = combat_streak  # streak at start of this fight
         self.player_avatar_url = player_avatar_url
+        self.nsfw_enabled = nsfw_enabled
 
         _je.reset_jewel_charges(player)
 
@@ -863,7 +865,7 @@ class CombatView(BaseLayoutView):
             await self.bot.database.users.reset_combat_streak(self.user_id)
 
             _DIFFICULTY_NAMES = ["", "Hard", "Extreme", "Nightmarish", "Delirious"]
-            _DIFFICULTY_EMOJIS = ["", "☠️", "💀", "👁️", "🌀"]
+            _DIFFICULTY_EMOJIS = DIFFICULTY_TIER_EMOJI
             exp_protected = await self.bot.database.users.get_exp_protection(
                 self.user_id
             )
@@ -914,7 +916,11 @@ class CombatView(BaseLayoutView):
             reset_for_phase_transition(self.player)
 
             self.monster = await generate_boss(
-                self.player, self.monster, next_phase_data, self.current_phase_index
+                self.player,
+                self.monster,
+                next_phase_data,
+                self.current_phase_index,
+                self.nsfw_enabled,
             )
             self.monster.is_boss = True
 
@@ -959,7 +965,7 @@ class CombatView(BaseLayoutView):
         # during combat), so the player always receives exactly what was advertised.
         _DIFFICULTY_REWARD_PCT = [0, 50, 75, 100, 150]
         _DIFFICULTY_NAMES_V = ["", "Hard", "Extreme", "Nightmarish", "Delirious"]
-        _DIFFICULTY_EMOJIS_V = ["", "☠️", "💀", "👁️", "🌀"]
+        _DIFFICULTY_EMOJIS_V = DIFFICULTY_TIER_EMOJI
         streak_pct = min(50, self.combat_streak // 10)
         hard_mode_pct = _DIFFICULTY_REWARD_PCT[self.hard_mode] if self.hard_mode else 0
         total_bonus_pct = streak_pct + hard_mode_pct
@@ -1037,16 +1043,16 @@ class CombatView(BaseLayoutView):
                 bonus_parts.append(f"{WIN_STREAK} Streak +{streak_pct}%")
             if difficulty_xp_pct > 0:
                 bonus_parts.append(
-                    f"🎲 Modifier Difficulty +{difficulty_xp_pct * 100:.0f}% XP "
+                    f"{UBER_EMOJI} Modifier Difficulty +{difficulty_xp_pct * 100:.0f}% XP "
                     f"/ +{difficulty_drop_pct * 100:.0f}% Rarity"
                 )
             value_lines = [" | ".join(bonus_parts)]
             if total_bonus_pct > 0:
                 value_lines.append(f"+{bonus_xp:,} XP  •  +{bonus_gold:,} Gold")
             field_name = (
-                f"🎯 Bonus Rewards (+{total_bonus_pct}%)"
+                f"{BONUS_REWARDS} Bonus Rewards (+{total_bonus_pct}%)"
                 if total_bonus_pct > 0
-                else "🎯 Bonus Rewards"
+                else f"{BONUS_REWARDS} Bonus Rewards"
             )
             embed.add_field(
                 name=field_name,

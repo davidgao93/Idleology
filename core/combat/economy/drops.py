@@ -29,17 +29,17 @@ from core.skills.mechanics import SkillMechanics
 # ---------------------------------------------------------------------------
 
 _REGULAR_ESSENCE_TABLE = [
-    ("power", 35),
+    ("power", 30),
     ("protection", 30),
-    ("insight", 8),
-    ("evasion", 6),
-    ("blocking", 6),
-    ("deftness", 4),
-    ("precision", 4),
-    ("gluttony", 4),
-    ("cleansing", 3),
-    ("chaos", 2),
-    ("annulment", 1),
+    ("insight", 6),
+    ("evasion", 8),
+    ("blocking", 8),
+    ("deftness", 6),
+    ("precision", 6),
+    ("gluttony", 6),
+    ("cleansing", 5),
+    ("chaos", 6),
+    ("annulment", 5),
 ]
 _REGULAR_ESSENCE_POOL = [e for e, w in _REGULAR_ESSENCE_TABLE for _ in range(w)]
 _CORRUPTED_ESSENCE_POOL = ["aphrodite", "lucifer", "gemini", "neet"]

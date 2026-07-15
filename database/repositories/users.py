@@ -608,6 +608,22 @@ class UserRepository:
         )
         await self.connection.commit()
 
+    async def get_nsfw_enabled(self, user_id: str) -> bool:
+        """Fetches the NSFW monster encounter preference for a user. Defaults to False."""
+        cursor = await self.connection.execute(
+            "SELECT nsfw_enabled FROM users WHERE user_id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return bool(row["nsfw_enabled"]) if row else False
+
+    async def toggle_nsfw_enabled(self, user_id: str, status: bool) -> None:
+        """Updates the NSFW monster encounter preference."""
+        val = 1 if status else 0
+        await self.connection.execute(
+            "UPDATE users SET nsfw_enabled = ? WHERE user_id = ?", (val, user_id)
+        )
+        await self.connection.commit()
+
     async def get_wealth_leaderboard(self, limit: int = 10):
         rows = await self.connection.execute(
             "SELECT name, gold FROM users ORDER BY gold DESC LIMIT ?", (limit,)

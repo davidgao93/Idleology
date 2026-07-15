@@ -6,7 +6,7 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.combat.views.views_elemental import ElementalEncounterView
-from core.emojis import RESOURCE_EMOJI
+from core.emojis import GATHERING_TOOL_TIER_EMOJI, RESOURCE_EMOJI
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import MASTERY_FISHING, MASTERY_MINING, MASTERY_WOODCUTTING
 from core.items.factory import load_player
@@ -183,13 +183,17 @@ class GatherView(BaseView):
                         row=3,
                     )
                 else:
+                    info = SkillMechanics.get_skill_info(self.current_skill)
+                    next_tool_emoji = GATHERING_TOOL_TIER_EMOJI.get(
+                        self.current_skill, {}
+                    ).get(next_tier, info.get("emoji", "⬆️"))
                     up_btn = Button(
                         label=f"Upgrade {next_tier.title()}",
                         style=(
                             ButtonStyle.success if can_afford else ButtonStyle.secondary
                         ),
                         disabled=not can_afford,
-                        emoji="⬆️",
+                        emoji=next_tool_emoji,
                         row=3,
                     )
                     up_btn.callback = self.upgrade_callback
@@ -245,7 +249,10 @@ class GatherView(BaseView):
             )
 
         current_tier = self.skill_data[2]
-        tier_display = f"{info['emoji']} **{current_tier.title()} {info['tool_name']}**"
+        tool_emoji = GATHERING_TOOL_TIER_EMOJI.get(self.current_skill, {}).get(
+            current_tier, info["emoji"]
+        )
+        tier_display = f"{tool_emoji} **{current_tier.title()} {info['tool_name']}**"
 
         resources = SkillMechanics.map_db_row_to_resources(
             self.current_skill, self.skill_data
@@ -296,7 +303,10 @@ class GatherView(BaseView):
                     cost_parts.append(f"{qty:,} {label} (have: {total_held:,})")
             if costs["gold"] > 0:
                 cost_parts.append(f"{costs['gold']:,} GP")
-            desc += f"\n\n**Next Upgrade:** {next_tier.title()}\n**Costs:** {', '.join(cost_parts)}\n*Raw and refined materials are both accepted.*"
+            next_tool_emoji = GATHERING_TOOL_TIER_EMOJI.get(self.current_skill, {}).get(
+                next_tier, info["emoji"]
+            )
+            desc += f"\n\n**Next Upgrade:** {next_tool_emoji} {next_tier.title()}\n**Costs:** {', '.join(cost_parts)}\n*Raw and refined materials are both accepted.*"
 
             # Familiarization gate status
             gate_secs = self._gate_remaining()

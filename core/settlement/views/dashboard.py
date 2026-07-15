@@ -1623,6 +1623,7 @@ class SettlementDashboardView(SettlementBaseView):
 
             user_row = await self.bot.database.users.get(uid, sid)
             player = await load_player(uid, user_row, self.bot.database)
+            nsfw_enabled = await self.bot.database.users.get_nsfw_enabled(uid)
 
             spawn_key = ev_def.get("effects", {}).get("spawn_combat", "")
             crisis_image = CRISIS_MONSTER_IMAGES.get(spawn_key, "")
@@ -1639,7 +1640,9 @@ class SettlementDashboardView(SettlementBaseView):
                 image=crisis_image,
                 flavor="",
             )
-            monster = await generate_encounter(player, base_monster, is_treasure=False)
+            monster = await generate_encounter(
+                player, base_monster, is_treasure=False, nsfw_enabled=nsfw_enabled
+            )
             # Override name and image with the crisis-specific values
             monster.name = enemy_name
             if crisis_image:
@@ -1760,6 +1763,7 @@ class SettlementDashboardView(SettlementBaseView):
                 combat_phases=[None],
                 crisis_callback=_crisis_end,
                 player_avatar_url=user_row["appearance"],
+                nsfw_enabled=nsfw_enabled,
             )
 
             # CombatView renders with Components V2, which permanently flags

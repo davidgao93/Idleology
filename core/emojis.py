@@ -343,6 +343,72 @@ QUEST_COMPLETE = "<:quest_complete:1526938103162470400>"
 # ── Guild Ticket (standardized — do not use plain 🎫 for this currency) ────
 GUILD_TICKET = "<:guild_ticket:1526938101988196492>"
 
+# ── Ascent ──────────────────────────────────────────────────────────────────
+ASCENT_EMOJI = "<:ascent:1527034545340416061>"
+
+# ── Combat: bonus rewards & difficulty tiers ────────────────────────────────
+BONUS_REWARDS = "<:bonus_rewards:1527034544593567764>"
+DIFFICULTY_NORMAL = "<:normal_difficulty:1527034543931134173>"
+DIFFICULTY_HARD = "<:hard_difficulty:1527034542106480793>"
+DIFFICULTY_EXTREME = "<:extreme_difficulty:1527034541317820426>"
+DIFFICULTY_NIGHTMARISH = "<:nightmarish_difficulty:1527034540269371422>"
+DIFFICULTY_DELIRIOUS = "<:delirious_difficulty:1527034539568926861>"
+
+# Index 0 = Off/Normal, 1 = Hard, 2 = Extreme, 3 = Nightmarish, 4 = Delirious —
+# matches the ordering combat difficulty tiers use everywhere they're stored as an int.
+DIFFICULTY_TIER_EMOJI: list[str] = [
+    DIFFICULTY_NORMAL,
+    DIFFICULTY_HARD,
+    DIFFICULTY_EXTREME,
+    DIFFICULTY_NIGHTMARISH,
+    DIFFICULTY_DELIRIOUS,
+]
+
+# ── Gathering tools (tiered pickaxe / axe / rod icons) ──────────────────────
+PICKAXE_1 = "<:pickaxe_1:1527034538117693641>"
+PICKAXE_2 = "<:pickaxe_2:1527034537001877614>"
+PICKAXE_3 = "<:pickaxe_3:1527034536339308836>"
+PICKAXE_4 = "<:pickaxe_4:1527034535211176007>"
+PICKAXE_5 = "<:pickaxe_5:1527034534556864532>"
+
+AXE_1 = "<:axe_1:1527034533411819592>"
+AXE_2 = "<:axe_2:1527034532891594752>"
+AXE_3 = "<:axe_3:1527034531646017662>"
+AXE_4 = "<:axe_4:1527034531067203666>"
+AXE_5 = "<:axe_5:1527034530169487551>"
+
+ROD_1 = "<:rod_1:1527034529179766784>"
+ROD_2 = "<:rod_2:1527034528122535956>"
+ROD_3 = "<:rod_3:1527034527040536716>"
+ROD_4 = "<:rod_4:1527034526411264172>"
+ROD_5 = "<:rod_5:1527034525652090890>"
+
+# Keyed by skill -> {tool tier string: emoji}; tier strings match
+# core/skills/mechanics.py: SkillMechanics.get_tool_tiers().
+GATHERING_TOOL_TIER_EMOJI: dict[str, dict[str, str]] = {
+    "mining": {
+        "iron": PICKAXE_1,
+        "steel": PICKAXE_2,
+        "gold": PICKAXE_3,
+        "platinum": PICKAXE_4,
+        "ideal": PICKAXE_5,
+    },
+    "woodcutting": {
+        "flimsy": AXE_1,
+        "carved": AXE_2,
+        "chopping": AXE_3,
+        "magic": AXE_4,
+        "felling": AXE_5,
+    },
+    "fishing": {
+        "desiccated": ROD_1,
+        "regular": ROD_2,
+        "sturdy": ROD_3,
+        "reinforced": ROD_4,
+        "titanium": ROD_5,
+    },
+}
+
 # ── Gear upgrade action icons (launcher buttons; the underlying rune/material
 # icon stays on any secondary "use rune" sub-option, e.g. Enchant's Use Rune) ─
 GEAR_ENCHANT = "<:gear_enchant:1526938101065322576>"
@@ -705,4 +771,27 @@ EMBLEM_CATALOG: dict[str, tuple[str, str]] = {
     "gear_reinforce": ("Reinforce", GEAR_REINFORCE),
     "weapon_forge": ("Forge", WEAPON_FORGE),
     "weapon_refine": ("Refine", WEAPON_REFINE),
+    # Appended for the 2026-07-17 emoji batch (ascent, combat difficulty, gathering tools).
+    "ascent": ("Ascent", ASCENT_EMOJI),
+    "bonus_rewards": ("Bonus Rewards", BONUS_REWARDS),
+    "normal_difficulty": ("Normal Difficulty", DIFFICULTY_NORMAL),
+    "hard_difficulty": ("Hard Difficulty", DIFFICULTY_HARD),
+    "extreme_difficulty": ("Extreme Difficulty", DIFFICULTY_EXTREME),
+    "nightmarish_difficulty": ("Nightmarish Difficulty", DIFFICULTY_NIGHTMARISH),
+    "delirious_difficulty": ("Delirious Difficulty", DIFFICULTY_DELIRIOUS),
+    "pickaxe_1": ("Iron Pickaxe", PICKAXE_1),
+    "pickaxe_2": ("Steel Pickaxe", PICKAXE_2),
+    "pickaxe_3": ("Gold Pickaxe", PICKAXE_3),
+    "pickaxe_4": ("Platinum Pickaxe", PICKAXE_4),
+    "pickaxe_5": ("Ideal Pickaxe", PICKAXE_5),
+    "axe_1": ("Flimsy Axe", AXE_1),
+    "axe_2": ("Carved Axe", AXE_2),
+    "axe_3": ("Chopping Axe", AXE_3),
+    "axe_4": ("Magic Axe", AXE_4),
+    "axe_5": ("Felling Axe", AXE_5),
+    "rod_1": ("Desiccated Rod", ROD_1),
+    "rod_2": ("Regular Rod", ROD_2),
+    "rod_3": ("Sturdy Rod", ROD_3),
+    "rod_4": ("Reinforced Rod", ROD_4),
+    "rod_5": ("Titanium Rod", ROD_5),
 }

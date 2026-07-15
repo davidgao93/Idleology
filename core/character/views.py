@@ -47,6 +47,7 @@ class RegistrationView(BaseView):
         self.name = name
         self.gender = None
         self.appearance_url = None
+        self.nsfw_enabled = False
 
     def _load_appearances(self, gender_code: str):
         apps = []
@@ -138,7 +139,38 @@ class RegistrationView(BaseView):
 
     async def on_confirm_appearance(self, interaction: Interaction):
         """Triggered when user is happy with the preview."""
-        await interaction.response.send_modal(IdeologyModal(self))
+        await self.show_nsfw_step(interaction)
+
+    # --- STEP 3: NSFW PREFERENCE ---
+
+    async def show_nsfw_step(self, interaction: Interaction):
+        self.clear_items()
+
+        enable_btn = Button(label="Enable", emoji="🔞", style=ButtonStyle.danger)
+        enable_btn.callback = self._make_nsfw_callback(True)
+        self.add_item(enable_btn)
+
+        disable_btn = Button(label="Disable", emoji="🚫", style=ButtonStyle.success)
+        disable_btn.callback = self._make_nsfw_callback(False)
+        self.add_item(disable_btn)
+
+        embed = interaction.message.embeds[0]
+        embed.description = (
+            "One last thing before we get you on record — some monsters you'll "
+            "cross paths with out there carry **NSFW artwork**.\n\n"
+            "*Do you want NSFW monsters to appear in your encounters?* "
+            "You can change this later in `/player_settings`."
+        )
+        embed.set_image(url=self.appearance_url)
+
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    def _make_nsfw_callback(self, enabled: bool):
+        async def _callback(interaction: Interaction):
+            self.nsfw_enabled = enabled
+            await interaction.response.send_modal(IdeologyModal(self))
+
+        return _callback
 
     # --- FINALIZATION ---
 
@@ -192,6 +224,8 @@ class RegistrationView(BaseView):
             self.appearance_url,
             ideology,
         )
+        if self.nsfw_enabled:
+            await self.bot.database.users.toggle_nsfw_enabled(self.user_id, True)
 
         # 2. Initialize Skills
         await self.bot.database.skills.initialize(self.user_id, sid, "mining", "iron")

@@ -32,6 +32,7 @@ class Settings(commands.Cog, name="player_settings"):
         auto_potion_reload = await self.bot.database.users.get_auto_potion_reload(
             user_id
         )
+        nsfw_enabled = await self.bot.database.users.get_nsfw_enabled(user_id)
 
         meta = await self.bot.database.quests.get_meta(user_id)
         auto_rest_unlocked = bool(meta.get("auto_rest_unlocked"))
@@ -63,6 +64,7 @@ class Settings(commands.Cog, name="player_settings"):
             auto_potion_reload,
             auto_rest_unlocked,
             auto_reload_unlocked,
+            nsfw_enabled,
         )
         await interaction.response.send_message(
             embed=view.build_embed(), view=view, ephemeral=False

@@ -18,6 +18,7 @@ from core.combat.economy.loot import (
     generate_helmet,
     generate_weapon,
 )
+from core.emojis import ASCENT_EMOJI
 from core.hall_of_firsts import triggers as hof_triggers
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
@@ -139,7 +140,7 @@ class AscentLobbyView(BaseLayoutView):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="🏔️ The Ascent",
+            title=f"{ASCENT_EMOJI} The Ascent",
             description=(
                 f"*{get_quip('ascent')}*\n\n"
                 "Climb an endless tower of escalating floors, each guarded by a fearsome boss.\n"
@@ -244,8 +245,9 @@ class AscentLobbyView(BaseLayoutView):
             flavor="",
             is_boss=True,
         )
+        nsfw_enabled = await self.bot.database.users.get_nsfw_enabled(self.user_id)
         monster = await generate_ascent_monster(
-            self.player, monster, m_level, n_mods, b_mods
+            self.player, monster, m_level, n_mods, b_mods, nsfw_enabled
         )
 
         self.player.combat_ward = self.player.get_combat_ward_value()
@@ -261,6 +263,7 @@ class AscentLobbyView(BaseLayoutView):
             start_logs,
             starting_floor=starting_floor,
             best_floor=self.best_floor,
+            nsfw_enabled=nsfw_enabled,
             player_avatar_url=self.player_avatar_url,
         )
         self.stop()
@@ -397,12 +400,14 @@ class AscentView(BaseLayoutView):
         starting_floor: int,
         best_floor: int,
         player_avatar_url: str | None = None,
+        nsfw_enabled: bool = False,
     ):
         super().__init__(bot, user_id, server_id)
         self.player = player
         self.monster = initial_monster
         self.logs = start_logs or {}
         self.player_avatar_url = player_avatar_url
+        self.nsfw_enabled = nsfw_enabled
 
         self.current_floor = starting_floor
         self.best_floor = best_floor
@@ -657,7 +662,7 @@ class AscentView(BaseLayoutView):
 
         # Build clear embed
         embed = discord.Embed(
-            title=f"Floor {floor} Cleared!",
+            title=f"{ASCENT_EMOJI} Floor {floor} Cleared!",
             color=discord.Color.green(),
         )
         lines = []
@@ -709,7 +714,7 @@ class AscentView(BaseLayoutView):
             is_boss=True,
         )
         next_monster = await generate_ascent_monster(
-            self.player, next_monster, m_level, n_mods, b_mods
+            self.player, next_monster, m_level, n_mods, b_mods, self.nsfw_enabled
         )
         self.monster = next_monster
 
@@ -732,7 +737,7 @@ class AscentView(BaseLayoutView):
             self.player,
             self.monster,
             0,
-            title=f"Defeated on Floor {self.current_floor}",
+            title=f"{ASCENT_EMOJI} Defeated on Floor {self.current_floor}",
             description_extra=f"\nBest floor this session: **{self.best_floor}**",
         )
 
@@ -757,7 +762,11 @@ class AscentView(BaseLayoutView):
 
     async def _end_run(self, interaction_or_msg, retreated: bool = True):
         embed = discord.Embed(
-            title="Ascent Complete" if not retreated else "Ascent Ended",
+            title=(
+                f"{ASCENT_EMOJI} Ascent Complete"
+                if not retreated
+                else f"{ASCENT_EMOJI} Ascent Ended"
+            ),
             color=(
                 discord.Color.blurple() if not retreated else discord.Color.light_grey()
             ),

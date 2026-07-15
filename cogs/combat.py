@@ -337,6 +337,7 @@ class Combat(commands.Cog, name="combat"):
         # Fetch difficulty level (0=off, 1=hard, 2=extreme, 3=nightmarish, 4=delirious)
         hard_mode = await self.bot.database.users.get_hard_mode(user_id)
         combat_streak = await self.bot.database.users.get_combat_streak(user_id)
+        nsfw_enabled = await self.bot.database.users.get_nsfw_enabled(user_id)
 
         _DIFFICULTY_CORRUPTED_BONUS = [0.0, 0.02, 0.05, 0.08, 0.10]
 
@@ -472,7 +473,9 @@ class Combat(commands.Cog, name="combat"):
         )
 
         if is_boss:
-            monster = await generate_boss(player, monster, combat_phases[0], 0)
+            monster = await generate_boss(
+                player, monster, combat_phases[0], 0, nsfw_enabled
+            )
             monster.is_boss = True
         elif is_corrupted:
             monster = generate_corrupted_encounter(player, monster)
@@ -500,6 +503,7 @@ class Combat(commands.Cog, name="combat"):
                 is_treasure=is_treasure,
                 task_species=task_species,
                 slayer_tree_nodes=player.slayer_tree_nodes,
+                nsfw_enabled=nsfw_enabled,
             )
             combat_phases = [None]
 
@@ -599,6 +603,7 @@ class Combat(commands.Cog, name="combat"):
             combat_streak=combat_streak,
             player_avatar_url=existing_user["appearance"],
             title_override=title,
+            nsfw_enabled=nsfw_enabled,
         )
 
         if screen_msg.flags.components_v2:

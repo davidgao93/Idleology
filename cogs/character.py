@@ -129,19 +129,6 @@ class Character(commands.Cog, name="character"):
         await interaction.response.send_message(embed=embed, view=view)
         view.message = await interaction.original_response()
 
-    @app_commands.command(name="sheet", description="Detailed character sheet.")
-    async def sheet(self, interaction: Interaction):
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-        data = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, data):
-            return
-
-        view = ProfileHubView(self.bot, user_id, server_id, "stats")
-        embed = await ProfileBuilder.build_stats(self.bot, user_id, server_id)
-        await interaction.response.send_message(embed=embed, view=view)
-        view.message = await interaction.original_response()
-
     @app_commands.command(name="stats", description="View your character stats.")
     async def stats(self, interaction: Interaction):
         user_id = str(interaction.user.id)

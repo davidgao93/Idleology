@@ -5,7 +5,7 @@ _BASE_SECONDS = {
 }
 
 # Blood drops per egg tier (multiplier × monster_level)
-EGG_BLOOD_MULTIPLIER = {"normal": 1, "rare": 2, "giga": 10}
+EGG_BLOOD_MULTIPLIER = {"normal": 2, "rare": 5, "giga": 20}
 
 
 class HatcheryMechanics:

@@ -112,7 +112,7 @@ BALANCE_FRAG_BASE_CHANCE: float = 0.03
 
 # Guild Ticket — drops without an active partner; requires a minimum level.
 GUILD_TICKET_BASE_CHANCE: float = 0.01
-GUILD_TICKET_MIN_LEVEL: int = 20
+GUILD_TICKET_MIN_LEVEL: int = 10
 
 # Body part and egg base drop chances (also now boosted by modifier difficulty).
 BODY_PART_BASE_CHANCE: float = 0.05
@@ -160,7 +160,7 @@ SIGIL_WORKER_MULTIPLIER: float = 0.0005
 # ---------------------------------------------------------------------------
 
 # Flat gold added to every reward after the rarity multiplier.
-GOLD_BASE_FLAT: int = 80
+GOLD_BASE_FLAT: int = 88
 
 # Buff applied directly to the base gold formula (before the rarity multiplier,
 # flat bonus, and additive pool), so it compounds with rarity/emblems/procs
@@ -168,7 +168,7 @@ GOLD_BASE_FLAT: int = 80
 GOLD_BASE_BUFF_PCT: float = 0.25
 
 # Divisor used in the rarity multiplier: mult = 1 + sqrt(rarity) / denominator.
-GOLD_RARITY_DENOMINATOR: float = 20.0
+GOLD_RARITY_DENOMINATOR: float = 18.0
 
 # Fraction of final gold added per point of stat_invest_gold.
 STAT_INVEST_GOLD_PER_POINT: float = 0.001

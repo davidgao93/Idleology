@@ -24,7 +24,7 @@ from core.inner_sanctum.mechanics import get_tree_bonuses
 from core.models import Monster
 
 # Module-level cache for monsters.csv rows — populated on first call, never re-read.
-# Tuple layout: (name, url, level_scaled, flavor, species)
+# Tuple layout: (name, url, level_scaled, flavor, species, is_nsfw)
 _MONSTER_ROWS: list[tuple] | None = None
 
 
@@ -44,6 +44,7 @@ def _load_monster_rows() -> list[tuple]:
                         int(row["level"]) * 10,
                         row["flavor"],
                         row.get("species", row["name"]),
+                        row.get("nsfw", "").strip() == "1",
                     )
                 )
     except Exception as e:
@@ -53,7 +54,12 @@ def _load_monster_rows() -> list[tuple]:
 
 
 async def generate_encounter(
-    player, monster, is_treasure, task_species=None, slayer_tree_nodes=None
+    player,
+    monster,
+    is_treasure,
+    task_species=None,
+    slayer_tree_nodes=None,
+    nsfw_enabled=False,
 ):
     """Generate an encounter with a monster based on the user's level."""
     if player.level < 5:
@@ -80,9 +86,11 @@ async def generate_encounter(
     monster = calculate_monster_stats(monster)
 
     if is_treasure:
-        monster = await fetch_monster_image(999, monster, None)
+        monster = await fetch_monster_image(999, monster, None, nsfw_enabled)
     else:
-        monster = await fetch_monster_image(monster.level, monster, task_species)
+        monster = await fetch_monster_image(
+            monster.level, monster, task_species, nsfw_enabled
+        )
 
     # Phase 2+ style: set base_max_hp, let finalize_monster_spawn apply bonuses (Titanic etc.)
     if player.level == 1:
@@ -169,7 +177,7 @@ async def generate_encounter(
     return monster
 
 
-async def generate_boss(player, monster, phase, phase_index):
+async def generate_boss(player, monster, phase, phase_index, nsfw_enabled=False):
     """Generate a boss with a phase based on the user's level."""
     # print(f"Generating a boss based on {phase}")
     difficulty_multiplier = int(player.level / 5)
@@ -179,7 +187,9 @@ async def generate_boss(player, monster, phase, phase_index):
     )
 
     monster = calculate_monster_stats(monster)
-    monster = await fetch_monster_image(phase["level"], monster)
+    monster = await fetch_monster_image(
+        phase["level"], monster, None, nsfw_enabled
+    )
 
     # Phase 2+ style
     base_hp = random.randint(0, 9) + int(
@@ -231,7 +241,12 @@ async def generate_boss(player, monster, phase, phase_index):
 
 
 async def generate_ascent_monster(
-    player, monster_instance, ascent_stage_level, num_normal_mods, num_boss_mods
+    player,
+    monster_instance,
+    ascent_stage_level,
+    num_normal_mods,
+    num_boss_mods,
+    nsfw_enabled=False,
 ):
     """Generates a monster for the ascent mode."""
     monster = monster_instance
@@ -252,7 +267,9 @@ async def generate_ascent_monster(
     monster.defence = temp_monster_for_stats.defence
     monster.base_defence = temp_monster_for_stats.base_defence
 
-    monster = await fetch_monster_image(random.randint(30, 120), monster)
+    monster = await fetch_monster_image(
+        random.randint(30, 120), monster, None, nsfw_enabled
+    )
 
     # Phase 2+ style
     base_hp = random.randint(0, 9) + int(
@@ -533,9 +550,13 @@ def calculate_monster_stats(monster):
     return monster
 
 
-async def fetch_monster_image(level, monster_data, task_species=None):
+async def fetch_monster_image(
+    level, monster_data, task_species=None, nsfw_enabled=False
+):
     """Fetches a monster image from the monsters.csv file based on the encounter level."""
     monsters = _load_monster_rows()
+    if not nsfw_enabled:
+        monsters = [monster for monster in monsters if not monster[5]]
     if not monsters:
         monster_data.name = "Commoner"
         monster_data.image = COMBAT_DUMMY
@@ -728,7 +749,7 @@ async def generate_incubated_monster(
 
 async def _fetch_incubated_image(original_name: str, monster: "Monster") -> "Monster":
     """Tries to match the original monster name in monsters.csv to grab its image."""
-    for name, url, _, _, species in _load_monster_rows():
+    for name, url, _, _, species, _ in _load_monster_rows():
         if name == original_name:
             monster.image = url
             monster.species = species

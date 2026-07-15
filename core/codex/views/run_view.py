@@ -69,7 +69,7 @@ def build_wave_baseline(player: Player) -> dict:
 
 
 async def _generate_codex_wave_monster(
-    player: Player, chapter: CodexChapter, wave_num: int
+    player: Player, chapter: CodexChapter, wave_num: int, nsfw_enabled: bool = False
 ) -> Monster:
     """Generates a monster for a Codex wave, then injects chapter-level monster buffs."""
     from core.combat.mobgen.modifier_data import make_modifier
@@ -89,7 +89,9 @@ async def _generate_codex_wave_monster(
         flavor="",
         is_boss=(wave_num == 7),
     )
-    monster = await generate_ascent_monster(player, monster, m_level, n_mods, b_mods)
+    monster = await generate_ascent_monster(
+        player, monster, m_level, n_mods, b_mods, nsfw_enabled
+    )
 
     # Inject chapter-level monster buffs — guarantee a minimum tier for each named modifier.
     # If the monster already rolled the same modifier at a higher tier, the higher tier wins.
@@ -178,6 +180,7 @@ class CodexRunView(BaseLayoutView):
         chapter_wave_baseline: dict = None,
         server_id: str = "",
         player_avatar_url: str | None = None,
+        nsfw_enabled: bool = False,
     ):
         super().__init__(bot, user_id, server_id)
         self.player = player
@@ -187,6 +190,7 @@ class CodexRunView(BaseLayoutView):
         self.monster = initial_monster
         self.logs = start_logs or {}
         self.player_avatar_url = player_avatar_url
+        self.nsfw_enabled = nsfw_enabled
 
         # Baseline snapshot taken after chapter setup (signature + boons applied) but before
         # combat passives fire. Reset at the start of every wave so that sturdy/omnipotent/
@@ -349,7 +353,8 @@ class CodexRunView(BaseLayoutView):
 
         reset_combat_transients(player)
 
-        monster = await _generate_codex_wave_monster(player, chapter, 1)
+        nsfw_enabled = await bot.database.users.get_nsfw_enabled(user_id)
+        monster = await _generate_codex_wave_monster(player, chapter, 1, nsfw_enabled)
         engine.apply_stat_effects(player, monster)
         start_logs = engine.apply_combat_start_passives(player, monster)
         apply_hp_entry_cap(player)
@@ -364,6 +369,7 @@ class CodexRunView(BaseLayoutView):
             chapter_wave_baseline=wave_baseline,
             server_id=server_id,
             player_avatar_url=player_avatar_url,
+            nsfw_enabled=nsfw_enabled,
         )
         view.chapter_idx = chapter_idx
         view.active_boons = active_boons
@@ -817,7 +823,7 @@ class CodexRunView(BaseLayoutView):
         self.combat_logger.log_combat_end(self.player, self.monster, "victory")
 
         self.monster = await _generate_codex_wave_monster(
-            self.player, chapter, self.wave_num
+            self.player, chapter, self.wave_num, self.nsfw_enabled
         )
         engine.apply_stat_effects(self.player, self.monster)
         self.logs = engine.apply_combat_start_passives(self.player, self.monster)

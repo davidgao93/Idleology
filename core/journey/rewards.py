@@ -223,7 +223,7 @@ MILESTONES = [
             "Delve — a tactical mining expedition mini-game with upgradeable equipment",
             "Consume — consume monster body parts to empower your spirit",
             "Tavern Gambling — risk your gold for a chance at big rewards",
-            "Character Sheet — inspect your stats, allocate points, and review passives",
+            "Character Stats — inspect your stats, allocate points, and review passives",
             "Cooldowns — track your long-term timers at a glance",
         ],
         "commands": [
@@ -233,7 +233,6 @@ MILESTONES = [
             "/delve",
             "/consume",
             "/gamble",
-            "/sheet",
             "/stats",
             "/allocate_stats",
             "/passives",

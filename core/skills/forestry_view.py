@@ -7,6 +7,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
+from core.emojis import GATHERING_TOOL_TIER_EMOJI
 from core.images import MASTERY_WOODCUTTING
 from core.skills.mechanics import SkillMechanics
 
@@ -74,6 +75,10 @@ class ForestryView(BaseView):
         return self.skill_data["axe_type"] if self.skill_data else "flimsy"
 
     @property
+    def axe_emoji(self) -> str:
+        return GATHERING_TOOL_TIER_EMOJI["woodcutting"].get(self.axe_tier, "🪓")
+
+    @property
     def gold(self) -> int:
         return self.user_data["gold"] if self.user_data else 0
 
@@ -112,7 +117,7 @@ class ForestryView(BaseView):
 
         if self.state == "idle":
             desc = (
-                f"**Axe:** {tier.title()} Axe\n"
+                f"**Axe:** {self.axe_emoji} {tier.title()} Axe\n"
                 f"**Pass Cost:** {cost:,} GP\n"
                 f"**Balance:** {self.gold:,} GP\n\n"
                 "Purchase a forestry pass to enter the woods."
@@ -135,7 +140,7 @@ class ForestryView(BaseView):
                 knot_line = ""
             rhythm = self._rhythm_bar()
             desc = (
-                f"**Axe:** {tier.title()} Axe\n\n"
+                f"**Axe:** {self.axe_emoji} {tier.title()} Axe\n\n"
                 f"{self._progress_bar()}\n"
                 f"**{self.swings_remaining} swing(s) remaining**"
                 + (f"\n{rhythm}" if rhythm else "")

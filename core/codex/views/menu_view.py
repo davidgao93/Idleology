@@ -170,7 +170,10 @@ class CodexMenuView(BaseLayoutView):
 
         wave_baseline = build_wave_baseline(self.player)
 
-        monster = await _generate_codex_wave_monster(self.player, chapter, 1)
+        nsfw_enabled = await self.bot.database.users.get_nsfw_enabled(self.user_id)
+        monster = await _generate_codex_wave_monster(
+            self.player, chapter, 1, nsfw_enabled
+        )
         engine.apply_stat_effects(self.player, monster)
         start_logs = engine.apply_combat_start_passives(self.player, monster)
         apply_hp_entry_cap(self.player)
@@ -185,6 +188,7 @@ class CodexMenuView(BaseLayoutView):
             chapter_wave_baseline=wave_baseline,
             server_id=self.server_id,
             player_avatar_url=self.player_avatar_url,
+            nsfw_enabled=nsfw_enabled,
         )
 
         # Atomic entry: the Tome is only spent together with the initial
