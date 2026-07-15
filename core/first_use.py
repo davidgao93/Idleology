@@ -29,7 +29,18 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import HEMATURGY_ICON
+from core.emojis import (
+    ASCENT_EMOJI,
+    CODEX_TOME_EMOJI,
+    CONSUME_ICON,
+    GEAR_BACKPACK,
+    HEMATURGY_ICON,
+    INFINITE_MAW,
+    NETHER_MARKET_PLUNDER,
+    PARADISE_JEWEL_UNCUT,
+    UBER_EMOJI,
+    VOID_KEY,
+)
 from core.images import (
     AMARA_AUTHOR,
     ARBITER_PORTRAIT,
@@ -307,7 +318,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.teal(),
     },
     "inventory": {
-        "title": "🎒 Inventory & Gear",
+        "title": f"{GEAR_BACKPACK} Inventory & Gear",
         "author": "Armorsmith Veyra",
         "author_icon": VEYRA_AUTHOR,
         "description": (
@@ -329,7 +340,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.blue(),
     },
     "voidforge": {
-        "title": "🌌 The Voidforge",
+        "title": f"{VOID_KEY} The Voidforge",
         "author": "Master Smith Harlan",
         "description": (
             "*You've come to the Voidforge. Good. Let me explain exactly what you're getting into — "
@@ -343,7 +354,7 @@ TUTORIALS: dict[str, dict] = {
             "A third and final slot — only reachable after a Pinnacle exists. "
             "The rarest configuration a weapon can have. Few smiths ever see one.\n\n"
             "**The Three Outcomes (each attempt):**\n"
-            "— 🌌 **Success (25%):** The sacrifice's passive is written into your weapon as "
+            f"— {VOID_KEY} **Success (25%):** The sacrifice's passive is written into your weapon as "
             "a Pinnacle Passive. If a Pinnacle already exists, it becomes the Utmost instead.\n"
             "— 🔄 **Chaos (25%):** The essence overpowers the ritual. "
             "Your weapon's **main passive is overwritten** with the sacrifice's passive.\n"
@@ -387,7 +398,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.dark_orange(),
     },
     "ascent": {
-        "title": "🗼 The Ascent",
+        "title": f"{ASCENT_EMOJI} The Ascent",
         "author": "Tower Warden Vale",
         "author_icon": VALE_PORTRAIT,
         "description": (
@@ -406,7 +417,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.greyple(),
     },
     "codex": {
-        "title": "📖 The Codex",
+        "title": f"{CODEX_TOME_EMOJI} The Codex",
         "author": "Grand Archivist Seraphine",
         "author_icon": SERAPHINE_PORTRAIT,
         "description": (
@@ -426,7 +437,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.dark_purple(),
     },
     "maw": {
-        "title": "Maw of Infinity",
+        "title": f"{INFINITE_MAW} Maw of Infinity",
         "author": "Brother Solen",
         "author_icon": BROTHER_SOLEN_PORTRAIT,
         "description": (
@@ -451,7 +462,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.dark_blue(),
     },
     "consume": {
-        "title": "🦴 Consume",
+        "title": f"{CONSUME_ICON} Consume",
         "author": "Ragna the Fleshwright",
         "author_icon": RAGNA_PORTRAIT,
         "description": (
@@ -494,7 +505,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.red(),
     },
     "uber": {
-        "title": "⚡ Uber Encounters",
+        "title": f"{UBER_EMOJI} Uber Encounters",
         "author": "The Arbiter",
         "author_icon": ARBITER_PORTRAIT,
         "description": (
@@ -540,7 +551,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.dark_purple(),
     },
     "paradise": {
-        "title": "💎 Paradise Jewel",
+        "title": f"{PARADISE_JEWEL_UNCUT} Paradise Jewel",
         "author": "Tessara the Lapidary",
         "author_icon": TESSARA_PORTRAIT,
         "description": (
@@ -561,7 +572,7 @@ TUTORIALS: dict[str, dict] = {
         "color": discord.Color.purple(),
     },
     "nether_market": {
-        "title": "\U0001f573️ Nether Market",
+        "title": f"{NETHER_MARKET_PLUNDER} Nether Market",
         "author": "Vex, the Fence",
         "author_icon": VEX_PORTRAIT,
         "description": (

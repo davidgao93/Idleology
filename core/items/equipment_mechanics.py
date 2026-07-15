@@ -303,8 +303,6 @@ class EquipmentMechanics:
         if weapon.refinement_lvl <= 0:
             return 0
         runes_back = max(0, int(weapon.refinement_lvl - 6 * 0.8))
-        if weapon.attack > 0 and weapon.defence > 0 and weapon.rarity > 0:
-            runes_back += 1
         return runes_back
 
     @staticmethod

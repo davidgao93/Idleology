@@ -373,9 +373,13 @@ class Combat(commands.Cog, name="combat"):
                 is_corrupted = gate_view.accepted
                 if not is_corrupted:
                     # Player fled — clear gate message, fall through to boss door check
+                    turn_embed = discord.Embed(
+                        description="*You turn away from the corrupted presence... Live to fight another day.*",
+                        color=discord.Color.dark_grey(),
+                    )
                     screen_msg = await screen_msg.edit(
-                        content="*The corrupted presence fades... for now.*",
-                        embed=None,
+                        content=None,
+                        embed=turn_embed,
                         view=None,
                     )
                     await asyncio.sleep(1.0)

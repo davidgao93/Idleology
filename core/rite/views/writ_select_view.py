@@ -7,8 +7,13 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_layout_view import BaseLayoutView
-from core.rite.data import ATTEMPTS_WRIT_KEYS, SPEED_WRIT_KEYS, TOGGLE_WRIT_KEYS, WRITS
-from core.rite.data import compute_devotion_points
+from core.rite.data import (
+    ATTEMPTS_WRIT_KEYS,
+    SPEED_WRIT_KEYS,
+    TOGGLE_WRIT_KEYS,
+    WRITS,
+    compute_devotion_points,
+)
 from core.rite.loot import ARTEFACT_TIER_1_DP, artefact_drop_chance
 
 _NONE_VALUE = "__none__"
@@ -31,8 +36,8 @@ class WritSelectView(BaseLayoutView):
         lines = [
             "## 📜 Writs of Devotion",
             "Optional modifiers that increase this run's difficulty and its "
-            "Devotion Points — DP gates Artefact tier access and boosts loot.",
-            "",
+            "Devotion Points grant you Artefact tier access and boosts loot.\n",
+            "Some of the rarest artefacts require the highest levels of Devotion.",
         ]
         for key in TOGGLE_WRIT_KEYS + SPEED_WRIT_KEYS + ATTEMPTS_WRIT_KEYS:
             w = WRITS[key]
@@ -40,14 +45,14 @@ class WritSelectView(BaseLayoutView):
             lines.append(f"{mark} **{w.name}** (+{w.dp} DP) — {w.effect}")
         lines.append("")
         lines.append(
-            f"**Preview Devotion Points:** {preview_dp}+ *(speed writ DP only counts if you hit the deadline)*"
+            f"**Devotion Points:** {preview_dp}+ *(speed writ DP only counts if you hit the deadline)*"
         )
         if preview_dp >= ARTEFACT_TIER_1_DP:
             chance_pct = round(artefact_drop_chance(preview_dp) * 100)
             lines.append(f"**Preview Artefact Chance:** ~{chance_pct}%")
         else:
             lines.append(
-                f"**Preview Artefact Chance:** 0% *(needs {ARTEFACT_TIER_1_DP}+ DP to unlock)*"
+                f"**Artefact Chance:** 0% *(needs {ARTEFACT_TIER_1_DP}+ DP to unlock)*"
             )
         return discord.ui.Container(
             discord.ui.TextDisplay("\n".join(lines)),
