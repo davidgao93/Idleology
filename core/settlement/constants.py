@@ -136,9 +136,9 @@ BUILDING_INFO.update(
 CONSTRUCTION_COSTS.update(
     {
         "nursery": {"gold": 25000, "timber": 2000, "stone": 2000},
-        "idlem_foundry": {"gold": 50000, "timber": 5000, "stone": 5000},
+        "idlem_foundry": {"gold": 50000, "timber": 50000, "stone": 50000},
         "sanctum": {"gold": 25000, "timber": 2000, "stone": 2000},
-        "uber_shrine": {"gold": 10_000_000, "timber": 100_000, "stone": 100_000},
+        "uber_shrine": {"gold": 10_000_000, "timber": 150_000, "stone": 150_000},
     }
 )
 
