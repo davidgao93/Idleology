@@ -51,6 +51,7 @@ from core.emojis import (
     JEWEL_SURGE,
     JEWEL_WARDFORGE,
     PARADISE_JEWEL_UNCUT,
+    SLAYER_EMBLEM_ICON,
     STAT_BLOCK,
     STAT_HP,
     UBER_EMOJI,
@@ -428,7 +429,9 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == "slayer":
-            embed.title = "🗡️ Slayer Emblem Passive Scaling (Tiers 1–5)"
+            embed.title = (
+                f"{SLAYER_EMBLEM_ICON} Slayer Emblem Passive Scaling (Tiers 1–5)"
+            )
             slayer_passives = {
                 SLAYER_PASSIVE_NAMES[k]: v
                 for k, v in SLAYER_PASSIVE_DEFS.items()

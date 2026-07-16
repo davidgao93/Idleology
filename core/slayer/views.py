@@ -10,6 +10,7 @@ from core.emojis import (
     ESSENCE_CORRUPT,
     ESSENCE_RARE,
     PRIMAL_ESSENCE,
+    SLAYER_EMBLEM_ICON,
 )
 from core.images import SLAYER_EMBLEM, SLAYER_MASTER, SLAYER_MASTER_AUTHOR
 from core.npc_voices import get_quip
@@ -113,7 +114,10 @@ class SlayerDashboardView(BaseView):
         self.add_item(btn_tree)
 
         btn_emblem = ui.Button(
-            label="Manage Emblem", style=ButtonStyle.primary, emoji="🛡️", row=1
+            label="Manage Emblem",
+            style=ButtonStyle.primary,
+            emoji=f"{SLAYER_EMBLEM_ICON}",
+            row=1,
         )
         btn_emblem.callback = self.open_emblem
         self.add_item(btn_emblem)
@@ -272,7 +276,7 @@ class EmblemView(BaseView):
 
     def build_embed(self) -> discord.Embed:
         embed = discord.Embed(
-            title="💀 Slayer Emblem",
+            title=f"{SLAYER_EMBLEM_ICON} Slayer Emblem",
             description=f"*{get_quip('slayer_emblem')}*\n\nEnhance your combat prowess.",
             color=discord.Color.dark_purple(),
         )
@@ -641,7 +645,7 @@ class SlayerTreeView(BaseView):
         prefix = {"taskmaster": "tm", "hunter": "hu", "purveyor": "pu"}[branch]
 
         embed = discord.Embed(
-            title=f"{SLAYER_EMBLEM} Slayer Shop — {icon} {name}",
+            title=f"{SLAYER_EMBLEM_ICON} Slayer Shop — {icon} {name}",
             description=(
                 f"*{get_quip('slayer_shop')}*\n\n"
                 f"**Slayer Points:** {pts} | {PRIMAL_ESSENCE} **Violent Essence:** {ess}\n"

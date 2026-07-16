@@ -63,8 +63,6 @@ class BaseUpgradeView(BaseView):
         and build the display lines + inventory snapshot in one call.
 
         Returns (has_res: bool, cost_lines: str, snapshot: dict).
-        cost_lines contains the ⛏️/🪓/🎣/💰 lines — caller prepends their own header.
-        snapshot mirrors the format used by _deduct_smart callsites.
         """
         cols = self._resolve_material_columns(costs)
         mining_res, wood_res, fish_res = await self._fetch_material_amounts(

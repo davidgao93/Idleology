@@ -487,9 +487,7 @@ PARTNER_SIG_EMOJI: dict[str, str] = {
 
 # ── RESOURCE_EMOJI ─────────────────────────────────────────────────────────
 # Single source of truth for gathering/settlement/Black Market material icons.
-# Several views used to hardcode their own emoji per resource key (and
-# sometimes disagreed with each other — e.g. gold_ore was 🏅 in one place,
-# ⛏️ in another). Look up materials here instead of inlining a new literal.
+# Look up materials here instead of inlining a new literal.
 RESOURCE_EMOJI: dict[str, str] = {
     "timber": "🪵",
     "stone": "🪨",

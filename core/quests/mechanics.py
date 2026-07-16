@@ -349,7 +349,7 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
                 await bot.database.skills.update_batch(
                     user_id, server_id, skill_type, resources
                 )
-                msgs.append(f"⛏️ Bountiful Cache: +{skill_type.title()} materials")
+                msgs.append(f"Bountiful Cache: +{skill_type.title()} materials")
         except Exception as e:
             print(f"[Bountiful Quests perk error]: {e}")
 
