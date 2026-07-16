@@ -255,13 +255,13 @@ class DispatchView(PartnerBaseView):
                 for p in eligible:
                     if p.rarity != rarity:
                         continue
-                    if p.is_dispatched and p.dispatch_task == "boss_party":
+                    if p.dispatch_task == "boss_party":
                         status = " 🔱"
                     elif p.is_dispatched:
                         status = " 📋"
                     else:
                         status = ""
-                    if p.is_dispatched and p.dispatch_task == "boss_party":
+                    if p.dispatch_task == "boss_party":
                         desc = "🔱 Boss Raid"
                     elif p.is_dispatched:
                         desc = f"On: {_TASK_LABELS.get(p.dispatch_task or '', p.dispatch_task or '?')}"

@@ -430,7 +430,14 @@ class ForestryView(BaseView):
             self.state = "ready"
             self.setup_ui()
             await self.refresh_data()
-            await self.message.edit(embed=self.get_embed(), view=self)
+            ok = await self._safe_message_edit(embed=self.get_embed(), view=self)
+            if not ok:
+                # Edit failed even after retry — the player would otherwise be
+                # stranded on a message full of disabled cooldown buttons
+                # forever (timeout=None, no interaction to recover from).
+                self._active = False
+                self.bot.state_manager.clear_active(self.user_id)
+                await self._safe_message_edit(retries=0, view=None)
         except asyncio.CancelledError:
             pass
 

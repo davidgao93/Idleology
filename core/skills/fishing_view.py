@@ -341,11 +341,19 @@ class FishingView(BaseView):
             self._accel_active = False
             self.state = "bite"
             self.setup_ui()
-            await self.message.edit(
+            ok = await self._safe_message_edit(
                 content=self.user_mention,
                 embed=self.get_embed(),
                 view=self,
             )
+            if not ok:
+                # Stranded otherwise: state is already "bite" internally but
+                # the message would keep showing disabled "waiting" buttons
+                # forever, and no escape task would ever get scheduled.
+                self._active = False
+                self.bot.state_manager.clear_active(self.user_id)
+                await self._safe_message_edit(retries=0, content=None, view=None)
+                return
             # Re-check after the awaited edit: pack_up_callback may have run
             # (and found _escape_task still None to cancel) while this was
             # in flight. Bail out instead of leaving an unmanaged escape task.
@@ -379,12 +387,9 @@ class FishingView(BaseView):
                 self._accel_active = True
                 window_duration = random.randint(ACCEL_WINDOW_MIN, ACCEL_WINDOW_MAX)
                 self.setup_ui()
-                try:
-                    await self.message.edit(
-                        content=None, embed=self.get_embed(), view=self
-                    )
-                except Exception:
-                    pass
+                await self._safe_message_edit(
+                    retries=0, content=None, embed=self.get_embed(), view=self
+                )
 
                 await asyncio.sleep(window_duration)
 
@@ -394,12 +399,9 @@ class FishingView(BaseView):
                     self._accel_active = False
                     if self.state == "casting":
                         self.setup_ui()
-                        try:
-                            await self.message.edit(
-                                content=None, embed=self.get_embed(), view=self
-                            )
-                        except Exception:
-                            pass
+                        await self._safe_message_edit(
+                            retries=0, content=None, embed=self.get_embed(), view=self
+                        )
 
                 if self.state == "casting":
                     await asyncio.sleep(random.uniform(30, 55))
@@ -420,7 +422,13 @@ class FishingView(BaseView):
                 self.state = "escaped"
                 self.setup_ui()
                 await self.refresh_data()
-                await self.message.edit(content=None, embed=self.get_embed(), view=self)
+                ok = await self._safe_message_edit(
+                    content=None, embed=self.get_embed(), view=self
+                )
+                if not ok:
+                    self._active = False
+                    self.bot.state_manager.clear_active(self.user_id)
+                    await self._safe_message_edit(retries=0, content=None, view=None)
         except asyncio.CancelledError:
             pass
 

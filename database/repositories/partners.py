@@ -240,7 +240,9 @@ class PartnerRepository(BaseRepository):
         start_time: str,
     ) -> None:
         await self.connection.execute(
-            "UPDATE user_partners SET is_dispatched = 0 WHERE user_id = ?",
+            """UPDATE user_partners
+               SET is_dispatched = 0
+               WHERE user_id = ? AND (dispatch_task IS NULL OR dispatch_task != 'boss_party')""",
             (user_id,),
         )
         await self.connection.execute(

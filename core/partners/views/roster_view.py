@@ -200,11 +200,7 @@ class PartnerMainView(PartnerBaseView):
                 ),
                 None,
             )
-            boss_party = [
-                p
-                for p in partners
-                if p.is_dispatched and p.dispatch_task == "boss_party"
-            ]
+            boss_party = [p for p in partners if p.dispatch_task == "boss_party"]
 
         if active_combat:
             skill_names = [

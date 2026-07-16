@@ -5,6 +5,8 @@ Global base class for ALL Discord views in the entire bot.
 
 from __future__ import annotations
 
+import asyncio
+
 import discord
 from discord import Interaction, ui
 
@@ -91,6 +93,42 @@ class BaseView(ui.View):
             await super()._scheduled_task(item, interaction)
         finally:
             self._dispatch_busy = False
+
+    async def _safe_message_edit(
+        self, *, retries: int = 1, retry_delay: float = 2.0, **kwargs
+    ) -> bool:
+        """Best-effort ``self.message.edit(...)`` for background timer tasks.
+
+        Background tasks (cooldown timers, bite windows, etc.) drive state
+        transitions outside of any interaction callback, so a transient
+        REST hiccup here has no interaction to retry from and no timeout to
+        eventually clean things up (views run with ``timeout=None``). Left
+        unhandled, a single failed edit permanently strands the player on a
+        message full of disabled buttons. This retries once, logs failures
+        instead of dropping them, and never raises.
+        """
+        if not self.message:
+            return False
+        for attempt in range(retries + 1):
+            try:
+                await self.message.edit(**kwargs)
+                return True
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                if attempt < retries:
+                    await asyncio.sleep(retry_delay)
+                    continue
+                try:
+                    self.bot.logger.error(
+                        f"{type(self).__name__} background message edit failed "
+                        f"for user {self.user_id}",
+                        exc_info=True,
+                    )
+                except Exception:
+                    pass
+                return False
+        return False
 
     async def on_timeout(self) -> None:
         """Default safe cleanup."""

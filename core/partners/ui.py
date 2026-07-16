@@ -90,8 +90,10 @@ def _build_partner_embed(partner: Partner, items: dict) -> discord.Embed:
     status_parts = []
     if partner.is_active_combat:
         status_parts.append("⚔️ Active Combat Partner")
-    if partner.is_dispatched:
-        task = partner.dispatch_task or "?"
+    if partner.dispatch_task == "boss_party":
+        status_parts.append("🔱 Dispatched (Boss Raid)")
+    elif partner.is_dispatched:
+        task = partner.dispatch_task or "Dispatch"
         status_parts.append(f"📋 Dispatched ({task})")
     if not status_parts:
         status_parts.append("Idle")
