@@ -2,7 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
-from core.emojis import GOLD_COIN
+from core.emojis import GOLD_COIN, RUNE_GENERIC, SOUL_FRAGMENT
 from core.images import TRADE_HUB
 from core.trade.logic import TradeManager
 
@@ -138,11 +138,11 @@ class TradeRootView(BaseView):
         options = [
             SelectOption(label="Keys & Curios", value="keys", emoji="🗝️"),
             SelectOption(label="Rite Keys", value="rite_keys", emoji="🕯️"),
-            SelectOption(label="Runes", value="runes", emoji="📜"),
+            SelectOption(label="Runes", value="runes", emoji=f"{RUNE_GENERIC}"),
             SelectOption(label="Mining Mats", value="mining", emoji="⛏️"),
             SelectOption(label="Woodcutting Mats", value="wood", emoji="🪓"),
             SelectOption(label="Fishing Mats", value="fish", emoji="🎣"),
-            SelectOption(label="Meta Shards", value="meta", emoji="💠"),
+            SelectOption(label="Meta Shards", value="meta", emoji=f"{SOUL_FRAGMENT}"),
             SelectOption(label="Essences", value="essences", emoji="✨"),
             SelectOption(label="Settlement Mats", value="settlement", emoji="🏗️"),
         ]

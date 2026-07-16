@@ -71,6 +71,7 @@ HELMET_SLOT = "<:gear_helmet:1524443427306209431>"
 GLOVE_SLOT = "<:gear_gloves:1524443397476323399>"
 BOOT_SLOT = "<:gear_boots:1524443392963252358>"
 ACCESSORY_SLOT = "<:gear_accessory:1524443431513096279>"
+ARTEFACT_SLOT = "<:rite_artefact:1527321237876117565>"
 GEAR_BACKPACK = "<:gear_backpack:1524443376320118794>"  # generic "Gear" category icon (not slot-specific)
 
 # ── Combat stats (profile stat sheet + in-combat stat lines) ───────────────
@@ -92,7 +93,7 @@ STAT_EMOJI: dict[str, str] = {
     "block": STAT_BLOCK,
 }
 
-# ── Runes (9 types — previously all shared one generic 🔮) ──────────────────
+# ── Runes (9 types) ──────────────────
 RUNE_GENERIC = "<:rune_generic:1524443371404398704>"  # category-title icon (crafting section header)
 RUNE_REFINEMENT = "<:rune_refine:1524443368724238377>"
 RUNE_POTENTIAL = "<:rune_potential:1524443421987831900>"
@@ -337,8 +338,16 @@ MISC_PASSIVES = "<:misc_passives:1526938107927072938>"
 GEAR_PASSIVES = "<:gear_passives:1526938107016904816>"
 UBER_EMOJI = "<:uber:1526938108547956827>"
 
+# Slayer
+SLAYER_EMBLEM_ICON = "<:slayer_emblem:1527321237133721690>"
+
 # ── Quests ──────────────────────────────────────────────────────────────────
 QUEST_COMPLETE = "<:quest_complete:1526938103162470400>"
+QUEST_TOKEN = "<:quest_token:1527321236181483612>"
+
+# Companions
+COMPANION_COLLECT = "<:companion_collect:1527321238718910634>"
+FORGED_BONDS = "<:forged_bonds:1527321239625138418>"
 
 # ── Guild Ticket (standardized — do not use plain 🎫 for this currency) ────
 GUILD_TICKET = "<:guild_ticket:1526938101988196492>"

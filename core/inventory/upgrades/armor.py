@@ -10,12 +10,15 @@ from core.character.passive_formatters import (
 )
 from core.emojis import (
     CELESTIAL_ENGRAM,
+    CELESTIAL_SIGIL,
     FORGE_FAIL,
     GEAR_REINFORCE,
     GOLD_COIN,
     QUEST_COMPLETE,
+    RUNE_IMBUE,
     RUNE_POTENTIAL,
     RUNE_SHATTER,
+    WEAPON_FORGE,
 )
 from core.images import (
     SYLAS_AUTHOR,
@@ -76,7 +79,10 @@ class TemperView(BaseUpgradeView):
 
         # Standard Temper
         btn_std = Button(
-            label=f"Temper ({current_pct}%)", style=ButtonStyle.success, row=0
+            label=f"Temper ({current_pct}%)",
+            style=ButtonStyle.success,
+            row=0,
+            emoji=WEAPON_FORGE,
         )
         btn_std.disabled = not has_res
         btn_std.callback = lambda i: self.confirm_temper(i, use_rune=False)
@@ -258,10 +264,10 @@ class ImbueView(BaseUpgradeView):
         runes = await self.bot.database.users.get_currency(self.user_id, "imbue_runes")
 
         embed = discord.Embed(
-            title="Imbue Armor",
+            title=f"{CELESTIAL_SIGIL} Imbue Armor",
             description=(
                 f"{get_quip('imbue')}\n\n"
-                f"Cost: 1 Rune of Imbuing (Owned: {runes})\nSuccess Rate: **50%**\n\nGrants a powerful passive ability."
+                f"Cost: 1 Rune of Imbuing (Owned: {RUNE_IMBUE}{runes})\nSuccess Rate: **50%**\n\nGrants a powerful passive ability."
             ),
             color=discord.Color.purple(),
         )
@@ -269,7 +275,10 @@ class ImbueView(BaseUpgradeView):
         embed.set_thumbnail(url=UPGRADE_TEMPER)
         self.clear_items()
         confirm_btn = Button(
-            label="Imbue", style=ButtonStyle.primary, disabled=(runes == 0)
+            label="Imbue",
+            style=ButtonStyle.primary,
+            disabled=(runes == 0),
+            emoji=CELESTIAL_SIGIL,
         )
         confirm_btn.callback = self.confirm
         self.add_item(confirm_btn)
@@ -396,7 +405,7 @@ class ReinforceView(BaseUpgradeView):
             label="Reinforce", style=ButtonStyle.success, emoji=GEAR_REINFORCE
         )
         if not has_slots:
-            desc += f"\n\n**0 Reinforces left!** Use a Shatter Rune to add a slot? (Owned: {shatter_runes})"
+            desc += f"\n\n**0 Reinforces left!** Use a Shatter Rune to add a slot? (Owned: {RUNE_SHATTER}{shatter_runes})"
             action_btn.label = "Use Shatter Rune"
             action_btn.style = ButtonStyle.primary
             action_btn.disabled = shatter_runes == 0
@@ -651,7 +660,7 @@ class ReinforceView(BaseUpgradeView):
             f"**Estimated Resources Consumed:**\n"
             f"{GOLD_COIN} Gold: {gold_used:,}\n"
             f"{RUNE_SHATTER} Shatter Runes: {runes_used}\n"
-            f"📦 Materials:\n{mat_lines}\n\n"
+            f"Materials:\n{mat_lines}\n\n"
             f"*Stops when: {stop_reason}*\n\n"
             f"Proceed?"
         )

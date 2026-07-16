@@ -6,13 +6,16 @@ from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.emojis import (
+    BARS_REFINED,
     DEVELOPMENT_CONTRACT,
     DIVINER_ROD,
+    ESSENCE_META,
     GOLD_COIN,
     LIFE_ROOT,
     MAGMA_CORE,
     MONSTER_EGG,
     SPIRIT_SHARD,
+    WOODEN_PLANKS,
     ZEAL,
 )
 from core.images import (
@@ -576,11 +579,11 @@ class SettlementDashboardView(SettlementBaseView):
                     )
                     res_lines.append(f"{icon} +{v:,} {label}")
                 if bars_produced:
-                    res_lines.append("🔧 Metal Bars produced")
+                    res_lines.append(f"{BARS_REFINED} Metal Bars produced")
                 if planks_produced:
-                    res_lines.append("🪵 Planks produced")
+                    res_lines.append(f"{WOODEN_PLANKS} Planks produced")
                 if essences_produced:
-                    res_lines.append("✨ Essences produced")
+                    res_lines.append(f"{ESSENCE_META} Essences produced")
                 if res_lines:
                     lines.append("🏭 **Buildings produced:**")
                     lines.extend(res_lines[:10])
@@ -705,7 +708,7 @@ class SettlementDashboardView(SettlementBaseView):
                     worker_desc = "Special trading post"
                 elif b.building_type == "uber_shrine":
                     status_emoji = "🏛️"
-                    worker_desc = "Monument Hall to the Gods"
+                    worker_desc = "Monument Hall"
                 elif not _needs_workers:
                     status_emoji = (
                         "🔵"  # passive/always-on — distinct from active 🟢 / idle 🔴
@@ -818,7 +821,7 @@ class SettlementDashboardView(SettlementBaseView):
             label=f"Gather Zeal ({_pz}/{ZEAL_GATHER_CAP})",
             style=ButtonStyle.blurple,
             emoji=ZEAL,
-            row=1,
+            row=2,
             disabled=_pz <= 0,
         )
         gather_zeal_btn.callback = self.on_gather_zeal
@@ -834,7 +837,7 @@ class SettlementDashboardView(SettlementBaseView):
             label=_col_label,
             style=ButtonStyle.primary,
             emoji="🚜",
-            row=1,
+            row=2,
             disabled=not self._has_pending_collection(),
         )
         collect_btn.callback = self.collect_resources
@@ -863,18 +866,18 @@ class SettlementDashboardView(SettlementBaseView):
             label=f"Gather Stamina ({_ws}/10)",
             style=ButtonStyle.blurple,
             emoji="⚔️",
-            row=1,
+            row=2,
             disabled=_ws <= 0,
         )
         war_camp_btn.callback = self.on_collect_war_camp_stamina
         self.add_item(war_camp_btn)
 
-        # --- Row 2: management buttons ---
+        # --- Row 3: management buttons ---
         th_btn = ui.Button(
             label=f"Town Hall (T{self.settlement.town_hall_tier})",
             style=ButtonStyle.secondary,
             emoji="🏛️",
-            row=2,
+            row=3,
         )
         th_btn.callback = self.open_town_hall
         self.add_item(th_btn)
@@ -883,7 +886,7 @@ class SettlementDashboardView(SettlementBaseView):
             label="Research",
             style=ButtonStyle.secondary,
             emoji="🔬",
-            row=2,
+            row=3,
         )
         research_btn.callback = self.open_research
         self.add_item(research_btn)
@@ -895,7 +898,7 @@ class SettlementDashboardView(SettlementBaseView):
             label="Hatchery",
             style=ButtonStyle.secondary,
             emoji=MONSTER_EGG,
-            row=2,
+            row=3,
             disabled=not has_hatchery,
         )
         hatchery_btn.callback = self._open_hatchery_quick
@@ -908,18 +911,18 @@ class SettlementDashboardView(SettlementBaseView):
             label="Black Market",
             style=ButtonStyle.secondary,
             emoji="💱",
-            row=2,
+            row=3,
             disabled=not has_bm,
         )
         bm_btn.callback = self._open_black_market_quick
         self.add_item(bm_btn)
 
-        # --- Row 3: help / info buttons ---
+        # --- Row 4: help / info buttons ---
         guide_btn = ui.Button(
             label="Building List",
             style=ButtonStyle.secondary,
             emoji="📖",
-            row=3,
+            row=4,
         )
         guide_btn.callback = self.show_building_list
         self.add_item(guide_btn)
@@ -928,7 +931,7 @@ class SettlementDashboardView(SettlementBaseView):
             label="Meta Buildings",
             style=ButtonStyle.secondary,
             emoji="⚙️",
-            row=3,
+            row=4,
         )
         meta_btn.callback = self.show_meta_buildings
         self.add_item(meta_btn)
@@ -937,7 +940,7 @@ class SettlementDashboardView(SettlementBaseView):
             label="Plot Bonuses",
             style=ButtonStyle.secondary,
             emoji="🗺️",
-            row=3,
+            row=4,
         )
         plots_btn.callback = self.show_plot_bonuses
         self.add_item(plots_btn)
@@ -946,12 +949,12 @@ class SettlementDashboardView(SettlementBaseView):
             label="Ask Spritz",
             style=ButtonStyle.secondary,
             emoji="🎀",
-            row=3,
+            row=4,
         )
         maid_btn.callback = self.ask_the_maid
         self.add_item(maid_btn)
 
-        # --- Row 4: close ---
+        # --- Row 4: close (packed alongside info buttons — Discord caps rows at 0-4) ---
         close_btn = ui.Button(
             label="Close",
             style=ButtonStyle.secondary,
@@ -1414,7 +1417,9 @@ class SettlementDashboardView(SettlementBaseView):
                     summary["nursery_ideology"] = _turn["nursery_ideology"]
                 summary["idlem_from_foundry"] += _turn.get("idlem_from_foundry", 0)
                 for _k, _v in (_turn.get("dt_resources") or {}).items():
-                    summary["dt_resources"][_k] = summary["dt_resources"].get(_k, 0) + _v
+                    summary["dt_resources"][_k] = (
+                        summary["dt_resources"].get(_k, 0) + _v
+                    )
 
             # Reload fresh data
             self.settlement = await self.bot.database.settlement.get_settlement(

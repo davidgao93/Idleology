@@ -24,7 +24,7 @@ def create_backup(db_path: str, backup_dir: str, keep: int) -> str:
     timestamp = f"{time.strftime('%Y%m%d_%H%M%S')}_{int(time.time() * 1_000_000) % 1_000_000:06d}"
     backup_path = os.path.join(backup_dir, f"{BACKUP_PREFIX}{timestamp}{BACKUP_SUFFIX}")
 
-    source = sqlite3.connect(db_path)
+    source = sqlite3.connect(db_path, timeout=30)
     try:
         dest = sqlite3.connect(backup_path)
         try:

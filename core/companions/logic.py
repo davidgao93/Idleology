@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from core.companions.mechanics import CompanionMechanics
-from core.emojis import GOLD_COIN
+from core.emojis import COMPANION_COLLECT, GOLD_COIN
 from core.items.factory import create_companion
 
 
@@ -109,7 +109,7 @@ class CompanionLogic:
         items_list = [f"{k} x{v}" for k, v in summary.items()]
 
         if items_list:
-            msg += "📦 " + ", ".join(items_list)
+            msg += f"{COMPANION_COLLECT} " + ", ".join(items_list)
 
         return msg
 
@@ -141,6 +141,6 @@ class CompanionLogic:
 
         items_list = [f"{k} x{v}" for k, v in summary.items()]
         if items_list:
-            msg += "📦 " + ", ".join(items_list)
+            msg += f"{COMPANION_COLLECT} " + ", ".join(items_list)
 
         return msg

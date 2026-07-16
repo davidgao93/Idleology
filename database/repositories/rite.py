@@ -2,6 +2,9 @@ import json
 
 import aiosqlite
 
+# Matches the 60-item cap used by the six normal gear slots' inventories.
+ARTEFACT_CAP = 60
+
 
 class RiteRepository:
     """The Rite of Convergence: run persistence + first-clear unlock flag."""
@@ -67,19 +70,38 @@ class RiteRepository:
         await self.connection.commit()
 
     # ------------------------------------------------------------------
-    # Artefact slot (single equipped item, overwritten on each new drop)
+    # Artefact inventory (multi-item; one may be equipped at a time)
     # ------------------------------------------------------------------
 
-    async def get_artefact(self, user_id: str, server_id: str) -> dict | None:
+    async def get_artefact_inventory(self, user_id: str, server_id: str) -> list[dict]:
+        """All artefacts owned by this player, equipped one first."""
         async with self.connection.execute(
-            "SELECT artefact_key, roll_1, roll_2, roll_3 FROM player_artefacts "
-            "WHERE user_id = ? AND server_id = ?",
+            "SELECT item_id, artefact_key, roll_1, roll_2, roll_3, is_equipped "
+            "FROM rite_artefact_items WHERE user_id = ? AND server_id = ? "
+            "ORDER BY is_equipped DESC, item_id DESC",
+            (user_id, server_id),
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    async def get_equipped_artefact(self, user_id: str, server_id: str) -> dict | None:
+        async with self.connection.execute(
+            "SELECT item_id, artefact_key, roll_1, roll_2, roll_3, is_equipped "
+            "FROM rite_artefact_items WHERE user_id = ? AND server_id = ? AND is_equipped = 1",
             (user_id, server_id),
         ) as cursor:
             row = await cursor.fetchone()
         return dict(row) if row else None
 
-    async def set_artefact(
+    async def count_artefacts(self, user_id: str, server_id: str) -> int:
+        async with self.connection.execute(
+            "SELECT COUNT(*) AS c FROM rite_artefact_items WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return row["c"] if row else 0
+
+    async def add_artefact(
         self,
         user_id: str,
         server_id: str,
@@ -87,16 +109,52 @@ class RiteRepository:
         roll_1: float = 0.0,
         roll_2: float = 0.0,
         roll_3: float = 0.0,
-    ) -> None:
-        """Equips a newly-dropped artefact, overwriting whatever was equipped before."""
+        auto_equip: bool = False,
+    ) -> int | None:
+        """Adds a newly-dropped artefact to the inventory. Returns the new
+        item_id, or None if the player is already at ARTEFACT_CAP (the drop
+        is not inserted — caller must tell the player it was lost).
+        auto_equip only takes effect if nothing is currently equipped (e.g.
+        this is the player's first artefact ever)."""
+        if await self.count_artefacts(user_id, server_id) >= ARTEFACT_CAP:
+            return None
+
+        equip_now = False
+        if auto_equip:
+            equip_now = await self.get_equipped_artefact(user_id, server_id) is None
+
+        cursor = await self.connection.execute(
+            """INSERT INTO rite_artefact_items
+                   (user_id, server_id, artefact_key, roll_1, roll_2, roll_3, is_equipped)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (user_id, server_id, artefact_key, roll_1, roll_2, roll_3, int(equip_now)),
+        )
+        await self.connection.commit()
+        return cursor.lastrowid
+
+    async def equip_artefact(self, user_id: str, server_id: str, item_id: int) -> None:
+        """Unequips whatever else was equipped, then equips item_id."""
         await self.connection.execute(
-            """INSERT INTO player_artefacts (user_id, server_id, artefact_key, roll_1, roll_2, roll_3)
-               VALUES (?, ?, ?, ?, ?, ?)
-               ON CONFLICT(user_id, server_id) DO UPDATE SET
-                   artefact_key = excluded.artefact_key,
-                   roll_1 = excluded.roll_1,
-                   roll_2 = excluded.roll_2,
-                   roll_3 = excluded.roll_3""",
-            (user_id, server_id, artefact_key, roll_1, roll_2, roll_3),
+            "UPDATE rite_artefact_items SET is_equipped = 0 "
+            "WHERE user_id = ? AND server_id = ? AND is_equipped = 1",
+            (user_id, server_id),
+        )
+        await self.connection.execute(
+            "UPDATE rite_artefact_items SET is_equipped = 1 WHERE item_id = ?",
+            (item_id,),
+        )
+        await self.connection.commit()
+
+    async def unequip_artefact(self, user_id: str, server_id: str) -> None:
+        await self.connection.execute(
+            "UPDATE rite_artefact_items SET is_equipped = 0 "
+            "WHERE user_id = ? AND server_id = ? AND is_equipped = 1",
+            (user_id, server_id),
+        )
+        await self.connection.commit()
+
+    async def discard_artefact(self, item_id: int) -> None:
+        await self.connection.execute(
+            "DELETE FROM rite_artefact_items WHERE item_id = ?", (item_id,)
         )
         await self.connection.commit()

@@ -1,6 +1,6 @@
 from core.hall_of_firsts.data import CATEGORIES, CATEGORIES_BY_KEY, CategoryDef
 from core.hall_of_firsts.mechanics import try_claim_first
-from core.hall_of_firsts.views import HallOfFirstDetailView, HallOfFirstsListView
+from core.hall_of_firsts.views import HallOfFirstsListView
 
 __all__ = [
     "CATEGORIES",
@@ -8,5 +8,4 @@ __all__ = [
     "CategoryDef",
     "try_claim_first",
     "HallOfFirstsListView",
-    "HallOfFirstDetailView",
 ]

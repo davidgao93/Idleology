@@ -17,10 +17,12 @@ from core.items.factory import (
     create_helmet,
     create_weapon,
 )
+from core.rite.models import artefact_list_from_db
 
 
-async def _fetch_all_slots(bot, user_id: str) -> dict:
-    """Fetch and factory-create all six equipment slots concurrently."""
+async def _fetch_all_slots(bot, user_id: str, server_id: str) -> dict:
+    """Fetch and factory-create all six equipment slots, plus the Rite of
+    Convergence Artefact inventory, concurrently."""
     factories = {
         "weapon": create_weapon,
         "armor": create_armor,
@@ -29,8 +31,11 @@ async def _fetch_all_slots(bot, user_id: str) -> dict:
         "boot": create_boot,
         "accessory": create_accessory,
     }
-    raw_results = await asyncio.gather(
-        *[bot.database.equipment.get_all(user_id, slot) for slot in SLOT_ORDER]
+    raw_results, artefact_rows = await asyncio.gather(
+        asyncio.gather(
+            *[bot.database.equipment.get_all(user_id, slot) for slot in SLOT_ORDER]
+        ),
+        bot.database.rite.get_artefact_inventory(user_id, server_id),
     )
     all_items = {}
     for slot, rows in zip(SLOT_ORDER, raw_results):
@@ -39,6 +44,7 @@ async def _fetch_all_slots(bot, user_id: str) -> dict:
             key=lambda x: (getattr(x, "is_equipped", False), x.level), reverse=True
         )
         all_items[slot] = items
+    all_items["artefact"] = artefact_list_from_db(artefact_rows)
     return all_items
 
 
@@ -59,10 +65,11 @@ class Inventory(commands.Cog, name="inventory"):
         self.bot.state_manager.set_active(user_id, "inventory")
 
         async def _build():
-            all_items = await _fetch_all_slots(self.bot, user_id)
+            all_items = await _fetch_all_slots(self.bot, user_id, server_id)
             view = GearView(
                 self.bot,
                 user_id,
+                server_id,
                 all_items,
                 initial_slot=initial_slot,
                 player_name=existing_user["name"],

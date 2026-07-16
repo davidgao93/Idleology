@@ -1,49 +1,39 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_layout_view import BaseLayoutView
-from core.hall_of_firsts.data import CATEGORIES, CATEGORIES_BY_KEY
+from core.character.prestige_display import format_prestige_name
+from core.emojis import EMBLEM_CATALOG
+from core.hall_of_firsts.data import CATEGORIES
 
 
 class HallOfFirstsListView(BaseLayoutView):
-    """Text-only list of all 17 categories — deliberately no per-row
-    thumbnails, since 17 Section+Thumbnail pairs would blow past Discord's
-    40-component-per-message cap. Selecting a row opens HallOfFirstDetailView,
-    which gets the full Section+Thumbnail treatment for just that one entry."""
+    """Full Hall of Firsts board — every category, its completion requirement,
+    and (for claimed categories) the holder's current appearance as a
+    thumbnail, all rendered directly with no select-menu drill-down needed."""
 
     def __init__(self, bot, user_id: str, server_id: str | None = None):
         super().__init__(bot, user_id, server_id)
         self.claimed: dict = {}
+        self.current_appearances: dict[str, str] = {}
         self._sync_items()
 
     async def load(self) -> None:
         self.claimed = await self.bot.database.hall_of_firsts.get_all()
+        self.current_appearances = {}
+        for row in self.claimed.values():
+            user_row = await self.bot.database.users.get_by_user_id(row["user_id"])
+            if user_row and user_row["appearance"]:
+                self.current_appearances[row["user_id"]] = user_row["appearance"]
         self._sync_items()
 
     def _sync_items(self) -> None:
         self.clear_items()
         self.add_item(self._build_container())
-
-        select_row = ui.ActionRow()
-        select = ui.Select(
-            placeholder="View an achievement…",
-            options=[
-                discord.SelectOption(
-                    label=f"{c.name}"[:100],
-                    value=c.key,
-                    emoji=c.emoji,
-                    description=("Claimed" if c.key in self.claimed else "Unclaimed")[
-                        :100
-                    ],
-                )
-                for c in CATEGORIES
-            ],
-        )
-        select.callback = self._on_select
-        select_row.add_item(select)
-        self.add_item(select_row)
 
         close_row = ui.ActionRow()
         close_btn = ui.Button(label="Close", style=ButtonStyle.secondary, emoji="✖️")
@@ -52,32 +42,56 @@ class HallOfFirstsListView(BaseLayoutView):
         self.add_item(close_row)
 
     def _build_container(self) -> discord.ui.Container:
-        lines = [
-            "## 🏛️ Hall of Firsts",
-            "*The first adventurers to claim each legend.*",
-            "",
+        children: list = [
+            discord.ui.TextDisplay(
+                "## 🏛️ Hall of Firsts\n*The first adventurers to claim each legend.*"
+            )
         ]
         for c in CATEGORIES:
             row = self.claimed.get(c.key)
-            holder = row["snapshot_name"] if row else "*Unclaimed*"
-            lines.append(f"{c.emoji} **{c.name}** — {holder}")
-        return discord.ui.Container(
-            discord.ui.TextDisplay("\n".join(lines)),
-            accent_color=discord.Color.gold(),
-        )
+            if row is None:
+                text = f"{c.emoji} **{c.name}**\n*{c.flavor}*\n🔓 *Unclaimed*"
+                children.append(discord.ui.TextDisplay(text))
+                continue
 
-    async def _on_select(self, interaction: Interaction) -> None:
-        from core.hall_of_firsts.views.detail_view import HallOfFirstDetailView
+            # Older rows snapshotted the EMBLEM_CATALOG *key* (e.g.
+            # "monster_cheeks") instead of the emoji itself — resolve it here
+            # so legacy claims render the real emoji instead of literal key
+            # text; newer rows already store the resolved emoji, and a
+            # lookup miss on those just falls back to using the value as-is.
+            emblem_raw = row["snapshot_emblem"] or ""
+            emblem_entry = EMBLEM_CATALOG.get(emblem_raw)
+            emblem = emblem_entry[1] if emblem_entry else emblem_raw
+            decorated = format_prestige_name(
+                row["snapshot_name"],
+                row["snapshot_title"] or "",
+                emblem,
+            )
+            try:
+                achieved = datetime.fromisoformat(row["achieved_at"]).strftime(
+                    "%Y-%m-%d"
+                )
+            except (ValueError, TypeError):
+                achieved = row["achieved_at"]
 
-        category_key = interaction.data["values"][0]
-        category = CATEGORIES_BY_KEY[category_key]
-        row = self.claimed.get(category_key)
+            text = (
+                f"{c.emoji} **{c.name}**\n*{c.flavor}*\n"
+                f"**{decorated}** — {achieved}"
+            )
+            appearance = self.current_appearances.get(row["user_id"])
+            if appearance:
+                children.append(
+                    discord.ui.Section(
+                        text,
+                        accessory=discord.ui.Thumbnail(
+                            appearance, description=decorated
+                        ),
+                    )
+                )
+            else:
+                children.append(discord.ui.TextDisplay(text))
 
-        detail = HallOfFirstDetailView(
-            self.bot, self.user_id, self.server_id, category, row, self
-        )
-        await interaction.response.edit_message(view=detail)
-        detail.message = self.message
+        return discord.ui.Container(*children, accent_color=discord.Color.gold())
 
     async def _close(self, interaction: Interaction) -> None:
         await interaction.response.defer()

@@ -7,8 +7,9 @@ from discord import ButtonStyle, Interaction
 from core.base_layout_view import BaseLayoutView
 from core.combat import ui as combat_ui
 from core.combat.views.post_combat_view import PostCombatView
-from core.images import BOSS_LUCIFER
 from core.combat.views.views_uber_hub import UberReturnView
+from core.emojis import STAT_ATK, STAT_DEF, STAT_HP
+from core.images import BOSS_LUCIFER
 
 
 class LuciferChoiceRow(discord.ui.ActionRow["LuciferChoiceView"]):
@@ -178,7 +179,7 @@ class LuciferChoiceView(BaseLayoutView):
 
 class InfernalContractRow(discord.ui.ActionRow["InfernalContractView"]):
     @discord.ui.button(
-        label="Accept Contract", style=discord.ButtonStyle.danger, emoji="🩸"
+        label="Accept Contract", style=discord.ButtonStyle.danger, emoji="✅"
     )
     async def accept(self, interaction: Interaction, button: discord.ui.Button):
         await self.view._on_accept(interaction)
@@ -193,7 +194,11 @@ class InfernalContractRow(discord.ui.ActionRow["InfernalContractView"]):
 class InfernalContractView(BaseLayoutView):
     """Randomly-generated stat contract presented after killing Uber Lucifer."""
 
-    STAT_LABELS = {"attack": "⚔️ ATK", "defence": "🛡️ DEF", "hp": "❤️ HP"}
+    STAT_LABELS = {
+        "attack": f"{STAT_ATK} ATK",
+        "defence": f"{STAT_DEF} DEF",
+        "hp": f"{STAT_HP} HP",
+    }
 
     def __init__(self, bot, user_id: str, player, server_id: str, message):
         super().__init__(bot, user_id, server_id)
@@ -289,7 +294,7 @@ class InfernalContractView(BaseLayoutView):
             parts.append(f"{self.STAT_LABELS[stat]}: **{sign}{delta}**")
 
         embed = discord.Embed(
-            title="🩸 Contract Signed",
+            title="Contract Signed",
             description="The ink dries in flame. Your soul bears the mark.\n\n"
             + "\n".join(parts),
             color=discord.Color.dark_red(),

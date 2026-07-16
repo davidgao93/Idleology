@@ -12,7 +12,7 @@ from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
 from core.emojis import RUNE_PARTNERSHIP
 from core.hall_of_firsts import triggers as hof_triggers
-from core.images import COMPANIONS_FUSION, YUNA_PORTRAIT, YUNA_THUMBNAIL
+from core.images import COMPANIONS_FUSION, COMPANIONS_HUB, YUNA_PORTRAIT, YUNA_THUMBNAIL
 from core.models import Companion
 from core.npc_voices import get_quip
 
@@ -196,19 +196,19 @@ class CompanionListView(BaseView):
             self.add_item(cookies_btn)
 
         fusion_btn = ui.Button(
-            label="Fusion", style=ButtonStyle.primary, emoji="🧬", row=1
+            label="Fusion", style=ButtonStyle.primary, emoji="🧬", row=2
         )
         fusion_btn.callback = self.open_fusion
         self.add_item(fusion_btn)
 
         mastery_btn = ui.Button(
-            label="Forged Bonds", style=ButtonStyle.blurple, emoji="✨", row=1
+            label="Forged Bonds", style=ButtonStyle.blurple, emoji="✨", row=2
         )
         mastery_btn.callback = self.open_mastery
         self.add_item(mastery_btn)
 
         close_btn = ui.Button(
-            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=1
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3
         )
         close_btn.callback = self.close_view
         self.add_item(close_btn)
@@ -216,7 +216,7 @@ class CompanionListView(BaseView):
     def get_embed(self):
         embed = discord.Embed(title="🐾 Companions", color=discord.Color.blue())
         embed.set_author(name="Master Tamer Yuna", icon_url=YUNA_PORTRAIT)
-        embed.set_thumbnail(url=YUNA_THUMBNAIL)
+        embed.set_thumbnail(url=COMPANIONS_HUB)
         embed.set_footer(text=f"Roster: {len(self.companions)}/20")
 
         if not self.companions:
@@ -359,35 +359,39 @@ class XPDistributeView(BaseView):
     def _add_buttons(self):
         self.clear_items()
         active = [c for c in self.companions if c.is_active]
+        levelable = [c for c in active if c.level < CompanionMechanics.MAX_LEVEL]
 
-        if active and self.pending_xp > 0:
-            btn = ui.Button(
-                label="Level Companions", style=ButtonStyle.success, emoji="🐾", row=0
-            )
-            btn.callback = self.distribute_to_companions
-            self.add_item(btn)
+        level_btn = ui.Button(
+            label="Level Companions",
+            style=ButtonStyle.success,
+            emoji="🐾",
+            row=0,
+            disabled=not (levelable and self.pending_xp > 0),
+        )
+        level_btn.callback = self.distribute_to_companions
+        self.add_item(level_btn)
 
-        if self.pending_xp >= self.XP_PER_KP:
-            kp_count = self.pending_xp // self.XP_PER_KP
-            btn = ui.Button(
-                label=f"Convert to KP ({kp_count:,})",
-                style=ButtonStyle.primary,
-                emoji="✨",
-                row=0,
-            )
-            btn.callback = self.convert_to_kp
-            self.add_item(btn)
+        kp_count = self.pending_xp // self.XP_PER_KP
+        kp_btn = ui.Button(
+            label=f"Convert to KP ({kp_count:,})",
+            style=ButtonStyle.primary,
+            emoji="✨",
+            row=0,
+            disabled=self.pending_xp < self.XP_PER_KP,
+        )
+        kp_btn.callback = self.convert_to_kp
+        self.add_item(kp_btn)
 
-        if self.is_maxed and self.pending_xp >= self.XP_PER_RUNE:
-            rune_count = self.pending_xp // self.XP_PER_RUNE
-            btn = ui.Button(
-                label=f"Buy Rune of Partnership ({rune_count})",
-                style=ButtonStyle.blurple,
-                emoji="🔮",
-                row=1,
-            )
-            btn.callback = self.buy_rune
-            self.add_item(btn)
+        rune_count = self.pending_xp // self.XP_PER_RUNE
+        rune_btn = ui.Button(
+            label=f"Buy Rune of Partnership ({rune_count})",
+            style=ButtonStyle.blurple,
+            emoji=f"{RUNE_PARTNERSHIP}",
+            row=1,
+            disabled=not (self.is_maxed and self.pending_xp >= self.XP_PER_RUNE),
+        )
+        rune_btn.callback = self.buy_rune
+        self.add_item(rune_btn)
 
         btn_back = ui.Button(label="Back", style=ButtonStyle.secondary, row=1)
         btn_back.callback = self.go_back
@@ -406,21 +410,31 @@ class XPDistributeView(BaseView):
         )
 
         active = [c for c in self.companions if c.is_active]
+        levelable = [c for c in active if c.level < CompanionMechanics.MAX_LEVEL]
         lines = []
-        if active and self.pending_xp > 0:
+        if levelable and self.pending_xp > 0:
             lines.append(
-                f"🐾 **Level Companions** — Split {self.pending_xp:,} XP among {len(active)} active companion(s)"
+                f"🐾 **Level Companions** — Split {self.pending_xp:,} XP among "
+                f"{len(levelable)} non-max-level companion(s)"
+            )
+        elif active and self.pending_xp > 0:
+            lines.append(
+                "🐾 **Level Companions** — all active companions are max level; "
+                "convert XP to Kinship Points instead"
             )
         if self.pending_xp >= self.XP_PER_KP:
             lines.append(
                 f"✨ **Convert to KP** — {self.XP_PER_KP:,} XP = 1 Kinship Point ({self.pending_xp // self.XP_PER_KP:,} available)"
             )
-        if self.is_maxed and self.pending_xp >= self.XP_PER_RUNE:
-            lines.append(
-                f"{RUNE_PARTNERSHIP} **Rune of Partnership** — {self.XP_PER_RUNE:,} XP = 1 Rune ({self.pending_xp // self.XP_PER_RUNE} available)"
-            )
-        if not lines:
-            lines.append("*Earn more XP to unlock options.*")
+        rune_note = (
+            ""
+            if self.is_maxed
+            else " *(unlocks once all companions and Forged Bonds are maxed)*"
+        )
+        lines.append(
+            f"{RUNE_PARTNERSHIP} **Rune of Partnership** — {self.XP_PER_RUNE:,} XP = 1 Rune "
+            f"({self.pending_xp // self.XP_PER_RUNE} available){rune_note}"
+        )
 
         embed.add_field(name="Options", value="\n".join(lines), inline=False)
         return embed
@@ -454,12 +468,27 @@ class XPDistributeView(BaseView):
             )
             return
 
-        xp_per = total_xp // len(active)
+        # Route XP only to companions that can still level — a maxed active
+        # companion would just bounce it straight to overflow, shortchanging
+        # the ones actually below the cap.
+        levelable = [c for c in active if c.level < CompanionMechanics.MAX_LEVEL]
+        if not levelable:
+            await self.bot.database.users.modify_currency(
+                self.user_id, "companion_pet_xp", total_xp
+            )
+            self._processing = False
+            await interaction.followup.send(
+                "All active companions are already max level. Convert your XP to Kinship Points instead.",
+                ephemeral=True,
+            )
+            return
+
+        xp_per = total_xp // len(levelable)
         from core.companions.mastery import kp_from_overflow_xp
 
         msgs = []
         overflow_xp = 0
-        for comp in active:
+        for comp in levelable:
             cur_lvl, cur_exp = comp.level, comp.exp
             cur_exp += xp_per
             while cur_lvl < CompanionMechanics.MAX_LEVEL:
@@ -589,7 +618,7 @@ class XPDistributeView(BaseView):
 
         await interaction.edit_original_response(embed=self.get_embed(), view=self)
         await interaction.followup.send(
-            f"🔮 Converted {xp_to_spend:,} XP → **{runes_to_gain} Rune(s) of Partnership**.",
+            f"Converted {xp_to_spend:,} XP → **{RUNE_PARTNERSHIP}{runes_to_gain} Rune(s) of Partnership**.",
             ephemeral=True,
         )
 

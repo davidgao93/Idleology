@@ -6,11 +6,16 @@ from core.combat.calc.calcs import fmt_weapon_passive
 from core.emojis import (
     ACCESSORY_SLOT,
     ARMOR_SLOT,
+    ARTEFACT_SLOT,
     BOOT_SLOT,
     CELESTIAL_ENGRAM,
+    CELESTIAL_SIGIL,
     CRIT_MULTI,
     DODGE_EVASION,
+    ESSENCE_CORRUPT,
     GEAR_BACKPACK,
+    GEAR_ENCHANT,
+    GEAR_REINFORCE,
     GLOVE_SLOT,
     HELMET_SLOT,
     INFERNAL_ENGRAM,
@@ -23,6 +28,8 @@ from core.emojis import (
     STAT_PDR,
     STAT_WARD,
     VOID_ENGRAM,
+    WEAPON_FORGE,
+    WEAPON_REFINE,
     WEAPON_SLOT,
 )
 from core.images import (
@@ -35,6 +42,7 @@ from core.images import (
     SLOT_WEAPON,
 )
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
+from core.rite.models import Artefact
 from core.util import stars
 
 # Kept in sync with core/inventory/views/_slot_defs.py (can't import it directly —
@@ -46,6 +54,7 @@ _SLOT_EMOJIS = {
     "glove": GLOVE_SLOT,
     "boot": BOOT_SLOT,
     "accessory": ACCESSORY_SLOT,
+    "artefact": ARTEFACT_SLOT,
 }
 _SLOT_LABELS = {
     "weapon": "Weapon",
@@ -54,8 +63,13 @@ _SLOT_LABELS = {
     "glove": "Glove",
     "boot": "Boot",
     "accessory": "Accessory",
+    "artefact": "Artefact",
 }
 _SLOT_ORDER = ["weapon", "armor", "helmet", "glove", "boot", "accessory"]
+# Display-only superset used by get_gear_embed's slot overview — the Rite of
+# Convergence Artefact slot lives in a separate repo (bot.database.rite),
+# not the equipment tables _SLOT_ORDER above is otherwise used for.
+_GEAR_OVERVIEW_SLOT_ORDER = _SLOT_ORDER + ["artefact"]
 
 _ITEM_IMAGES = {
     "weapon": SLOT_WEAPON,
@@ -153,8 +167,8 @@ def _weapon_fields(embed, item, passive_desc: dict, infernal_desc: dict):
     embed.add_field(
         name="Upgrades",
         value=(
-            f"Forges Remaining: **{item.forges_remaining}**\n"
-            f"Refines Remaining: **{item.refines_remaining}**"
+            f"{WEAPON_FORGE}Forges Remaining: **{item.forges_remaining}**\n"
+            f"{WEAPON_REFINE}Refines Remaining: **{item.refines_remaining}**"
         ),
         inline=False,
     )
@@ -194,9 +208,9 @@ def _armor_fields(embed, item, passive_desc: dict, celestial_desc: dict):
     embed.add_field(
         name="Upgrades",
         value=(
-            f"Tempers Remaining: **{item.temper_remaining}**\n"
-            f"Imbue Attempts: **{item.imbue_remaining}**\n"
-            f"Reinforces Remaining: **{reinforces_remaining}**"
+            f"{WEAPON_FORGE}Tempers Remaining: **{item.temper_remaining}**\n"
+            f"{CELESTIAL_SIGIL}Imbue Attempts: **{item.imbue_remaining}**\n"
+            f"{GEAR_REINFORCE}Reinforces Remaining: **{reinforces_remaining}**"
         ),
         inline=False,
     )
@@ -235,7 +249,7 @@ def _helmet_fields(embed, item, passive_funcs: dict):
     reinforces_remaining = getattr(item, "reinforces_remaining", 0)
     embed.add_field(
         name="Upgrades",
-        value=f"Enchants Remaining: **{item.potential_remaining}** \nReinforces Remaining: **{reinforces_remaining}**",
+        value=f"{GEAR_ENCHANT} Enchants Remaining: **{item.potential_remaining}** \nReinforces Remaining: **{reinforces_remaining}**",
         inline=False,
     )
 
@@ -287,7 +301,7 @@ def _glove_boot_fields(embed, item, passive_funcs: dict):
     reinforces_remaining = getattr(item, "reinforces_remaining", 0)
     embed.add_field(
         name="Upgrades",
-        value=f"Enchants Remaining: **{item.potential_remaining}**\nReinforces Remaining: **{reinforces_remaining}**",
+        value=f"{GEAR_ENCHANT} Enchants Remaining: **{item.potential_remaining}**\nReinforces Remaining: **{reinforces_remaining}**",
         inline=False,
     )
 
@@ -321,7 +335,9 @@ def _accessory_fields(embed, item, passive_funcs: dict, void_desc: dict):
     if getattr(item, "crit", 0):
         embed.add_field(name="🗡️ Crit", value=f"{item.crit:,}", inline=True)
     embed.add_field(
-        name="Enchants Remaining", value=str(item.potential_remaining), inline=True
+        name=f"{GEAR_ENCHANT} Enchants Remaining",
+        value=str(item.potential_remaining),
+        inline=True,
     )
 
     if item.passive not in ("none", ""):
@@ -364,13 +380,13 @@ def _essence_fields(embed, item):
 
     corrupted = getattr(item, "corrupted_essence", "none") or "none"
     if corrupted != "none":
-        c_name, c_emoji = ESSENCE_DISPLAY.get(corrupted, (corrupted.title(), "💠"))
+        c_name, c_emoji = ESSENCE_DISPLAY.get(
+            corrupted, (corrupted.title(), f"{ESSENCE_CORRUPT}")
+        )
         slot_key = (
             "glove"
             if isinstance(item, Glove)
-            else "boot"
-            if isinstance(item, Boot)
-            else "helmet"
+            else "boot" if isinstance(item, Boot) else "helmet"
         )
         lines.append(
             f"**Corrupted:** {c_emoji} {c_name}\n   ↳ {_get_essence_brief(corrupted, slot_key)}"
@@ -612,12 +628,16 @@ class InventoryUI:
         """
         slot_emoji = _SLOT_EMOJIS.get(active_slot, "🎒")
         slot_label = _SLOT_LABELS.get(active_slot, active_slot.title())
+        is_artefact_slot = active_slot == "artefact"
 
         embed = discord.Embed(
             title=f"{slot_emoji} {player_name}'s {slot_label}s",
-            color=0x2B2D31,
+            color=discord.Color.dark_gold() if is_artefact_slot else 0x2B2D31,
         )
-        embed.set_thumbnail(url=_ITEM_IMAGES.get(active_slot, ""))
+        if not is_artefact_slot:
+            embed.set_thumbnail(url=_ITEM_IMAGES.get(active_slot, ""))
+        # Artefact slot thumbnail (if any) is set below from the equipped
+        # item's own art — there's no single generic "artefact slot" asset.
 
         # --- Equipped item panel ---
         equipped_id = equipped_ids.get(active_slot)
@@ -629,18 +649,27 @@ class InventoryUI:
                     break
 
         if equipped_item:
-            stats = InventoryUI._build_equipped_stats(equipped_item)
-            embed.add_field(
-                name="Equipped",
-                value=f"**{equipped_item.name}** (Lv.{equipped_item.level})\n{stats}",
-                inline=False,
-            )
+            if isinstance(equipped_item, Artefact):
+                if is_artefact_slot:
+                    embed.set_thumbnail(url=equipped_item.image)
+                embed.add_field(
+                    name="Equipped",
+                    value=f"**{equipped_item.name}** *({equipped_item.source})*",
+                    inline=False,
+                )
+            else:
+                stats = InventoryUI._build_equipped_stats(equipped_item)
+                embed.add_field(
+                    name="Equipped",
+                    value=f"**{equipped_item.name}** (Lv.{equipped_item.level})\n{stats}",
+                    inline=False,
+                )
         else:
             embed.add_field(name="Equipped", value="*— None equipped —*", inline=False)
 
         # --- Slot overview ---
         lines = []
-        for slot in _SLOT_ORDER:
+        for slot in _GEAR_OVERVIEW_SLOT_ORDER:
             emoji = _SLOT_EMOJIS[slot]
             label = _SLOT_LABELS[slot]
             count = len(all_items.get(slot, []))
@@ -649,7 +678,11 @@ class InventoryUI:
             if eid:
                 for item in all_items.get(slot, []):
                     if item.item_id == eid:
-                        e_name = f"{item.name} (Lv.{item.level})"
+                        e_name = (
+                            item.name
+                            if isinstance(item, Artefact)
+                            else f"{item.name} (Lv.{item.level})"
+                        )
                         break
             line = f"{emoji} **{label}** — {e_name} [{count} owned]"
             if slot == active_slot:

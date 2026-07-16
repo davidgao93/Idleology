@@ -21,11 +21,15 @@ from core.images import (
     RAGNA_PORTRAIT,
     RAGNA_THUMBNAIL,
 )
-from core.npc_voices import get_quip
 from core.items.factory import create_monster_part
 from core.models import MonsterPart, Player
+from core.npc_voices import get_quip
 
-_EGG_TIER_EMOJI = {"normal": "🥚", "rare": "🪺", "giga": "🐲"}
+_EGG_TIER_EMOJI = {
+    "normal": f"{MONSTER_EGG}",
+    "rare": f"{MONSTER_EGG_RARE}",
+    "giga": f"{MONSTER_EGG_GIGA}",
+}
 _EGG_TIER_LABEL = {"normal": "Normal Egg", "rare": "Rare Egg", "giga": "Giga Egg"}
 _EGG_PASSIVE_POINTS = {"normal": (1, 5), "rare": (5, 10), "giga": (10, 20)}
 
@@ -185,7 +189,9 @@ class EquipConfirmView(BaseView):
         self.parent = parent
         self.part = part
 
-    @ui.button(label="Confirm Consume", style=ButtonStyle.danger, emoji="👄")
+    @ui.button(
+        label="Confirm Consume", style=ButtonStyle.danger, emoji=f"{CONSUME_ICON}"
+    )
     async def confirm(self, interaction: Interaction, button: ui.Button):
         await interaction.response.defer()
         await self._do_equip()
@@ -231,7 +237,7 @@ class PartDetailView(BaseView):
         self.parent = parent
         self.part = part
 
-    @ui.button(label="Consume", style=ButtonStyle.success, emoji="👄")
+    @ui.button(label="Consume", style=ButtonStyle.success, emoji=f"{CONSUME_ICON}")
     async def equip(self, interaction: Interaction, button: ui.Button):
         slot = self.part.slot_type
         if slot in self.parent.player.equipped_parts:

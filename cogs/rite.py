@@ -2,6 +2,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
+from core.combat.turns import jewel_engine as _je
 from core.first_use import TutorialGateView
 from core.items.factory import load_player
 from core.rite.data import RITE_KEY_FLAVOR, starting_attempts
@@ -88,6 +89,15 @@ class Rite(commands.Cog, name="rite"):
         await self.bot.database.rite.upsert_run(
             user_id, server_id, run_state.to_snapshot()
         )
+
+        # Jewel skill_charges persist to DB after every combat and would
+        # otherwise carry in from whatever the player was doing right before
+        # entering the Rite — reset once here, same as Ascent/Codex/Apex/Maw
+        # do at their own session/run start, then let it persist wing-to-wing
+        # for the rest of the run (core/rite/views/wing_hub_view.py already
+        # fully resets+reapplies everything else — CombatState and the Rite
+        # Power/Respite buffs — between wings).
+        _je.reset_jewel_charges(player)
 
         view = WingHubView(self.bot, user_id, server_id, player, run_state)
         self.bot.state_manager.set_active(user_id, "rite")
@@ -188,6 +198,7 @@ class Rite(commands.Cog, name="rite"):
         await self.bot.database.rite.upsert_run(
             user_id, server_id, run_state.to_snapshot()
         )
+        _je.reset_jewel_charges(player)
 
         view = WingHubView(self.bot, user_id, server_id, player, run_state)
         self.bot.state_manager.set_active(user_id, "rite")
@@ -199,7 +210,7 @@ class Rite(commands.Cog, name="rite"):
         description="View your equipped Rite of Convergence Artefact.",
     )
     async def artefact(self, interaction: Interaction):
-        from core.rite.loot import ARTEFACT_TABLE, describe_artefact
+        from core.rite.loot import ARTEFACT_TABLE, describe_artefact, roll_1_range
 
         user_id = str(interaction.user.id)
         server_id = str(interaction.guild.id)
@@ -208,25 +219,33 @@ class Rite(commands.Cog, name="rite"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
-        row = await self.bot.database.rite.get_artefact(user_id, server_id)
+        row = await self.bot.database.rite.get_equipped_artefact(user_id, server_id)
         if not row or not row["artefact_key"]:
             return await interaction.response.send_message(
-                "You haven't found an Artefact yet — they only drop from a "
-                "completed Rite of Convergence run.",
+                "You haven't equipped an Artefact yet — they drop from a "
+                "completed Rite of Convergence run, and can be managed from "
+                "the Artefact tab in `/gear`.",
                 ephemeral=True,
             )
 
         key = row["artefact_key"]
         name, source, req_dp, _weight, image = ARTEFACT_TABLE[key]
+        rng = roll_1_range(key)
+        roll_line = (
+            f"\n\n**Roll:** {int(row['roll_1'])} *(range {rng[0]}-{rng[1]})*"
+            if rng
+            else ""
+        )
         embed = discord.Embed(
             title=f"🏺 {name}",
             description=(
                 f"*Thematic source: {source}*\n\n"
-                f"{describe_artefact(key, row['roll_1'])}"
+                f"{describe_artefact(key, row['roll_1'])}{roll_line}"
             ),
             color=discord.Color.dark_gold(),
         )
         embed.set_thumbnail(url=image)
+        embed.set_footer(text="Manage your artefacts from the Artefact tab in /gear.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

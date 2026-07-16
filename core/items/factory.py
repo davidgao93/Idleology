@@ -422,9 +422,10 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
         print(f"[load_player] soul stone failed for {user_id}: {e}")
         player.soul_stone = None
 
-    # --- Fetch Rite of Convergence Artefact ---
+    # --- Fetch Rite of Convergence Artefact (equipped one, out of the full
+    # inventory — combat only ever reads the single equipped slot) ---
     try:
-        art_row = await database.rite.get_artefact(user_id, server_id)
+        art_row = await database.rite.get_equipped_artefact(user_id, server_id)
         from core.rite.models import artefact_from_db
 
         player.artefact = artefact_from_db(art_row)

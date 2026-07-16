@@ -17,6 +17,8 @@ Rewards (manual collection during the collection window):
 
 from datetime import datetime, timedelta, timezone
 
+from core.emojis import STAT_WARD
+
 FIGHT_COOLDOWN_HOURS = 20
 MAX_FIGHTS_PER_CYCLE = 5
 MAW_TURNS = 10
@@ -128,7 +130,7 @@ _WEEKLY_WEAKNESSES = [
         "key": "ward_to_damage",
         "name": "Void Hunger",
         "description": "Ward absorbed this fight converts to **bonus damage** dealt to the Maw.",
-        "emoji": "🔮",
+        "emoji": f"{STAT_WARD}",
     },
 ]
 

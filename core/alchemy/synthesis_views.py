@@ -21,7 +21,14 @@ from discord import ButtonStyle, Interaction, ui
 
 from core.alchemy.mechanics import AlchemyMechanics
 from core.base_view import BaseView
-from core.emojis import COSMIC_DUST, GOLD_COIN
+from core.emojis import (
+    CAPRICIOUS_CARP,
+    COSMIC_DUST,
+    DRAGON_KEY,
+    ESSENCE_COMMON,
+    GOLD_COIN,
+    PARADISE_JEWEL_UNCUT,
+)
 from core.images import ELYNDRA_PORTRAIT, ELYNDRA_THUMBNAIL
 from core.npc_voices import get_quip
 from core.paradise.mechanics import dust_from_jewel
@@ -547,10 +554,10 @@ class _DisenchantQuantityModal(ui.Modal, title="How many items to disenchant?"):
 
 
 _CATEGORY_DEFS = [
-    (_CATEGORY_BOSS_KEYS, "Boss Keys", "🔑"),
-    (_CATEGORY_ELEMENTAL, "Elemental", "🌟"),
-    (_CATEGORY_ESSENCES, "Essences", "🔮"),
-    (_CATEGORY_JEWELS, "Jewels", "💎"),
+    (_CATEGORY_BOSS_KEYS, "Boss Keys", f"{DRAGON_KEY}"),
+    (_CATEGORY_ELEMENTAL, "Elemental", f"{CAPRICIOUS_CARP}"),
+    (_CATEGORY_ESSENCES, "Essences", f"{ESSENCE_COMMON}"),
+    (_CATEGORY_JEWELS, "Jewels", f"{PARADISE_JEWEL_UNCUT}"),
 ]
 
 

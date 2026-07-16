@@ -1,7 +1,7 @@
 import json
 import random
 
-from core.emojis import INNER_SANC
+from core.emojis import INNER_SANC, ORIGIN_CORRUPTION
 from core.hall_of_firsts import triggers as hof_triggers
 from core.models import Player
 
@@ -171,12 +171,12 @@ class ExperienceManager:
                 if player.level <= 50:
                     if player.level == 2:
                         changes["msgs"].append(
-                            "🩸 A strange wave of corruption washes over you. "
+                            f"{ORIGIN_CORRUPTION} A strange wave of corruption washes over you. "
                             "*The monsters grow fiercer in the darkness.*"
                         )
                     else:
                         changes["msgs"].append(
-                            "🩸 *A strange wave of corruption washes over you*. "
+                            f"{ORIGIN_CORRUPTION} *A strange wave of corruption washes over you*. "
                             "*The monsters seem to grow fiercer...*"
                         )
 

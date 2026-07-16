@@ -2,7 +2,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView  # note: views.base_view
-from core.emojis import GOLD_COIN
+from core.emojis import GOLD_COIN, RESOURCE_EMOJI
 
 
 class BaseUpgradeView(BaseView):
@@ -89,10 +89,14 @@ class BaseUpgradeView(BaseView):
             "bone": {**cols["bone"], "raw_amt": fish_res[0], "ref_amt": fish_res[1]},
         }
 
+        ore_emoji = RESOURCE_EMOJI.get(costs["ore_type"], "⛏️")
+        log_emoji = RESOURCE_EMOJI.get(f"{costs['log_type']}_logs", "🪓")
+        bone_emoji = RESOURCE_EMOJI.get(f"{costs['bone_type']}_bones", "🎣")
+
         cost_lines = (
-            f"⛏️ {costs['ore_qty']} {costs['ore_type'].removesuffix('_ore').title()} (Have: {total_ore})\n"
-            f"🪓 {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
-            f"🎣 {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
+            f"{ore_emoji} {costs['ore_qty']} {costs['ore_type'].removesuffix('_ore').title()} (Have: {total_ore})\n"
+            f"{log_emoji} {costs['log_qty']} {costs['log_type'].title()} (Have: {total_log})\n"
+            f"{bone_emoji} {costs['bone_qty']} {costs['bone_type'].title()} (Have: {total_bone})\n"
             f"{GOLD_COIN} {costs['gold']:,} Gold"
         )
         if total_ore >= costs["ore_qty"] and mining_res[0] < costs["ore_qty"]:

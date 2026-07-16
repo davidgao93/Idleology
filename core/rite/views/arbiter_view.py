@@ -240,11 +240,20 @@ def _build_victory_embed(
     if rewards.get("artefact_name"):
         embed.add_field(
             name="🏺 Artefact",
-            value=f"**{rewards['artefact_name']}** — equipped to your Artefact slot!",
+            value=f"**{rewards['artefact_name']}** — added to your Artefact inventory!",
             inline=False,
         )
         if rewards.get("artefact_image"):
             embed.set_thumbnail(url=rewards["artefact_image"])
+    elif rewards.get("artefact_inventory_full"):
+        embed.add_field(
+            name="🏺 Artefact",
+            value=(
+                "An artefact tried to catch your eye, but your Artefact "
+                "inventory is full (60/60) — discard one via `/gear` to make room."
+            ),
+            inline=False,
+        )
     return embed
 
 

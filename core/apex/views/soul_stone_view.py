@@ -44,8 +44,7 @@ _ALL_CATEGORIES = ("offensive", "defensive", "mixed", "utility")
 
 
 def add_shard_inventory_field(embed: discord.Embed, shards: ShardInventory) -> None:
-    """Adds a '💠 Shard Inventory' field listing every shard type count.
-
+    """
     Shared by ImprintView and UpgradeView — the Soul Stone hub itself no longer
     shows this (only relevant once you're spending shards)."""
     shard_parts = []
@@ -55,14 +54,11 @@ def add_shard_inventory_field(embed: discord.Embed, shards: ShardInventory) -> N
         count = shards.get(key)
         shard_parts.append(f"{emoji} {key.title()}: **{count}**")
     shard_parts.append(f"{SOUL_FRAGMENT} Soul Fragments: **{shards.soul_fragments}**")
-    embed.add_field(
-        name="💠 Shard Inventory", value="\n".join(shard_parts), inline=True
-    )
+    embed.add_field(name="Shard Inventory", value="\n".join(shard_parts), inline=True)
 
 
 def add_meta_shards_field(embed: discord.Embed, meta: MetaShardInventory) -> None:
-    """Adds a '🔮 Meta Shards' field listing every meta shard type count.
-
+    """
     Shared by ImprintView and UpgradeView — the Soul Stone hub itself no longer
     shows this (only relevant once you're spending shards)."""
     from core.apex.data import META_SHARD_DISPLAY
@@ -73,7 +69,7 @@ def add_meta_shards_field(embed: discord.Embed, meta: MetaShardInventory) -> Non
         meta_parts.append(
             f"{display.split(' ', 1)[0]} {key.replace('_', ' ').title()}: **{count}**"
         )
-    embed.add_field(name="🔮 Meta Shards", value="\n".join(meta_parts), inline=True)
+    embed.add_field(name="Meta Shards", value="\n".join(meta_parts), inline=True)
 
 
 def _resonance_hint_text(soul_stone: SoulStone) -> str | None:

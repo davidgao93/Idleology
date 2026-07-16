@@ -13,7 +13,9 @@ from core.emojis import (
     DRAGON_KEY,
     GOLD_COIN,
     QUEST_COMPLETE,
+    RUNE_GENERIC,
     SOUL_CORE,
+    SOUL_FRAGMENT,
     SPIRIT_STONE,
     VOID_FRAG,
     ZEAL,
@@ -524,14 +526,14 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
             ]
             key = random.choice(meta_keys)
             await bot.database.apex.modify_meta_shard(user_id, server_id, key, 1)
-            msgs.append("💠 +1 Random Meta Shard")
+            msgs.append(f"{SOUL_FRAGMENT} +1 Random Meta Shard")
 
         elif path_id == "ascent":
             rune = random.choice(
                 ["refinement_runes", "potential_runes", "shatter_runes"]
             )
             await bot.database.users.modify_currency(user_id, rune, 1)
-            msgs.append(f"🔮 +1 {rune.replace('_', ' ').title()}")
+            msgs.append(f"{RUNE_GENERIC} +1 {rune.replace('_', ' ').title()}")
 
         elif path_id == "sovereign":
             sigil_funcs = {

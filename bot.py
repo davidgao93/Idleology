@@ -232,6 +232,26 @@ class DiscordBot(commands.Bot):
                 except Exception:
                     pass  # Column already exists
 
+            # One-time data migration: fold the old single-slot player_artefacts
+            # row (if any) into the new rite_artefact_items inventory, marked
+            # equipped. Idempotent — skips any user/server already present in
+            # rite_artefact_items, so this is safe to run on every boot.
+            try:
+                await db.execute(
+                    """INSERT INTO rite_artefact_items
+                           (user_id, server_id, artefact_key, roll_1, roll_2, roll_3, is_equipped)
+                       SELECT pa.user_id, pa.server_id, pa.artefact_key,
+                              pa.roll_1, pa.roll_2, pa.roll_3, 1
+                       FROM player_artefacts pa
+                       WHERE NOT EXISTS (
+                           SELECT 1 FROM rite_artefact_items ri
+                           WHERE ri.user_id = pa.user_id AND ri.server_id = pa.server_id
+                       )"""
+                )
+                await db.commit()
+            except Exception:
+                pass  # Already migrated
+
     async def load_cogs(self) -> None:
         """
         The code in this function is executed whenever the bot will start.
@@ -321,6 +341,10 @@ class DiscordBot(commands.Bot):
         _conn.row_factory = sqlite3.Row
         await _conn.execute("PRAGMA journal_mode=WAL")
         await _conn.execute("PRAGMA synchronous=NORMAL")
+        # Default busy timeout is only 5s; raise it so transient contention
+        # (hot backups, a stray second process, Windows file-lock hiccups)
+        # waits and retries instead of surfacing as "database is locked".
+        await _conn.execute("PRAGMA busy_timeout=30000")
         self.database = DatabaseManager(connection=_conn)
         await self.database.quests.create_tables()
         await self.database.settlement.migrate_buildings_schema()

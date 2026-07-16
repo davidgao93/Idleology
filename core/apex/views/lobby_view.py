@@ -127,7 +127,7 @@ def _build_zone_confirm_embed(
         ),
         color=zone.color,
     )
-    shard_emoji = APEX_SHARD_EMOJI.get(zone.shard_type, "🔮")
+    shard_emoji = APEX_SHARD_EMOJI.get(zone.shard_type, f"{SOUL_FRAGMENT}")
     embed.add_field(
         name="Shard Type", value=f"{shard_emoji} {zone.shard_type.title()}", inline=True
     )

@@ -31,6 +31,7 @@ from core.emojis import (
     HELMET_SLOT,
     PRIMAL_ESSENCE,
     SHARPENED_FANG,
+    SOUL_FRAGMENT,
     SOUL_SLOT,
     SOUL_STONE,
     SOUL_VESSEL,
@@ -435,7 +436,7 @@ class ImprintView(BaseView):
         )
 
         shard_owned = self.shards.get(shard_type)
-        shard_emoji = APEX_SHARD_EMOJI.get(shard_type, "🔮")
+        shard_emoji = APEX_SHARD_EMOJI.get(shard_type, f"{SOUL_FRAGMENT}")
         embed.add_field(
             name="💰 Cost",
             value=f"{shard_emoji} 1x {shard_type.title()} Shard (Owned: {shard_owned})",

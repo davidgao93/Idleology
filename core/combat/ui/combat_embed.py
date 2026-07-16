@@ -27,6 +27,7 @@ from core.emojis import (
     STAT_HP,
     STAT_PDR,
     STAT_WARD,
+    UBER_EMOJI,
     VOID_ENGRAM,
 )
 from core.models import Monster, Player
@@ -579,14 +580,18 @@ def create_combat_layout(
     _mit_suffix = (" | " + " | ".join(_mit_parts)) if _mit_parts else ""
 
     # One stat line per combatant instead of two — still fully readable
-    # pipe-separated, just without the extra line break.
+    # pipe-separated, just without the extra line break. The 🧠 marker is
+    # only a placeholder icon for players with no equipped emblem —
+    # format_prestige_name already prepends the emblem itself, so showing
+    # both would double up.
+    player_icon = "" if player.prestige_emblem else "🧠 "
     player_text = (
-        f"### 🧠 {prestige_name}\n"
+        f"### {player_icon}{prestige_name}\n"
         f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
         f"{STAT_ATK} {p_atk:,} | {STAT_DEF} {p_def:,} | 🎯 ~{p_hit}% | 🗡️ {p_crit}%{_mit_suffix}"
     )
     monster_text = (
-        f"### 🐲 {monster.name}\n"
+        f"### {UBER_EMOJI} {monster.name}\n"
         f"{get_hp_display(monster.hp, monster.max_hp, monster.ward)}\n"
         f"{STAT_ATK} {m_atk:,} | {STAT_DEF} {monster.effective_defence:,} | 🎯 ~{m_hit}%"
     )
@@ -740,7 +745,7 @@ def create_combat_embed(
 
     m_atk = monster.effective_attack
     embed.add_field(
-        name=f"🐲 {monster.name}",
+        name=f"{UBER_EMOJI} {monster.name}",
         value=(
             f"{monster.hp:,}/{monster.max_hp:,} {STAT_HP}\n"
             f"{STAT_ATK} {m_atk:,} | {STAT_DEF} {monster.effective_defence:,}\n"
@@ -755,8 +760,9 @@ def create_combat_embed(
         _mit_parts.append(f"{STAT_FDR} {p_fdr}")
     _mit_line = ("\n" + " | ".join(_mit_parts)) if _mit_parts else ""
 
+    player_icon = "" if player.prestige_emblem else "🧠 "
     embed.add_field(
-        name=f"🧠 {prestige_name}",
+        name=f"{player_icon}{prestige_name}",
         value=(
             f"{get_hp_display(player.current_hp, player.total_max_hp, player.combat_ward)}\n"
             f"{STAT_ATK} {p_atk:,} | {STAT_DEF} {p_def:,}\n"

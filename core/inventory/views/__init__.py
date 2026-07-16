@@ -1,3 +1,4 @@
+from .artefact_detail_view import ArtefactDetailView, ArtefactDiscardConfirmView
 from .detail_view import DiscardConfirmView, ItemDetailView
 from .gear_view import SLOT_ORDER, GearView
 from .list_view import InventoryListView
@@ -9,6 +10,8 @@ __all__ = [
     "InventoryListView",
     "ItemDetailView",
     "DiscardConfirmView",
+    "ArtefactDetailView",
+    "ArtefactDiscardConfirmView",
     "GearView",
     "SLOT_ORDER",
     "LoadoutView",

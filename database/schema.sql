@@ -717,10 +717,10 @@ CREATE TABLE IF NOT EXISTS rite_progress (
   PRIMARY KEY (user_id, server_id)
 );
 
--- The Rite of Convergence's single Artefact slot. A new drop overwrites
--- whatever was previously equipped (no separate inventory — see
--- core/rite/models.py). roll_1-3 hold the artefact's randomized stat value(s);
--- unused for artefacts with no variable roll.
+-- Legacy single-slot Artefact storage. Superseded by rite_artefact_items
+-- below (multi-item inventory) — kept only so bot.py's one-time boot
+-- migration has a source to copy from on already-deployed DBs. No longer
+-- read or written by the app directly.
 CREATE TABLE IF NOT EXISTS player_artefacts (
   user_id      TEXT NOT NULL,
   server_id    TEXT NOT NULL,
@@ -730,6 +730,24 @@ CREATE TABLE IF NOT EXISTS player_artefacts (
   roll_3       REAL NOT NULL DEFAULT 0,
   PRIMARY KEY (user_id, server_id)
 );
+
+-- The Rite of Convergence's Artefact inventory — players can own several
+-- artefacts (cap enforced in database/repositories/rite.py: add_artefact,
+-- see ARTEFACT_CAP) and swap which one is equipped, mirroring the six normal
+-- gear tables' is_equipped convention. roll_1-3 hold the artefact's
+-- randomized stat value(s); unused for artefacts with no variable roll.
+CREATE TABLE IF NOT EXISTS rite_artefact_items (
+  item_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id      TEXT NOT NULL,
+  server_id    TEXT NOT NULL,
+  artefact_key TEXT NOT NULL,
+  roll_1       REAL NOT NULL DEFAULT 0,
+  roll_2       REAL NOT NULL DEFAULT 0,
+  roll_3       REAL NOT NULL DEFAULT 0,
+  is_equipped  INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_rite_artefact_items_user
+  ON rite_artefact_items(user_id, server_id);
 
 CREATE TABLE IF NOT EXISTS synthesis_queue (
   user_id    TEXT PRIMARY KEY,

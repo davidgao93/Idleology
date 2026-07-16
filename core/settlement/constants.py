@@ -246,10 +246,10 @@ ZEAL_TO_DT = 10  # 10 Zeal = 1 Development Turn
 ZEAL_DAILY_HARD_CAP = 800
 # Soft cap: after this much zeal earned today, gains are halved.
 ZEAL_DAILY_SOFT_CAP = 600
-# Passive zeal generated per hour per settlement (T1 = 5/hr, T7 ≈ 59/hr).
-PASSIVE_ZEAL_PER_HOUR_BASE = 5
+# Passive zeal generated per hour per settlement (T1 = 4/hr, T7 ≈ 59/hr).
+PASSIVE_ZEAL_PER_HOUR_BASE = 4
 # Maximum Zeal collectible in a single Gather Zeal action.
-ZEAL_GATHER_CAP = 400
+ZEAL_GATHER_CAP = 300
 # Idlem produced per 100 workers assigned, per turn, by the Idlem Foundry (before tier scaling).
 IDLEM_PER_TURN_BASE = 1
 # Workers produced per 100 workers assigned, per turn, by the Nursery (before tier scaling).

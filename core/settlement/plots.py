@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import random
 
+from core.emojis import GOLD_COIN
+
 # ---------------------------------------------------------------------------
 # Grid geometry
 # ---------------------------------------------------------------------------
@@ -173,7 +175,7 @@ PLOT_BONUS_TABLE: dict[str, dict] = {
     },
     "gold_vein": {
         "label": "Gold Vein",
-        "emoji": "💛",
+        "emoji": f"{GOLD_COIN}",
         "description": "Buildings constructed here cost 35% less gold.",
         "applies_to": "construction_gold",
         "value": 0.35,
@@ -532,8 +534,9 @@ def render_mini_grid(
 def render_grid(
     developed_indices: set[int],
     building_by_plot: dict[int, str],  # plot_index → building_type
-    pending_by_plot: dict[int, str]
-    | None = None,  # plot_index → building_type (queued, not yet built)
+    pending_by_plot: (
+        dict[int, str] | None
+    ) = None,  # plot_index → building_type (queued, not yet built)
 ) -> str:
     """
     Renders the 5×5 settlement grid in a monospace code block.

@@ -34,7 +34,7 @@ from .base import SettlementBaseView
 def _refresh_parent(parent) -> None:
     """Call whichever button-rebuild method the parent view exposes."""
     if hasattr(parent, "_build_buttons"):
-        _refresh_parent(parent)
+        parent._build_buttons()
     elif hasattr(parent, "_rebuild_ui"):
         parent._rebuild_ui()
     elif hasattr(parent, "setup_ui"):
@@ -158,10 +158,10 @@ class EmptySlotView(SettlementBaseView):
                 "No statue blueprints are available for this slot.\n\n"
                 "Defeat uber bosses to earn blueprints:\n"
                 + "\n".join(
-                    f"• {d['emoji']} **{d['name']}** — defeat **{d['boss_name']}**"
-                    for d in UBER_STATUE_DEFS.values()
-                    if not self.shrine_view.statue_data.get(d.get("key", ""), {}).get(
-                        "is_unlocked"
+                    f"• {defn['emoji']} **{defn['name']}** — defeat **{defn['boss_name']}**"
+                    for stype, defn in UBER_STATUE_DEFS.items()
+                    if not self.shrine_view.statue_data.get(stype, {}).get(
+                        "can_build"
                     )
                 )
             )

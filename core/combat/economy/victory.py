@@ -40,7 +40,7 @@ from core.combat.economy.rewards import (
     check_special_drops,
 )
 from core.companions.mechanics import CompanionMechanics
-from core.emojis import ZEAL
+from core.emojis import PRIMAL_ESSENCE, SLAYER_EMBLEM_ICON, ZEAL
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
     BOSS_APHRODITE,
@@ -242,7 +242,7 @@ async def _apply_slayer_rewards(
             user_id, server_id, "violent_essence", 1
         )
         slayer_lines.append(
-            f"💀 **Boss Kill!** +{per_kill_xp:,} Slayer XP | 🩸 +1 Violent Essence"
+            f"💀 **Boss Kill!** +{per_kill_xp:,} Slayer XP | {PRIMAL_ESSENCE} +1 Violent Essence"
         )
 
         new_prog = s_profile["active_task_progress"] + 1
@@ -289,7 +289,9 @@ async def _apply_slayer_rewards(
                 f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}."
             )
 
-        reward_data["msgs"].append("🩸 **Slayer Task**\n" + "\n".join(slayer_lines))
+        reward_data["msgs"].append(
+            f"{SLAYER_EMBLEM_ICON} **Slayer Task**\n" + "\n".join(slayer_lines)
+        )
         return
 
     if monster.is_boss:
@@ -385,7 +387,7 @@ async def _apply_slayer_rewards(
         except Exception as _qe:
             print(f"[Quest tick error in slayer regular task]: {_qe}")
         slayer_lines.append(
-            f"🏆 **Task Complete!** +{burst_xp} Slayer XP | +{burst_pts} Slayer Pts | 🩸 +{task_ess} Violent Essence"
+            f"🏆 **Task Complete!** +{burst_xp} Slayer XP | +{burst_pts} Slayer Pts | {PRIMAL_ESSENCE} +{task_ess} Violent Essence"
         )
     else:
         await bot.database.slayer.update_task_progress(user_id, server_id, 1)
@@ -401,7 +403,9 @@ async def _apply_slayer_rewards(
         await bot.database.slayer.update_level(user_id, server_id, new_s_lvl)
         slayer_lines.append(f"🎉 **Slayer Level Up!** You are now Level {new_s_lvl}.")
 
-    reward_data["msgs"].append("🩸 **Slayer Task**\n" + "\n".join(slayer_lines))
+    reward_data["msgs"].append(
+        f"{SLAYER_EMBLEM_ICON} **Slayer Task**\n" + "\n".join(slayer_lines)
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -128,16 +128,29 @@ def roll_artefact_key(total_dp: int) -> str | None:
 def roll_artefact_stats(key: str) -> tuple[float, float, float]:
     """Rolls the randomized stat value(s) for a freshly-dropped artefact.
     Unused rolls stay 0.0. Ranges are taken directly from RAID-DESIGN.md."""
-    if key == "blessed_bulwark":
-        return (float(random.randint(2, 8)), 0.0, 0.0)  # PDR cap +2-8%
-    if key == "brand_of_ruin":
-        return (float(random.randint(15, 30)), 0.0, 0.0)  # infernal passive +15-30%
-    if key == "seal_of_duality":
-        return (float(random.randint(15, 35)), 0.0, 0.0)  # DEF +15-35% on ward break
-    if key == "the_final_edict":
-        return (float(random.randint(80, 100)), 0.0, 0.0)  # true damage chance 80-100%
+    lo_hi = ROLL_1_RANGE.get(key)
+    if lo_hi:
+        return (float(random.randint(*lo_hi)), 0.0, 0.0)
     # sad_ones_gamble / corrupted_insignia have no variable roll
     return (0.0, 0.0, 0.0)
+
+
+# key -> (min, max) for roll_1, used both by roll_artefact_stats above and by
+# the Gear view's Artefact detail panel to show "how good is this roll".
+# Kept as data rather than re-deriving from roll_artefact_stats so the UI
+# doesn't need to call random.randint just to learn the bounds.
+ROLL_1_RANGE: dict[str, tuple[int, int]] = {
+    "blessed_bulwark": (2, 8),  # PDR cap +2-8%
+    "brand_of_ruin": (15, 30),  # infernal passive +15-30%
+    "seal_of_duality": (15, 35),  # DEF +15-35% on ward break
+    "the_final_edict": (80, 100),  # true damage chance 80-100%
+}
+
+
+def roll_1_range(key: str) -> tuple[int, int] | None:
+    """(min, max) for the artefact's roll_1 stat, or None if it has no
+    variable roll (sad_ones_gamble / corrupted_insignia)."""
+    return ROLL_1_RANGE.get(key)
 
 
 def describe_artefact(key: str, roll_1: float) -> str:
@@ -180,13 +193,16 @@ async def grant_run_completion_rewards(
     artefact_key = roll_artefact_key(total_dp)
     artefact_name = None
     artefact_image = None
+    artefact_inventory_full = False
     if artefact_key:
         roll_1, roll_2, roll_3 = roll_artefact_stats(artefact_key)
-        await bot.database.rite.set_artefact(
-            user_id, server_id, artefact_key, roll_1, roll_2, roll_3
+        new_id = await bot.database.rite.add_artefact(
+            user_id, server_id, artefact_key, roll_1, roll_2, roll_3, auto_equip=True
         )
-        artefact_name = ARTEFACT_TABLE[artefact_key][0]
-        artefact_image = ARTEFACT_TABLE[artefact_key][4]
+        artefact_inventory_full = new_id is None
+        if not artefact_inventory_full:
+            artefact_name = ARTEFACT_TABLE[artefact_key][0]
+            artefact_image = ARTEFACT_TABLE[artefact_key][4]
 
     return {
         "value": value,
@@ -195,4 +211,5 @@ async def grant_run_completion_rewards(
         "artefact_key": artefact_key,
         "artefact_name": artefact_name,
         "artefact_image": artefact_image,
+        "artefact_inventory_full": artefact_inventory_full,
     }

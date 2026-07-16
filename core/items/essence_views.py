@@ -12,14 +12,18 @@ from discord.ui import Button, Select
 
 from core.base_view import BaseView
 from core.emojis import (
+    BOUND_SIGIL,
+    CELESTIAL_SIGIL,
     CRIT_MULTI,
     DODGE_EVASION,
     ESSENCE_COMMON,
     ESSENCE_CORRUPT,
     ESSENCE_META,
     ESSENCE_RARE,
-    INFERNAL_ENGRAM,
+    INFERNAL_SIGIL,
     STAT_BLOCK,
+    STAT_HP,
+    VOID_SIGIL,
 )
 from core.images import ESSENCE_HUB
 from core.items.essence_mechanics import (
@@ -47,14 +51,14 @@ ESSENCE_DISPLAY = {
     "blocking": ("Blocking", STAT_BLOCK),
     "deftness": ("Deftness", CRIT_MULTI),
     "precision": ("Precision", "🎯"),
-    "gluttony": ("Gluttony", "🩸"),
+    "gluttony": ("Gluttony", STAT_HP),
     "cleansing": ("Cleansing", "🌊"),
     "chaos": ("Chaos", "🌀"),
     "annulment": ("Annulment", "✂️"),
-    "aphrodite": ("Aphrodite's Disciple", "💠"),
-    "lucifer": ("Lucifer's Heir", INFERNAL_ENGRAM),
-    "gemini": ("Gemini's Lost Twin", "💠"),
-    "neet": ("NEET's Voidling", "💠"),
+    "aphrodite": ("Aphrodite's Disciple", CELESTIAL_SIGIL),
+    "lucifer": ("Lucifer's Heir", INFERNAL_SIGIL),
+    "gemini": ("Gemini's Lost Twin", BOUND_SIGIL),
+    "neet": ("NEET's Voidling", VOID_SIGIL),
 }
 
 ESSENCE_BRIEF = {
@@ -192,7 +196,7 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
         t = getattr(item, f"essence_{i}", "none") or "none"
         v = getattr(item, f"essence_{i}_val", 0.0) or 0.0
         if t != "none":
-            e_name, emoji = ESSENCE_DISPLAY.get(t, (t.title(), "💠"))
+            e_name, emoji = ESSENCE_DISPLAY.get(t, (t.title(), f"{ESSENCE_CORRUPT}"))
             stat_str = _format_slot_value(t, v, item)
             slot_lines.append(f"**Slot {i}:** {emoji} {e_name}\n   ↳ {stat_str}")
         else:
@@ -205,7 +209,9 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
     # --- Corrupted slot ---
     corrupted = getattr(item, "corrupted_essence", "none") or "none"
     if corrupted != "none":
-        c_name, c_emoji = ESSENCE_DISPLAY.get(corrupted, (corrupted.title(), "💠"))
+        c_name, c_emoji = ESSENCE_DISPLAY.get(
+            corrupted, (corrupted.title(), f"{ESSENCE_CORRUPT}")
+        )
         c_brief = _get_essence_brief(corrupted, item_type_label)
         embed.add_field(
             name="Corrupted Slot",
@@ -221,7 +227,9 @@ def _build_essence_embed(item, essence_inventory: dict) -> discord.Embed:
         for etype in types:
             qty = essence_inventory.get(etype, 0)
             if qty > 0:
-                e_name, emoji = ESSENCE_DISPLAY.get(etype, (etype.title(), "💠"))
+                e_name, emoji = ESSENCE_DISPLAY.get(
+                    etype, (etype.title(), f"{ESSENCE_CORRUPT}")
+                )
                 parts.append(f"{emoji} {e_name}: **×{qty}**")
         return "\n".join(parts) if parts else "*None*"
 
@@ -398,7 +406,9 @@ class EssenceSelectView(BaseView):
 
         options = []
         for etype, qty in applicable:
-            e_name, _emoji = ESSENCE_DISPLAY.get(etype, (etype.title(), "💠"))
+            e_name, _emoji = ESSENCE_DISPLAY.get(
+                etype, (etype.title(), f"{ESSENCE_CORRUPT}")
+            )
             brief = _get_essence_brief(etype, hub.item_type)
             label = f"{e_name} ×{qty}"
             options.append(
@@ -420,7 +430,9 @@ class EssenceSelectView(BaseView):
     async def _on_select(self, interaction: Interaction):
         chosen = interaction.data["values"][0]
         qty = self.hub.essence_inventory.get(chosen, 0)
-        e_name, emoji = ESSENCE_DISPLAY.get(chosen, (chosen.title(), "💠"))
+        e_name, emoji = ESSENCE_DISPLAY.get(
+            chosen, (chosen.title(), f"{ESSENCE_CORRUPT}")
+        )
 
         embed = discord.Embed(
             title=f"{emoji} Apply: {e_name}",
@@ -502,13 +514,21 @@ class EssenceView(BaseView):
 
         # Row 0 — apply buttons
         if len(slots) < 3:
-            apply_btn = Button(label="Apply Essence", style=ButtonStyle.success, row=0)
+            apply_btn = Button(
+                label="Apply Essence",
+                style=ButtonStyle.success,
+                row=0,
+                emoji=f"{ESSENCE_COMMON}",
+            )
             apply_btn.callback = self._open_apply_regular
             self.add_item(apply_btn)
 
         if corrupted == "none":
             cor_btn = Button(
-                label="Apply Corrupted", style=ButtonStyle.primary, emoji="💠", row=0
+                label="Apply Corrupted",
+                style=ButtonStyle.primary,
+                emoji=f"{ESSENCE_CORRUPT}",
+                row=0,
             )
             cor_btn.callback = self._open_apply_corrupted
             self.add_item(cor_btn)
@@ -631,7 +651,9 @@ class EssenceView(BaseView):
                 f"You don't have any {utility_type} essences.", ephemeral=True
             )
 
-        e_name, emoji = ESSENCE_DISPLAY.get(utility_type, (utility_type.title(), "💠"))
+        e_name, emoji = ESSENCE_DISPLAY.get(
+            utility_type, (utility_type.title(), f"{ESSENCE_CORRUPT}")
+        )
         desc_map = {
             "cleansing": "This will **remove all 3 regular essence slots** from the item.",
             "chaos": "This will **reroll the values** on all occupied essence slots. Types are preserved.",

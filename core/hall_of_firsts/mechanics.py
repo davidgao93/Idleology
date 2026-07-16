@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import discord
 
 from core.character.prestige_display import format_prestige_name
+from core.emojis import EMBLEM_CATALOG
 from core.hall_of_firsts.data import CATEGORIES_BY_KEY, HALL_ANNOUNCE_CHANNEL_ID
 
 
@@ -28,7 +29,12 @@ async def try_claim_first(bot, user_id: str, category_key: str) -> bool:
         name = user_row["prestige_display_name"] or user_row["name"]
         title = user_row["prestige_title"]
         title = None if not title or title == "none" else title
-        emblem = user_row["prestige_emblem"]
+        # users.prestige_emblem stores the EMBLEM_CATALOG *key* (e.g.
+        # "monster_cheeks"), not the emoji itself — resolve it here so the
+        # snapshot (and the announcement below) show the real emoji instead
+        # of the literal key text.
+        emblem_entry = EMBLEM_CATALOG.get(user_row["prestige_emblem"] or "")
+        emblem = emblem_entry[1] if emblem_entry else None
         appearance = user_row["appearance"]
 
         won = await bot.database.hall_of_firsts.try_claim(

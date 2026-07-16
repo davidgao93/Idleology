@@ -1,12 +1,20 @@
 import random
 
 from core.emojis import (
+    ANGEL_KEY,
     BLESSED_BISMUTH,
     CAPRICIOUS_CARP,
     CODEX_TOME_EMOJI,
+    CURIO,
+    DRAGON_KEY,
     GOLD_COIN,
     GUILD_TICKET,
+    PINNACLE_KEY,
+    POTION,
+    RUNE_GENERIC,
     SPARKLING_SPRIG,
+    VOID_KEY,
+    WEAPON_SLOT,
 )
 from core.images import (
     ALCHEMY_HUB,
@@ -49,15 +57,15 @@ async def _grant_level_1(bot, user_id: str, server_id: str) -> list:
     )
     await bot.database.equipment.create_weapon(starter)
     return [
-        "⚔️ **Adventurer's Blade** (starter weapon added to inventory)",
-        "🧪 **+20 Potions**",
+        f"{WEAPON_SLOT} **Adventurer's Blade** (starter weapon added to inventory)",
+        f"{POTION} **+20 Potions**",
     ]
 
 
 async def _grant_level_5(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_currency(user_id, "curios", 2)
     await bot.database.users.modify_gold(user_id, 10_000)
-    return ["📦 **+2 Curios**", f"{GOLD_COIN} **+10,000 Gold**"]
+    return [f"{CURIO} **+2 Curios**", f"{GOLD_COIN} **+10,000 Gold**"]
 
 
 async def _grant_level_10(bot, user_id: str, server_id: str) -> list:
@@ -69,7 +77,7 @@ async def _grant_level_10(bot, user_id: str, server_id: str) -> list:
 async def _grant_level_20(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_currency(user_id, "curios", 3)
     await bot.database.users.modify_gold(user_id, 50_000)
-    return ["📦 **+3 Curios**", f"{GOLD_COIN} **+50,000 Gold**"]
+    return [f"{CURIO} **+3 Curios**", f"{GOLD_COIN} **+50,000 Gold**"]
 
 
 async def _grant_level_30(bot, user_id: str, server_id: str) -> list:
@@ -88,7 +96,7 @@ async def _grant_level_40(bot, user_id: str, server_id: str) -> list:
         keys_granted[chosen] = keys_granted.get(chosen, 0) + 1
     await bot.database.users.modify_gold(user_id, 150_000)
     key_lines = [
-        f"🗝️ **+{count} {'Dragon' if k == 'dragon_key' else 'Angel'} Key{'s' if count > 1 else ''}**"
+        f"**+{count} {f'{DRAGON_KEY} Dragon' if k == 'dragon_key' else f'{ANGEL_KEY} Angel'} Key{'s' if count > 1 else ''}**"
         for k, count in keys_granted.items()
     ]
     return key_lines + [f"{GOLD_COIN} **+150,000 Gold**"]
@@ -97,7 +105,7 @@ async def _grant_level_40(bot, user_id: str, server_id: str) -> list:
 async def _grant_level_50(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_currency(user_id, "void_keys", 1)
     await bot.database.users.modify_gold(user_id, 200_000)
-    return ["🔑 **+1 Void Key**", f"{GOLD_COIN} **+200,000 Gold**"]
+    return [f"{VOID_KEY} **+1 Void Key**", f"{GOLD_COIN} **+200,000 Gold**"]
 
 
 async def _grant_level_60(bot, user_id: str, server_id: str) -> list:
@@ -147,7 +155,7 @@ async def _grant_level_70(bot, user_id: str, server_id: str) -> list:
         "potential_runes": "Potential Rune",
     }
     rune_lines = [
-        f"🔮 **+{count} {_RUNE_LABELS[r]}{'s' if count > 1 else ''}**"
+        f"{RUNE_GENERIC} **+{count} {_RUNE_LABELS[r]}{'s' if count > 1 else ''}**"
         for r, count in runes_granted.items()
     ]
     await bot.database.uber.get_uber_progress(user_id, server_id)
@@ -168,7 +176,7 @@ async def _grant_level_90(bot, user_id: str, server_id: str) -> list:
 
 async def _grant_level_100(bot, user_id: str, server_id: str) -> list:
     await bot.database.users.modify_currency(user_id, "pinnacle_key", 1)
-    return ["👑 **+1 Pinnacle Key**"]
+    return [f"{PINNACLE_KEY} **+1 Pinnacle Key**"]
 
 
 # ---------------------------------------------------------------------------

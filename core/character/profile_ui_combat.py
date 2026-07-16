@@ -45,6 +45,7 @@ from core.emojis import (
     HEMATURGY_ICON,
     MISC_PASSIVES,
     RARITY,
+    SLAYER_EMBLEM_ICON,
     STAT_ATK,
     STAT_BLOCK,
     STAT_DEF,
@@ -441,7 +442,7 @@ class CombatProfileBuilder:
                 fn = _SLAYER_EMBLEM_FUNCS.get(ptype)
                 desc = fn(tier) if fn else "?"
                 lines.append(f"• **{e_name}** (T{tier}) — {desc}")
-            _add("🩸 Slayer Emblem", lines)
+            _add(f"{SLAYER_EMBLEM_ICON} Slayer Emblem", lines)
 
         # ── Codex Tomes ───────────────────────────────────────────────────────
         if p.codex_tomes:

@@ -16,28 +16,37 @@ from core.items.factory import (
     create_weapon,
 )
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
+from core.rite.models import Artefact
 from core.util import stars
 
+from .artefact_detail_view import ArtefactDetailView
 from .detail_view import ItemDetailView
 from .loadout_view import LoadoutView
 from .modals import MassDiscardModal
 from ._slot_defs import (
+    GEAR_SLOT_ORDER,
     SLOT_EMOJIS as _SLOT_EMOJIS,
     SLOT_LABELS as _SLOT_LABELS,
     SLOT_ORDER,
 )
 
-_FACTORIES = [
-    create_weapon,
-    create_armor,
-    create_helmet,
-    create_glove,
-    create_boot,
-    create_accessory,
-]
+_FACTORIES = {
+    "weapon": create_weapon,
+    "armor": create_armor,
+    "helmet": create_helmet,
+    "glove": create_glove,
+    "boot": create_boot,
+    "accessory": create_accessory,
+    # "artefact" has no factory here — its list is fetched and built via
+    # core.rite.models.artefact_list_from_db, not core.items.factory.
+}
 SLOT_CONFIG = {
-    slot: {"emoji": _SLOT_EMOJIS[slot], "label": _SLOT_LABELS[slot], "factory": factory}
-    for slot, factory in zip(SLOT_ORDER, _FACTORIES)
+    slot: {
+        "emoji": _SLOT_EMOJIS[slot],
+        "label": _SLOT_LABELS[slot],
+        "factory": _FACTORIES.get(slot),
+    }
+    for slot in GEAR_SLOT_ORDER
 }
 
 
@@ -61,6 +70,7 @@ class GearView(BaseView):
         self,
         bot,
         user_id: str,
+        server_id: str,
         all_items: dict,
         initial_slot: str = "weapon",
         player_name: str = "",
@@ -68,6 +78,7 @@ class GearView(BaseView):
         super().__init__(bot=bot, user_id=user_id)
         self.bot = bot
         self.user_id = user_id
+        self.server_id = server_id
         self.all_items = all_items  # dict[slot -> List[item model]]
         self.active_slot = initial_slot
         self.player_name = player_name
@@ -75,8 +86,9 @@ class GearView(BaseView):
         self._processing = False
 
         # Per-slot equipped IDs — source of truth; updated by ItemDetailView.toggle_equip
+        # (and ArtefactDetailView.toggle_equip for the "artefact" slot).
         self.equipped_ids: dict = {
-            slot: self._scan_equipped_id(slot) for slot in SLOT_ORDER
+            slot: self._scan_equipped_id(slot) for slot in GEAR_SLOT_ORDER
         }
 
         self.update_components()
@@ -148,6 +160,12 @@ class GearView(BaseView):
     @staticmethod
     def _build_select_description(item) -> str:
         """One-line stat summary for the Select option description (max 100 chars)."""
+        if isinstance(item, Artefact):
+            rng = item.roll_1_range
+            if rng:
+                return f"Roll: {int(item.roll_1)} (range {rng[0]}-{rng[1]}) · {item.source}"
+            return f"Fixed effect (no roll) · {item.source}"
+
         parts = []
         # Accessory attack/defence are % of flat, not flat points
         acc_suffix = "%" if isinstance(item, Accessory) else ""
@@ -223,6 +241,19 @@ class GearView(BaseView):
         for item in page_items:
             is_equipped = item.item_id == self.equipped_id
 
+            if isinstance(item, Artefact):
+                label = f"{'[E] ' if is_equipped else ''}{item.name}"
+                if len(label) > 100:
+                    label = label[:97] + "..."
+                options.append(
+                    discord.SelectOption(
+                        label=label,
+                        value=str(item.item_id),
+                        description=self._build_select_description(item),
+                    )
+                )
+                continue
+
             label = f"{'[E] ' if is_equipped else ''}Lv.{item.level} {item.name}"
             if isinstance(item, Weapon) and item.refinement_lvl > 0:
                 label += f" (+{item.refinement_lvl})"
@@ -264,8 +295,10 @@ class GearView(BaseView):
         # Row 0 — Select menu or empty placeholder
         if page_items:
             options = self._build_select_options(page_items)
+            label_lower = SLOT_CONFIG[self.active_slot]["label"].lower()
+            article = "an" if label_lower[0] in "aeiou" else "a"
             select = discord.ui.Select(
-                placeholder=f"Choose a {SLOT_CONFIG[self.active_slot]['label'].lower()}...",
+                placeholder=f"Choose {article} {label_lower}...",
                 options=options,
                 row=0,
             )
@@ -286,8 +319,10 @@ class GearView(BaseView):
             )
             self.add_item(empty)
 
-        # Rows 1–2 — Slot tab buttons (3 per row)
-        for row_idx, slots in enumerate([SLOT_ORDER[:3], SLOT_ORDER[3:]], start=1):
+        # Rows 1–2 — Slot tab buttons (4 + 3, to fit all 7 slots)
+        for row_idx, slots in enumerate(
+            [GEAR_SLOT_ORDER[:4], GEAR_SLOT_ORDER[4:]], start=1
+        ):
             for slot in slots:
                 cfg = SLOT_CONFIG[slot]
                 style = (
@@ -314,11 +349,14 @@ class GearView(BaseView):
             self.add_item(nxt)
 
         # Row 4 — Mass Discard | Loadouts | Close
+        # Artefacts have no ilvl-threshold concept and live in a separate
+        # repository (bot.database.rite) that MassDiscardModal doesn't know
+        # about — bulk discard is per-item via ArtefactDetailView instead.
         mass = Button(
             label="Mass Discard",
             style=ButtonStyle.danger,
             emoji="🗑️",
-            disabled=(len(slot_items) == 0),
+            disabled=(len(slot_items) == 0 or self.active_slot == "artefact"),
             row=4,
         )
         mass.callback = self.mass_discard_callback
@@ -367,6 +405,16 @@ class GearView(BaseView):
             return await interaction.response.send_message(
                 "Item not found.", ephemeral=True
             )
+
+        if isinstance(item, Artefact):
+            detail_view = ArtefactDetailView(
+                self.bot, self.user_id, self.server_id, item, self
+            )
+            await interaction.response.edit_message(
+                content=None, embed=detail_view.build_embed(), view=detail_view
+            )
+            self.message = await interaction.original_response()
+            return
 
         detail_view = ItemDetailView(self.bot, self.user_id, item, self)
         await detail_view.fetch_data()

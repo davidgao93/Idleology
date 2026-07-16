@@ -5,6 +5,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
+from core.emojis import ENGORGED_HEART, PRIMAL_ESSENCE
 from core.images import SLAYER_EMBLEM, SLAYER_MASTER, SLAYER_MASTER_AUTHOR
 from core.npc_voices import get_quip
 from core.slayer.mechanics import (
@@ -52,7 +53,7 @@ class SlayerDashboardView(BaseView):
         )
         embed.add_field(
             name="Materials",
-            value=f"🩸 **Violent Essence:** {self.profile['violent_essence']}\n❤️ **Imbued Hearts:** {self.profile['imbued_heart']}",
+            value=f"{PRIMAL_ESSENCE} **Violent Essence:** {self.profile['violent_essence']}\n{ENGORGED_HEART} **Imbued Hearts:** {self.profile['imbued_heart']}",
             inline=True,
         )
 
@@ -376,7 +377,7 @@ class SlotManageView(BaseView):
         embed = discord.Embed(
             title=f"Modify Slot {self.slot_num}", color=discord.Color.dark_magenta()
         )
-        embed.description = f"🩸 **Violent Essence:** {self.profile['violent_essence']}\n❤️ **Imbued Hearts:** {self.profile['imbued_heart']}\n\n"
+        embed.description = f"{PRIMAL_ESSENCE} **Violent Essence:** {self.profile['violent_essence']}\n{ENGORGED_HEART} **Imbued Hearts:** {self.profile['imbued_heart']}\n\n"
         if self.result_msg:
             embed.description += f"{self.result_msg}\n\n"
 
@@ -398,7 +399,7 @@ class SlotManageView(BaseView):
 
                 embed.add_field(
                     name="Upgrade Odds",
-                    value=f"🟢 Success: {success_rate}%\n🔴 Downgrade: {downgrade_rate}%\n🩸 Cost: {p_tier + 1} Violent Essence",
+                    value=f"🟢 Success: {success_rate}%\n🔴 Downgrade: {downgrade_rate}%\n{PRIMAL_ESSENCE} Cost: {p_tier + 1} Violent Essence",
                     inline=False,
                 )
             else:
@@ -420,7 +421,7 @@ class SlotManageView(BaseView):
             btn_awaken = ui.Button(
                 label="Awaken (1 Essence)",
                 style=ButtonStyle.primary,
-                emoji="🩸",
+                emoji=f"{PRIMAL_ESSENCE}",
                 disabled=(essences < 1),
             )
             btn_awaken.callback = self.awaken_slot
@@ -430,7 +431,7 @@ class SlotManageView(BaseView):
             btn_upgrade = ui.Button(
                 label=f"Upgrade ({upgrade_cost} Essence)",
                 style=ButtonStyle.success,
-                emoji="🩸",
+                emoji=f"{PRIMAL_ESSENCE}",
                 disabled=(essences < upgrade_cost or p_tier >= 5),
             )
             btn_upgrade.callback = self.upgrade_slot
@@ -640,7 +641,7 @@ class SlayerTreeView(BaseView):
             title=f"💀 Slayer Shop — {icon} {name}",
             description=(
                 f"*{get_quip('slayer_shop')}*\n\n"
-                f"**Slayer Points:** {pts} | 🩸 **Violent Essence:** {ess}\n"
+                f"**Slayer Points:** {pts} | {PRIMAL_ESSENCE} **Violent Essence:** {ess}\n"
                 f"*Points spent: {self.pts_spent}*\n\n"
                 + (f"**{self.result_msg}**\n" if self.result_msg else "")
             ),
@@ -695,9 +696,9 @@ class SlayerTreeView(BaseView):
             ess_unlocked = bool(self.tree_nodes.get("pu_3"))
             heart_unlocked = bool(self.tree_nodes.get("pu_4"))
             shop_lines = [
-                f"{'🩸' if ess_unlocked else '🔒'} **Violent Essence** — {self._ESS_COST} pts"
+                f"{f'{PRIMAL_ESSENCE}' if ess_unlocked else '🔒'} **Violent Essence** — {self._ESS_COST} pts"
                 + ("" if ess_unlocked else " *(requires Material Market)*"),
-                f"{'❤️' if heart_unlocked else '🔒'} **Imbued Heart** — {self._HEART_COST} pts"
+                f"{f'{ENGORGED_HEART}' if heart_unlocked else '🔒'} **Imbued Heart** — {self._HEART_COST} pts"
                 + ("" if heart_unlocked else " *(requires Essence Exchange)*"),
             ]
             embed.add_field(
@@ -723,9 +724,11 @@ class SlayerTreeView(BaseView):
             name = _BRANCH_NAMES[branch]
             btn = ui.Button(
                 label=f"{icon} {name}",
-                style=ButtonStyle.primary
-                if branch == self.active_branch
-                else ButtonStyle.secondary,
+                style=(
+                    ButtonStyle.primary
+                    if branch == self.active_branch
+                    else ButtonStyle.secondary
+                ),
                 row=0,
             )
 
@@ -787,7 +790,7 @@ class SlayerTreeView(BaseView):
             btn_ess = ui.Button(
                 label=f"Buy Essence ({self._ESS_COST} pts)",
                 style=ButtonStyle.primary,
-                emoji="🩸",
+                emoji=f"{PRIMAL_ESSENCE}",
                 disabled=(not ess_unlocked or pts < self._ESS_COST),
                 row=2,
             )
@@ -797,7 +800,7 @@ class SlayerTreeView(BaseView):
             btn_heart = ui.Button(
                 label=f"Buy Heart ({self._HEART_COST} pts)",
                 style=ButtonStyle.danger,
-                emoji="❤️",
+                emoji=f"{ENGORGED_HEART}",
                 disabled=(not heart_unlocked or pts < self._HEART_COST),
                 row=2,
             )

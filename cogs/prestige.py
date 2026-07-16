@@ -6,19 +6,21 @@ import urllib.request
 import discord
 from discord import ButtonStyle, app_commands, ui
 from discord.ext import commands
+
 from core.base_view import BaseView
 from core.character.prestige_display import format_prestige_name
 from core.emojis import EMBLEM_CATALOG
 from core.first_use import TutorialGateView
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
+    DEFAULT_SILHOUETTE,
     ELIZA_PORTRAIT,
     ELIZA_THUMBNAIL,
-    PRESTIGE_HALL,
-    PRESTIGE_AVATARS_MALE,
     PRESTIGE_AVATARS_FEMALE,
     PRESTIGE_AVATARS_FEMALE_SS,
+    PRESTIGE_AVATARS_MALE,
     PRESTIGE_AVATARS_MALE_SS,
+    PRESTIGE_HALL,
 )
 from core.npc_voices import get_quip
 
@@ -71,18 +73,42 @@ PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
             "label": "Seraph Warrior",
             "url": PRESTIGE_AVATARS_FEMALE["warriorangel"],
         },
-        "aurora": {"label": "Aurora Enchantress", "url": PRESTIGE_AVATARS_FEMALE["aurora"]},
-        "butterfly": {"label": "Butterfly Spirit", "url": PRESTIGE_AVATARS_FEMALE["butterfly"]},
+        "aurora": {
+            "label": "Aurora Enchantress",
+            "url": PRESTIGE_AVATARS_FEMALE["aurora"],
+        },
+        "butterfly": {
+            "label": "Butterfly Spirit",
+            "url": PRESTIGE_AVATARS_FEMALE["butterfly"],
+        },
         "cosmos": {"label": "Cosmic Weaver", "url": PRESTIGE_AVATARS_FEMALE["cosmos"]},
-        "fire_magic": {"label": "Flame Conjurer", "url": PRESTIGE_AVATARS_FEMALE["fire_magic"]},
-        "frostfire": {"label": "Frostfire Mage", "url": PRESTIGE_AVATARS_FEMALE["frostfire"]},
+        "fire_magic": {
+            "label": "Flame Conjurer",
+            "url": PRESTIGE_AVATARS_FEMALE["fire_magic"],
+        },
+        "frostfire": {
+            "label": "Frostfire Mage",
+            "url": PRESTIGE_AVATARS_FEMALE["frostfire"],
+        },
         "ice": {"label": "Frost Maiden", "url": PRESTIGE_AVATARS_FEMALE["ice"]},
         "mirrors": {"label": "Mirror Mage", "url": PRESTIGE_AVATARS_FEMALE["mirrors"]},
-        "panther": {"label": "Panther Stalker", "url": PRESTIGE_AVATARS_FEMALE["panther"]},
-        "pearl": {"label": "Pearl Enchantress", "url": PRESTIGE_AVATARS_FEMALE["pearl"]},
+        "panther": {
+            "label": "Panther Stalker",
+            "url": PRESTIGE_AVATARS_FEMALE["panther"],
+        },
+        "pearl": {
+            "label": "Pearl Enchantress",
+            "url": PRESTIGE_AVATARS_FEMALE["pearl"],
+        },
         "petals": {"label": "Petal Dancer", "url": PRESTIGE_AVATARS_FEMALE["petals"]},
-        "voidsong": {"label": "Voidsong Mystic", "url": PRESTIGE_AVATARS_FEMALE["voidsong"]},
-        "water_magic": {"label": "Tide Conjurer", "url": PRESTIGE_AVATARS_FEMALE["water_magic"]},
+        "voidsong": {
+            "label": "Voidsong Mystic",
+            "url": PRESTIGE_AVATARS_FEMALE["voidsong"],
+        },
+        "water_magic": {
+            "label": "Tide Conjurer",
+            "url": PRESTIGE_AVATARS_FEMALE["water_magic"],
+        },
     },
     "female_ss": {
         "bride": {"label": "Eternal Bride", "url": PRESTIGE_AVATARS_FEMALE_SS["bride"]},
@@ -138,8 +164,14 @@ PRESTIGE_AVATAR_CATALOG: dict[str, dict[str, dict]] = {
             "label": "Samurai Lord",
             "url": PRESTIGE_AVATARS_MALE_SS["samurai_lord"],
         },
-        "diamond": {"label": "Diamond Sovereign", "url": PRESTIGE_AVATARS_MALE_SS["diamond"]},
-        "lightning": {"label": "Lightning Sovereign", "url": PRESTIGE_AVATARS_MALE_SS["lightning"]},
+        "diamond": {
+            "label": "Diamond Sovereign",
+            "url": PRESTIGE_AVATARS_MALE_SS["diamond"],
+        },
+        "lightning": {
+            "label": "Lightning Sovereign",
+            "url": PRESTIGE_AVATARS_MALE_SS["lightning"],
+        },
     },
 }
 
@@ -190,8 +222,10 @@ async def _validate_avatar_url(url: str) -> tuple[bool, str]:
                 if not ct.startswith("image/"):
                     return (
                         False,
-                        "URL must point to a direct image file (jpg, png, gif, webp).",
+                        "URL must point to a direct image file (jpg, png, webp).",
                     )
+                if ct == "image/gif":
+                    return False, "GIFs aren't allowed for custom avatars — use a static image."
                 data = resp.read(4 * 1024 * 1024)  # 4 MB cap
         except Exception as exc:
             return False, f"Could not fetch the URL: {exc}"
@@ -200,6 +234,10 @@ async def _validate_avatar_url(url: str) -> tuple[bool, str]:
             from PIL import Image
 
             img = Image.open(io.BytesIO(data))
+            # Content-Type can lie (or be missing/generic) — confirm via the
+            # decoded format too, and reject multi-frame images either way.
+            if img.format == "GIF" or getattr(img, "is_animated", False):
+                return False, "GIFs aren't allowed for custom avatars — use a static image."
             w, h = img.size
             if w != h:
                 return False, f"Image must be square (1:1 ratio). Got {w}×{h}."
@@ -267,6 +305,7 @@ class AvatarGalleryView(BaseView):
         super().__init__(bot, parent=parent)
         self.hub_view = parent
         self.owned_avatars: list[str] = []
+        self.current_appearance = ""
         self.tier = "male"
         self.index = 0
 
@@ -274,6 +313,8 @@ class AvatarGalleryView(BaseView):
         self.owned_avatars = await self.bot.database.prestige.get_owned(
             self.user_id, "avatar"
         )
+        user = await self.bot.database.users.get(self.user_id, self.server_id)
+        self.current_appearance = user["appearance"] if user else ""
         self._rebuild()
 
     def _tier_ids(self) -> list[str]:
@@ -287,14 +328,19 @@ class AvatarGalleryView(BaseView):
         avatar_id, info = self._current()
         price = AVATAR_TIER_PRICES[self.tier]
         owned = f"{self.tier}:{avatar_id}" in self.owned_avatars
+        is_equipped = info["url"] == self.current_appearance
         ids = self._tier_ids()
+
+        if is_equipped:
+            status_line = "**Currently equipped**"
+        elif owned:
+            status_line = "Owned — free to equip"
+        else:
+            status_line = f"**{price:,}g**"
 
         embed = discord.Embed(
             title=info["label"],
-            description=(
-                f"**Tier {AVATAR_TIER_LABELS[self.tier]}**\n"
-                + ("Owned — free to equip" if owned else f"**{price:,}g**")
-            ),
+            description=f"**Tier {AVATAR_TIER_LABELS[self.tier]}**\n{status_line}",
             color=DEFAULT_COLOR,
         )
         embed.set_author(name="Eliza", icon_url=ELIZA_PORTRAIT)
@@ -328,11 +374,14 @@ class AvatarGalleryView(BaseView):
         avatar_id, info = self._current()
         price = AVATAR_TIER_PRICES[self.tier]
         owned = f"{self.tier}:{avatar_id}" in self.owned_avatars
-        buy_btn = ui.Button(
-            label="Equip" if owned else f"Buy & Equip — {price:,}g",
-            style=ButtonStyle.success if owned else ButtonStyle.primary,
-            row=1,
-        )
+        is_equipped = info["url"] == self.current_appearance
+        if is_equipped:
+            buy_label, buy_style = "Unequip", ButtonStyle.danger
+        elif owned:
+            buy_label, buy_style = "Equip", ButtonStyle.success
+        else:
+            buy_label, buy_style = f"Buy & Equip — {price:,}g", ButtonStyle.primary
+        buy_btn = ui.Button(label=buy_label, style=buy_style, row=1)
         buy_btn.callback = self._handle_buy
         self.add_item(buy_btn)
 
@@ -393,6 +442,29 @@ class AvatarGalleryView(BaseView):
         item_key = f"{self.tier}:{avatar_id}"
         price = AVATAR_TIER_PRICES[self.tier]
         owned = item_key in self.owned_avatars
+        is_equipped = info["url"] == self.current_appearance
+
+        if is_equipped:
+            # Unequip: restore whatever the player was wearing before their
+            # first-ever prestige avatar equip, falling back to the default
+            # silhouette if no such snapshot exists (pre-feature accounts).
+            original = await self.bot.database.prestige.get_owned(
+                self.user_id, "original_appearance"
+            )
+            revert_url = original[0] if original else DEFAULT_SILHOUETTE
+            await self.bot.database.users.update_appearance(self.user_id, revert_url)
+            self.current_appearance = revert_url
+            self._rebuild()
+            await interaction.response.defer()
+            await interaction.edit_original_response(
+                embed=self.build_embed(), view=self, content="Avatar unequipped."
+            )
+            await asyncio.sleep(3)
+            try:
+                await interaction.edit_original_response(content=None)
+            except Exception:
+                pass
+            return
 
         if not owned:
             gold = await self.bot.database.users.get_gold(self.user_id)
@@ -406,7 +478,22 @@ class AvatarGalleryView(BaseView):
             self.owned_avatars.append(item_key)
             await hof_triggers.check_looksmaxxer(self.bot, self.user_id)
 
+        # Snapshot the player's pre-prestige look once, the first time they
+        # ever equip a preset, so a later Unequip has something to restore.
+        if (
+            self.current_appearance
+            and _avatar_label_for_url(self.current_appearance) is None
+        ):
+            existing = await self.bot.database.prestige.get_owned(
+                self.user_id, "original_appearance"
+            )
+            if not existing:
+                await self.bot.database.prestige.add_owned(
+                    self.user_id, "original_appearance", self.current_appearance
+                )
+
         await self.bot.database.users.update_appearance(self.user_id, info["url"])
+        self.current_appearance = info["url"]
         self._rebuild()
 
         suffix = f" (-{price:,}g)" if not owned else " (free)"
@@ -477,15 +564,16 @@ class EmblemGalleryView(BaseView):
         page_keys = self._page_keys()
         options = []
         for key in page_keys:
-            label, _emoji = EMBLEM_CATALOG[key]
+            label, emoji = EMBLEM_CATALOG[key]
             owned = key in self.owned_emblems
             options.append(
                 discord.SelectOption(
                     label=label,
                     value=key,
-                    description="Owned — free to equip"
-                    if owned
-                    else f"{EMBLEM_COST:,}g",
+                    emoji=emoji,
+                    description=(
+                        "Owned — free to equip" if owned else f"{EMBLEM_COST:,}g"
+                    ),
                     default=(key == self.active_emblem),
                 )
             )
@@ -561,8 +649,36 @@ class EmblemGalleryView(BaseView):
 
     async def _handle_select(self, interaction: discord.Interaction) -> None:
         key = interaction.data["values"][0]
-        label, emoji = EMBLEM_CATALOG[key]
-        owned = key in self.owned_emblems
+        view = EmblemConfirmView(self.bot, self, key)
+        await interaction.response.edit_message(embed=view.build_embed(), view=view)
+        view.message = await interaction.original_response()
+
+
+class EmblemConfirmView(BaseView):
+    """Confirm/cancel step shown after picking an emblem from the select
+    menu, previewing the emoji before any gold is spent."""
+
+    def __init__(self, bot, gallery_view: "EmblemGalleryView", key: str):
+        super().__init__(bot, parent=gallery_view)
+        self.gallery_view = gallery_view
+        self.key = key
+
+    def build_embed(self) -> discord.Embed:
+        label, emoji = EMBLEM_CATALOG[self.key]
+        owned = self.key in self.gallery_view.owned_emblems
+        embed = discord.Embed(title="Confirm Emblem", color=DEFAULT_COLOR)
+        embed.set_author(name="Eliza", icon_url=ELIZA_PORTRAIT)
+        embed.description = f"# {emoji}\n**{label}**\n\n" + (
+            "Owned — free to equip." if owned else f"Cost: **{EMBLEM_COST:,}g**"
+        )
+        return embed
+
+    @ui.button(label="Confirm", style=ButtonStyle.success, emoji="✅")
+    async def confirm(
+        self, interaction: discord.Interaction, button: ui.Button
+    ) -> None:
+        label, emoji = EMBLEM_CATALOG[self.key]
+        owned = self.key in self.gallery_view.owned_emblems
 
         if not owned:
             gold = await self.bot.database.users.get_gold(self.user_id)
@@ -572,25 +688,34 @@ class EmblemGalleryView(BaseView):
                     ephemeral=True,
                 )
             await self.bot.database.users.modify_gold(self.user_id, -EMBLEM_COST)
-            await self.bot.database.prestige.add_owned(self.user_id, "emblem", key)
-            self.owned_emblems.append(key)
+            await self.bot.database.prestige.add_owned(self.user_id, "emblem", self.key)
+            self.gallery_view.owned_emblems.append(self.key)
 
-        await self.bot.database.prestige.set_field(self.user_id, "prestige_emblem", key)
-        self.active_emblem = key
-        self._rebuild()
+        await self.bot.database.prestige.set_field(
+            self.user_id, "prestige_emblem", self.key
+        )
+        self.gallery_view.active_emblem = self.key
+        self.gallery_view._rebuild()
 
         suffix = f" (-{EMBLEM_COST:,}g)" if not owned else " (free)"
-        await interaction.response.defer()
-        await interaction.edit_original_response(
-            embed=self.build_embed(),
-            view=self,
+        await interaction.response.edit_message(
+            embed=self.gallery_view.build_embed(),
+            view=self.gallery_view,
             content=f"Emblem **{emoji} {label}** equipped.{suffix}",
         )
+        self.gallery_view.message = await interaction.original_response()
         await asyncio.sleep(3)
         try:
             await interaction.edit_original_response(content=None)
         except Exception:
             pass
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="✖️")
+    async def cancel(self, interaction: discord.Interaction, button: ui.Button) -> None:
+        await interaction.response.edit_message(
+            embed=self.gallery_view.build_embed(), view=self.gallery_view
+        )
+        self.gallery_view.message = await interaction.original_response()
 
 
 # ---------------------------------------------------------------------------
@@ -614,11 +739,10 @@ class TitleModal(discord.ui.Modal, title="Set Prestige Title"):
         self.hub_view = hub_view
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=True)
         text = self.title_input.value.strip()
 
         if not _TITLE_RE.match(text):
-            return await interaction.followup.send(
+            return await interaction.response.send_message(
                 "Titles may only contain letters (A-Z) and numbers (0-9), up to 10 characters.",
                 ephemeral=True,
             )
@@ -639,27 +763,20 @@ class TitleModal(discord.ui.Modal, title="Set Prestige Title"):
             color=DEFAULT_COLOR,
         )
         embed.set_author(name="Eliza", icon_url=ELIZA_PORTRAIT)
-        view = TitlePreviewView(
-            self.bot, self.user_id, self.server_id, text, self.hub_view
-        )
-        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        view = TitlePreviewView(self.bot, self.hub_view, text)
+        await interaction.response.edit_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
 
 class TitlePreviewView(BaseView):
-    """Ephemeral confirm/cancel view shown after a title is typed, previewing
-    the final display name before any gold is spent."""
+    """Confirm/cancel step shown after a title is typed, previewing the
+    final display name before any gold is spent. Edits the hub's own
+    message in place so the flow never leaves a dangling view behind."""
 
-    def __init__(
-        self,
-        bot,
-        user_id: str,
-        server_id: str,
-        title_text: str,
-        hub_view: "PrestigeHubView",
-    ):
-        super().__init__(bot, user_id, server_id)
-        self.title_text = title_text
+    def __init__(self, bot, hub_view: "PrestigeHubView", title_text: str):
+        super().__init__(bot, parent=hub_view)
         self.hub_view = hub_view
+        self.title_text = title_text
 
     @ui.button(label="Confirm", style=ButtonStyle.success, emoji="✅")
     async def confirm(
@@ -667,27 +784,43 @@ class TitlePreviewView(BaseView):
     ) -> None:
         gold = await self.bot.database.users.get_gold(self.user_id)
         if gold < TITLE_COST:
-            return await interaction.response.edit_message(
-                content=f"You need **{TITLE_COST:,}g** for a title. You have **{gold:,}g**.",
-                embed=None,
-                view=None,
+            return await interaction.response.send_message(
+                f"You need **{TITLE_COST:,}g** for a title. You have **{gold:,}g**.",
+                ephemeral=True,
             )
         await self.bot.database.users.modify_gold(self.user_id, -TITLE_COST)
         await self.bot.database.prestige.set_field(
             self.user_id, "prestige_title", self.title_text
         )
-        await interaction.response.edit_message(
-            content=f"Title set to **{self.title_text}**! (-{TITLE_COST:,}g)",
-            embed=None,
-            view=None,
+
+        await self.hub_view.refresh()
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
         )
-        await self.hub_view.refresh_and_sync()
+        self.hub_view.active_tab = "overview"
+        self.hub_view._rebuild()
+        await interaction.response.edit_message(
+            embed=embed,
+            view=self.hub_view,
+            content=f"Title set to **{self.title_text}**! (-{TITLE_COST:,}g)",
+        )
+        self.hub_view.message = await interaction.original_response()
+        await asyncio.sleep(3)
+        try:
+            await interaction.edit_original_response(content=None)
+        except Exception:
+            pass
 
     @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="✖️")
     async def cancel(self, interaction: discord.Interaction, button: ui.Button) -> None:
-        await interaction.response.edit_message(
-            content="Title purchase cancelled.", embed=None, view=None
+        await self.hub_view.refresh()
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
         )
+        self.hub_view.active_tab = "overview"
+        self.hub_view._rebuild()
+        await interaction.response.edit_message(embed=embed, view=self.hub_view)
+        self.hub_view.message = await interaction.original_response()
 
 
 class RenameModal(discord.ui.Modal, title="Rename Character"):
@@ -703,33 +836,84 @@ class RenameModal(discord.ui.Modal, title="Rename Character"):
         bot,
         user_id: str,
         server_id: str,
-        current_gold: int,
         hub_view: "PrestigeHubView",
     ):
         super().__init__()
         self.bot = bot
         self.user_id = user_id
         self.server_id = server_id
-        self.current_gold = current_gold
         self.hub_view = hub_view
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         name = self.new_name.value.strip()
-        if self.current_gold < RENAME_COST:
+        gold = await self.bot.database.users.get_gold(self.user_id)
+
+        embed = discord.Embed(
+            title="Confirm Rename",
+            description=(
+                f"**Preview:** {name}\n\n"
+                f"Cost: **{RENAME_COST:,}g**\nYour gold: **{gold:,}g**"
+            ),
+            color=DEFAULT_COLOR,
+        )
+        embed.set_author(name="Eliza", icon_url=ELIZA_PORTRAIT)
+        view = RenamePreviewView(self.bot, self.hub_view, name)
+        await interaction.response.edit_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
+
+class RenamePreviewView(BaseView):
+    """Confirm/cancel step shown after a new name is typed, previewing it
+    before any gold is spent. Edits the hub's own message in place."""
+
+    def __init__(self, bot, hub_view: "PrestigeHubView", new_name: str):
+        super().__init__(bot, parent=hub_view)
+        self.hub_view = hub_view
+        self.new_name = new_name
+
+    @ui.button(label="Confirm", style=ButtonStyle.success, emoji="✅")
+    async def confirm(
+        self, interaction: discord.Interaction, button: ui.Button
+    ) -> None:
+        gold = await self.bot.database.users.get_gold(self.user_id)
+        if gold < RENAME_COST:
             return await interaction.response.send_message(
-                f"You need **{RENAME_COST:,}g** to rename. You have **{self.current_gold:,}g**.",
+                f"You need **{RENAME_COST:,}g** to rename. You have **{gold:,}g**.",
                 ephemeral=True,
             )
         await self.bot.database.users.modify_gold(self.user_id, -RENAME_COST)
         await self.bot.database.prestige.set_field(
-            self.user_id, "prestige_display_name", name
+            self.user_id, "prestige_display_name", self.new_name
         )
 
-        await interaction.response.send_message(
-            f"Your name has been changed to **{name}**. (-{RENAME_COST:,}g)",
-            ephemeral=True,
+        await self.hub_view.refresh()
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
         )
-        await self.hub_view.refresh_and_sync()
+        self.hub_view.active_tab = "overview"
+        self.hub_view._rebuild()
+        await interaction.response.edit_message(
+            embed=embed,
+            view=self.hub_view,
+            content=f"Your name has been changed to **{self.new_name}**. (-{RENAME_COST:,}g)",
+        )
+        self.hub_view.message = await interaction.original_response()
+        await asyncio.sleep(3)
+        try:
+            await interaction.edit_original_response(content=None)
+        except Exception:
+            pass
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="✖️")
+    async def cancel(self, interaction: discord.Interaction, button: ui.Button) -> None:
+        await self.hub_view.refresh()
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
+        )
+        self.hub_view.active_tab = "overview"
+        self.hub_view._rebuild()
+        await interaction.response.edit_message(embed=embed, view=self.hub_view)
+        self.hub_view.message = await interaction.original_response()
 
 
 class MonumentModal(discord.ui.Modal, title="Set Monument Quote"):
@@ -744,38 +928,105 @@ class MonumentModal(discord.ui.Modal, title="Set Monument Quote"):
         self,
         bot,
         user_id: str,
-        current_gold: int,
         already_owned: bool,
         hub_view: "PrestigeHubView",
     ):
         super().__init__()
         self.bot = bot
         self.user_id = user_id
-        self.current_gold = current_gold
         self.already_owned = already_owned
         self.hub_view = hub_view
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
+        quote_text = self.quote.value.strip()
         cost = 0 if self.already_owned else MONUMENT_COST
-        if cost > 0 and self.current_gold < cost:
-            return await interaction.response.send_message(
-                f"You need **{cost:,}g** for a monument slot. You have **{self.current_gold:,}g**.",
-                ephemeral=True,
-            )
-        if not self.already_owned:
+        gold = await self.bot.database.users.get_gold(self.user_id)
+
+        embed = discord.Embed(
+            title="Confirm Monument Quote",
+            description=(
+                f'*"{quote_text}"*\n\n'
+                + (
+                    f"Cost: **{cost:,}g**\nYour gold: **{gold:,}g**"
+                    if cost
+                    else "Free update — you already own a monument slot."
+                )
+            ),
+            color=DEFAULT_COLOR,
+        )
+        embed.set_author(name="Eliza", icon_url=ELIZA_PORTRAIT)
+        view = MonumentPreviewView(
+            self.bot, self.hub_view, quote_text, self.already_owned
+        )
+        await interaction.response.edit_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
+
+
+class MonumentPreviewView(BaseView):
+    """Confirm/cancel step shown after a monument quote is typed, previewing
+    it before any gold is spent. Edits the hub's own message in place."""
+
+    def __init__(
+        self,
+        bot,
+        hub_view: "PrestigeHubView",
+        quote_text: str,
+        already_owned: bool,
+    ):
+        super().__init__(bot, parent=hub_view)
+        self.hub_view = hub_view
+        self.quote_text = quote_text
+        self.already_owned = already_owned
+
+    @ui.button(label="Confirm", style=ButtonStyle.success, emoji="✅")
+    async def confirm(
+        self, interaction: discord.Interaction, button: ui.Button
+    ) -> None:
+        cost = 0 if self.already_owned else MONUMENT_COST
+        if cost:
+            gold = await self.bot.database.users.get_gold(self.user_id)
+            if gold < cost:
+                return await interaction.response.send_message(
+                    f"You need **{cost:,}g** for a monument slot. You have **{gold:,}g**.",
+                    ephemeral=True,
+                )
             await self.bot.database.users.modify_gold(self.user_id, -cost)
             await self.bot.database.prestige.add_owned(
                 self.user_id, "monument", "unlocked"
             )
         await self.bot.database.prestige.set_field(
-            self.user_id, "prestige_monument", self.quote.value.strip()
+            self.user_id, "prestige_monument", self.quote_text
         )
 
-        suffix = f" (-{cost:,}g)" if cost else ""
-        await interaction.response.send_message(
-            f"Monument quote updated.{suffix}", ephemeral=True
+        await self.hub_view.refresh()
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
         )
-        await self.hub_view.refresh_and_sync()
+        self.hub_view.active_tab = "overview"
+        self.hub_view._rebuild()
+        suffix = f" (-{cost:,}g)" if cost else ""
+        await interaction.response.edit_message(
+            embed=embed,
+            view=self.hub_view,
+            content=f"Monument quote updated.{suffix}",
+        )
+        self.hub_view.message = await interaction.original_response()
+        await asyncio.sleep(3)
+        try:
+            await interaction.edit_original_response(content=None)
+        except Exception:
+            pass
+
+    @ui.button(label="Cancel", style=ButtonStyle.secondary, emoji="✖️")
+    async def cancel(self, interaction: discord.Interaction, button: ui.Button) -> None:
+        await self.hub_view.refresh()
+        embed = await PrestigeBuilder.build_overview(
+            self.bot, self.user_id, self.server_id
+        )
+        self.hub_view.active_tab = "overview"
+        self.hub_view._rebuild()
+        await interaction.response.edit_message(embed=embed, view=self.hub_view)
+        self.hub_view.message = await interaction.original_response()
 
 
 # ---------------------------------------------------------------------------
@@ -875,7 +1126,7 @@ class PrestigeBuilder:
     @staticmethod
     async def build_hall(bot, server_id: str) -> discord.Embed:
         rows = await bot.database.prestige.get_monument_hall(server_id)
-        embed = discord.Embed(title="Hall of Fame", color=DEFAULT_COLOR)
+        embed = discord.Embed(title="Hall of Monuments", color=DEFAULT_COLOR)
         embed.set_author(name="Eliza", icon_url=ELIZA_PORTRAIT)
         embed.set_thumbnail(url=PRESTIGE_HALL)
         if not rows:
@@ -954,7 +1205,7 @@ class PrestigeHubView(BaseView):
         for tab_id, label in [
             ("overview", "Overview"),
             ("prices", "Prices"),
-            ("hall", "Hall of Fame"),
+            ("hall", "Hall of Monuments"),
         ]:
             style = (
                 ButtonStyle.primary
@@ -1030,7 +1281,7 @@ class PrestigeHubView(BaseView):
 
     async def _handle_rename(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(
-            RenameModal(self.bot, self.user_id, self.server_id, self.gold, self)
+            RenameModal(self.bot, self.user_id, self.server_id, self)
         )
 
     async def _handle_monument(self, interaction: discord.Interaction) -> None:
@@ -1038,7 +1289,7 @@ class PrestigeHubView(BaseView):
             self.user_id, "monument", "unlocked"
         )
         await interaction.response.send_modal(
-            MonumentModal(self.bot, self.user_id, self.gold, already_owned, self)
+            MonumentModal(self.bot, self.user_id, already_owned, self)
         )
 
     async def _handle_hall_of_firsts(self, interaction: discord.Interaction) -> None:

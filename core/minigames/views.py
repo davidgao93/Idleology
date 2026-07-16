@@ -6,7 +6,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button, Modal, TextInput
 
 from core.base_view import BaseView
-from core.emojis import GOLD_COIN, QUEST_COMPLETE
+from core.emojis import DODGE_EVASION, GOLD_COIN, QUEST_COMPLETE, STAT_ATK
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import CASINO_AUTHOR, TAVERN_CASINO
 from core.npc_voices import get_quip
@@ -1564,10 +1564,12 @@ class OneVOneView(BaseView):
         # The opponent never eats — it always swings, no matter its own HP.
         missed, dmg = self._resolve_attack(self.opponent_hp)
         if missed:
-            logs.append(f"💨 **{self.OPPONENT_NAME}** swings and misses!")
+            logs.append(f"{DODGE_EVASION} **{self.OPPONENT_NAME}** swings and misses!")
         else:
             self.player_hp = max(0, self.player_hp - dmg)
-            logs.append(f"🩸 **{self.OPPONENT_NAME}** hits you for **{dmg}** damage!")
+            logs.append(
+                f"{STAT_ATK} **{self.OPPONENT_NAME}** hits you for **{dmg}** damage!"
+            )
 
         self.log = "\n".join(logs)
 

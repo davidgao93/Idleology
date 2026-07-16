@@ -9,10 +9,10 @@ from core.base_view import BaseView
 from core.companions.mechanics import CompanionMechanics
 from core.emojis import (
     CELESTIAL_ENGRAM,
+    ESSENCE_CORRUPT,
     GEAR_ENCHANT,
     GEAR_REINFORCE,
     INFERNAL_ENGRAM,
-    RUNE_GENERIC,
     RUNE_IMBUE,
     RUNE_MIRAGE_PERFECT,
     RUNE_REFINEMENT,
@@ -24,9 +24,6 @@ from core.emojis import (
 )
 from core.images import VEYRA_AUTHOR
 from core.inventory.inventory import InventoryUI
-from core.inventory.views._slot_defs import SLOT_EMOJIS
-from core.items.equipment_mechanics import EquipmentMechanics
-from core.items.essence_mechanics import get_essence_slots
 from core.inventory.upgrades import (
     EngramView,
     ForgeView,
@@ -40,6 +37,9 @@ from core.inventory.upgrades import (
     VoidEngramView,
     VoidforgeView,
 )
+from core.inventory.views._slot_defs import SLOT_EMOJIS
+from core.items.equipment_mechanics import EquipmentMechanics
+from core.items.essence_mechanics import get_essence_slots
 
 # Core Imports
 from core.models import Accessory, Armor, Boot, Glove, Helmet, Weapon
@@ -143,7 +143,7 @@ class ItemDetailView(BaseView):
         elif isinstance(self.item, Armor):
             if self.item.temper_remaining > 0:
                 self.add_upgrade_button(
-                    "Temper", ButtonStyle.success, "temper", emoji=RUNE_GENERIC
+                    "Temper", ButtonStyle.success, "temper", emoji=WEAPON_FORGE
                 )
             if self.item.imbue_remaining > 0 and self.item.passive == "none":
                 self.add_upgrade_button(
@@ -353,7 +353,7 @@ class ItemDetailView(BaseView):
             corrupted = getattr(self.item, "corrupted_essence", "none") or "none"
             if corrupted != "none":
                 c_name, c_emoji = ESSENCE_DISPLAY.get(
-                    corrupted, (corrupted.title(), "💠")
+                    corrupted, (corrupted.title(), f"{ESSENCE_CORRUPT}")
                 )
                 lines.append(f"{c_emoji} {c_name} *(corrupted)*")
             if lines:

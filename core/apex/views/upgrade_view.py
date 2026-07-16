@@ -16,7 +16,13 @@ from core.apex.data import PASSIVE_SHARD_MAP, UPGRADE_COSTS
 from core.apex.mechanics import ApexMechanics
 from core.apex.models import MetaShardInventory, ShardInventory, SoulStone
 from core.base_view import BaseView
-from core.emojis import APEX_SHARD_EMOJI, CONDENSED_BLOOD, ENGORGED_HEART, RIFT_SHARD
+from core.emojis import (
+    APEX_SHARD_EMOJI,
+    CONDENSED_BLOOD,
+    ENGORGED_HEART,
+    RIFT_SHARD,
+    SOUL_FRAGMENT,
+)
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import APEX_UPGRADE
 
@@ -194,7 +200,7 @@ class UpgradeView(BaseView):
         embed.set_thumbnail(url=APEX_UPGRADE)
 
         # Cost
-        shard_emoji = APEX_SHARD_EMOJI.get(shard_type, "🔮")
+        shard_emoji = APEX_SHARD_EMOJI.get(shard_type, f"{SOUL_FRAGMENT}")
         cost_lines = [
             f"{shard_emoji} {matching_cost}x {shard_type.title()} Shard (have: **{have_matching}**)"
         ]
@@ -212,7 +218,9 @@ class UpgradeView(BaseView):
             f"⏺️ Stay (T{slot.tier}): **{stay}%**",
         ]
         if down > 0:
-            outcome_lines.append(f"⬇️ Downgrade (T{max(1, slot.tier - 1)}): **{down}%**")
+            outcome_lines.append(
+                f"⬇️ Downgrade (T{max(1, slot.tier - 1)}): **{down}%**"
+            )
         embed.add_field(
             name="📊 Outcomes", value="\n".join(outcome_lines), inline=False
         )
@@ -412,7 +420,7 @@ class UpgradeView(BaseView):
                 slot.tier, heart, blood
             )
 
-            cost_str = f"{APEX_SHARD_EMOJI.get(shard_type, '🔮')} {matching_cost}x {shard_type.title()}"
+            cost_str = f"{APEX_SHARD_EMOJI.get(shard_type, f'{SOUL_FRAGMENT}')} {matching_cost}x {shard_type.title()}"
             if rift_cost > 0:
                 cost_str += f" + {RIFT_SHARD} {rift_cost}x Rift"
             have_matching = self.shards.get(shard_type)
@@ -443,7 +451,7 @@ class UpgradeView(BaseView):
                     f"{CONDENSED_BLOOD} Condensed Blood (have {self.meta.condensed_blood}) — No downgrade on failure"
                 )
             embed.add_field(
-                name="🔮 Active Meta Bonuses",
+                name="Active Meta Bonuses",
                 value="\n".join(meta_lines),
                 inline=False,
             )

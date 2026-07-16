@@ -36,11 +36,24 @@ from core.emojis import (
     CELESTIAL_ENGRAM,
     CRIT_MULTI,
     DODGE_EVASION,
+    ESSENCE_COMMON,
+    ESSENCE_CORRUPT,
     GLOVE_SLOT,
     HELMET_SLOT,
     HEMATURGY_ICON,
     INFERNAL_ENGRAM,
+    JEWEL_ACRIMONY,
+    JEWEL_BASTION,
+    JEWEL_CATACLYSM,
+    JEWEL_DRAUGHT,
+    JEWEL_ONSLAUGHT,
+    JEWEL_SIPHON,
+    JEWEL_SURGE,
+    JEWEL_WARDFORGE,
+    PARADISE_JEWEL_UNCUT,
     STAT_BLOCK,
+    STAT_HP,
+    UBER_EMOJI,
     VOID_ENGRAM,
     WEAPON_SLOT,
 )
@@ -111,7 +124,7 @@ class ModDetailsMonsterView(BaseView):
 
         intro = "Higher monster levels unlock higher tiers."
         embed = discord.Embed(
-            title=f"👹 Monster Modifiers — {title}",
+            title=f"{UBER_EMOJI} Monster Modifiers — {title}",
             color=discord.Color.blue() if "Common" in title else discord.Color.purple(),
         )
 
@@ -441,12 +454,12 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == "essence":
-            embed.title = "💎 Essence Details"
+            embed.title = f"{ESSENCE_COMMON} Essence Details"
             _deity_display = {
-                "aphrodite": "💠 Essence of Aphrodite's Disciple",
-                "lucifer": "💠 Essence of Lucifer's Heir",
-                "gemini": "💠 Essence of Gemini's Lost Twin",
-                "neet": "💠 Essence of NEET's Voidling",
+                "aphrodite": f"{ESSENCE_CORRUPT} Essence of Aphrodite's Disciple",
+                "lucifer": f"{ESSENCE_CORRUPT} Essence of Lucifer's Heir",
+                "gemini": f"{ESSENCE_CORRUPT} Essence of Gemini's Lost Twin",
+                "neet": f"{ESSENCE_CORRUPT} Essence of NEET's Voidling",
             }
             corrupted_lines = ["**— Corrupted Essences (permanent) —**\n"]
             for deity in _deity_display:
@@ -486,7 +499,7 @@ class General(commands.Cog, name="general"):
                 "**🎯 Essence of Precision**\n"
                 "Grants a flat hit chance bonus. "
                 "Rolls **+1–8%** Hit Chance.\n\n"
-                "**🩸 Essence of Gluttony**\n"
+                f"**{STAT_HP} Essence of Gluttony**\n"
                 "Increases max HP by a percentage. "
                 "Rolls **+1–8%** Max HP.\n\n"
                 "**— Utility Essences (consumed on use) —**\n\n"
@@ -539,19 +552,19 @@ class General(commands.Cog, name="general"):
             content_added = True
 
         elif category == "paradise":
-            embed.title = "💎 Paradise Jewel Details"
+            embed.title = f"{PARADISE_JEWEL_UNCUT} Paradise Jewel Details"
             embed.description = (
                 "Each Skill Jewel charges from a specific trigger and unleashes when the charge threshold is met. "
                 "Thresholds decrease as the jewel levels up.\n"
                 "**— Skill Jewels —**\n"
-                "⚡ **Surge** — Charged by hits. Unleash deals a lightning storm of bonus ATK damage.\n"
-                "💥 **Cataclysm** — Charged by crits. Unleash primes the next attack as a guaranteed crit with a bonus crit multiplier.\n"
-                "🐍 **Acrimony** — Charged by misses. Unleash deals a venom burst (% of ATK) + 25% of that as DoT over 4 turns.\n"
-                "🛡️ **Wardforge** — Charged whenever ward is generated. Unleash grants a ward burst; the next attack gains 30% of current ward as bonus damage.\n"
-                "🔱 **Bastion** — Charged whenever you take HP damage. Unleash reflects a multiple of the triggering hit back at the monster.\n"
-                "💚 **Siphon** — Charged by HP regeneration (leech, heal, alchemy). Unleash burst-heals % of max HP; 50% of the heal becomes ward.\n"
-                "🔥 **Onslaught** — Charged each turn while HP is below 50%. Unleash gives the next attack a large ATK multiplier.\n"
-                "🧪 **Draught** — Charged by potion use. Unleash generates 0–3 potions depending on level; overflow becomes ward.\n"
+                f"{JEWEL_SURGE} **Surge** — Charged by hits. Unleash deals a lightning storm of bonus ATK damage.\n"
+                f"{JEWEL_CATACLYSM} **Cataclysm** — Charged by crits. Unleash primes the next attack as a guaranteed crit with a bonus crit multiplier.\n"
+                f"{JEWEL_ACRIMONY} **Acrimony** — Charged by misses. Unleash deals a venom burst (% of ATK) + 25% of that as DoT over 4 turns.\n"
+                f"{JEWEL_WARDFORGE} **Wardforge** — Charged whenever ward is generated. Unleash grants a ward burst; the next attack gains 30% of current ward as bonus damage.\n"
+                f"{JEWEL_BASTION} **Bastion** — Charged whenever you take HP damage. Unleash reflects a multiple of the triggering hit back at the monster.\n"
+                f"{JEWEL_SIPHON} **Siphon** — Charged by HP regeneration (leech, heal, alchemy). Unleash burst-heals % of max HP; 50% of the heal becomes ward.\n"
+                f"{JEWEL_ONSLAUGHT} **Onslaught** — Charged each turn while HP is below 50%. Unleash gives the next attack a large ATK multiplier.\n"
+                f"{JEWEL_DRAUGHT} **Draught** — Charged by potion use. Unleash generates 0–3 potions depending on level; overflow becomes ward.\n"
                 "**— Passives —**\n"
                 "**Charge:** Rapid (+% extra charge chance) · Compression (−N to all thresholds)\n"
                 "**Power:** Force (+% unleash strength) · Mirage (% chance to trigger twice) · Lingering (% chance to keep charges after unleash)\n"

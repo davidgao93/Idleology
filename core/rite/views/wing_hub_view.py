@@ -182,6 +182,64 @@ def build_rite_defeat_embed(
     return embed
 
 
+def build_wing_cleared_embed(
+    player: Player,
+    monster: Monster,
+    wing_name: str,
+    run_state: RiteRunState,
+) -> discord.Embed:
+    """Victory acknowledgment shown right after a wing boss falls, before
+    handing off to the Respite screen — mirrors the game's standard victory
+    screen (turns taken, HP remaining) so a wing clear gets a beat to land
+    on instead of an instant cut to Respite."""
+    from core.character.prestige_display import format_prestige_name
+
+    prestige_name = format_prestige_name(
+        player.name, player.prestige_title, player.prestige_emblem
+    )
+    turns = monster.combat_round
+    hp_pct = int(100 * player.current_hp / max(1, player.total_max_hp))
+    embed = discord.Embed(
+        title=f"✅ {wing_name} — Wing Cleared!",
+        description=(
+            f"{prestige_name} has slain the **{monster.name}** in "
+            f"**{turns}** turn{'s' if turns != 1 else ''}, with "
+            f"**{player.current_hp:,}**/{player.total_max_hp:,} "
+            f"❤️ ({hp_pct}%) remaining.\n\n"
+            f"**Wings cleared:** {len(run_state.wings_cleared)}/5"
+        ),
+        color=discord.Color.green(),
+    )
+    if monster.image:
+        embed.set_thumbnail(url=monster.image)
+    return embed
+
+
+class WingClearedRow(discord.ui.ActionRow["WingClearedView"]):
+    @discord.ui.button(label="Proceed", style=ButtonStyle.success, emoji="➡️")
+    async def proceed(self, interaction: Interaction, button: ui.Button):
+        if self.view._processing:
+            await interaction.response.defer()
+            return
+        self.view._processing = True
+        await self.view.on_proceed(interaction)
+
+
+class WingClearedView(BaseLayoutView):
+    """Static interstitial shown after clearing a wing, before Respite (or,
+    on the 5th wing, before the Arbiter reveal) — see build_wing_cleared_embed.
+    `on_proceed` decides where Proceed leads, since that differs between a
+    normal wing clear (-> RespiteView) and the run-completing 5th wing
+    (-> ArbiterMaterializesView)."""
+
+    def __init__(self, bot, user_id: str, server_id: str, embed: discord.Embed, on_proceed):
+        super().__init__(bot, user_id, server_id)
+        self._processing = False
+        self.on_proceed = on_proceed
+        self.add_item(combat_ui.embed_to_container(embed))
+        self.add_item(WingClearedRow())
+
+
 class RiteDefeatRow(discord.ui.ActionRow["RiteDefeatView"]):
     @discord.ui.button(label="Return to Lobby", style=ButtonStyle.secondary, emoji="↩️")
     async def return_to_lobby(self, interaction: Interaction, button: ui.Button):
@@ -553,30 +611,52 @@ class WingHubView(BaseLayoutView):
                     view.user_id, view.server_id, run_state.to_snapshot()
                 )
 
-                if run_state.is_run_complete:
-                    # Lazy import: arbiter_view (via reveal_view) imports this
-                    # module for RiteEndView, so a module-level import here
-                    # would be circular.
-                    from core.rite.views.reveal_view import ArbiterMaterializesView
-
-                    materialize = ArbiterMaterializesView(
-                        view.bot,
-                        view.user_id,
-                        view.server_id,
-                        view.player,
-                        run_state,
-                        view.monster.name,
-                    )
-                    await message.edit(embed=None, view=materialize)
-                    materialize.message = message
-                    view.stop()
-                    return
-
-                respite = RespiteView(
-                    view.bot, view.user_id, view.server_id, view.player, run_state
+                wing_name = _WING_BY_KEY[wing_key][1]
+                cleared_embed = build_wing_cleared_embed(
+                    view.player, view.monster, wing_name, run_state
                 )
-                await message.edit(view=respite)
-                respite.message = message
+                bot_, user_id_, server_id_, player_, monster_name_ = (
+                    view.bot,
+                    view.user_id,
+                    view.server_id,
+                    view.player,
+                    view.monster.name,
+                )
+
+                async def _on_proceed(interaction: Interaction):
+                    if run_state.is_run_complete:
+                        # Lazy import: arbiter_view (via reveal_view) imports
+                        # this module for RiteEndView, so a module-level
+                        # import here would be circular.
+                        from core.rite.views.reveal_view import (
+                            ArbiterMaterializesView,
+                        )
+
+                        materialize = ArbiterMaterializesView(
+                            bot_,
+                            user_id_,
+                            server_id_,
+                            player_,
+                            run_state,
+                            monster_name_,
+                        )
+                        await interaction.response.edit_message(
+                            embed=None, view=materialize
+                        )
+                        materialize.message = await interaction.original_response()
+                        return
+
+                    respite = RespiteView(
+                        bot_, user_id_, server_id_, player_, run_state
+                    )
+                    await interaction.response.edit_message(view=respite)
+                    respite.message = await interaction.original_response()
+
+                cleared_view = WingClearedView(
+                    view.bot, view.user_id, view.server_id, cleared_embed, _on_proceed
+                )
+                await message.edit(embed=None, view=cleared_view)
+                cleared_view.message = message
                 view.stop()
                 return
 

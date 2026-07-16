@@ -16,7 +16,6 @@ from core.emojis import (
 )
 from core.models import Monster, Player
 
-
 # ---------------------------------------------------------------------------
 # DEF → ATK Conversion Helper
 # ---------------------------------------------------------------------------
@@ -152,7 +151,9 @@ def _cs_gilded_hunger(player, monster):
     bonus = int(player.get_total_rarity() * 0.1)
     if bonus > 0:
         player.bonus_atk += bonus
-        return f"{INFERNAL_ENGRAM} **Gilded Hunger** devours rarity! ⚔️ +**{bonus}** ATK"
+        return (
+            f"{INFERNAL_ENGRAM} **Gilded Hunger** devours rarity! ⚔️ +**{bonus}** ATK"
+        )
 
 
 def _cs_diabolic_pact(player, monster):
@@ -272,11 +273,11 @@ def _apply_partner_combat_start(
             reduction = max(1, int(monster.effective_attack * lvl * 0.02))
             monster.flat_attack_reduction += reduction
             parts.append(
-                f"**Curse: Damage Lv.{lvl}** — {monster.name} loses **{reduction}** ATK 🩸"
+                f"**Curse: Damage Lv.{lvl}** — {monster.name} loses **{reduction}** ATK"
             )
         elif key == "co_curse_taken":
             parts.append(
-                f"**Curse: Taken Lv.{lvl}** — {monster.name} cursed! Your damage dealt is increased by {lvl * 2}% 🩸"
+                f"**Curse: Taken Lv.{lvl}** — {monster.name} cursed! Damage dealt +{lvl * 2}%"
             )
         elif key == "co_special_rarity":
             player.partner_special_rarity = lvl * 0.1
@@ -446,8 +447,8 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
 
 def _apply_soul_stone_start(player, monster) -> list[str]:
     """Applies soul stone passives that trigger once at combat start."""
-    from core.apex.mechanics import ApexMechanics
     from core.apex.data import SOUL_STONE_TIER_VALUES as _SST
+    from core.apex.mechanics import ApexMechanics
 
     log: list[str] = []
 
@@ -505,7 +506,9 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
                 amount = max(1, int(total * 0.10))
                 player.bonus_atk += amount
                 player.bonus_def += amount
-                log.append(f"🌀 **Soul Absorb T{ss_absorb}** — ⚔️/🛡️ +**{amount}** each.")
+                log.append(
+                    f"🌀 **Soul Absorb T{ss_absorb}** — ⚔️/🛡️ +**{amount}** each."
+                )
 
     # Treasure Hunter (soul stone): T1=+0.6 → T5=+3.0 special rarity
     ss_treasure = player.get_soul_stone_passive("treasure hunter")

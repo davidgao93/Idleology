@@ -31,6 +31,7 @@ explicit field resets across view files:
 from __future__ import annotations
 
 from core.combat import jewel_engine as _je
+from core.emojis import STAT_HP
 from core.models import Player
 
 
@@ -79,6 +80,6 @@ def fire_on_victory_effects(player: Player) -> list[str]:
 
     if player.get_weapon_infernal() == "soulreap":
         player.current_hp = player.total_max_hp
-        msgs.append("🩸 **Soulreap** — restored to full HP!")
+        msgs.append(f"{STAT_HP} **Soulreap** — restored to full HP!")
 
     return msgs

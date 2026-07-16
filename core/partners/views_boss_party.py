@@ -625,7 +625,7 @@ class BossPartyProgressView(BaseView):
         sigil_label = sigil_type.replace("_", " ").title()
         lines = [
             f"{GOLD_COIN} **{rewards['gold']:,}** gold",
-            f"🔮 **{sigil_count}×** {sigil_label}",
+            f"**{sigil_count}×** {sigil_label}",
         ]
         if rewards["guild_ticket"]:
             lines.append(f"{GUILD_TICKET} **1×** Guild Ticket")

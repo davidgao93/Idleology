@@ -12,7 +12,13 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import COSMIC_DUST, CORRUPTION_ENGRAM, GOLD_COIN, PARADISE_JEWEL_UNCUT
+from core.emojis import (
+    CORRUPTION_ENGRAM,
+    COSMIC_DUST,
+    GOLD_COIN,
+    PARADISE_JEWEL_UNCUT,
+    SOUL_SLOT,
+)
 from core.images import (
     MONSTER_EVELYNN_REBORN,
     SKILL_IMAGES,
@@ -172,11 +178,13 @@ def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
             )
             for i in range(slot_count)
         ]
-        embed.add_field(name="🔮 Passive Slots", value="\n".join(lines), inline=True)
+        embed.add_field(
+            name=f"{SOUL_SLOT} Passive Slots", value="\n".join(lines), inline=True
+        )
     else:
         needed = M.jewels_to_next_slot(data)
         embed.add_field(
-            name="🔮 Passive Slots",
+            name=f"{SOUL_SLOT} Passive Slots",
             value=f"*No passive slots unlocked.*\n{needed} jewel(s) needed for Slot 1.",
             inline=True,
         )
@@ -242,7 +250,9 @@ def _build_manage_skills_embed(data: dict) -> discord.Embed:
 
 
 def _build_manage_passives_embed(data: dict, dust: int) -> discord.Embed:
-    embed = discord.Embed(title="🔮 Manage Passives", color=discord.Color.blurple())
+    embed = discord.Embed(
+        title=f"{SOUL_SLOT} Manage Passives", color=discord.Color.blurple()
+    )
     embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
     slot_count = M.get_passive_slot_count(data)
     passive_slots = data.get("passive_slots", [])
@@ -342,7 +352,10 @@ class ParadiseHubView(BaseView):
         self.add_item(skills_btn)
 
         passives_btn = ui.Button(
-            label="Manage Passives", style=ButtonStyle.blurple, emoji="🔮", row=0
+            label="Manage Passives",
+            style=ButtonStyle.blurple,
+            emoji=f"{SOUL_SLOT}",
+            row=0,
         )
         passives_btn.callback = self._manage_passives_callback
         self.add_item(passives_btn)
@@ -963,13 +976,13 @@ class _PassiveInvestModal(ui.Modal):
             await pv.bot.database.paradise.save(pv.user_id, pv.data)
 
         if invested == 0:
-            result_title = "🔮 All Slots Unlocked"
+            result_title = f"{SOUL_SLOT} All Slots Unlocked"
             result_desc = "All 5 passive slots are already unlocked."
         elif any_slot_unlocked:
-            result_title = "🔮 Passive Slot Unlocked!"
+            result_title = f"{SOUL_SLOT} Passive Slot Unlocked!"
             result_desc = f"Cut **{invested}** jewel(s). {last_msg}"
         else:
-            result_title = "💎 Jewels Cut"
+            result_title = f"{PARADISE_JEWEL_UNCUT} Jewels Cut"
             result_desc = f"Cut **{invested}** jewel(s). {last_msg}"
 
         result_embed = discord.Embed(

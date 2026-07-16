@@ -15,7 +15,7 @@ from __future__ import annotations
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
-from core.emojis import RESOURCE_EMOJI
+from core.emojis import RESOURCE_EMOJI, RUNE_GENERIC
 from core.images import BLACK_MARKET_AUTHOR, SETTLEMENT_BUILDINGS
 from core.npc_voices import get_quip
 from core.settlement.constants import (
@@ -196,7 +196,7 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
     ),
     (
         "runes",
-        "🔮 Runes",
+        f"{RUNE_GENERIC} Runes",
         [
             "refinement_runes",
             "potential_runes",
@@ -673,9 +673,11 @@ class OfferBuilderView(SettlementBaseView):
         for i, (cat_id, cat_label, _) in enumerate(_BM_CATEGORIES):
             btn = ui.Button(
                 label=cat_label,
-                style=ButtonStyle.blurple
-                if cat_id == self._current_category
-                else ButtonStyle.secondary,
+                style=(
+                    ButtonStyle.blurple
+                    if cat_id == self._current_category
+                    else ButtonStyle.secondary
+                ),
                 row=1 if i < half else 2,
             )
             btn.callback = self._make_category_switch(cat_id)
