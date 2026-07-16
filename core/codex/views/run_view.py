@@ -32,6 +32,7 @@ from core.emojis import (
     CODEX_TOME_EMOJI,
     DODGE_EVASION,
     GOLD_COIN,
+    INNER_SANC,
     QUEST_COMPLETE,
     STAT_ATK,
     STAT_BLOCK,
@@ -1018,6 +1019,15 @@ class CodexRunView(BaseLayoutView):
         except Exception as e:
             print(f"[Quest tick error in codex]: {e}")
 
+        # This method is only ever reached after all 5 chapters are cleared
+        # (see call sites), so a full Codex run clear always qualifies — but
+        # ISP is a one-time reward, granted only the first time.
+        is_first_clear = not await self.bot.database.codex.has_first_clear(
+            self.user_id, self.server_id
+        )
+        if is_first_clear:
+            quest_msgs.append(f"{INNER_SANC} **First clear!** Gained **20** Inner Sanctum Points!")
+
         # Atomic: deleting the saved run is the re-entry guard — a crash
         # between granting and deleting would let the run be resumed and
         # re-completed for duplicate fragments.
@@ -1028,6 +1038,13 @@ class CodexRunView(BaseLayoutView):
             await self.bot.database.users.modify_gold(
                 self.user_id, self.cumulative_gold
             )
+            if is_first_clear:
+                await self.bot.database.codex.set_first_clear(
+                    self.user_id, self.server_id
+                )
+                await self.bot.database.inner_sanctum.add_points(
+                    self.user_id, self.server_id, 20
+                )
             await self.bot.database.codex.delete_run(self.user_id, self.server_id)
 
         exp_changes = await ExperienceManager.add_experience(

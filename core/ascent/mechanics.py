@@ -27,6 +27,15 @@ PINNACLE_REWARDS: dict[int, dict] = {
     666: {"atk_pct": 20, "def_pct": 20},
 }
 
+# Inner Sanctum Points granted alongside select pinnacle floor unlocks.
+# Floors not listed here grant 0 ISP.
+PINNACLE_ISP_REWARDS: dict[int, int] = {
+    100: 25,
+    250: 10,
+    500: 10,
+    666: 5,
+}
+
 
 class AscentMechanics:
     @staticmethod

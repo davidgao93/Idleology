@@ -545,6 +545,15 @@ CREATE TABLE IF NOT EXISTS codex_progress (
   PRIMARY KEY (user_id, chapter_id)
 );
 
+-- One-time-reward tracking, separate from the per-chapter clears/perfect_clears
+-- counters above (those increment every clear; this flag is set once).
+CREATE TABLE IF NOT EXISTS codex_progress_meta (
+  user_id          TEXT NOT NULL,
+  server_id        TEXT NOT NULL,
+  has_first_clear  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, server_id)
+);
+
 CREATE TABLE IF NOT EXISTS codex_tomes (
   user_id      TEXT NOT NULL,
   slot         INTEGER NOT NULL,

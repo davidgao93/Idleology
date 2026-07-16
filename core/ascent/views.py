@@ -4,7 +4,11 @@ import random
 import discord
 from discord import ButtonStyle, Interaction, ui
 
-from core.ascent.mechanics import PINNACLE_REWARDS, AscentMechanics
+from core.ascent.mechanics import (
+    PINNACLE_ISP_REWARDS,
+    PINNACLE_REWARDS,
+    AscentMechanics,
+)
 from core.base_layout_view import BaseLayoutView
 from core.combat import jewel_engine as _je
 from core.combat import ui as combat_ui
@@ -20,7 +24,7 @@ from core.combat.economy.loot import (
 )
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
-from core.emojis import ASCENT_EMOJI, POTION, RUNE_GENERIC
+from core.emojis import ASCENT_EMOJI, INNER_SANC, POTION, RUNE_GENERIC, SOUL_SLOT
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import VALE_PORTRAIT, VALE_THUMBNAIL
 from core.models import Monster, Player
@@ -278,7 +282,7 @@ class AscentLobbyView(BaseLayoutView):
         unlocked = self.player.ascension_unlocks
         lines = []
         for floor, _ in sorted(PINNACLE_REWARDS.items()):
-            status = "✅" if floor in unlocked else "⬜"
+            status = "✅" if floor in unlocked else f"{SOUL_SLOT}"
             lines.append(
                 f"{status} **Floor {floor}** — {AscentMechanics.pinnacle_label(floor)}"
             )
@@ -644,6 +648,15 @@ class AscentView(BaseLayoutView):
             label = AscentMechanics.pinnacle_label(floor)
             self.pinnacle_log.append(f"**Floor {floor}:** {label}")
             pinnacle_gained = label
+
+            isp_reward = PINNACLE_ISP_REWARDS.get(floor)
+            if isp_reward:
+                await self.bot.database.inner_sanctum.add_points(
+                    self.user_id, self.server_id, isp_reward
+                )
+                self.pinnacle_log.append(
+                    f"{INNER_SANC} Gained **{isp_reward}** Inner Sanctum Points!"
+                )
 
         from core.combat.turns.boundary import fire_on_victory_effects
 

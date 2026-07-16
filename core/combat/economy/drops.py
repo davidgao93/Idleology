@@ -354,13 +354,22 @@ async def apply_boss_sigil_drops(
 
     Drop formula:
       • BOSS_SIGIL_FIRST_CHANCE (50 %) for the first sigil.
-      • building_workers × SIGIL_WORKER_MULTIPLIER × shrine_eff chance for a
-        bonus second sigil, where shrine_eff (≥ 1.0) incorporates the
-        sacred_ground plot bonus (+20 %) and any adjacent Shrine Garden meta
-        building (+15 %). Pass player to apply these bonuses; omit for flat formula.
+      • building_workers × SIGIL_WORKER_MULTIPLIER × shrine_eff + Inner Sanctum
+        Deicide's Sigil Fortune bonus, chance for a bonus second sigil, where
+        shrine_eff (≥ 1.0) incorporates the sacred_ground plot bonus (+20 %)
+        and any adjacent Shrine Garden meta building (+15 %). Pass player to
+        apply these bonuses; omit for flat formula.
     """
     if getattr(monster, "is_uber", False):
         return
+
+    sigil_bonus = 0.0
+    if player is not None:
+        from core.inner_sanctum.mechanics import get_tree_bonuses
+
+        sigil_bonus = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))[
+            "boss_sigil_chance_pct"
+        ]
 
     for name_frag, building_key, incr_fn_name, sigil_name in _BOSS_SIGIL_CONFIGS:
         if name_frag not in monster.name:
@@ -381,7 +390,9 @@ async def apply_boss_sigil_drops(
         sigils_dropped = 0
         if random.random() < BOSS_SIGIL_FIRST_CHANCE:
             sigils_dropped += 1
-        if random.random() < (building_workers * SIGIL_WORKER_MULTIPLIER * shrine_eff):
+        if random.random() < (
+            building_workers * SIGIL_WORKER_MULTIPLIER * shrine_eff + sigil_bonus
+        ):
             sigils_dropped += 1
         incr_fn = getattr(bot.database.uber, incr_fn_name)
         await incr_fn(user_id, server_id, sigils_dropped)

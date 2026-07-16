@@ -345,12 +345,18 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
                     if random.random() < eff_chance:
                         drops[item] = True
 
-                # Deicide — Greedy Conquest: chance for one extra bonus item from
-                # this boss's table (can duplicate an already-rolled rune type).
+                # Deicide — Twinned Fortune: independently for each rune/key
+                # that already rolled true this kill, a small chance to
+                # double its quantity.
                 dupe_chance = is_bonuses["boss_dupe_chance"]
-                dupe_candidates = [k for k in config if k != "curio"]
-                if dupe_chance and dupe_candidates and random.random() < dupe_chance:
-                    drops["deicide_dupe_item"] = random.choice(dupe_candidates)
+                if dupe_chance:
+                    for item in config:
+                        if (
+                            item != "curio"
+                            and drops.get(item)
+                            and random.random() < dupe_chance
+                        ):
+                            drops[item] = 2
                 break
 
         if player.level >= 30:
@@ -572,7 +578,8 @@ async def apply_special_flags(
       - Elemental boss materials → uber DB write  + reward_data["special"] append.
       - curio / bonus_curio      → curios currency, additive onto reward_data["curios"].
       - bonus_puzzlebox          → curio_puzzle_boxes currency (Inner Sanctum Vice).
-      - deicide_dupe_item        → a second unit of a boss rune/key type (Inner Sanctum Deicide).
+      - currency flags with an int value (not True) grant that many units
+        (Inner Sanctum Deicide Twinned Fortune sets a boss rune/key to 2).
       - velour_doubled           → doubles current reward_data["special"] list.
       - yvenn_slayer_bonus       → stored in reward_data for slayer integration.
 
@@ -589,8 +596,13 @@ async def apply_special_flags(
 
         elif key in _SPECIAL_FLAG_CURRENCY_MAP:
             currency_key, display_name = _SPECIAL_FLAG_CURRENCY_MAP[key]
-            await bot.database.users.modify_currency(user_id, currency_key, 1)
-            reward_data["special"].append(display_name)
+            # Twinned Fortune sets val=2 (an int, not True) for a doubled drop;
+            # isinstance(True, int) is also True in Python, so exclude bools.
+            qty = val if isinstance(val, int) and not isinstance(val, bool) else 1
+            await bot.database.users.modify_currency(user_id, currency_key, qty)
+            reward_data["special"].append(
+                f"{display_name} x{qty} (Twinned Fortune)" if qty > 1 else display_name
+            )
 
         elif key == "curio":
             await bot.database.users.modify_currency(user_id, "curios", 1)
@@ -630,14 +642,6 @@ async def apply_special_flags(
         elif key == "yvenn_slayer_bonus" and isinstance(val, int):
             # Bonus slayer progress — stored for the slayer integration block
             reward_data["yvenn_slayer_bonus"] = val
-
-        elif key == "deicide_dupe_item" and isinstance(val, str):
-            # Inner Sanctum Deicide — Greedy Conquest: a second unit of a boss
-            # rune/key type, granted even if the same type already dropped above.
-            if val in _SPECIAL_FLAG_CURRENCY_MAP:
-                currency_key, display_name = _SPECIAL_FLAG_CURRENCY_MAP[val]
-                await bot.database.users.modify_currency(user_id, currency_key, 1)
-                reward_data["special"].append(f"{display_name} (Deicide bonus)")
 
 
 def calculate_item_drop_chance(player: Player) -> int:

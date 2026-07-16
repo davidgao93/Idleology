@@ -4,7 +4,7 @@ import discord
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from core.emojis import GOLD_COIN, POTION
+from core.emojis import GOLD_COIN, POTION, SOUL_SLOT
 from core.first_use import TutorialGateView
 from core.images import (
     BAR_MAID,
@@ -15,6 +15,7 @@ from core.images import (
     QUEST_SHOP_AUTHOR,
     TAVERN_GAMES,
 )
+from core.inner_sanctum.mechanics import get_tree_bonuses
 from core.items.factory import load_player
 from core.npc_voices import get_quip
 from core.quests.data import CHECKIN_DAY_LABELS
@@ -45,7 +46,7 @@ def _build_checkin_embed(
         elif day == current_day + 1:
             cells.append("🔶")
         else:
-            cells.append("⬜")
+            cells.append(f"{SOUL_SLOT}")
 
     row1 = " ".join(cells[:7])
     row2 = " ".join(cells[7:])
@@ -219,6 +220,16 @@ class Tavern(commands.Cog, name="tavern"):
         else:
             # Paid Rest (cooldown active)
             cost = TavernMechanics.calculate_rest_cost(user["level"])
+            # Inner Sanctum Recovery — Merciful Fall: rest gold cost trade-off
+            # for its EXP-loss-on-death reduction.
+            is_tree = await self.bot.database.inner_sanctum.get(user_id, server_id)
+            cost = int(
+                cost
+                * (
+                    1
+                    + get_tree_bonuses(is_tree["nodes_owned"])["rest_cost_penalty_pct"]
+                )
+            )
             gold = user["gold"]
             auto_pay = await self.bot.database.users.get_auto_rest_pay(user_id)
 

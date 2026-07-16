@@ -22,7 +22,7 @@ from core.combat.turns import engine
 from core.combat.turns import jewel_engine as _je
 from core.combat.turns.boundary import reset_for_phase_transition
 from core.combat.views.views import CombatView
-from core.emojis import ARTEFACT_SLOT
+from core.emojis import ARTEFACT_SLOT, INNER_SANC
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import (
     ARBITER_PHASE_FINAL,
@@ -42,6 +42,10 @@ from core.rite.views.respite_view import apply_respite_buffs
 # Arbiter (index 5, "Arbiter, the Last Edict") only reveals itself once the
 # Amalgam falls — see the phase 4->5 transition in make_arbiter_end_state_callback.
 _FINAL_PHASE_INDEX = 5
+
+# Inner Sanctum Points granted on a full Rite of Convergence clear (every
+# clear, not just the first).
+RITE_CLEAR_ISP_REWARD = 15
 
 # Phase 7 (index 6) — "The Arbiter, Unbound". Reached only after Phase 6
 # falls, via ArbiterTransformView's dialogue + GIF transition (see the
@@ -362,7 +366,7 @@ async def enter_arbiter_fight(
 
 
 def _build_victory_embed(
-    run_state: RiteRunState, dp: int, rewards: dict
+    run_state: RiteRunState, dp: int, rewards: dict, is_first_clear: bool = False
 ) -> discord.Embed:
     if rewards.get("artefact_name"):
         loot_line = (
@@ -405,6 +409,15 @@ def _build_victory_embed(
             value=(
                 "An artefact tried to catch your eye, but your Artefact "
                 "inventory is full (60/60) — discard one via `/gear` to make room."
+            ),
+            inline=False,
+        )
+    if is_first_clear:
+        embed.add_field(
+            name=f"{INNER_SANC} Inner Sanctum",
+            value=(
+                f"**First clear!** Gained **{RITE_CLEAR_ISP_REWARD}** "
+                "Inner Sanctum Points!"
             ),
             inline=False,
         )
@@ -575,12 +588,22 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
 
         if won:
             view.bot.state_manager.clear_active(view.user_id)
+            # ISP is a one-time reward for the player's first-ever full clear —
+            # check before set_first_clear flips the flag, since that call is
+            # unconditional (also gates Writ selection).
+            is_first_clear = not await view.bot.database.rite.has_first_clear(
+                view.user_id, view.server_id
+            )
             await view.bot.database.rite.set_first_clear(view.user_id, view.server_id)
             await hof_triggers.check_absolute_cinema(view.bot, view.user_id)
             dp = compute_devotion_points(run_state.writs, run_state.total_turns)
             rewards = await grant_run_completion_rewards(
                 view.bot, view.user_id, view.server_id, view.player, dp
             )
+            if is_first_clear:
+                await view.bot.database.inner_sanctum.add_points(
+                    view.user_id, view.server_id, RITE_CLEAR_ISP_REWARD
+                )
             await view.bot.database.rite.delete_run(view.user_id, view.server_id)
 
             # Stage 1: the Arbiter's own defeat, given a beat to land before
@@ -606,7 +629,9 @@ def make_arbiter_end_state_callback(run_state: RiteRunState):
             )
 
             async def _on_loot_proceed(loot_interaction: discord.Interaction):
-                victory_embed = _build_victory_embed(run_state, dp, rewards)
+                victory_embed = _build_victory_embed(
+                    run_state, dp, rewards, is_first_clear
+                )
                 victory_view = RiteEndView(
                     bot_, user_id_, server_id_, victory_embed
                 )

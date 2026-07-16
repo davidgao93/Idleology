@@ -7,12 +7,8 @@ tuning lives in data.py (costs/ranks/values) and here (aggregation formulas).
 
 from core.inner_sanctum.data import (
     ALL_NODES,
-    DEICIDE_DOWNSIDE_ATK_PCT_PER_RANK,
-    DEICIDE_DOWNSIDE_DEF_PCT_PER_RANK,
-    DEICIDE_DOWNSIDE_HP_PCT_PER_RANK,
     DEICIDE_NODES,
     DEICIDE_UNLOCK_LEVEL,
-    RECOVERY_DOWNSIDE_ATK_PCT_PER_RANK,
     RECOVERY_NODES,
     RECOVERY_UNLOCK_LEVEL,
     RESET_RUNE_COST,
@@ -27,26 +23,21 @@ __all__ = [
     "get_node_cost",
     "get_ranks_cost",
     "get_tree_bonuses",
+    "owned_rank",
 ]
 
 
-def _node_ranks(node_def: dict, owned_value) -> int:
-    """Ranks invested in a single node (1 for an owned choice node)."""
+def owned_rank(node_def: dict, owned_value) -> int:
+    """Ranks invested in a single node, regardless of archetype.
+    - Plain ranked node: owned_value is a bare int rank.
+    - Single-purchase choice node (`is_choice`): 1 if owned, else 0.
+    - Ranked-choice node (`is_choice_ranked`): owned_value is
+      {"choice": str, "rank": int}; returns the rank, or 0 if unpurchased."""
     if node_def.get("is_choice"):
         return 1 if owned_value else 0
+    if node_def.get("is_choice_ranked"):
+        return (owned_value or {}).get("rank", 0)
     return owned_value or 0
-
-
-def total_ranks_in_branch(nodes_owned: dict, branch: str) -> int:
-    """Total ranks invested across a branch — used for downside scaling.
-    Ranks (not points spent) so escalating per-rank costs don't blow up the
-    downside past what "minor trade-off" is meant to mean."""
-    total = 0
-    for node_id, node_def in ALL_NODES.items():
-        if node_def["branch"] != branch:
-            continue
-        total += _node_ranks(node_def, nodes_owned.get(node_id))
-    return total
 
 
 def get_node_cost(node_id: str, nodes_owned: dict) -> int | None:
@@ -56,7 +47,7 @@ def get_node_cost(node_id: str, nodes_owned: dict) -> int | None:
         return None
     if node_def.get("is_choice"):
         return None if nodes_owned.get(node_id) else node_def["cost"]
-    rank = nodes_owned.get(node_id, 0) or 0
+    rank = owned_rank(node_def, nodes_owned.get(node_id))
     if rank >= node_def["max_rank"]:
         return None
     return node_def["costs"][rank]
@@ -96,7 +87,7 @@ def get_ranks_cost(node_id: str, nodes_owned: dict, count: int) -> int | None:
     node_def = ALL_NODES.get(node_id)
     if not node_def or node_def.get("is_choice") or count <= 0:
         return None
-    rank = nodes_owned.get(node_id, 0) or 0
+    rank = owned_rank(node_def, nodes_owned.get(node_id))
     if rank + count > node_def["max_rank"]:
         return None
     return sum(node_def["costs"][rank : rank + count])
@@ -126,11 +117,14 @@ def can_purchase_ranks(
     return True, cost, ""
 
 
-def _sum_vice_field(owned: dict, field_name: str) -> float:
-    """Sums `rank * node[field_name]` across every Vice node that declares it."""
+def _sum_field(node_dict: dict, owned: dict, field_name: str) -> float:
+    """Sums `rank * node[field_name]` across every node in node_dict that
+    declares field_name — branch-agnostic, works for any node archetype via
+    owned_rank(). Several nodes can share one field_name (e.g. Deicide's
+    boss_dmg_pct_per_rank) so their contributions sum into one aggregate."""
     total = 0.0
-    for node_id, node_def in VICE_NODES.items():
-        rank = owned.get(node_id, 0) or 0
+    for node_id, node_def in node_dict.items():
+        rank = owned_rank(node_def, owned.get(node_id))
         if rank <= 0:
             continue
         total += rank * node_def.get(field_name, 0.0)
@@ -141,51 +135,94 @@ def get_tree_bonuses(nodes_owned: dict) -> dict:
     """Returns all active Inner Sanctum bonus values, keyed by effect name."""
     owned = nodes_owned or {}
 
-    def rank_of(node_id: str) -> int:
-        return owned.get(node_id, 0) or 0
-
-    recovery_ranks = total_ranks_in_branch(owned, "recovery")
-    deicide_ranks = total_ranks_in_branch(owned, "deicide")
+    _aff = owned.get("de_affinity")
+    _aff_choice = _aff.get("choice") if isinstance(_aff, dict) else None
+    _aff_rank = _aff.get("rank", 0) if isinstance(_aff, dict) else 0
 
     bonuses = {
         # Vice — every Vice node contributes to one or more of these via its
-        # own *_per_rank keys in data.py; see _sum_vice_field.
-        "special_rarity_pct": _sum_vice_field(owned, "special_rarity_per_rank"),
-        "vice_monster_atk_pct": _sum_vice_field(owned, "monster_atk_per_rank"),
-        "vice_monster_def_pct": _sum_vice_field(owned, "monster_def_per_rank"),
-        "vice_monster_crit_pct": _sum_vice_field(owned, "monster_crit_per_rank"),
-        "vice_monster_hp_pct": _sum_vice_field(owned, "monster_hp_per_rank"),
-        "vice_monster_dmg_pct": _sum_vice_field(owned, "monster_dmg_per_rank"),
-        "rune_refinement_chance_pct": _sum_vice_field(owned, "refine_chance_per_rank"),
-        "rune_potential_chance_pct": _sum_vice_field(
-            owned, "potential_chance_per_rank"
+        # own *_per_rank keys in data.py; see _sum_field.
+        "special_rarity_pct": _sum_field(VICE_NODES, owned, "special_rarity_per_rank"),
+        "vice_monster_atk_pct": _sum_field(VICE_NODES, owned, "monster_atk_per_rank"),
+        "vice_monster_def_pct": _sum_field(VICE_NODES, owned, "monster_def_per_rank"),
+        "vice_monster_crit_pct": _sum_field(VICE_NODES, owned, "monster_crit_per_rank"),
+        "vice_monster_hp_pct": _sum_field(VICE_NODES, owned, "monster_hp_per_rank"),
+        "vice_monster_dmg_pct": _sum_field(VICE_NODES, owned, "monster_dmg_per_rank"),
+        "rune_refinement_chance_pct": _sum_field(
+            VICE_NODES, owned, "refine_chance_per_rank"
         ),
-        "rune_shattering_chance_pct": _sum_vice_field(owned, "shatter_chance_per_rank"),
-        "treasure_chance_pct": _sum_vice_field(owned, "treasure_encounter_per_rank"),
-        "bonus_curio_chance": _sum_vice_field(owned, "bonus_curio_per_rank"),
-        "bonus_puzzlebox_chance": _sum_vice_field(owned, "bonus_puzzlebox_per_rank"),
-        "treasure_stat_bonus_pct": _sum_vice_field(owned, "treasure_stat_per_rank"),
-        # Recovery
-        "stamina_save_chance": rank_of("re_stamina_save")
-        * RECOVERY_NODES["re_stamina_save"]["value_per_rank"],
-        "stamina_regen_bonus_chance": rank_of("re_stamina_regen")
-        * RECOVERY_NODES["re_stamina_regen"]["value_per_rank"],
-        "exp_loss_reduction_pct": rank_of("re_exp_shield")
-        * RECOVERY_NODES["re_exp_shield"]["value_per_rank"],
-        "recovery_atk_malus_pct": recovery_ranks * RECOVERY_DOWNSIDE_ATK_PCT_PER_RANK,
+        "rune_potential_chance_pct": _sum_field(
+            VICE_NODES, owned, "potential_chance_per_rank"
+        ),
+        "rune_shattering_chance_pct": _sum_field(
+            VICE_NODES, owned, "shatter_chance_per_rank"
+        ),
+        "treasure_chance_pct": _sum_field(
+            VICE_NODES, owned, "treasure_encounter_per_rank"
+        ),
+        "bonus_curio_chance": _sum_field(VICE_NODES, owned, "bonus_curio_per_rank"),
+        "bonus_puzzlebox_chance": _sum_field(
+            VICE_NODES, owned, "bonus_puzzlebox_per_rank"
+        ),
+        "treasure_stat_bonus_pct": _sum_field(
+            VICE_NODES, owned, "treasure_stat_per_rank"
+        ),
+        # Recovery — each node pairs its own upside with its own downside.
+        "stamina_save_chance": _sum_field(
+            RECOVERY_NODES, owned, "stamina_save_chance_per_rank"
+        ),
+        "stamina_regen_bonus_chance": _sum_field(
+            RECOVERY_NODES, owned, "stamina_regen_bonus_chance_per_rank"
+        ),
+        "exp_loss_reduction_pct": _sum_field(
+            RECOVERY_NODES, owned, "exp_loss_reduction_per_rank"
+        ),
+        # Shared field name — Frugal Spirit + Deep Reserves both add flat
+        # seconds to the no-stamina combat cooldown.
+        "recovery_cooldown_penalty_sec": _sum_field(
+            RECOVERY_NODES, owned, "cooldown_penalty_sec_per_rank"
+        ),
+        "rest_cost_penalty_pct": _sum_field(
+            RECOVERY_NODES, owned, "rest_cost_pct_per_rank"
+        ),
         # Deicide
-        "boss_chance_bonus_pct": rank_of("de_boss_chance")
-        * DEICIDE_NODES["de_boss_chance"]["value_per_rank"],
-        "boss_affinity": owned.get("de_affinity"),
-        "boss_affinity_shift": DEICIDE_NODES["de_affinity"]["affinity_shift"]
-        if owned.get("de_affinity")
-        else 0.0,
-        "boss_rune_chance_pct": rank_of("de_boss_runes")
-        * DEICIDE_NODES["de_boss_runes"]["value_per_rank"],
-        "boss_dupe_chance": rank_of("de_boss_dupe")
-        * DEICIDE_NODES["de_boss_dupe"]["value_per_rank"],
-        "deicide_boss_atk_pct": deicide_ranks * DEICIDE_DOWNSIDE_ATK_PCT_PER_RANK,
-        "deicide_boss_def_pct": deicide_ranks * DEICIDE_DOWNSIDE_DEF_PCT_PER_RANK,
-        "deicide_boss_hp_pct": deicide_ranks * DEICIDE_DOWNSIDE_HP_PCT_PER_RANK,
+        "boss_chance_bonus_pct": _sum_field(
+            DEICIDE_NODES, owned, "boss_chance_bonus_per_rank"
+        ),
+        # Marked Prey — ranked-choice: the pick locks in the boss type, and
+        # the rank (1-5) indexes the weight-shift table. No downside.
+        "boss_affinity": _aff_choice,
+        "boss_affinity_shift": (
+            DEICIDE_NODES["de_affinity"]["affinity_shift_by_rank"][_aff_rank - 1]
+            if _aff_choice and 1 <= _aff_rank <= 5
+            else 0.0
+        ),
+        "corrupted_reroll_chance": _sum_field(
+            DEICIDE_NODES, owned, "corrupted_reroll_chance_per_rank"
+        ),
+        "corrupted_monster_atk_pct": _sum_field(
+            DEICIDE_NODES, owned, "corrupted_atk_pct_per_rank"
+        ),
+        "corrupted_monster_def_pct": _sum_field(
+            DEICIDE_NODES, owned, "corrupted_def_pct_per_rank"
+        ),
+        "corrupted_monster_hp_pct": _sum_field(
+            DEICIDE_NODES, owned, "corrupted_hp_pct_per_rank"
+        ),
+        "boss_rune_chance_pct": _sum_field(
+            DEICIDE_NODES, owned, "boss_rune_chance_per_rank"
+        ),
+        "boss_dupe_chance": _sum_field(DEICIDE_NODES, owned, "dupe_chance_per_rank"),
+        "boss_sigil_chance_pct": _sum_field(
+            DEICIDE_NODES, owned, "sigil_chance_per_rank"
+        ),
+        "deicide_boss_hp_pct": _sum_field(
+            DEICIDE_NODES, owned, "boss_hp_pct_per_rank"
+        ),
+        # Shared field name — Reliquary Sense + Twinned Fortune + Sigil
+        # Fortune all add to bosses' damage dealt.
+        "deicide_boss_dmg_pct": _sum_field(
+            DEICIDE_NODES, owned, "boss_dmg_pct_per_rank"
+        ),
     }
     return bonuses

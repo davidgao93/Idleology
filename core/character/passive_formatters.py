@@ -177,16 +177,6 @@ def _compute_combat_bonuses(p) -> dict:
         elif void_p == "void echo" and p.equipped_weapon:
             cb["atk"] += int(p.equipped_weapon.attack * 0.30)
 
-    # Inner Sanctum Recovery — permanent ATK malus scaling with points spent
-    # in the path (see apply_stat_effects). Monster-independent, always active.
-    is_nodes = getattr(p, "inner_sanctum_nodes", None)
-    if is_nodes:
-        from core.inner_sanctum.mechanics import get_tree_bonuses
-
-        recovery_malus_pct = get_tree_bonuses(is_nodes)["recovery_atk_malus_pct"]
-        if recovery_malus_pct > 0:
-            cb["atk"] -= int(p.flat_atk * recovery_malus_pct)
-
     # Soul Stone combat-start passives (deterministic tiers only — Absorb and
     # Unlimited Wealth are RNG-gated and skipped, see docstring above). Each
     # is skipped if the equivalent gear passive is already active, matching

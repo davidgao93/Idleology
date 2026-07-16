@@ -292,3 +292,25 @@ class CodexRepository:
             (user_id, server_id),
         )
         await self.connection.commit()
+
+    # ------------------------------------------------------------------
+    # First-clear unlock flag (one-time Inner Sanctum Points reward)
+    # ------------------------------------------------------------------
+
+    async def has_first_clear(self, user_id: str, server_id: str) -> bool:
+        async with self.connection.execute(
+            "SELECT has_first_clear FROM codex_progress_meta WHERE user_id = ? AND server_id = ?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        return bool(row and row["has_first_clear"])
+
+    async def set_first_clear(self, user_id: str, server_id: str) -> None:
+        await self.connection.execute(
+            """INSERT INTO codex_progress_meta (user_id, server_id, has_first_clear)
+               VALUES (?, ?, 1)
+               ON CONFLICT(user_id, server_id) DO UPDATE SET
+                   has_first_clear = 1""",
+            (user_id, server_id),
+        )
+        await self.connection.commit()

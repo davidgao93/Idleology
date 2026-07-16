@@ -177,14 +177,18 @@ class Combat(commands.Cog, name="combat"):
             return SOUL_STONE_TIER_VALUES["speedster"][ss_speedster_tier - 1]
         return 0
 
-    def _effective_cooldown(self, speedster_reduction_sec: int) -> timedelta:
+    def _effective_cooldown(
+        self, speedster_reduction_sec: int, cooldown_penalty_sec: int = 0
+    ) -> timedelta:
         return max(
             timedelta(seconds=10),
-            COMBAT_COOLDOWN - timedelta(seconds=speedster_reduction_sec),
+            COMBAT_COOLDOWN
+            + timedelta(seconds=cooldown_penalty_sec)
+            - timedelta(seconds=speedster_reduction_sec),
         )
 
     async def _check_stamina(
-        self, interaction: Interaction, user_id: str, existing_user
+        self, interaction: Interaction, user_id: str, existing_user, is_bonuses: dict
     ) -> bool:
         """If the player has stamina, pass immediately.
         If empty, fall back to the regular 10-minute cooldown check."""
@@ -205,7 +209,11 @@ class Combat(commands.Cog, name="combat"):
             ss = soul_stone_from_db(ss_row)
             ss_speedster_tier = ss.get_passive_tier("speedster") or 0
         reduction = self._get_speedster_reduction(equipped_boot, ss_speedster_tier)
-        cooldown = self._effective_cooldown(reduction)
+        # Inner Sanctum Recovery — Frugal Spirit / Deep Reserves: flat seconds
+        # added to the no-stamina cooldown as the trade-off for their chances.
+        cooldown = self._effective_cooldown(
+            reduction, is_bonuses["recovery_cooldown_penalty_sec"]
+        )
 
         last_combat_str = existing_user["last_combat"]
         if last_combat_str:
@@ -235,7 +243,10 @@ class Combat(commands.Cog, name="combat"):
             return
         if not await self.bot.check_is_active(interaction, user_id):
             return
-        if not await self._check_stamina(interaction, user_id, existing_user):
+
+        is_tree = await self.bot.database.inner_sanctum.get(user_id, server_id)
+        is_bonuses = get_tree_bonuses(is_tree["nodes_owned"])
+        if not await self._check_stamina(interaction, user_id, existing_user, is_bonuses):
             return
 
         # First-time combat tutorial — show once before entering the fight
@@ -274,7 +285,7 @@ class Combat(commands.Cog, name="combat"):
         # If health is fine, proceed immediately.
         await interaction.response.defer()
         await self._execute_combat(
-            interaction, user_id, server_id, existing_user, player
+            interaction, user_id, server_id, existing_user, player, is_tree=is_tree
         )
 
     async def _rematch_execute(
@@ -298,8 +309,14 @@ class Combat(commands.Cog, name="combat"):
         server_id: str,
         existing_user,
         player,
+        is_tree: dict | None = None,
     ):
-        """The actual combat generation and UI loading logic. Called directly or via the Warning View."""
+        """The actual combat generation and UI loading logic. Called directly or via the Warning View.
+
+        `is_tree` lets the `combat()` entry point pass along the Inner Sanctum
+        tree it already fetched for the stamina-cooldown check, avoiding a
+        second query. Callers that don't have it yet (the Warning View's
+        callback, `_rematch_execute`) simply omit it and it's fetched here."""
         # `screen_msg` tracks whichever message is currently displaying this
         # combat flow. It's normally the interaction's own response, but a
         # rematch launched from PostCombatView's Fight Again button starts on
@@ -314,7 +331,8 @@ class Combat(commands.Cog, name="combat"):
         # Consume 1 stamina. Use consume_stamina (SQL MAX(0, val-1)) so over-cap
         # values (e.g. 12.5 from War Camp) drain correctly without being truncated.
         # Inner Sanctum Recovery — Frugal Spirit: chance to skip the consumption entirely.
-        is_tree = await self.bot.database.inner_sanctum.get(user_id, server_id)
+        if is_tree is None:
+            is_tree = await self.bot.database.inner_sanctum.get(user_id, server_id)
         is_bonuses = get_tree_bonuses(is_tree["nodes_owned"])
         stamina_saved = random.random() < is_bonuses["stamina_save_chance"]
 
@@ -358,7 +376,9 @@ class Combat(commands.Cog, name="combat"):
                 + player.get_emblem_bonus("corrupted_find") * 0.002
                 + _DIFFICULTY_CORRUPTED_BONUS[hard_mode]
             )
-            if random.random() < corrupted_chance:
+
+            async def _try_corrupted_gate() -> None:
+                nonlocal screen_msg, is_corrupted
                 gate_view = CorruptedEncounterGateView(self.bot, user_id)
                 if screen_msg.flags.components_v2:
                     screen_msg = await freeze_and_handoff(
@@ -383,6 +403,16 @@ class Combat(commands.Cog, name="combat"):
                         view=None,
                     )
                     await asyncio.sleep(1.0)
+
+            if random.random() < corrupted_chance:
+                await _try_corrupted_gate()
+            elif (
+                # Inner Sanctum Deicide — Corrupted Affinity: rank-scaled chance
+                # for one independent re-roll of the same check if it fails.
+                random.random() < is_bonuses["corrupted_reroll_chance"]
+                and random.random() < corrupted_chance
+            ):
+                await _try_corrupted_gate()
 
         # 3b. Boss door check — skipped entirely if a corrupted encounter was accepted
         triggered = False

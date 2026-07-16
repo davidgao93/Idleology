@@ -2,7 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
-from core.emojis import INNER_SANC, INNER_SANCTUM_BRANCH_EMOJI, RUNE_REGRET
+from core.emojis import INNER_SANC, INNER_SANCTUM_BRANCH_EMOJI, RUNE_REGRET, SOUL_SLOT
 from core.images import INNER_SANCTUM_THUMBNAIL
 from core.inner_sanctum.data import (
     ALL_NODES,
@@ -19,6 +19,7 @@ from core.inner_sanctum.mechanics import (
     can_purchase_ranks,
     get_node_cost,
     get_ranks_cost,
+    owned_rank,
 )
 from core.npc_voices import get_quip
 
@@ -46,12 +47,29 @@ def _node_status_line(node_id: str, node: dict, nodes_owned: dict) -> str:
         if owned:
             label = next((lbl for key, lbl in node["choices"] if key == owned), owned)
             return f"✅ {label}"
-        return f"⬜ Choose an affinity ({node['cost']} pts)"
+        return f"{SOUL_SLOT} Choose an affinity ({node['cost']} pts)"
+
+    if node.get("is_choice_ranked"):
+        owned_val = nodes_owned.get(node_id)
+        rank = owned_rank(node, owned_val)
+        max_rank = node["max_rank"]
+        if rank == 0:
+            return f"{SOUL_SLOT} Pick an affinity to begin ({node['costs'][0]} pt(s) for rank 1)"
+        choice = owned_val["choice"]
+        label = next((lbl for key, lbl in node["choices"] if key == choice), choice)
+        status_icon = "✅"
+        if rank >= max_rank:
+            return f"{status_icon} {label} — {node['desc'](rank)} **(MAXED {rank}/{max_rank})**"
+        cost = node["costs"][rank]
+        return (
+            f"{status_icon} {label} — {node['desc'](rank)} *(affinity locked in)*\n"
+            f"└ {rank}/{max_rank} invested · next rank costs {cost} pt{_plural(cost)}"
+        )
 
     rank = nodes_owned.get(node_id, 0) or 0
     max_rank = node["max_rank"]
     per_rank_effect = node["desc"](1)  # flat per-rank amount, not cumulative
-    status_icon = "✅" if rank > 0 else "⬜"
+    status_icon = "✅" if rank > 0 else f"{SOUL_SLOT}"
 
     if rank >= max_rank:
         return f"{status_icon} {node['desc'](rank)} **(MAXED {rank}/{max_rank})**"
@@ -184,9 +202,11 @@ class InnerSanctumHubView(BaseView):
             btn = ui.Button(
                 label=_BRANCH_NAMES[branch] + (" 🔒" if locked else ""),
                 emoji=_BRANCH_ICONS[branch],
-                style=ButtonStyle.primary
-                if branch == self.active_branch
-                else ButtonStyle.secondary,
+                style=(
+                    ButtonStyle.primary
+                    if branch == self.active_branch
+                    else ButtonStyle.secondary
+                ),
                 row=0,
             )
 
@@ -213,11 +233,14 @@ class InnerSanctumHubView(BaseView):
             if purchasable:
                 options = []
                 for nid, node, cost in purchasable:
+                    rank = owned_rank(node, self.nodes_owned.get(nid))
                     if node.get("is_choice"):
                         label = "Choose an affinity"
                         desc = f"{cost} pts"
+                    elif node.get("is_choice_ranked") and rank == 0:
+                        label = "Choose an affinity"
+                        desc = f"{cost} pt{_plural(cost)} for rank 1"
                     else:
-                        rank = self.nodes_owned.get(nid, 0) or 0
                         label = node["desc"](1)  # flat per-rank amount
                         desc = f"{rank}/{node['max_rank']} invested · {cost} pt{_plural(cost)}/rank"
                     options.append(
@@ -249,15 +272,21 @@ class InnerSanctumHubView(BaseView):
         self.add_item(btn_close)
 
     def _show_choice_ui(self, node_id: str):
-        """Single-purchase choice nodes (e.g. Deicide's Marked Prey) — pick one option."""
+        """Single-purchase choice nodes (e.g. Deicide's Marked Prey) — pick one
+        option. Ranked-choice nodes (`is_choice_ranked`) route through here only
+        for their first purchase (rank 0 -> 1); the pick is permanent."""
         self.clear_items()
         node = ALL_NODES[node_id]
         self._pending_choice_node = node_id
+        is_ranked_choice = node.get("is_choice_ranked")
         for key, label in node["choices"]:
             btn = ui.Button(label=label[:80], style=ButtonStyle.primary, row=0)
 
             async def _choice_cb(interaction: Interaction, k=key):
-                await self._purchase_node(interaction, node_id, choice=k)
+                if is_ranked_choice:
+                    await self._purchase_choice_rank1(interaction, node_id, choice=k)
+                else:
+                    await self._purchase_node(interaction, node_id, choice=k)
 
             btn.callback = _choice_cb
             self.add_item(btn)
@@ -271,7 +300,7 @@ class InnerSanctumHubView(BaseView):
         self.clear_items()
         node = ALL_NODES[node_id]
         self._pending_choice_node = node_id
-        rank = self.nodes_owned.get(node_id, 0) or 0
+        rank = owned_rank(node, self.nodes_owned.get(node_id))
         remaining = node["max_rank"] - rank
 
         quick_amounts = sorted({a for a in (1, 5, remaining) if 0 < a <= remaining})
@@ -312,6 +341,11 @@ class InnerSanctumHubView(BaseView):
         node = ALL_NODES[node_id]
         if node.get("is_choice"):
             self._show_choice_ui(node_id)
+        elif node.get("is_choice_ranked"):
+            if owned_rank(node, self.nodes_owned.get(node_id)) == 0:
+                self._show_choice_ui(node_id)
+            else:
+                self._show_quantity_ui(node_id)
         else:
             self._show_quantity_ui(node_id)
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
@@ -355,6 +389,46 @@ class InnerSanctumHubView(BaseView):
         self.setup_ui()
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
 
+    async def _purchase_choice_rank1(
+        self, interaction: Interaction, node_id: str, choice: str
+    ):
+        """First purchase of a ranked-choice node (e.g. Deicide's Marked Prey) —
+        locks in `choice` and buys rank 1 in the same action. The choice is
+        permanent from here on; later ranks go through `_purchase_ranks`."""
+        await interaction.response.defer()
+
+        # Re-fetch to avoid acting on stale points if the tree changed elsewhere.
+        fresh = await self.bot.database.inner_sanctum.get(self.user_id, self.server_id)
+        self.points_available = fresh["points_available"]
+        self.points_spent = fresh["points_spent"]
+        self.nodes_owned = fresh["nodes_owned"]
+
+        ok, cost, reason = can_purchase_ranks(
+            node_id, self.nodes_owned, self.player_level, self.points_available, 1
+        )
+        if not ok:
+            self.result_msg = f"❌ {reason}"
+            self.setup_ui()
+            return await interaction.edit_original_response(
+                embed=self.build_embed(), view=self
+            )
+
+        node = ALL_NODES[node_id]
+        new_value = {"choice": choice, "rank": 1}
+        await self.bot.database.inner_sanctum.purchase_node(
+            self.user_id, self.server_id, node_id, cost, new_value
+        )
+
+        self.points_available -= cost
+        self.points_spent += cost
+        self.nodes_owned[node_id] = new_value
+
+        choice_label = next((lbl for k, lbl in node["choices"] if k == choice), choice)
+        self.result_msg = f"✅ {choice_label} — {node['desc'](1)}"
+
+        self.setup_ui()
+        await interaction.edit_original_response(embed=self.build_embed(), view=self)
+
     async def _purchase_ranks(self, interaction: Interaction, node_id: str, count: int):
         """Purchases `count` ranks of a ranked node in a single transaction."""
         await interaction.response.defer()
@@ -376,18 +450,30 @@ class InnerSanctumHubView(BaseView):
             )
 
         node = ALL_NODES[node_id]
-        new_rank = (self.nodes_owned.get(node_id, 0) or 0) + count
+        owned_val = self.nodes_owned.get(node_id)
+        is_ranked_choice = node.get("is_choice_ranked")
+        rank = owned_rank(node, owned_val)
+        new_rank = rank + count
+        new_value = (
+            {"choice": owned_val["choice"], "rank": new_rank}
+            if is_ranked_choice
+            else new_rank
+        )
         await self.bot.database.inner_sanctum.purchase_node(
-            self.user_id, self.server_id, node_id, cost, new_rank
+            self.user_id, self.server_id, node_id, cost, new_value
         )
 
         self.points_available -= cost
         self.points_spent += cost
-        self.nodes_owned[node_id] = new_rank
+        self.nodes_owned[node_id] = new_value
 
+        # Ranked-choice nodes use a rank-indexed lookup table, not a linear
+        # per-rank formula, so the result message reports the new absolute
+        # value at new_rank rather than the count-sized increment.
+        desc_value = node["desc"](new_rank) if is_ranked_choice else node["desc"](count)
         self.result_msg = (
             f"✅ +{count} rank{_plural(count)} ({cost} pt{_plural(cost)}): "
-            f"{node['desc'](count)}"
+            f"{desc_value}"
         )
 
         self.setup_ui()

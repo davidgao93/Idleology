@@ -137,7 +137,9 @@ class ExperienceManager:
                 )
                 changes["msgs"].append("✨ Gained **10** Passive Points!")
 
-                if server_id:
+                # Ascension ISP is capped at the first 10 Ascension levels
+                # (5/level, 50 total) — later Ascensions grant no more ISP.
+                if server_id and player.ascension <= 10:
                     await bot.database.inner_sanctum.add_points(user_id, server_id, 5)
                     changes["msgs"].append(
                         f"{INNER_SANC} Gained **5** Inner Sanctum Points!"

@@ -1,19 +1,25 @@
 """core/inner_sanctum/data.py — Inner Sanctum tree node definitions.
 
 Three paths, unlocked at different levels:
-  Vice     (level 25) — rarity / loot bias.       Downside: monster stats up.
-  Recovery (level 25) — stamina / survivability.   Downside: small player ATK malus.
-  Deicide  (level 75) — boss-hunting.              Downside: boss ATK/DEF/HP up.
+  Vice     (level 25) — rarity / loot bias.      Every node pairs its own upside
+                                                  with its own downside.
+  Recovery (level 25) — stamina / survivability. Same per-node pairing.
+  Deicide  (level 75) — boss-hunting.             Same per-node pairing.
 
 Nodes are *ranked* — each rank costs points. `costs` is the list of per-rank
 prices (costs[0] = price of rank 1). Choice nodes (`is_choice=True`) are
 single-purchase and store the player's picked option string in nodes_owned
-instead of an int rank.
+instead of an int rank. Ranked-choice nodes (`is_choice_ranked=True`) combine
+both: the player picks one option on the first purchase (locked forever short
+of a full tree reset) and then invests ranks 1..max_rank same as any ranked
+node; nodes_owned stores `{"choice": <str>, "rank": <int>}` for these.
 
-Vice nodes carry their upside/downside as explicit `*_per_rank` numeric keys
-(read generically by mechanics.get_tree_bonuses) rather than a single
-`value_per_rank` — several Vice nodes grant two effects at once (an upside
-and its paired downside), so a single scalar isn't enough.
+Every node carries its upside/downside as explicit `*_per_rank` numeric keys
+(read generically by mechanics.get_tree_bonuses via `_sum_field`) rather than
+a single `value_per_rank` — several nodes grant two effects at once (an
+upside and its paired downside), and several Deicide nodes deliberately share
+a downside field name (e.g. `boss_dmg_pct_per_rank`) so multiple nodes' boss
+damage penalties sum into one aggregate.
 """
 
 VICE_UNLOCK_LEVEL = 25
@@ -172,90 +178,135 @@ VICE_NODES: dict = {
 }
 
 # ---------------------------------------------------------------------------
-# Recovery — stamina & survivability
+# Recovery — stamina & survivability (55 pts at full investment)
 # ---------------------------------------------------------------------------
 RECOVERY_NODES: dict = {
     "re_stamina_save": {
         "branch": "recovery",
         "name": "Frugal Spirit",
-        "desc": lambda rank: f"{rank * 3}% chance combat doesn't consume stamina",
-        "max_rank": 5,
-        "costs": [15, 20, 30, 45, 65],
-        "value_per_rank": 0.03,
+        "desc": lambda rank: (
+            f"{rank * 0.5:.1f}% chance combat doesn't consume stamina "
+            f"| +{rank * 10}s to the no-stamina combat cooldown"
+        ),
+        "max_rank": 20,
+        "costs": [1] * 20,
+        "stamina_save_chance_per_rank": 0.005,
+        "cooldown_penalty_sec_per_rank": 10,
     },
     "re_stamina_regen": {
         "branch": "recovery",
         "name": "Deep Reserves",
         "desc": lambda rank: (
-            f"{rank * 4}% chance stamina regen tick grants +2 instead of +1"
+            f"{rank * 0.5:.1f}% chance a stamina regen tick grants +2 instead of +1 "
+            f"| +{rank * 5}s to the no-stamina combat cooldown"
         ),
-        "max_rank": 5,
-        "costs": [15, 20, 30, 45, 65],
-        "value_per_rank": 0.04,
+        "max_rank": 20,
+        "costs": [1] * 20,
+        "stamina_regen_bonus_chance_per_rank": 0.005,
+        "cooldown_penalty_sec_per_rank": 5,
     },
     "re_exp_shield": {
         "branch": "recovery",
         "name": "Merciful Fall",
-        "desc": lambda rank: f"-{rank * 4}% EXP lost on death",
-        "max_rank": 5,
-        "costs": [15, 20, 30, 45, 65],
-        "value_per_rank": 0.04,
+        "desc": lambda rank: (
+            f"-{rank * 5}% EXP lost on death | /rest gold cost +{rank}%"
+        ),
+        "max_rank": 15,
+        "costs": [1] * 15,
+        "exp_loss_reduction_per_rank": 0.05,
+        "rest_cost_pct_per_rank": 0.01,
     },
 }
-# Per rank invested anywhere in Recovery (15 ranks at full investment), a small
-# permanent ATK malus (the calm dulls your edge).
-RECOVERY_DOWNSIDE_ATK_PCT_PER_RANK = 0.002
 
 # ---------------------------------------------------------------------------
-# Deicide — boss hunting (unlocked at level 75)
+# Deicide — boss hunting (unlocked at level 75; 110 pts at full investment)
+# Every node pairs its own downside — phase-door bosses (Aphrodite/Lucifer/
+# NEET/Gemini boss-key encounters) get tougher; Uber bosses are unaffected.
 # ---------------------------------------------------------------------------
 DEICIDE_NODES: dict = {
     "de_boss_chance": {
         "branch": "deicide",
-        "name": "Hunter's Resolve",
-        "desc": lambda rank: f"+{rank * 3}% chance to encounter a boss door",
-        "max_rank": 5,
-        "costs": [20, 35, 50, 70, 100],
-        "value_per_rank": 0.03,
+        "name": "Zealous Pursuit",
+        "desc": lambda rank: (
+            f"+{rank}% chance to encounter a boss door "
+            f"| bosses +{rank}% Max HP"
+        ),
+        "max_rank": 10,
+        "costs": [1] * 10,
+        "boss_chance_bonus_per_rank": 0.01,
+        "boss_hp_pct_per_rank": 0.01,
     },
     "de_affinity": {
         "branch": "deicide",
         "name": "Marked Prey",
-        "is_choice": True,
-        "cost": 25,
+        "is_choice_ranked": True,
+        "max_rank": 5,
+        "costs": [1] * 5,
         "choices": [
             ("aphrodite", "Aphrodite (Celestial) — boss doors favor Aphrodite"),
             ("lucifer", "Lucifer (Infernal) — boss doors favor Lucifer"),
             ("gemini", "Gemini (Balance) — boss doors favor Gemini"),
             ("NEET", "NEET (Void) — boss doors favor NEET"),
         ],
-        "affinity_shift": 0.5,  # +50% relative weight toward the chosen boss type
+        # Index 0 = rank 1. No downside — locked in permanently once picked
+        # (only a full tree reset can change the chosen boss type).
+        "affinity_shift_by_rank": [0.50, 0.60, 0.70, 0.80, 0.90],
+        "desc": lambda rank: (
+            f"boss doors are {[50, 60, 70, 80, 90][rank - 1]}% likely to favor "
+            "the chosen boss type" if rank > 0 else ""
+        ),
+    },
+    "de_corrupted_affinity": {
+        "branch": "deicide",
+        "name": "Corrupted Affinity",
+        "desc": lambda rank: (
+            f"{rank * 10}% chance to re-roll a failed corrupted encounter check "
+            f"| corrupted monsters +{rank * 2}% ATK/DEF/Max HP"
+        ),
+        "max_rank": 10,
+        "costs": [1] * 10,
+        "corrupted_reroll_chance_per_rank": 0.10,
+        "corrupted_atk_pct_per_rank": 0.02,
+        "corrupted_def_pct_per_rank": 0.02,
+        "corrupted_hp_pct_per_rank": 0.02,
     },
     "de_boss_runes": {
         "branch": "deicide",
         "name": "Reliquary Sense",
-        "desc": lambda rank: f"+{rank}% chance for bosses to drop bonus runes",
-        "max_rank": 5,
-        "costs": [25, 35, 50, 70, 100],
-        "value_per_rank": 0.01,
+        "desc": lambda rank: (
+            f"+{rank}% chance for bosses to drop bonus runes "
+            f"| bosses deal +{rank}% damage"
+        ),
+        "max_rank": 25,
+        "costs": [1] * 25,
+        "boss_rune_chance_per_rank": 0.01,
+        "boss_dmg_pct_per_rank": 0.01,
     },
     "de_boss_dupe": {
         "branch": "deicide",
-        "name": "Greedy Conquest",
+        "name": "Twinned Fortune",
         "desc": lambda rank: (
-            f"{rank * 10}% chance for a second bonus rune roll on boss kills"
+            f"{rank * 0.1:.1f}% chance for an already-dropped boss rune/key to "
+            f"drop in double quantity | bosses deal +{rank}% damage"
         ),
-        "max_rank": 3,
-        "costs": [40, 60, 90],
-        "value_per_rank": 0.10,
+        "max_rank": 50,
+        "costs": [1] * 50,
+        "dupe_chance_per_rank": 0.001,
+        "boss_dmg_pct_per_rank": 0.01,
+    },
+    "de_sigil_chance": {
+        "branch": "deicide",
+        "name": "Sigil Fortune",
+        "desc": lambda rank: (
+            f"+{rank * 0.1:.1f}% chance for a bonus boss sigil "
+            f"| bosses deal +{rank}% damage"
+        ),
+        "max_rank": 10,
+        "costs": [1] * 10,
+        "sigil_chance_per_rank": 0.001,
+        "boss_dmg_pct_per_rank": 0.01,
     },
 }
-# Per rank invested anywhere in Deicide (14 ranks at full investment — including
-# the single-purchase affinity choice), phase-door bosses get tougher (Uber
-# bosses unaffected).
-DEICIDE_DOWNSIDE_ATK_PCT_PER_RANK = 0.006
-DEICIDE_DOWNSIDE_DEF_PCT_PER_RANK = 0.006
-DEICIDE_DOWNSIDE_HP_PCT_PER_RANK = 0.006
 
 ALL_NODES: dict = {**VICE_NODES, **RECOVERY_NODES, **DEICIDE_NODES}
 

@@ -310,16 +310,27 @@ def _apply_inner_sanctum_vice_downside(monster, player) -> None:
 
 
 def _apply_inner_sanctum_deicide_downside(monster, player) -> None:
-    """Deicide path trade-off: every point invested in Deicide makes phase-door
-    bosses tougher, in exchange for its boss-chance/boss-loot bonuses.
-    Never applied to Uber bosses — those are separately hand-tuned fights."""
+    """Deicide path trade-off: Zealous Pursuit's boss-door-chance bonus makes
+    phase-door bosses tougher (Max HP), and Reliquary Sense/Twinned Fortune/
+    Sigil Fortune's loot bonuses make them hit harder. Never applied to Uber
+    bosses — those are separately hand-tuned fights."""
     bonuses = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))
-    if bonuses["deicide_boss_atk_pct"]:
-        monster.bonus_attack_pct += bonuses["deicide_boss_atk_pct"]
-    if bonuses["deicide_boss_def_pct"]:
-        monster.bonus_defence_pct += bonuses["deicide_boss_def_pct"]
     if bonuses["deicide_boss_hp_pct"]:
         monster.bonus_max_hp_pct += bonuses["deicide_boss_hp_pct"]
+    if bonuses["deicide_boss_dmg_pct"]:
+        monster.is_bonus_damage_pct = bonuses["deicide_boss_dmg_pct"]
+
+
+def _apply_inner_sanctum_corrupted_downside(monster, player) -> None:
+    """Deicide path trade-off: Corrupted Affinity's second-roll chance makes
+    corrupted monsters tougher (ATK/DEF/Max HP)."""
+    bonuses = get_tree_bonuses(getattr(player, "inner_sanctum_nodes", {}))
+    if bonuses["corrupted_monster_atk_pct"]:
+        monster.bonus_attack_pct += bonuses["corrupted_monster_atk_pct"]
+    if bonuses["corrupted_monster_def_pct"]:
+        monster.bonus_defence_pct += bonuses["corrupted_monster_def_pct"]
+    if bonuses["corrupted_monster_hp_pct"]:
+        monster.bonus_max_hp_pct += bonuses["corrupted_monster_hp_pct"]
 
 
 def _pick_modifier_type(is_boss: bool) -> str:
@@ -840,6 +851,7 @@ def generate_corrupted_encounter(player, monster) -> "Monster":
     monster.modifiers = []
     apply_all_corrupted_modifiers(monster)
     _apply_spawn_modifiers(monster)
+    _apply_inner_sanctum_corrupted_downside(monster, player)
     finalize_monster_spawn(monster)
 
     return monster

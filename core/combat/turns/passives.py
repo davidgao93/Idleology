@@ -84,16 +84,6 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
             bonus = int(player.flat_def * slayer_def_tiers * 0.02)
             player.bonus_def += bonus
 
-    # Inner Sanctum Recovery — trade-off for stamina/survivability investment:
-    # a small permanent ATK malus scaling with ranks spent in the path.
-    is_nodes = getattr(player, "inner_sanctum_nodes", None)
-    if is_nodes:
-        from core.inner_sanctum.mechanics import get_tree_bonuses
-
-        recovery_malus_pct = get_tree_bonuses(is_nodes)["recovery_atk_malus_pct"]
-        if recovery_malus_pct > 0:
-            player.bonus_atk -= int(player.flat_atk * recovery_malus_pct)
-
 
 # ---------------------------------------------------------------------------
 # Combat-Start Passive Handlers
