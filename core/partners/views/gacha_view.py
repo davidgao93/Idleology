@@ -46,11 +46,13 @@ class PullResultView(PartnerBaseView):
         pull_view,
         new_partners: List[dict],
         highest_dup: Optional[dict] = None,
+        tickets: int = 0,
     ):
         super().__init__(bot, user_id)
         self.pull_view = pull_view
         self.new_partners = new_partners
         self.highest_dup = highest_dup
+        self.tickets = tickets
         self.current_index = 0
         self._update_buttons()
 
@@ -77,6 +79,7 @@ class PullResultView(PartnerBaseView):
             style=ButtonStyle.primary,
             emoji=GUILD_TICKET,
             row=1,
+            disabled=self.tickets < 1,
         )
         again1.callback = self._pull_again
         self.add_item(again1)
@@ -86,6 +89,7 @@ class PullResultView(PartnerBaseView):
             style=ButtonStyle.success,
             emoji=GUILD_TICKET,
             row=1,
+            disabled=self.tickets < 10,
         )
         again10.callback = self._pull_ten
         self.add_item(again10)
@@ -133,12 +137,12 @@ class PullResultView(PartnerBaseView):
         await interaction.response.edit_message(embed=self._build_embed(), view=self)
 
     async def _pull_again(self, interaction: Interaction):
-        await self.pull_view._do_pull(interaction, count=1)
-        self.stop()
+        if await self.pull_view._do_pull(interaction, count=1):
+            self.stop()
 
     async def _pull_ten(self, interaction: Interaction):
-        await self.pull_view._do_pull(interaction, count=10)
-        self.stop()
+        if await self.pull_view._do_pull(interaction, count=10):
+            self.stop()
 
     async def _back(self, interaction: Interaction):
         items = await self.bot.database.partners.get_items(self.user_id)
@@ -180,6 +184,11 @@ class PullView(PartnerBaseView):
             value=f"**{items.get('pity_counter', 0)}/100**",
         )
         embed.set_image(url=PARTNERS_INTRO)
+
+        tickets = items.get("guild_tickets", 0)
+        self.pull_one.disabled = tickets < 1
+        self.pull_ten.disabled = tickets < 10
+
         return embed
 
     @ui.button(label="Pull ×1 (1 ticket)", style=ButtonStyle.primary, emoji=GUILD_TICKET)
@@ -199,10 +208,13 @@ class PullView(PartnerBaseView):
         await interaction.edit_original_response(embed=embed, view=self.main_view)
         self.stop()
 
-    async def _do_pull(self, interaction: Interaction, count: int):
+    async def _do_pull(self, interaction: Interaction, count: int) -> bool:
+        """Attempts the pull. Returns True if it went through, False otherwise
+        (already processing, or not enough tickets) so callers know whether
+        it's safe to stop() the view that delegated to this call."""
         if self._processing:
             await interaction.response.defer()
-            return
+            return False
         self._processing = True
         ticket_cost = count
         ok = await self.bot.database.partners.spend_tickets(self.user_id, ticket_cost)
@@ -212,7 +224,7 @@ class PullView(PartnerBaseView):
                 f"Not enough tickets! You need **{ticket_cost}** {GUILD_TICKET}.",
                 ephemeral=True,
             )
-            return
+            return False
 
         await interaction.response.defer()
 
@@ -403,14 +415,15 @@ class PullView(PartnerBaseView):
 
         # Stage 3: Final view
         self._processing = False  # reset before showing result so re-pulls work
+        tickets_after = items_after.get("guild_tickets", 0)
         if new_partners:
             if count == 1:
                 final_view = SinglePullDetailView(
-                    self.bot, self.user_id, new_partners[0], self
+                    self.bot, self.user_id, new_partners[0], self, tickets_after
                 )
             else:
                 final_view = NewPartnersBrowserView(
-                    self.bot, self.user_id, new_partners, self
+                    self.bot, self.user_id, new_partners, self, tickets_after
                 )
             final_view.message = self.message
             await interaction.edit_original_response(
@@ -418,17 +431,18 @@ class PullView(PartnerBaseView):
             )
         else:
             if count == 1:
-                recap_view = PullRecapView(self.bot, self.user_id, self)
+                recap_view = PullRecapView(self.bot, self.user_id, self, tickets_after)
                 recap_view.message = self.message
                 await interaction.edit_original_response(
                     embed=dup_embed, view=recap_view
                 )
             else:
-                recap_view = PullRecapView(self.bot, self.user_id, self)
+                recap_view = PullRecapView(self.bot, self.user_id, self, tickets_after)
                 recap_view.message = self.message
                 await interaction.edit_original_response(view=recap_view)
         # Stop this view so its timeout doesn't clobber the final view's buttons.
         self.stop()
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -437,10 +451,14 @@ class PullView(PartnerBaseView):
 
 
 class SinglePullDetailView(PartnerBaseView):
-    def __init__(self, bot, user_id: str, partner: Partner, pull_view):
+    def __init__(
+        self, bot, user_id: str, partner: Partner, pull_view, tickets: int = 0
+    ):
         super().__init__(bot, user_id)
         self.partner = partner
         self.pull_view = pull_view
+        self.pull_one.disabled = tickets < 1
+        self.pull_ten.disabled = tickets < 10
 
     def build_embed(self) -> discord.Embed:
         return _build_partner_embed(self.partner, {})
@@ -452,8 +470,8 @@ class SinglePullDetailView(PartnerBaseView):
         row=1,
     )
     async def pull_one(self, interaction: Interaction, button: ui.Button):
-        await self.pull_view._do_pull(interaction, count=1)
-        self.stop()
+        if await self.pull_view._do_pull(interaction, count=1):
+            self.stop()
 
     @ui.button(
         label="Pull ×10 (10 tickets)",
@@ -462,8 +480,8 @@ class SinglePullDetailView(PartnerBaseView):
         row=1,
     )
     async def pull_ten(self, interaction: Interaction, button: ui.Button):
-        await self.pull_view._do_pull(interaction, count=10)
-        self.stop()
+        if await self.pull_view._do_pull(interaction, count=10):
+            self.stop()
 
     @ui.button(label="Back", style=ButtonStyle.secondary, row=1)
     async def back(self, interaction: Interaction, button: ui.Button):
@@ -482,10 +500,18 @@ class SinglePullDetailView(PartnerBaseView):
 
 
 class NewPartnersBrowserView(PartnerBaseView):
-    def __init__(self, bot, user_id: str, new_partners: List[Partner], pull_view):
+    def __init__(
+        self,
+        bot,
+        user_id: str,
+        new_partners: List[Partner],
+        pull_view,
+        tickets: int = 0,
+    ):
         super().__init__(bot, user_id)
         self.new_partners = new_partners
         self.pull_view = pull_view
+        self.tickets = tickets
         self.current_index = 0
         self._update_buttons()
 
@@ -512,6 +538,7 @@ class NewPartnersBrowserView(PartnerBaseView):
             style=ButtonStyle.primary,
             emoji=GUILD_TICKET,
             row=1,
+            disabled=self.tickets < 1,
         )
         one.callback = self._pull_one
         self.add_item(one)
@@ -521,6 +548,7 @@ class NewPartnersBrowserView(PartnerBaseView):
             style=ButtonStyle.success,
             emoji=GUILD_TICKET,
             row=1,
+            disabled=self.tickets < 10,
         )
         ten.callback = self._pull_ten
         self.add_item(ten)
@@ -552,12 +580,12 @@ class NewPartnersBrowserView(PartnerBaseView):
         await interaction.response.edit_message(embed=self.build_embed(), view=self)
 
     async def _pull_one(self, interaction: Interaction):
-        await self.pull_view._do_pull(interaction, count=1)
-        self.stop()
+        if await self.pull_view._do_pull(interaction, count=1):
+            self.stop()
 
     async def _pull_ten(self, interaction: Interaction):
-        await self.pull_view._do_pull(interaction, count=10)
-        self.stop()
+        if await self.pull_view._do_pull(interaction, count=10):
+            self.stop()
 
     async def _back(self, interaction: Interaction):
         items = await self.bot.database.partners.get_items(self.user_id)
@@ -575,9 +603,11 @@ class NewPartnersBrowserView(PartnerBaseView):
 
 
 class PullRecapView(PartnerBaseView):
-    def __init__(self, bot, user_id: str, pull_view):
+    def __init__(self, bot, user_id: str, pull_view, tickets: int = 0):
         super().__init__(bot, user_id)
         self.pull_view = pull_view
+        self.pull_one.disabled = tickets < 1
+        self.pull_ten.disabled = tickets < 10
 
     async def on_timeout(self):
         self.bot.state_manager.clear_active(self.user_id)
@@ -596,8 +626,8 @@ class PullRecapView(PartnerBaseView):
         row=1,
     )
     async def pull_one(self, interaction: Interaction, button: ui.Button):
-        await self.pull_view._do_pull(interaction, count=1)
-        self.stop()
+        if await self.pull_view._do_pull(interaction, count=1):
+            self.stop()
 
     @ui.button(
         label="Pull ×10 (10 tickets)",
@@ -606,8 +636,8 @@ class PullRecapView(PartnerBaseView):
         row=1,
     )
     async def pull_ten(self, interaction: Interaction, button: ui.Button):
-        await self.pull_view._do_pull(interaction, count=10)
-        self.stop()
+        if await self.pull_view._do_pull(interaction, count=10):
+            self.stop()
 
     @ui.button(label="Back", style=ButtonStyle.secondary, row=1)
     async def back(self, interaction: Interaction, button: ui.Button):

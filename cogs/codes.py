@@ -102,6 +102,12 @@ class Codes(commands.Cog, name="codes"):
         if not await self.bot.check_user_registered(interaction, existing_user):
             return
 
+        if self.bot.state_manager.is_active(user_id):
+            return await interaction.response.send_message(
+                "You're already in an active session. Close it first before redeeming a code.",
+                ephemeral=True,
+            )
+
         code_upper = code.strip().upper()
         record = await self.bot.database.codes.get_code(code_upper)
 

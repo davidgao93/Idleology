@@ -90,7 +90,11 @@ class CombatTutorialView(BaseView):
 
         # Fresh data — stamina may have changed since the tutorial was shown
         existing_user = await self.bot.database.users.get(user_id, server_id)
-        if not await self._cog._check_stamina(interaction, user_id, existing_user):
+        is_tree = await self.bot.database.inner_sanctum.get(user_id, server_id)
+        is_bonuses = get_tree_bonuses(is_tree["nodes_owned"])
+        if not await self._cog._check_stamina(
+            interaction, user_id, existing_user, is_bonuses
+        ):
             self.bot.state_manager.clear_active(user_id)
             self._processing = False
             return

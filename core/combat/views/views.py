@@ -1195,12 +1195,21 @@ class CombatView(BaseLayoutView):
             self.user_id, self.server_id
         )
         if pending_packages:
+            # Re-lock the player while an unresolved stat package is on screen —
+            # it was freed just above so post-combat callbacks could reassign a
+            # new active state, but an unresolved package must block *every*
+            # other entry point (including a concurrent /allocate_stats) until
+            # it's spent, or the same package can be double-applied from two
+            # views racing on the same DB row.
+            self.bot.state_manager.set_active(self.user_id, "allocate_stats")
+
             _victory_embed = embed  # captured for the on_done closure
             _stamina = stamina
             _rematch = self.rematch_callback
 
             async def _after_packages(msg):
                 """Transition to the post-combat view once all packages are chosen."""
+                self.bot.state_manager.clear_active(self.user_id)
                 post_view = (
                     PostCombatView(
                         self.bot,
