@@ -184,7 +184,7 @@ class ForestryView(BaseView):
         if self.state == "idle":
             can_afford = self.gold >= cost
             enter_btn = Button(
-                label=f"Enter Forest  ({cost:,} {GOLD_COIN})",
+                label=f"Enter Forest  ({cost:,})",
                 style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                 emoji="🌲",
                 disabled=not can_afford,
@@ -245,7 +245,7 @@ class ForestryView(BaseView):
         elif self.state == "ready":
             can_afford = self.gold >= cost
             again_btn = Button(
-                label=f"Chop Again  ({cost:,} {GOLD_COIN})",
+                label=f"Chop Again  ({cost:,})",
                 style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                 emoji="🌲",
                 disabled=not can_afford,

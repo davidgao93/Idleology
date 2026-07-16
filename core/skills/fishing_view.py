@@ -213,7 +213,7 @@ class FishingView(BaseView):
         if self.state == "idle":
             can_afford = self.gold >= cost
             steady_btn = Button(
-                label=f"🎣 Steady Cast  ({cost:,} {GOLD_COIN})",
+                label=f"🎣 Steady Cast  ({cost:,})",
                 style=ButtonStyle.primary if can_afford else ButtonStyle.secondary,
                 disabled=not can_afford,
                 row=0,
@@ -222,7 +222,7 @@ class FishingView(BaseView):
             self.add_item(steady_btn)
 
             agg_btn = Button(
-                label=f"⚡ Aggressive Cast  ({cost:,} {GOLD_COIN})",
+                label=f"⚡ Aggressive Cast  ({cost:,})",
                 style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                 disabled=not can_afford,
                 row=0,
@@ -260,7 +260,7 @@ class FishingView(BaseView):
         elif self.state in ("result", "escaped"):
             can_afford = self.gold >= cost
             steady_btn = Button(
-                label=f"🎣 Steady  ({cost:,} {GOLD_COIN})",
+                label=f"🎣 Steady  ({cost:,})",
                 style=ButtonStyle.primary if can_afford else ButtonStyle.secondary,
                 disabled=not can_afford,
                 row=0,
@@ -269,7 +269,7 @@ class FishingView(BaseView):
             self.add_item(steady_btn)
 
             agg_btn = Button(
-                label=f"⚡ Aggressive  ({cost:,} {GOLD_COIN})",
+                label=f"⚡ Aggressive  ({cost:,})",
                 style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                 disabled=not can_afford,
                 row=0,
