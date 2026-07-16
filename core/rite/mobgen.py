@@ -30,6 +30,7 @@ from core.images import (
     ARBITER_PHASE_4,
     ARBITER_PHASE_5,
     ARBITER_PHASE_FINAL,
+    ARBITER_TRUE_FORM,
     MONSTER_APHRODITE_REBORN,
     MONSTER_EVELYNN_REBORN,
     MONSTER_GEMINI_REBORN,
@@ -312,7 +313,7 @@ def generate_wing_evelynn(
 
 
 # =========================================================
-# The Arbiter — 6-phase finale
+# The Arbiter — 7-phase finale
 # =========================================================
 
 ARBITER_PHASE_NAMES = [
@@ -322,6 +323,7 @@ ARBITER_PHASE_NAMES = [
     "Right Arm of the Infinite Void",
     "Amalgam of Flesh, Dreams, and Nightmares",
     "Arbiter, the Last Edict",
+    "The Arbiter, Unbound",
 ]
 
 ARBITER_PHASE_IMAGES = [
@@ -331,6 +333,7 @@ ARBITER_PHASE_IMAGES = [
     ARBITER_PHASE_4,
     ARBITER_PHASE_5,
     ARBITER_PHASE_FINAL,
+    ARBITER_TRUE_FORM,
 ]
 
 
@@ -339,7 +342,7 @@ def arbiter_ref_level(player) -> int:
 
 
 def get_arbiter_phases(player) -> list[dict]:
-    """Builds the 6-phase combat_phases list, matching the shape
+    """Builds the 7-phase combat_phases list, matching the shape
     EncounterManager.get_boss_phases returns (a dict per phase) so it slots
     into CombatView's existing combat_phases plumbing untouched."""
     ref_level = arbiter_ref_level(player)
@@ -350,9 +353,10 @@ def get_arbiter_phases(player) -> list[dict]:
 
 
 def _arbiter_fixed_hp(ref_level: int) -> int:
-    """Deterministic HP shared by all 6 Arbiter phases — no random jitter, so
+    """Deterministic base HP shared by phases 1-6 — no random jitter, so
     every phase call reproduces the identical value without needing to
-    thread state between phase generations."""
+    thread state between phase generations. Phase 7 (the Arbiter's true,
+    unbound form) doubles this — see generate_arbiter_phase."""
     return int(10 * (ref_level**1.7) * 4.0)
 
 
@@ -360,11 +364,15 @@ def generate_arbiter_phase(player, phase_data: dict, phase_index: int) -> "Monst
     """Generates the Monster for one Arbiter phase (0-indexed).
 
     Phases 1-5 (index 0-4): all common + rare-tiered modifiers at the phase's
-    tier, no boss modifiers. Phase 6 (index 5): Delirious stat overlay + every
-    modifier at Tier 5 + every boss modifier at Tier 5 — the hardest single
-    encounter in the game.
+    tier, no boss modifiers. Phases 6-7 (index 5-6, "Arbiter, the Last Edict"
+    and "The Arbiter, Unbound"): Delirious stat overlay + every modifier at
+    Tier 5 + every boss modifier at Tier 5 — the hardest encounters in the
+    game. Phase 7 is deliberately NOT a further difficulty escalation beyond
+    that — same ATK/DEF/modifiers as Phase 6, only Max HP doubles (see the
+    fixed_hp override below), so it reads as "the same threat, more of it"
+    rather than a new stat tier.
 
-    HP is pinned identically across all 6 phases (RAID-DESIGN.md: "equal HP
+    HP is pinned identically across phases 1-6 (RAID-DESIGN.md: "equal HP
     pools across all phases"), overriding whatever the modifier list (e.g.
     Titanic) would otherwise produce.
     """
@@ -399,7 +407,7 @@ def generate_arbiter_phase(player, phase_data: dict, phase_index: int) -> "Monst
         make_modifier(name, monster.level, force_tier=tier)
         for name in (COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES)
     ]
-    if phase_index == 5:
+    if phase_index in (5, 6):
         monster.modifiers += [
             make_modifier(name, monster.level, force_max_tier=True)
             for name in BOSS_MOD_NAMES
@@ -407,7 +415,8 @@ def generate_arbiter_phase(player, phase_data: dict, phase_index: int) -> "Monst
         # The true Arbiter carries every common, rare, and boss modifier at
         # max tier — a wall of dozens of names. Collapse it into one bespoke
         # entry instead of the generic "Omnipotent V" every other omnipotent
-        # monster gets.
+        # monster gets. Same for the unbound Phase 7 — it's the same being,
+        # not a new modifier tier.
         monster.omnipotent_display = "∞ The Mind's End ∞"
         monster.omnipotent_names = frozenset(
             COMMON_MOD_NAMES + RARE_TIERED_MOD_NAMES + BOSS_MOD_NAMES
@@ -418,13 +427,16 @@ def generate_arbiter_phase(player, phase_data: dict, phase_index: int) -> "Monst
 
     _apply_spawn_modifiers(monster)
 
-    if phase_index == 5:
+    if phase_index in (5, 6):
         apply_rite_difficulty_overlay(monster, level=4)  # Delirious
 
     # Equal-HP override: applied AFTER _apply_spawn_modifiers (which may have
     # set bonus_max_hp_pct via Titanic) and again after finalize_monster_spawn
     # below (which would otherwise recompute max_hp from that bonus pool).
+    # Phase 7 doubles this — see generate_arbiter_phase's docstring.
     fixed_hp = _arbiter_fixed_hp(ref_level)
+    if phase_index == 6:
+        fixed_hp *= 2
     monster.base_max_hp = fixed_hp
     monster.hp = fixed_hp
     monster.max_hp = fixed_hp

@@ -602,6 +602,19 @@ class WingHubView(BaseLayoutView):
             # fight, so it's an accurate per-fight turn count to accumulate.
             run_state.total_turns += view.monster.combat_round
 
+            # Leaving combat: combat-only Max HP inflation (Ward Inoculation's
+            # doubling, or any other combat-start passive that temporarily
+            # raises total_max_hp) must not leak into non-combat screens
+            # (Wing Cleared, Respite, the wing hub) or get persisted as if it
+            # were real. Full reset + reapply of only the Rite-persistent
+            # buffs (Power/Respite stacks), then clamp current_hp down to
+            # whatever the now-lower true max is, BEFORE persisting — mirrors
+            # core/codex/views/run_view.py's _restore_chapter_baseline clamp
+            # for the exact same Ward Inoculation issue.
+            view.player.reset_combat_state()
+            apply_respite_buffs(view.player, run_state)
+            view.player.current_hp = min(view.player.current_hp, view.player.total_max_hp)
+
             await view.bot.database.users.update_from_player_object(view.player)
             await _je.save_jewel_state(view.bot, view.user_id, view.player)
 

@@ -5,7 +5,12 @@ import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
-from core.emojis import ENGORGED_HEART, PRIMAL_ESSENCE
+from core.emojis import (
+    ENGORGED_HEART,
+    ESSENCE_CORRUPT,
+    ESSENCE_RARE,
+    PRIMAL_ESSENCE,
+)
 from core.images import SLAYER_EMBLEM, SLAYER_MASTER, SLAYER_MASTER_AUTHOR
 from core.npc_voices import get_quip
 from core.slayer.mechanics import (
@@ -515,13 +520,11 @@ class SlotManageView(BaseView):
         )
 
         if success:
-            msg = f"✨ **Success!** Upgraded to Tier {new_tier}!"
+            msg = f"{ESSENCE_RARE} **Success!** Upgraded to Tier {new_tier}!"
         elif new_tier < old_tier:
-            msg = (
-                f"💥 **Failure.** The essence corrupted. Downgraded to Tier {new_tier}."
-            )
+            msg = f"{ESSENCE_CORRUPT} **Failure.** The essence corrupted. Downgraded to Tier {new_tier}."
         else:
-            msg = f"💨 **Failure.** The essence faded. Slot remains Tier {new_tier}."
+            msg = f"{ESSENCE_CORRUPT} **Failure.** The essence faded. Slot remains Tier {new_tier}."
 
         self.result_msg = msg
         self.setup_ui()
@@ -562,7 +565,7 @@ class SlotManageView(BaseView):
         new_desc = SlayerMechanics.get_passive_description(
             new_type, self.slot_data["tier"]
         )
-        self.result_msg = f"❤️ **Rerolled!** New Passive: **{new_desc}**"
+        self.result_msg = f"{ENGORGED_HEART} **Rerolled!** New Passive: **{new_desc}**"
         self.setup_ui()
         self._processing = False
         await interaction.edit_original_response(embed=self.build_embed(), view=self)
@@ -638,7 +641,7 @@ class SlayerTreeView(BaseView):
         prefix = {"taskmaster": "tm", "hunter": "hu", "purveyor": "pu"}[branch]
 
         embed = discord.Embed(
-            title=f"💀 Slayer Shop — {icon} {name}",
+            title=f"{SLAYER_EMBLEM} Slayer Shop — {icon} {name}",
             description=(
                 f"*{get_quip('slayer_shop')}*\n\n"
                 f"**Slayer Points:** {pts} | {PRIMAL_ESSENCE} **Violent Essence:** {ess}\n"

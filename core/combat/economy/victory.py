@@ -457,7 +457,7 @@ async def apply_victory_rewards(
         monster=monster,
     )
 
-    # Consolation cosmic dust — 1–5 ✨ when truly nothing else dropped.
+    # Consolation cosmic dust
     # Biased toward 5 at higher monster levels.
     if (
         not reward_data.get("items")

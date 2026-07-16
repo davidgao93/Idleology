@@ -561,7 +561,7 @@ class PotionDistillationView(BaseView):
         result_embed.colour = discord.Color.gold()
         result_embed.insert_field_at(
             0,
-            name=f"✨ {emoji} {name} (distilled)",
+            name=f"{POTION} {emoji} {name} (distilled)",
             value=f"{final_desc}\nPlaced in **Slot {slot}**.",
             inline=False,
         )
@@ -605,7 +605,7 @@ class _ConfirmOrAbandonView(BaseView):
         self._distill_view = distill_view
         self._processing = False
 
-    @ui.button(label="Confirm Distillation", style=ButtonStyle.green, emoji="✨")
+    @ui.button(label="Confirm Distillation", style=ButtonStyle.green, emoji=f"{POTION}")
     async def confirm(self, interaction: Interaction, button: ui.Button):
         if self._processing:
             await interaction.response.defer()
@@ -656,7 +656,7 @@ class _KeepOrReplaceView(BaseView):
         self._distill_view = distill_view
         self._processing = False
 
-    @ui.button(label="Use New Passive", style=ButtonStyle.green, emoji="✨")
+    @ui.button(label="Use New Passive", style=ButtonStyle.green, emoji=f"{POTION}")
     async def use_new(self, interaction: Interaction, button: ui.Button):
         if self._processing:
             await interaction.response.defer()

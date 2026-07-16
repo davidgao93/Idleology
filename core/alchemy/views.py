@@ -89,7 +89,7 @@ class AlchemyHubView(BaseView):
                 f"**Next Level Cost:** {SPIRIT_STONE} {level_cost} Spirit Stones"
             )
         else:
-            info.append("**Level:** ✨ MAX")
+            info.append("**Level:** MAX")
         embed.description = "\n".join(info)
 
         if slot_count > 0:
@@ -205,7 +205,7 @@ class AlchemyHubView(BaseView):
                 f"Cost: {SPIRIT_STONE} **{cost}** Spirit Stones\n"
                 f"New slot count: **{AlchemyMechanics.get_slot_count(new_level)}**\n"
                 f"New transmutation ratio: **{up_r}:1** upgrade / **1:{dn_r}** downgrade\n\n"
-                f"✨ The new slot will be ready for a free Distillation in the Potion Lab."
+                f"The new slot will be ready for a free Distillation in the Potion Lab."
             ),
             color=discord.Color.gold(),
         )
@@ -265,7 +265,7 @@ class _LevelUpConfirmView(BaseView):
         view = await _hub_from_db(self.bot, self.user_id, self.server_id)
         embed = view.build_embed()
         embed.colour = discord.Color.gold()
-        embed.title = f"✨ Alchemy leveled up to **{new_level}**!"
+        embed.title = f"{POTION} Alchemy leveled up to **{new_level}**!"
         msg = await interaction.edit_original_response(embed=embed, view=view)
         view.message = msg
         self.stop()

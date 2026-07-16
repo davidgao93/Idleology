@@ -325,7 +325,7 @@ class ImbueView(BaseUpgradeView):
             passive_desc = get_armor_passive_description(new_p)
             embed.description = (
                 f"{get_quip('imbue')}\n\n"
-                f"✨ **Success!** Imbued with **{new_p}**!"
+                f"{CELESTIAL_SIGIL} **Success!** Imbued with **{new_p}**!"
                 + (f"\n*{passive_desc}*" if passive_desc else "")
             )
         else:

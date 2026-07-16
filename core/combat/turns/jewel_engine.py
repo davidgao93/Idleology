@@ -284,7 +284,7 @@ def _do_charge_and_maybe_unleash(
         defn_name = (
             SKILL_JEWELS[skill_key].name if skill_key in SKILL_JEWELS else skill_key
         )
-        log.append(f"✨ **Mirage** — {defn_name} triggers twice!")
+        log.append(f"{defn_name} triggers twice!")
         _do_unleash()
 
 

@@ -32,8 +32,8 @@ class Alchemy(commands.Cog, name="alchemy"):
             welcome_msg = None
             if is_new:
                 welcome_msg = (
-                    "✨ **Welcome to Alchemist's Guild!** You start at Level 1 with 1 passive slot.\n"
-                    "Head to the **Potion Lab** to roll your first passive!"
+                    "**Welcome to Alchemist's Guild!** You start at Level 1 with 1 passive potion slot.\n"
+                    "Head to the **Potion Lab** to create your first elixir!"
                 )
 
             # 3. Fetch alchemy state

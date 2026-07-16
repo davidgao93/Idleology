@@ -7,16 +7,16 @@ from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
 from core.combat.turns import engine
-from core.emojis import QUEST_COMPLETE
+from core.emojis import QUEST_COMPLETE, RUNE_NATURE
 from core.images import COMBAT_ELEMENTAL
 from core.items.factory import load_player
 from core.models import Monster, Player
-from core.skills.mechanics import SkillMechanics
 from core.skills.mastery import (
     get_attunement_rune_bonus,
-    get_mastery_insight,
     get_insight_rune_bonus,
+    get_mastery_insight,
 )
+from core.skills.mechanics import SkillMechanics
 
 
 class _ElementalCompletionView(BaseView):
@@ -268,7 +268,7 @@ class ElementalEncounterView(BaseView):
 
         if rune_gained:
             embed.add_field(
-                name="✨ Rare Drop",
+                name=f"{RUNE_NATURE}",
                 value="**You received a Rune of Nature!**",
                 inline=False,
             )

@@ -102,7 +102,7 @@ def apply_stat_effects(player: Player, monster: Monster) -> None:
 def _cs_transcendence(player, monster):
     bonus = int((player.flat_atk + player.flat_def) * 0.20)
     player.bonus_atk += bonus
-    return f"**✨ Transcendence** channels your power! ⚔️ +**{bonus}** ATK (20% of flat ATK+DEF)"
+    return f"**Transcendence** channels your power! ⚔️ +**{bonus}** ATK (20% of flat ATK+DEF)"
 
 
 def _cs_unlimited_wealth(player, monster):
@@ -461,7 +461,7 @@ def _apply_soul_stone_start(player, monster) -> list[str]:
         bonus = int((player.flat_atk + player.flat_def) * pct / 100)
         player.bonus_atk += bonus
         log.append(
-            f"✨ **Soul Transcendence T{ss_transcendence}** — "
+            f"**Soul Transcendence T{ss_transcendence}** — "
             f"⚔️ +**{bonus}** ATK ({pct}% of flat ATK+DEF)"
         )
 

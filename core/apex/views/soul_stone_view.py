@@ -90,7 +90,7 @@ def _resonance_hint_text(soul_stone: SoulStone) -> str | None:
 
     if len(filled) == 1:
         cat = next(iter(cat_counts))
-        em = _CAT_EMOJI.get(cat, "✨")
+        em = _CAT_EMOJI.get(cat, f"{SOUL_RESONANCE}")
         t2 = RESONANCE_TABLE.get(f"{cat}_2")
         t3 = RESONANCE_TABLE.get(f"{cat}_3")
 
@@ -103,7 +103,7 @@ def _resonance_hint_text(soul_stone: SoulStone) -> str | None:
         lines.append("")
         lines.append("**All resonances** *(T2 = 2 matching slots · T3 = all 3 slots):*")
         for c in _ALL_CATEGORIES:
-            cem = _CAT_EMOJI.get(c, "✨")
+            cem = _CAT_EMOJI.get(c, f"{SOUL_RESONANCE}")
             t2r = RESONANCE_TABLE.get(f"{c}_2")
             t3r = RESONANCE_TABLE.get(f"{c}_3")
             if t2r and t3r:
@@ -115,7 +115,7 @@ def _resonance_hint_text(soul_stone: SoulStone) -> str | None:
             "**1 slot remaining** — add a matching category to unlock a resonance:"
         )
         for cat in cat_counts:
-            em = _CAT_EMOJI.get(cat, "✨")
+            em = _CAT_EMOJI.get(cat, f"{SOUL_RESONANCE}")
             t2 = RESONANCE_TABLE.get(f"{cat}_2")
             if t2:
                 lines.append(f"  {em} Add **{cat.title()}** → **{t2[0]}** — *{t2[1]}*")

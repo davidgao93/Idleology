@@ -723,9 +723,7 @@ class CodexRunView(BaseLayoutView):
     ) -> discord.Embed:
         is_perfect = self.deaths == 0 and self.chapters_cleared == 5
         if is_perfect:
-            description = (
-                "✨ **Perfect Codex Clear!** All 5 chapters without a single death."
-            )
+            description = f"{CODEX_TOME_EMOJI} **Perfect Codex Clear!** All 5 chapters without a single death."
         elif self.chapters_cleared == 5:
             description = "All 5 chapters cleared!"
         else:

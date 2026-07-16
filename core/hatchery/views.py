@@ -156,7 +156,7 @@ class HatcheryView(BaseView):
                 )
             else:
                 embed.add_field(
-                    name="✨ Incubation Complete!",
+                    name=f"{MONSTER_EGG} Incubation Complete!",
                     value=(
                         f"{emoji} **{label}** — {inc['monster_name']} (lvl {inc['monster_level']})\n"
                         f"Click **Release** to queue them for your next `/combat` encounter.\n"

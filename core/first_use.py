@@ -692,5 +692,5 @@ class TutorialGateView(BaseView):
             )
         if img := data.get("image"):
             embed.set_thumbnail(url=img)
-        embed.set_footer(text="✨ First visit — this message only appears once.")
+        embed.set_footer(text="First visit — this message only appears once.")
         return embed

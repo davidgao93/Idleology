@@ -115,6 +115,17 @@ ARBITER_PHASE_4 = "https://cdn.discordapp.com/attachments/1334637411363323996/15
 ARBITER_PHASE_5 = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248320312840312/amalgam_final_form.gif?ex=6a52b1b1&is=6a516031&hm=d60acd53d6aaaf462ec6fd9067646f46ffac10dcb0f26a2e01901228921b1b75&"
 ARBITER_PHASE_FINAL = "https://cdn.discordapp.com/attachments/1334637411363323996/1525248351178723428/arbiter_final_fight.gif?ex=6a52b1b8&is=6a516038&hm=1702168ee8b79609920b1032ffa06c3589e390f23094402fbc9a0276447c2a7c&"
 
+# Phase 7 — the Arbiter's true, unbound form (only reachable after Phase 6,
+# "Arbiter, the Last Edict", falls). ARBITER_TRANSFORM_GIF plays during the
+# timed transition screen between the two; ARBITER_TRUE_FORM is Phase 7's
+# own combat portrait (Monster.image), same convention as the other phases.
+ARBITER_TRANSFORM_GIF = "https://cdn.discordapp.com/attachments/1334637411363323996/1527348664232706159/arbiter_transform.gif?ex=6a5a55ca&is=6a59044a&hm=521281601229025c1c52ed8579a532331ffc2f0e36770f25c3f6dd34c8dfbc3b&"
+ARBITER_TRUE_FORM = "https://cdn.discordapp.com/attachments/1334637411363323996/1527348655437250611/arbiter_final_form.gif?ex=6a5a55c8&is=6a590448&hm=da03528450089940a2494b24ac208675803a1e39595abf8de6b27880574608a6&"
+
+# ── THE RITE OF CONVERGENCE — LOOT REVEAL (post-Arbiter chest screen) ──────────
+RITE_CHEST_NORMAL = "https://cdn.discordapp.com/attachments/1334637411363323996/1527348677847285961/rite_normal_win.jpg?ex=6a5a55cd&is=6a59044d&hm=411cc521d286a74209b99df25df82ba0485a76463304109069a3007260f40b81&"
+RITE_CHEST_ARTEFACT = "https://cdn.discordapp.com/attachments/1334637411363323996/1527348671170215996/rite_artefact.jpg?ex=6a5a55cb&is=6a59044b&hm=e8db6775d560cb7956464855442f22cdddc8c7f9aa61b0d2fb791716f4ee6702&"
+
 # ── THE RITE OF CONVERGENCE — ARTEFACT ICONS ────────────────────────────────────
 # NOTE: no dedicated Gemini-themed asset has been provided yet for Seal of
 # Duality — it currently falls back to MONSTER_GEMINI_REBORN in loot.py.

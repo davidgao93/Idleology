@@ -875,7 +875,7 @@ class CompanionDetailView(BaseView):
                         await self.bot.database.companions.add_kinship_points(
                             self.user_id, str(interaction.guild_id), kp_earned
                         )
-                        xp_note += f"\n✨ Gained **{kp_earned} Kinship Point(s)** from overflow XP."
+                        xp_note += f"\nGained **{kp_earned} Kinship Point(s)** from overflow XP."
         except Exception:
             pass
 

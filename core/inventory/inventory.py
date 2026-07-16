@@ -488,7 +488,7 @@ class InventoryUI:
                     )
             if isinstance(item, Armor):
                 if item.passive != "none" and item.passive != "":
-                    passives.append(f"✨{item.passive.title()}")
+                    passives.append(f"{CELESTIAL_SIGIL}{item.passive.title()}")
                 if getattr(item, "celestial_passive", "none") != "none":
                     passives.append(
                         f"{CELESTIAL_ENGRAM}{item.celestial_passive.replace('_', ' ').title()}"

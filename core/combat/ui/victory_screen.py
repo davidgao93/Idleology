@@ -31,6 +31,7 @@ from core.emojis import (
     CURIO,
     DIVINER_ROD,
     DRAGON_KEY,
+    ESSENCE_COMMON,
     GOLD_COIN,
     GUILD_TICKET,
     INFERNAL_CINDER,
@@ -219,7 +220,9 @@ def create_victory_embed(
     from core.items.essence_views import ESSENCE_DISPLAY
 
     for essence_type in rewards.get("essences", []):
-        label, emoji = ESSENCE_DISPLAY.get(essence_type, (essence_type.title(), "✨"))
+        label, emoji = ESSENCE_DISPLAY.get(
+            essence_type, (essence_type.title(), f"{ESSENCE_COMMON}")
+        )
         loot_lines.append(f"✦ **Essence of {emoji} {label}**")
 
     # 4. Equipment Drops
@@ -275,7 +278,7 @@ def create_victory_embed(
         loot_lines.append(f"{COSMIC_DUST} {rewards['consolation_dust']} Cosmic Dust")
 
     embed.add_field(
-        name="✨__Loot__✨",
+        name="__Loot__",
         value="\n".join(loot_lines) if loot_lines else "None",
         inline=False,
     )

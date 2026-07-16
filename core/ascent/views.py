@@ -106,7 +106,9 @@ class AscentLobbyRow(discord.ui.ActionRow["AscentLobbyView"]):
     async def begin_run_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_begin_run(interaction)
 
-    @discord.ui.button(label="Pinnacles", style=ButtonStyle.primary, emoji="✨")
+    @discord.ui.button(
+        label="Pinnacles", style=ButtonStyle.primary, emoji=f"{ASCENT_EMOJI}"
+    )
     async def pinnacles_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_view_pinnacles(interaction)
 
@@ -334,7 +336,7 @@ class AscentPinnacleListView(BaseLayoutView):
         unlocked_count = len(self.lobby_view.player.ascension_unlocks)
         total = len(PINNACLE_REWARDS)
         embed = discord.Embed(
-            title="✨ Pinnacle Floors",
+            title=f"{ASCENT_EMOJI} Pinnacle Floors",
             description=(
                 self.pages[self.page] if self.pages else "No pinnacle floors defined."
             ),
@@ -671,7 +673,7 @@ class AscentView(BaseLayoutView):
         if milestone_rewards:
             lines.append("📦 **Milestone Rewards:**\n" + "\n".join(milestone_rewards))
         if pinnacle_gained:
-            lines.append(f"✨ **Pinnacle Unlock:** {pinnacle_gained}")
+            lines.append(f"{ASCENT_EMOJI} **Pinnacle Unlock:** {pinnacle_gained}")
         if skiller_msg:
             lines.append(skiller_msg)
         lines.extend(quest_msgs)
@@ -786,7 +788,7 @@ class AscentView(BaseLayoutView):
             )
         if self.pinnacle_log:
             embed.add_field(
-                name="✨ Pinnacle Unlocks",
+                name=f"{ASCENT_EMOJI} Pinnacle Unlocks",
                 value="\n".join(self.pinnacle_log),
                 inline=False,
             )

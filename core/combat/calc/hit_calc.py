@@ -286,7 +286,7 @@ def build_attack_multiplier(
             add_pool_bonus += _piety_bonus
             add_pool_parts.append(f"soul_piety_T{_ss_piety}")
             log.append(
-                f"✨ **Soul Piety T{_ss_piety}** — divine favour! "
+                f"**Soul Piety T{_ss_piety}** — divine favour! "
                 f"+{int(_piety_bonus * 100)}% bonus damage!"
             )
 
