@@ -8,6 +8,7 @@ import discord
 from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
+from core.emojis import QUEST_TOKEN
 from core.images import QUEST_SHOP, QUEST_SHOP_AUTHOR
 from core.npc_voices import get_quip
 from core.quests.data import SHOP_CATEGORIES, TOKEN_SHOP_ITEMS
@@ -54,7 +55,7 @@ class TokenShopView(BaseView):
         embed = discord.Embed(
             title="Quest Token Shop",
             description=(
-                f"{get_quip('quest_shop')}\n\n🎫 **Your Tokens: {self._tokens}**\n\n"
+                f"{get_quip('quest_shop')}\n\n{QUEST_TOKEN} **Your Tokens: {self._tokens}**\n\n"
                 f"**{cat['emoji']} {cat['label']}**"
             ),
             color=_SHOP_COLOR,
@@ -68,7 +69,7 @@ class TokenShopView(BaseView):
                 cost_display = "✅ UNLOCKED"
             else:
                 one_time = " *(One-time)*" if item.get("one_time") else ""
-                cost_display = f"{item['cost']}🎫{one_time}"
+                cost_display = f"{item['cost']}{QUEST_TOKEN}{one_time}"
             embed.add_field(
                 name=f"{name_prefix}{item['label']} — {cost_display}",
                 value=item["description"],
@@ -86,7 +87,7 @@ class TokenShopView(BaseView):
                 continue
             options.append(
                 discord.SelectOption(
-                    label=f"{item['label']} ({item['cost']}🎫)",
+                    label=f"{item['label']} ({item['cost']}{QUEST_TOKEN})",
                     value=item["id"],
                     description=item["description"][:50],
                 )

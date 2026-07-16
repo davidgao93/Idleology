@@ -22,7 +22,13 @@ from core.combat.calc.damage_calc import (
 from core.combat.calc.hit_calc import build_attack_multiplier, resolve_crit, resolve_hit
 from core.combat.calc.ward_system import _add_ward, generate_player_ward_on_hit
 from core.combat.turns.helpers import PlayerTurnResult, capture_compact_events
-from core.emojis import ALCHEMY_PASSIVE_EMOJI, CELESTIAL_ENGRAM, SIG_SIGMUND, STAT_WARD
+from core.emojis import (
+    ALCHEMY_PASSIVE_EMOJI,
+    ARTEFACT_SLOT,
+    CELESTIAL_ENGRAM,
+    SIG_SIGMUND,
+    STAT_WARD,
+)
 from core.models import Monster, Player
 
 # ---------------------------------------------------------------------------
@@ -665,7 +671,9 @@ def process_player_turn(player: Player, monster: Monster) -> PlayerTurnResult:
     start = len(log)
     if final_edict_triggered:
         actual_damage = raw_damage
-        log.append("🏺 **The Final Edict** — the strike bypasses all mitigation!")
+        log.append(
+            f"{ARTEFACT_SLOT} **The Final Edict** — the strike bypasses all mitigation!"
+        )
     else:
         actual_damage = apply_monster_damage_reduction(monster, raw_damage, log, calc)
     capture_compact_events(log, clog, start)

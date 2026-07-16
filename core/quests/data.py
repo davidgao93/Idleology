@@ -7,11 +7,14 @@ from __future__ import annotations
 import random
 
 from core.emojis import (
+    ANGEL_KEY,
     CAPRICIOUS_CARP,
     CODEX_FRAGMENT_EMOJI,
     CODEX_TOME_EMOJI,
     CURIO,
+    DRAGON_KEY,
     ESSENCE_COMMON,
+    GEAR_BACKPACK,
     GUILD_TICKET,
     PINNACLE_KEY,
     QUEST_TOKEN,
@@ -20,6 +23,7 @@ from core.emojis import (
     SOUL_FRAGMENT,
     SPIRIT_STONE,
     VOID_FRAG,
+    VOID_KEY,
 )
 
 # ---------------------------------------------------------------------------
@@ -385,7 +389,7 @@ CHECKIN_DAY_LABELS = {
 # ---------------------------------------------------------------------------
 
 SHOP_CATEGORIES = {
-    "consumables": {"label": "Consumables & Utility", "emoji": "🎒"},
+    "consumables": {"label": "Consumables & Utility", "emoji": f"{GEAR_BACKPACK}"},
     "upgrades": {"label": "Permanent Upgrades", "emoji": "⭐"},
 }
 
@@ -520,7 +524,7 @@ async def grant_checkin_day(
                     f"{RUNE_GENERIC} +{n} {_RUNE_LABELS[r]}{'s' if n > 1 else ''}"
                 )
             await bot.database.quests.add_tokens(user_id, 2)
-            rewards.append("🎫 +2 Quest Tokens")
+            rewards.append(f"{QUEST_TOKEN} +2 Quest Tokens")
         elif level >= 30:
             essence_pool = [
                 "power",
@@ -533,19 +537,25 @@ async def grant_checkin_day(
             for _ in range(3):
                 etype = random.choice(essence_pool)
                 await bot.database.essences.add(user_id, etype)
-            rewards.append("✨ +3 Random Essences")
+            rewards.append(f"{ESSENCE_COMMON} +3 Random Essences")
             await bot.database.quests.add_tokens(user_id, 1)
-            rewards.append("🎫 +1 Quest Token")
+            rewards.append(f"{QUEST_TOKEN} +1 Quest Token")
         else:
             await bot.database.quests.add_tokens(user_id, 2)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +2 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
+            rewards += [
+                f"{QUEST_TOKEN} +2 Quest Tokens",
+                f"{GUILD_TICKET} +3 Guild Tickets",
+            ]
 
     elif day == 3:
         if level >= 80:
             await bot.database.users.modify_currency(user_id, "antique_tome", 1)
             await bot.database.quests.add_tokens(user_id, 2)
-            rewards += [f"{CODEX_TOME_EMOJI} +1 Antique Tome", "🎫 +2 Quest Tokens"]
+            rewards += [
+                f"{CODEX_TOME_EMOJI} +1 Antique Tome",
+                f"{QUEST_TOKEN} +2 Quest Tokens",
+            ]
         elif level >= 50:
             mat_pool = ["magma_core", "life_root", "spirit_shard"]
             count = random.randint(1, 3)
@@ -562,11 +572,14 @@ async def grant_checkin_day(
                 await bot.database.settlement_materials.modify(user_id, m, n)
                 rewards.append(f"🪨 +{n} {_MAT_LABELS[m]}{'s' if n > 1 else ''}")
             await bot.database.quests.add_tokens(user_id, 2)
-            rewards.append("🎫 +2 Quest Tokens")
+            rewards.append(f"{QUEST_TOKEN} +2 Quest Tokens")
         else:
             await bot.database.quests.add_tokens(user_id, 2)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +2 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
+            rewards += [
+                f"{QUEST_TOKEN} +2 Quest Tokens",
+                f"{GUILD_TICKET} +3 Guild Tickets",
+            ]
 
     elif day == 4:
         if level >= 60:
@@ -577,25 +590,29 @@ async def grant_checkin_day(
             ]
             fn = random.choice(elemental_funcs)
             await fn(user_id, server_id, 1)
-            rewards.append("🔑 +1 Random Elemental Key")
+            rewards.append(f"{CAPRICIOUS_CARP} +1 Random Elemental Key")
             await bot.database.quests.add_tokens(user_id, 2)
-            rewards.append("🎫 +2 Quest Tokens")
+            rewards.append(f"{QUEST_TOKEN} +2 Quest Tokens")
         elif level >= 40:
             key = random.choice(["dragon_key", "angel_key"])
             await bot.database.users.modify_currency(user_id, key, 1)
-            label = "Dragon Key" if key == "dragon_key" else "Angel Key"
-            rewards.append(f"🗝️ +1 {label}")
+            label = (
+                f"{DRAGON_KEY} Dragon Key"
+                if key == "dragon_key"
+                else f"{ANGEL_KEY} Angel Key"
+            )
+            rewards.append(f"+1 {label}")
             await bot.database.quests.add_tokens(user_id, 2)
-            rewards.append("🎫 +2 Quest Tokens")
+            rewards.append(f"{QUEST_TOKEN} +2 Quest Tokens")
         else:
             await bot.database.quests.add_tokens(user_id, 2)
             await bot.database.users.modify_currency(user_id, "curios", 1)
-            rewards += ["🎫 +2 Quest Tokens", f"{CURIO} +1 Curio"]
+            rewards += [f"{QUEST_TOKEN} +2 Quest Tokens", f"{CURIO} +1 Curio"]
 
     elif day == 5:
         await bot.database.users.modify_currency(user_id, "curios", 1)
         await bot.database.quests.add_tokens(user_id, 2)
-        rewards += [f"{CURIO} +1 Curio", "🎫 +2 Quest Tokens"]
+        rewards += [f"{CURIO} +1 Curio", f"{QUEST_TOKEN} +2 Quest Tokens"]
 
     elif day == 6:
         if level >= 70:
@@ -629,13 +646,16 @@ async def grant_checkin_day(
             for _ in range(2):
                 etype = random.choice(essence_pool)
                 await bot.database.essences.add(user_id, etype)
-            rewards.append("✨ +2 Random Essences")
+            rewards.append(f"{ESSENCE_COMMON} +2 Random Essences")
             await bot.database.quests.add_tokens(user_id, 1)
-            rewards.append("🎫 +1 Quest Token")
+            rewards.append(f"{QUEST_TOKEN} +1 Quest Token")
         else:
             await bot.database.quests.add_tokens(user_id, 2)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +2 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
+            rewards += [
+                f"{QUEST_TOKEN} +2 Quest Tokens",
+                f"{GUILD_TICKET} +3 Guild Tickets",
+            ]
 
     elif day == 7:
         await bot.database.users.modify_currency(user_id, "curios", 5)
@@ -739,7 +759,7 @@ async def grant_checkin_day(
             }
             for m, n in mats.items():
                 await bot.database.settlement_materials.modify(user_id, m, n)
-                rewards.append(f"🪨 +{n} {_MAT_LABELS[m]}{'s' if n > 1 else ''}")
+                rewards.append(f"+{n} {_MAT_LABELS[m]}{'s' if n > 1 else ''}")
             await bot.database.quests.add_tokens(user_id, 2)
             rewards.append(f"{QUEST_TOKEN} +2 Quest Tokens")
         else:
@@ -786,35 +806,38 @@ async def grant_checkin_day(
             for _ in range(3):
                 etype = random.choice(essence_pool)
                 await bot.database.essences.add(user_id, etype)
-            rewards.append("✨ +3 Random Essences")
+            rewards.append(f"{ESSENCE_COMMON} +3 Random Essences")
             await bot.database.quests.add_tokens(user_id, 2)
-            rewards.append("🎫 +2 Quest Tokens")
+            rewards.append(f"{QUEST_TOKEN} +2 Quest Tokens")
         else:
             await bot.database.quests.add_tokens(user_id, 3)
             await bot.database.partners.add_tickets(user_id, 3)
-            rewards += ["🎫 +3 Quest Tokens", f"{GUILD_TICKET} +3 Guild Tickets"]
+            rewards += [
+                f"{QUEST_TOKEN} +3 Quest Tokens",
+                f"{GUILD_TICKET} +3 Guild Tickets",
+            ]
 
     elif day == 12:
         if level >= 50:
             await bot.database.users.modify_currency(user_id, "void_keys", 1)
             await bot.database.quests.add_tokens(user_id, 2)
-            rewards += ["🔑 +1 Void Key", "🎫 +2 Quest Tokens"]
+            rewards += [f"{VOID_KEY} +1 Void Key", f"{QUEST_TOKEN} +2 Quest Tokens"]
         elif level >= 40:
             key = random.choice(["dragon_key", "angel_key"])
             await bot.database.users.modify_currency(user_id, key, 1)
             label = "Dragon Key" if key == "dragon_key" else "Angel Key"
             rewards.append(f"🗝️ +1 {label}")
             await bot.database.quests.add_tokens(user_id, 3)
-            rewards.append("🎫 +3 Quest Tokens")
+            rewards.append(f"{QUEST_TOKEN} +3 Quest Tokens")
         else:
             await bot.database.quests.add_tokens(user_id, 3)
             await bot.database.users.modify_currency(user_id, "curios", 1)
-            rewards += ["🎫 +3 Quest Tokens", f"{CURIO} +1 Curio"]
+            rewards += [f"{QUEST_TOKEN} +3 Quest Tokens", f"{CURIO} +1 Curio"]
 
     elif day == 13:
         await bot.database.quests.add_tokens(user_id, 3)
         await bot.database.users.modify_currency(user_id, "curios", 1)
-        rewards += ["🎫 +3 Quest Tokens", f"{CURIO} +1 Curio"]
+        rewards += [f"{QUEST_TOKEN} +3 Quest Tokens", f"{CURIO} +1 Curio"]
 
     elif day == 14:
         await bot.database.users.modify_currency(user_id, "curios", 10)

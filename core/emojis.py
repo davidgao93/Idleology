@@ -71,7 +71,7 @@ HELMET_SLOT = "<:gear_helmet:1524443427306209431>"
 GLOVE_SLOT = "<:gear_gloves:1524443397476323399>"
 BOOT_SLOT = "<:gear_boots:1524443392963252358>"
 ACCESSORY_SLOT = "<:gear_accessory:1524443431513096279>"
-ARTEFACT_SLOT = "<:rite_artefact:1527321237876117565>"
+ARTEFACT_SLOT = "<:rite_artefact:1527328672430948423>"
 GEAR_BACKPACK = "<:gear_backpack:1524443376320118794>"  # generic "Gear" category icon (not slot-specific)
 
 # ── Combat stats (profile stat sheet + in-combat stat lines) ───────────────
@@ -339,17 +339,17 @@ GEAR_PASSIVES = "<:gear_passives:1526938107016904816>"
 UBER_EMOJI = "<:uber:1526938108547956827>"
 
 # Slayer
-SLAYER_EMBLEM_ICON = "<:slayer_emblem:1527321237133721690>"
+SLAYER_EMBLEM_ICON = "<:slayer_emblem:1527328671243960371>"
 
 # ── Quests ──────────────────────────────────────────────────────────────────
 QUEST_COMPLETE = "<:quest_complete:1526938103162470400>"
-QUEST_TOKEN = "<:quest_token:1527321236181483612>"
+QUEST_TOKEN = "<:quest_token:1527328670157508619>"
 
 # Companions
-COMPANION_COLLECT = "<:companion_collect:1527321238718910634>"
-FORGED_BONDS = "<:forged_bonds:1527321239625138418>"
+COMPANION_COLLECT = "<:companion_collect:1527328673168883733>"
+FORGED_BONDS = "<:forged_bonds:1527328674007875614>"
 
-# ── Guild Ticket (standardized — do not use plain 🎫 for this currency) ────
+# ── Partner / Guild Ticket ────
 GUILD_TICKET = "<:guild_ticket:1526938101988196492>"
 
 # ── Ascent ──────────────────────────────────────────────────────────────────
@@ -421,10 +421,10 @@ GATHERING_TOOL_TIER_EMOJI: dict[str, dict[str, str]] = {
 # ── Gear upgrade action icons (launcher buttons; the underlying rune/material
 # icon stays on any secondary "use rune" sub-option, e.g. Enchant's Use Rune) ─
 GEAR_ENCHANT = "<:gear_enchant:1526938101065322576>"
-ENCHANT_FAIL = "<:enchant_fail:1527059894509900027>"
+ENCHANT_FAIL = "<:enchant_fail:1527328675635138701>"
 GEAR_REINFORCE = "<:gear_reinforce:1526938103674048658>"
 WEAPON_FORGE = "<:weapon_forge:1526938104810700941>"
-FORGE_FAIL = "<:forge_fail:1527060834910470348>"
+FORGE_FAIL = "<:forge_fail:1527328674947272744>"
 WEAPON_REFINE = "<:weapon_refine:1526938105603555388>"
 
 # ── Alchemy potion passives (Potion Lab / Distillation / combat status icons) ─

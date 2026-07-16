@@ -9,6 +9,7 @@ from core.combat.calc.ward_system import _add_ward
 from core.combat.turns.helpers import MonsterTurnResult, capture_compact_events
 from core.emojis import (
     ALCHEMY_PASSIVE_EMOJI,
+    ARTEFACT_SLOT,
     CELESTIAL_ENGRAM,
     GOLD_COIN,
     INFERNAL_ENGRAM,
@@ -1006,7 +1007,7 @@ def process_monster_turn(
             ):
                 player.seal_of_duality_triggered = True
                 log.append(
-                    f"🏺 **Seal of Duality** — ward broken, gaining "
+                    f"{ARTEFACT_SLOT} **Seal of Duality** — ward broken, gaining "
                     f"**+{int(player.artefact.roll_1)}% DEF** for the rest of combat!"
                 )
 

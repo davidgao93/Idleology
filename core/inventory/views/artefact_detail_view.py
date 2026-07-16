@@ -5,6 +5,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
+from core.emojis import ARTEFACT_SLOT
 from core.rite.loot import describe_artefact
 from core.rite.models import Artefact
 
@@ -41,9 +42,7 @@ class ArtefactDetailView(BaseView):
     refund logic to mirror.
     """
 
-    def __init__(
-        self, bot, user_id: str, server_id: str, item: Artefact, parent_view
-    ):
+    def __init__(self, bot, user_id: str, server_id: str, item: Artefact, parent_view):
         super().__init__(bot=bot, user_id=user_id)
         self.bot = bot
         self.user_id = user_id
@@ -58,9 +57,11 @@ class ArtefactDetailView(BaseView):
         rng = self.item.roll_1_range
         roll_line = ""
         if rng:
-            roll_line = f"\n\n**Roll:** {int(self.item.roll_1)} *(range {rng[0]}-{rng[1]})*"
+            roll_line = (
+                f"\n\n**Roll:** {int(self.item.roll_1)} *(range {rng[0]}-{rng[1]})*"
+            )
         embed = discord.Embed(
-            title=f"🏺 {self.item.name}",
+            title=f"{ARTEFACT_SLOT} {self.item.name}",
             description=(
                 f"*Thematic source: {self.item.source}*\n\n"
                 f"{describe_artefact(self.item.key, self.item.roll_1)}"
@@ -76,7 +77,9 @@ class ArtefactDetailView(BaseView):
         self.clear_items()
 
         label = "Unequip" if self.is_equipped else "Equip"
-        equip_btn = Button(label=label, style=ButtonStyle.primary, emoji="🏺")
+        equip_btn = Button(
+            label=label, style=ButtonStyle.primary, emoji=f"{ARTEFACT_SLOT}"
+        )
         equip_btn.callback = self.toggle_equip
         self.add_item(equip_btn)
 

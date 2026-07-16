@@ -2,7 +2,7 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import DIFFICULTY_TIER_EMOJI, GOLD_COIN, POTION
+from core.emojis import DIFFICULTY_TIER_EMOJI, GOLD_COIN, POTION, QUEST_TOKEN
 
 # ---------------------------------------------------------------------------
 # Difficulty tier definitions
@@ -111,7 +111,7 @@ class SettingsView(BaseView):
             rest_btn.callback = self.toggle_auto_rest_pay
         else:
             rest_btn = ui.Button(
-                label="Auto-Pay Rest (Unlock: Quest Shop, 10🎫)",
+                label=f"Auto-Pay Rest (Unlock: Quest Shop, 10 {QUEST_TOKEN})",
                 style=ButtonStyle.secondary,
                 emoji="🔒",
                 row=1,
@@ -134,7 +134,7 @@ class SettingsView(BaseView):
             reload_btn.callback = self.toggle_auto_potion_reload
         else:
             reload_btn = ui.Button(
-                label="Auto-Reload Potions (Unlock: Quest Shop, 25🎫)",
+                label=f"Auto-Reload Potions (Unlock: Quest Shop, 25 {QUEST_TOKEN})",
                 style=ButtonStyle.secondary,
                 emoji="🔒",
                 row=1,
@@ -142,7 +142,9 @@ class SettingsView(BaseView):
             )
         self.add_item(reload_btn)
 
-        nsfw_lbl = "Disable NSFW Monsters" if self.nsfw_enabled else "Enable NSFW Monsters"
+        nsfw_lbl = (
+            "Disable NSFW Monsters" if self.nsfw_enabled else "Enable NSFW Monsters"
+        )
         nsfw_style = ButtonStyle.danger if self.nsfw_enabled else ButtonStyle.success
         nsfw_btn = ui.Button(label=nsfw_lbl, style=nsfw_style, emoji="🔞", row=2)
         nsfw_btn.callback = self.toggle_nsfw
@@ -246,13 +248,13 @@ class SettingsView(BaseView):
             rest=(
                 ("🟢 ENABLED" if self.auto_rest_pay else "🔴 DISABLED")
                 if self.auto_rest_unlocked
-                else "🔒 LOCKED — unlock for 10🎫 in the Quest Shop (`/quests`)"
+                else f"🔒 LOCKED — unlock for 10 {QUEST_TOKEN} in the Quest Shop (`/quests`)"
             ),
             potion=POTION,
             reload=(
                 ("🟢 ENABLED" if self.auto_potion_reload else "🔴 DISABLED")
                 if self.auto_reload_unlocked
-                else "🔒 LOCKED — unlock for 25🎫 in the Quest Shop (`/quests`)"
+                else f"🔒 LOCKED — unlock for 25 {QUEST_TOKEN} in the Quest Shop (`/quests`)"
             ),
             nsfw=("🟢 ENABLED" if self.nsfw_enabled else "🔴 DISABLED"),
         )

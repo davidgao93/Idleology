@@ -21,6 +21,7 @@ import math
 import random
 
 from core.emojis import (
+    ARTEFACT_SLOT,
     INFERNAL_ENGRAM,
     STAT_WARD,
     TWIN_STRIKE,
@@ -365,7 +366,7 @@ def calc_crit_damage(
             base_min = max(base_min, adroit_min)
             calc_dmg_notes.append(f"corrupted_insignia_adroit_min={base_min}")
             log.append(
-                f"🏺 **Corrupted Insignia** triggers **Adroit ({_ci_glove_lvl})** on the crit!"
+                f"{ARTEFACT_SLOT} **Corrupted Insignia** triggers **Adroit ({_ci_glove_lvl})** on the crit!"
             )
 
     # Deftness: crit-exclusive roll floor (complement to Adroit for normal hits)
@@ -448,7 +449,9 @@ def calc_crit_damage(
             echo_damage = int(damage * (echo_idx + 1) * 0.10)
             damage += echo_damage
             calc_dmg_notes.append(f"corrupted_insignia_echo+{echo_damage}")
-            log.append("🏺 **Corrupted Insignia** triggers **Echo** on the crit!")
+            log.append(
+                f"{ARTEFACT_SLOT} **Corrupted Insignia** triggers **Echo** on the crit!"
+            )
 
     infernal = player.get_weapon_infernal()
     if infernal == "last_rites" and monster.hp > 0:

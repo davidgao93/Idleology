@@ -323,7 +323,7 @@ class RefineView(BaseUpgradeView):
             f"This will perform **{total_cycles:,}** refine(s) (no runes).\n\n"
             f"**Estimated Resources Consumed:**\n"
             f"{GOLD_COIN} Gold: {gold_used:,}\n"
-            f"📦 Materials:\n{mat_lines}\n\n"
+            f"Materials:\n{mat_lines}\n\n"
             f"*Stops when: {stop_reason}*\n\n"
             f"Proceed?"
         )
@@ -571,7 +571,7 @@ class RefineView(BaseUpgradeView):
             f"**Estimated Resources Consumed:**\n"
             f"{GOLD_COIN} Gold: {gold_used:,}\n"
             f"{RUNE_REFINEMENT} Refinement Runes: {runes_used}\n"
-            f"📦 Materials:\n{mat_lines}\n\n"
+            f"Materials:\n{mat_lines}\n\n"
             f"*Stops when: {stop_reason}*\n\n"
             f"Proceed?"
         )

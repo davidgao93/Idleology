@@ -205,49 +205,6 @@ class Rite(commands.Cog, name="rite"):
         await interaction.response.send_message(view=view)
         view.message = await interaction.original_response()
 
-    @app_commands.command(
-        name="artefact",
-        description="View your equipped Rite of Convergence Artefact.",
-    )
-    async def artefact(self, interaction: Interaction):
-        from core.rite.loot import ARTEFACT_TABLE, describe_artefact, roll_1_range
-
-        user_id = str(interaction.user.id)
-        server_id = str(interaction.guild.id)
-
-        existing_user = await self.bot.database.users.get(user_id, server_id)
-        if not await self.bot.check_user_registered(interaction, existing_user):
-            return
-
-        row = await self.bot.database.rite.get_equipped_artefact(user_id, server_id)
-        if not row or not row["artefact_key"]:
-            return await interaction.response.send_message(
-                "You haven't equipped an Artefact yet — they drop from a "
-                "completed Rite of Convergence run, and can be managed from "
-                "the Artefact tab in `/gear`.",
-                ephemeral=True,
-            )
-
-        key = row["artefact_key"]
-        name, source, req_dp, _weight, image = ARTEFACT_TABLE[key]
-        rng = roll_1_range(key)
-        roll_line = (
-            f"\n\n**Roll:** {int(row['roll_1'])} *(range {rng[0]}-{rng[1]})*"
-            if rng
-            else ""
-        )
-        embed = discord.Embed(
-            title=f"🏺 {name}",
-            description=(
-                f"*Thematic source: {source}*\n\n"
-                f"{describe_artefact(key, row['roll_1'])}{roll_line}"
-            ),
-            color=discord.Color.dark_gold(),
-        )
-        embed.set_thumbnail(url=image)
-        embed.set_footer(text="Manage your artefacts from the Artefact tab in /gear.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
 
 async def setup(bot):
     await bot.add_cog(Rite(bot))

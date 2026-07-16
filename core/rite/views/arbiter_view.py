@@ -16,6 +16,7 @@ from core.combat.turns import engine
 from core.combat.turns import jewel_engine as _je
 from core.combat.turns.boundary import reset_for_phase_transition
 from core.combat.views.views import CombatView
+from core.emojis import ARTEFACT_SLOT
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import ARBITER_PHASE_FINAL, ARBITER_PORTRAIT
 from core.npc_voices import get_quip
@@ -239,7 +240,7 @@ def _build_victory_embed(
         )
     if rewards.get("artefact_name"):
         embed.add_field(
-            name="🏺 Artefact",
+            name=f"{ARTEFACT_SLOT} Artefact",
             value=f"**{rewards['artefact_name']}** — added to your Artefact inventory!",
             inline=False,
         )
@@ -247,7 +248,7 @@ def _build_victory_embed(
             embed.set_thumbnail(url=rewards["artefact_image"])
     elif rewards.get("artefact_inventory_full"):
         embed.add_field(
-            name="🏺 Artefact",
+            name=f"{ARTEFACT_SLOT} Artefact",
             value=(
                 "An artefact tried to catch your eye, but your Artefact "
                 "inventory is full (60/60) — discard one via `/gear` to make room."

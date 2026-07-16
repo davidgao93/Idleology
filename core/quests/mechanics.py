@@ -13,6 +13,7 @@ from core.emojis import (
     DRAGON_KEY,
     GOLD_COIN,
     QUEST_COMPLETE,
+    QUEST_TOKEN,
     RUNE_GENERIC,
     SOUL_CORE,
     SOUL_FRAGMENT,
@@ -318,7 +319,9 @@ async def grant_contract_reward(bot, user_id: str, server_id: str, slot: int) ->
     await bot.database.quests.add_tokens(user_id, total_tokens)
     await bot.database.users.modify_gold(user_id, gold)
 
-    msgs = [f"🎫 +{total_tokens} Quest Token{'s' if total_tokens > 1 else ''}"]
+    msgs = [
+        f"{QUEST_TOKEN} +{total_tokens} Quest Token{'s' if total_tokens > 1 else ''}"
+    ]
     if veteran_bonus:
         msgs.append("  *(+1 Quest Veteran bonus)*")
     if streak_bonus:
@@ -425,7 +428,9 @@ async def grant_horizon_reward(bot, user_id: str, server_id: str, player) -> lis
     await hof_triggers.check_really_board(bot, user_id, total_completions)
     await bot.database.quests.add_tokens(user_id, total_tokens)
 
-    msgs = [f"🎫 +{total_tokens} Quest Token{'s' if total_tokens > 1 else ''}"]
+    msgs = [
+        f"{QUEST_TOKEN} +{total_tokens} Quest Token{'s' if total_tokens > 1 else ''}"
+    ]
     if bonus_tokens:
         msgs.append("  *(+1 Quest Veteran bonus)*")
 
