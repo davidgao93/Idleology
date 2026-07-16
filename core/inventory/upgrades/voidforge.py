@@ -40,7 +40,7 @@ class VoidforgeView(BaseUpgradeView):
                     inline=False,
                 )
             embed.set_thumbnail(url=UPGRADE_VOIDFORGE)
-            embed.set_footer(text="✨ First visit — this message only appears once.")
+            embed.set_footer(text="First visit — this message only appears once.")
 
             gate = _VoidforgeTutorialGate(self.bot, self.user_id, forge_view=self)
             await self._send_render(interaction, embed, view=gate)

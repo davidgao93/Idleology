@@ -17,8 +17,8 @@ class LeaderboardHubView(BaseView):
         self.clear_items()
 
         tabs = [
-            ("levels", "Highest Levels", "🏆"),
-            ("ascensions", "Top Ascensions", "🌟"),
+            ("levels", "Level", "🏆"),
+            ("ascensions", "Ascension", "🌟"),
             ("wealth", "Wealthiest", GOLD_COIN),
             ("slayer", "Top Slayers", "💀"),
             ("ideologies", "Ideologies", "💡"),
@@ -96,7 +96,7 @@ class LeaderboardHubView(BaseView):
                 title=f"Hiscores: Wealthiest {GOLD_COIN}", color=0xFFD700
             )
             lines = [
-                f"**{i + 1}. {row['name']}** - {row['gold']:,} GP"
+                f"**{i + 1}. {row['name']}** - {row['gold']:,} {GOLD_COIN}"
                 for i, row in enumerate(data)
             ]
 

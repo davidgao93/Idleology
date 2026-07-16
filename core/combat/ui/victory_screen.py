@@ -283,7 +283,9 @@ def create_victory_embed(
         inline=False,
     )
     embed.add_field(
-        name=f"{GOLD_COIN} Gold", value=f"{rewards.get('gold', 0):,} GP", inline=True
+        name=f"{GOLD_COIN} Gold",
+        value=f"{rewards.get('gold', 0):,} {GOLD_COIN}",
+        inline=True,
     )
 
     # Extra fields from cfg (e.g. Lucifer's Soul Core prompt)

@@ -7,7 +7,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
-from core.emojis import GATHERING_TOOL_TIER_EMOJI
+from core.emojis import GATHERING_TOOL_TIER_EMOJI, GOLD_COIN
 from core.images import MASTERY_FISHING
 from core.skills import mastery as Mastery
 from core.skills.mechanics import SkillMechanics
@@ -129,8 +129,8 @@ class FishingView(BaseView):
         if self.state == "idle":
             desc = (
                 f"**Rod:** {self.rod_emoji} {tier.title()} Rod\n"
-                f"**Bait Cost:** {cost:,} GP\n"
-                f"**Balance:** {self.gold:,} GP\n\n"
+                f"**Bait Cost:** {cost:,} {GOLD_COIN}\n"
+                f"**Balance:** {self.gold:,} {GOLD_COIN}\n\n"
                 "Choose your approach and cast your line."
             )
             color = 0x4A90D9
@@ -213,7 +213,7 @@ class FishingView(BaseView):
         if self.state == "idle":
             can_afford = self.gold >= cost
             steady_btn = Button(
-                label=f"🎣 Steady Cast  ({cost:,} GP)",
+                label=f"🎣 Steady Cast  ({cost:,} {GOLD_COIN})",
                 style=ButtonStyle.primary if can_afford else ButtonStyle.secondary,
                 disabled=not can_afford,
                 row=0,
@@ -222,7 +222,7 @@ class FishingView(BaseView):
             self.add_item(steady_btn)
 
             agg_btn = Button(
-                label=f"⚡ Aggressive Cast  ({cost:,} GP)",
+                label=f"⚡ Aggressive Cast  ({cost:,} {GOLD_COIN})",
                 style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                 disabled=not can_afford,
                 row=0,
@@ -260,7 +260,7 @@ class FishingView(BaseView):
         elif self.state in ("result", "escaped"):
             can_afford = self.gold >= cost
             steady_btn = Button(
-                label=f"🎣 Steady  ({cost:,} GP)",
+                label=f"🎣 Steady  ({cost:,} {GOLD_COIN})",
                 style=ButtonStyle.primary if can_afford else ButtonStyle.secondary,
                 disabled=not can_afford,
                 row=0,
@@ -269,7 +269,7 @@ class FishingView(BaseView):
             self.add_item(steady_btn)
 
             agg_btn = Button(
-                label=f"⚡ Aggressive  ({cost:,} GP)",
+                label=f"⚡ Aggressive  ({cost:,} {GOLD_COIN})",
                 style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                 disabled=not can_afford,
                 row=0,

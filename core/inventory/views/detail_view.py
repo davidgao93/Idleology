@@ -10,6 +10,7 @@ from core.companions.mechanics import CompanionMechanics
 from core.emojis import (
     CELESTIAL_ENGRAM,
     ESSENCE_CORRUPT,
+    ESSENCE_RARE,
     GEAR_ENCHANT,
     GEAR_REINFORCE,
     INFERNAL_ENGRAM,
@@ -182,7 +183,7 @@ class ItemDetailView(BaseView):
                     "Reinforce", ButtonStyle.primary, "reinforce", emoji=GEAR_REINFORCE
                 )
                 essence_btn = Button(
-                    label="Essences", style=ButtonStyle.primary, emoji="💎"
+                    label="Essences", style=ButtonStyle.primary, emoji=f"{ESSENCE_RARE}"
                 )
                 essence_btn.callback = self._open_essences
                 self.add_item(essence_btn)
@@ -358,7 +359,9 @@ class ItemDetailView(BaseView):
                 lines.append(f"{c_emoji} {c_name} *(corrupted)*")
             if lines:
                 embed.add_field(
-                    name="💎 Essences Lost", value="\n".join(lines), inline=False
+                    name=f"{ESSENCE_RARE} Essences Lost",
+                    value="\n".join(lines),
+                    inline=False,
                 )
 
         return embed

@@ -20,7 +20,7 @@ from core.combat.economy.loot import (
 )
 from core.combat.mobgen.gen_mob import generate_ascent_monster
 from core.combat.turns import engine
-from core.emojis import ASCENT_EMOJI, POTION
+from core.emojis import ASCENT_EMOJI, POTION, RUNE_GENERIC
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import VALE_PORTRAIT, VALE_THUMBNAIL
 from core.models import Monster, Player
@@ -57,7 +57,7 @@ async def _grant_milestone_rewards(
             rune_names.append(
                 "Refinement" if rtype == "refinement_runes" else "Potential"
             )
-        log.append(f"💎 Runes ×{rune_qty} ({', '.join(rune_names)})")
+        log.append(f"{RUNE_GENERIC} Runes ×{rune_qty} ({', '.join(rune_names)})")
 
     elif cache_choice == "equipment":
         slot = random.choices(_EQUIP_SLOTS, weights=_EQUIP_WEIGHTS, k=1)[0]

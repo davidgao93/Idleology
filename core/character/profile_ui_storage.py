@@ -376,7 +376,7 @@ class StorageProfileBuilder:
 
         # ── Gathering ── Row 1: Ore | Logs | Bones — Row 2: Elemental Keys | Artisan Remnants | Runes of Nature
         embed.add_field(
-            name="⛏️ Ore",
+            name="Ore",
             value=(
                 f"{IRON_ORE} Iron: {ores[0]:,}\n{COAL_ORE} Coal: {ores[1]:,}\n{GOLD_ORE} Gold: {ores[2]:,}\n"
                 f"{PLATINUM_ORE} Plat: {ores[3]:,}\n{IDEA_ORE} Idea: {ores[4]:,}"
@@ -384,7 +384,7 @@ class StorageProfileBuilder:
             inline=True,
         )
         embed.add_field(
-            name="🪓 Logs",
+            name="Logs",
             value=(
                 f"{OAK_LOGS} Oak: {logs[0]:,}\n{WILLOW_LOGS} Willow: {logs[1]:,}\n{MAHOGANY_LOGS} Mahog: {logs[2]:,}\n"
                 f"{MAGIC_LOGS} Magic: {logs[3]:,}\n{IDEA_LOGS} Idea: {logs[4]:,}"
@@ -392,7 +392,7 @@ class StorageProfileBuilder:
             inline=True,
         )
         embed.add_field(
-            name="🎣 Bones",
+            name="Bones",
             value=(
                 f"{DESICCATED_BONES} Desic: {bones[0]:,}\n{REGULAR_BONES} Reg: {bones[1]:,}\n{STURDY_BONES} Sturdy: {bones[2]:,}\n"
                 f"{REINFORCED_BONES} Reinf: {bones[3]:,}\n{TITANIUM_BONES} Titan: {bones[4]:,}"
@@ -401,7 +401,7 @@ class StorageProfileBuilder:
         )
 
         embed.add_field(
-            name="🗝️ Elemental Keys",
+            name="Elemental Keys",
             value=(
                 f"{BLESSED_BISMUTH} Bismuth: {blessed_bismuth}\n"
                 f"{SPARKLING_SPRIG} Sprig: {sparkling_sprig}\n"
@@ -410,7 +410,7 @@ class StorageProfileBuilder:
             inline=True,
         )
         embed.add_field(
-            name="🌿 Artisan Remnants",
+            name="Artisan Remnants",
             value=(
                 f"{GEODE_CORE} Geode Cores: {geode_cores:,}\n"
                 f"{TIDE_RELIC} Tide Relics: {tide_relics:,}\n"
@@ -424,12 +424,12 @@ class StorageProfileBuilder:
 
         # ── Settlement ── Row 1: Building | R&D | Rare — Row 2: Ingots | Planks | Essence
         embed.add_field(
-            name="🏗️ Building",
+            name="Building",
             value=f"🪵 Timber: {settlement.timber:,}\n🪨 Stone: {settlement.stone:,}",
             inline=True,
         )
         embed.add_field(
-            name=f"{DEVELOPMENT_CONTRACT} R&D",
+            name="R&D",
             value=(
                 f"📋 Blueprints: {blueprint_count}\n"
                 f"{DIVINER_ROD} Diviner's Rods: {mat_all.get('diviners_rod', 0)}\n"
@@ -438,7 +438,7 @@ class StorageProfileBuilder:
             inline=True,
         )
         embed.add_field(
-            name="💎 Rare",
+            name="Rare",
             value=(
                 f"{MAGMA_CORE} Magma Core: {rares[0]}\n"
                 f"{LIFE_ROOT} Life Root: {rares[1]}\n"

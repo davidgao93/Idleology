@@ -8,7 +8,7 @@ import discord
 from discord import ButtonStyle, Interaction
 
 from core.base_view import BaseView
-from core.emojis import QUEST_TOKEN
+from core.emojis import QUEST_TOKEN, RUNE_GENERIC
 from core.images import QUEST_SHOP, QUEST_SHOP_AUTHOR
 from core.npc_voices import get_quip
 from core.quests.data import SHOP_CATEGORIES, TOKEN_SHOP_ITEMS
@@ -87,9 +87,10 @@ class TokenShopView(BaseView):
                 continue
             options.append(
                 discord.SelectOption(
-                    label=f"{item['label']} ({item['cost']}{QUEST_TOKEN})",
+                    label=f"{item['label']} ({item['cost']})",
                     value=item["id"],
                     description=item["description"][:50],
+                    emoji=QUEST_TOKEN,
                 )
             )
         if options:
@@ -260,7 +261,9 @@ class TokenShopView(BaseView):
             from collections import Counter
 
             tally = Counter(received)
-            return "💎 Rune Cache: " + ", ".join(f"{v}× {k}" for k, v in tally.items())
+            return f"{RUNE_GENERIC} Rune Cache: " + ", ".join(
+                f"{v}× {k}" for k, v in tally.items()
+            )
 
         elif item_id == "key_cache":
             key_pool = ["dragon_key", "angel_key", "soul_cores", "balance_fragment"]

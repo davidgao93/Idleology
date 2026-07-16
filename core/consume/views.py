@@ -567,6 +567,9 @@ class ConsumeView(BaseView):
         # Gate Hematurgy button until level 50
         if hasattr(self, "hematurgy"):
             self.hematurgy.disabled = self.player.level < 50
+        # Gate Consume Eggs button until level 50
+        if hasattr(self, "consume_eggs"):
+            self.consume_eggs.disabled = self.player.level < 50
 
     def build_embed(self) -> discord.Embed:
         return _build_main_embed(self.player, self.inventory)

@@ -7,7 +7,7 @@ from discord import ButtonStyle, Interaction
 from discord.ui import Button
 
 from core.base_view import BaseView
-from core.emojis import GATHERING_TOOL_TIER_EMOJI
+from core.emojis import GATHERING_TOOL_TIER_EMOJI, GOLD_COIN
 from core.images import MASTERY_WOODCUTTING
 from core.skills.mechanics import SkillMechanics
 
@@ -118,8 +118,8 @@ class ForestryView(BaseView):
         if self.state == "idle":
             desc = (
                 f"**Axe:** {self.axe_emoji} {tier.title()} Axe\n"
-                f"**Pass Cost:** {cost:,} GP\n"
-                f"**Balance:** {self.gold:,} GP\n\n"
+                f"**Pass Cost:** {cost:,} {GOLD_COIN}\n"
+                f"**Balance:** {self.gold:,} {GOLD_COIN}\n\n"
                 "Purchase a forestry pass to enter the woods."
             )
             color = 0x5A8A3C
@@ -184,7 +184,7 @@ class ForestryView(BaseView):
         if self.state == "idle":
             can_afford = self.gold >= cost
             enter_btn = Button(
-                label=f"Enter Forest  ({cost:,} GP)",
+                label=f"Enter Forest  ({cost:,} {GOLD_COIN})",
                 style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                 emoji="🌲",
                 disabled=not can_afford,
@@ -245,7 +245,7 @@ class ForestryView(BaseView):
         elif self.state == "ready":
             can_afford = self.gold >= cost
             again_btn = Button(
-                label=f"Chop Again  ({cost:,} GP)",
+                label=f"Chop Again  ({cost:,} {GOLD_COIN})",
                 style=ButtonStyle.success if can_afford else ButtonStyle.secondary,
                 emoji="🌲",
                 disabled=not can_afford,

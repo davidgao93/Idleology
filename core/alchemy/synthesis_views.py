@@ -244,7 +244,7 @@ class AlchemySynthesisHubView(BaseView):
         )
         jewel_yield = dust_from_jewel(level)
         embed.add_field(
-            name="💎 Jewel of Paradise",
+            name=f"{PARADISE_JEWEL_UNCUT} Jewel of Paradise",
             value=(
                 f"DE: {jewel_yield:,} {COSMIC_DUST} · "
                 f"Synth: {_JEWEL_SYNTH_DUST:,} {COSMIC_DUST} + {GOLD_COIN} 10M"
@@ -369,7 +369,7 @@ def _get_item_display(item_type: str) -> tuple[str, str, int]:
     if item_type == _JEWEL_ITEM_TYPE:
         return (
             "Jewel of Paradise",
-            "💎",
+            f"{PARADISE_JEWEL_UNCUT}",
             0,
         )  # yield is level-dependent; computed at call sites
     if item_type in AlchemyMechanics.KEY_DISPLAY_NAMES:
@@ -644,7 +644,7 @@ class _DisenchantSelectView(BaseView):
                 {
                     "col": _JEWEL_ITEM_TYPE,
                     "name": "Jewel of Paradise",
-                    "emoji": "💎",
+                    "emoji": f"{PARADISE_JEWEL_UNCUT}",
                     "owned": owned,
                     "yield": jewel_yield,
                     "select_desc": f"Own: {owned}  ·  {jewel_yield:,} Cosmic Dust/jewel  ·  4h/jewel",
@@ -804,7 +804,7 @@ class _SynthesizeQuantityModal(ui.Modal, title="How many items to synthesize?"):
             await self._parent.bot.database.uber.increment_paradise_jewels(
                 self._parent.user_id, self._parent.server_id, qty
             )
-            name, emoji = "Jewel of Paradise", "💎"
+            name, emoji = "Jewel of Paradise", f"{PARADISE_JEWEL_UNCUT}"
         else:
             await self._parent.bot.database.users.modify_currency(
                 self._parent.user_id, self._item_type, qty
@@ -859,7 +859,7 @@ class _SynthesizeSelectView(BaseView):
             {
                 "col": _JEWEL_ITEM_TYPE,
                 "name": "Jewel of Paradise",
-                "emoji": "💎",
+                "emoji": f"{PARADISE_JEWEL_UNCUT}",
                 "dust_cost": _JEWEL_SYNTH_DUST,
                 "gold_cost": _JEWEL_SYNTH_GOLD,
                 "select_desc": f"{_JEWEL_SYNTH_DUST:,} Cosmic Dust + 10M Gold → 1× Jewel of Paradise",

@@ -43,11 +43,11 @@ from core.emojis import (
 )
 from core.images import (
     AMARA_AUTHOR,
+    AMARA_PORTRAIT,
     ARBITER_PORTRAIT,
     ARBITER_THUMBNAIL,
     BROTHER_SOLEN_PORTRAIT,
     BROTHER_SOLEN_THUMBNAIL,
-    COMBAT_VICTORY,
     DELVE_HUB,
     ELIZA_PORTRAIT,
     ELIZA_THUMBNAIL,
@@ -110,7 +110,7 @@ TUTORIALS: dict[str, dict] = {
             "Potions scale with level — they stay relevant all game. Keep them stocked.",
             "Fleeing costs you nothing. Dying costs you everything.",
         ],
-        "image": COMBAT_VICTORY,
+        "image": AMARA_PORTRAIT,
         "color": discord.Color.red(),
     },
     "slayer": {
@@ -467,8 +467,8 @@ TUTORIALS: dict[str, dict] = {
         "author_icon": RAGNA_PORTRAIT,
         "description": (
             "Welcome to my shop welp, so you've come to learn about eating monsters, eh?\n\n"
-            "Slain monsters occasionally drop body parts that can be **consumed** for permanent Max HP bonuses. "
-            "You have 8 slots:\n\n"
+            "Slain monsters occasionally drop body parts that can be **consumed** for permanent Max HP bonuses.\n\n"
+            "You have 8 slots:\n"
             "Each part has an HP value. Equipping it replaces whatever was in that slot — "
             "the old part is destroyed, so confirm before you commit. "
             "Your inventory caps at **20 parts**. Discard what you don't need."

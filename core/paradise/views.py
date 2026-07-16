@@ -114,7 +114,8 @@ def _skill_card_lines(data: dict, skill_key: str) -> list[str]:
 
 def _build_hub_embed(data: dict, jewel_count: int, dust: int) -> discord.Embed:
     embed = discord.Embed(
-        title="💎 Jewel of Paradise", color=discord.Color.from_str("#b967ff")
+        title=f"{PARADISE_JEWEL_UNCUT} Jewel of Paradise",
+        color=discord.Color.from_str("#b967ff"),
     )
     embed.set_author(name="Tessara", icon_url=TESSARA_PORTRAIT)
 
@@ -467,7 +468,10 @@ class _ManageSkillsView(BaseView):
 
         if remaining and self.jewel_count > 0:
             cut_btn = ui.Button(
-                label="Cut Jewel", style=ButtonStyle.success, emoji="💎", row=1
+                label="Cut Jewel",
+                style=ButtonStyle.success,
+                emoji=f"{PARADISE_JEWEL_UNCUT}",
+                row=1,
             )
             cut_btn.callback = self._cut_jewel_callback
             self.add_item(cut_btn)
@@ -851,7 +855,10 @@ class _ManagePassivesView(BaseView):
 
         if slot_count < 5 and self.jewel_count > 0:
             cut_btn = ui.Button(
-                label="Cut Jewel", style=ButtonStyle.success, emoji="💎", row=1
+                label="Cut Jewel",
+                style=ButtonStyle.success,
+                emoji=f"{PARADISE_JEWEL_UNCUT}",
+                row=1,
             )
             cut_btn.callback = self._cut_jewel_callback
             self.add_item(cut_btn)

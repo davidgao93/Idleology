@@ -15,6 +15,7 @@ from core.emojis import (
     JEWEL_SIPHON,
     JEWEL_SURGE,
     JEWEL_WARDFORGE,
+    PARADISE_JEWEL_UNCUT,
 )
 
 # ---------------------------------------------------------------------------
@@ -37,7 +38,7 @@ class SkillJewelDef:
     unleash_template_lv1: str
     unleash_template_lv20: str
     unleash_template_lv30: str
-    emoji: str = "💎"
+    emoji: str = f"{PARADISE_JEWEL_UNCUT}"
 
 
 SKILL_JEWELS: dict[str, SkillJewelDef] = {

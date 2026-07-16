@@ -13,6 +13,7 @@ from core.emojis import (
     CRIT_MULTI,
     DODGE_EVASION,
     ESSENCE_CORRUPT,
+    ESSENCE_RARE,
     GEAR_BACKPACK,
     GEAR_ENCHANT,
     GEAR_REINFORCE,
@@ -394,7 +395,9 @@ def _essence_fields(embed, item):
     else:
         lines.append("**Corrupted:** *— Empty —*")
 
-    embed.add_field(name="💎 Essences", value="\n".join(lines), inline=False)
+    embed.add_field(
+        name=f"{ESSENCE_RARE} Essences", value="\n".join(lines), inline=False
+    )
 
 
 class InventoryUI:

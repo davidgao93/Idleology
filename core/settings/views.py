@@ -111,7 +111,7 @@ class SettingsView(BaseView):
             rest_btn.callback = self.toggle_auto_rest_pay
         else:
             rest_btn = ui.Button(
-                label=f"Auto-Pay Rest (Unlock: Quest Shop, 10 {QUEST_TOKEN})",
+                label="Auto-Pay Rest (Unlock: Quest Shop, 10 Quest Tokens)",
                 style=ButtonStyle.secondary,
                 emoji="🔒",
                 row=1,
@@ -134,7 +134,7 @@ class SettingsView(BaseView):
             reload_btn.callback = self.toggle_auto_potion_reload
         else:
             reload_btn = ui.Button(
-                label=f"Auto-Reload Potions (Unlock: Quest Shop, 25 {QUEST_TOKEN})",
+                label="Auto-Reload Potions (Unlock: Quest Shop, 25 Quest Tokens)",
                 style=ButtonStyle.secondary,
                 emoji="🔒",
                 row=1,

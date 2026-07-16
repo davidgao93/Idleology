@@ -27,6 +27,7 @@ from core.emojis import (
     ARTEFACT_SLOT,
     CELESTIAL_ENGRAM,
     SIG_SIGMUND,
+    SOUL_STONE,
     STAT_WARD,
 )
 from core.models import Monster, Player
@@ -369,7 +370,7 @@ def _pt_post_hit_effects(
         ss_heal = int(damage * (0.002 * ss_leeching))
         if ss_heal > 0:
             player.current_hp = min(player.total_max_hp, player.current_hp + ss_heal)
-            log.append(f"💎 **Soul Leeching** drains **{ss_heal}** HP.")
+            log.append(f"{SOUL_STONE} **Soul Leeching** drains **{ss_heal}** HP.")
 
 
 def _pt_track_pending(player: Player, damage: int, log: list[str]) -> None:

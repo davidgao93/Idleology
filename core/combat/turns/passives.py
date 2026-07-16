@@ -8,6 +8,7 @@ from core.emojis import (
     INFERNAL_ENGRAM,
     SIG_SKOL,
     SIG_YVENN,
+    SOUL_STONE,
     STAT_ATK,
     STAT_DEF,
     STAT_PDR,
@@ -440,7 +441,7 @@ def apply_combat_start_passives(player: Player, monster: Monster) -> Dict[str, s
     if player.soul_stone:
         ss_log = _apply_soul_stone_start(player, monster)
         if ss_log:
-            logs["💎 Soul Stone"] = "\n".join(ss_log)
+            logs[f"{SOUL_STONE} Soul Stone"] = "\n".join(ss_log)
 
     return logs
 

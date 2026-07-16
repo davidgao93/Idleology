@@ -6,7 +6,7 @@ from discord.ui import Button
 
 from core.base_view import BaseView
 from core.combat.views.views_elemental import ElementalEncounterView
-from core.emojis import GATHERING_TOOL_TIER_EMOJI, RESOURCE_EMOJI
+from core.emojis import GATHERING_TOOL_TIER_EMOJI, GOLD_COIN, RESOURCE_EMOJI
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import MASTERY_FISHING, MASTERY_MINING, MASTERY_WOODCUTTING
 from core.items.factory import load_player
@@ -208,7 +208,9 @@ class GatherView(BaseView):
                 )
                 self.add_item(max_btn)
 
-        close_btn = Button(label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3)
+        close_btn = Button(
+            label="Close", style=ButtonStyle.secondary, emoji="✖️", row=3
+        )
         close_btn.callback = self.close_callback
         self.add_item(close_btn)
 
@@ -302,7 +304,7 @@ class GatherView(BaseView):
                     total_held = raw_held + ref_held
                     cost_parts.append(f"{qty:,} {label} (have: {total_held:,})")
             if costs["gold"] > 0:
-                cost_parts.append(f"{costs['gold']:,} GP")
+                cost_parts.append(f"{costs['gold']:,} {GOLD_COIN}")
             next_tool_emoji = GATHERING_TOOL_TIER_EMOJI.get(self.current_skill, {}).get(
                 next_tier, info["emoji"]
             )
