@@ -45,6 +45,9 @@ class Companions(commands.Cog):
             last_collect_time = (
                 await self.bot.database.users.get_companion_collect_time(user_id)
             )
+            mastery = await self.bot.database.companions.get_mastery(
+                user_id, server_id
+            )
             view = CompanionListView(
                 self.bot,
                 user_id,
@@ -52,6 +55,7 @@ class Companions(commands.Cog):
                 server_id=server_id,
                 pending_cookies=pending_cookies,
                 last_collect_time=last_collect_time,
+                mastery_nodes=mastery.get("nodes_owned", {}),
             )
             embed = view.get_embed()
             embed.set_thumbnail(url=COMPANIONS_HUB)

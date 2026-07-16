@@ -14,7 +14,6 @@ class CompanionMechanics:
 
     MAX_LEVEL = 100
     COLLECTION_INTERVAL_SECONDS = 3600  # 1 Hour
-    MAX_COLLECTION_CYCLES = 48  # 60 Hours max accumulation
 
     # --- XP & LEVELING ---
 
@@ -217,6 +216,47 @@ class CompanionMechanics:
             "cycles": cycles,
             "can_collect": True,
         }
+
+    KP_LOOT_ROLL_GOLD = 30000  # Gold payout per roll (level-100 companion equivalent)
+
+    @staticmethod
+    def roll_kp_loot(
+        mastery_nodes: Dict[str, Any] | None, count: int
+    ) -> List[Tuple[str, int]]:
+        """Rolls the companion loot table `count` times, spending Kinship Points
+        1-for-1 (see Forged Bonds mastery tree). Reuses the same weighted table
+        and Loot Affinity / Apex Scavenger / Double Haul bonuses as passive
+        collection so mastery investment carries over.
+        """
+        from core.companions.mastery import (
+            get_biased_loot_keys,
+            get_double_haul_chance,
+            get_loot_weights,
+            is_apex_scavenger,
+        )
+
+        nodes = mastery_nodes or {}
+        weight_map = get_loot_weights(nodes)
+        double_haul_chance = get_double_haul_chance(nodes)
+        apex = is_apex_scavenger(nodes)
+        biased_keys = get_biased_loot_keys(nodes) if apex else set()
+
+        loot_types = list(weight_map.keys())
+        loot_weights = [weight_map[k] for k in loot_types]
+
+        loot_bag = []
+        results = random.choices(loot_types, weights=loot_weights, k=max(0, count))
+        for res in results:
+            amt = CompanionMechanics.KP_LOOT_ROLL_GOLD if res == "Gold" else 1
+            loot_bag.append((res, amt))
+
+            if double_haul_chance > 0 and random.random() < double_haul_chance:
+                loot_bag.append((res, amt))
+
+            if apex and res in biased_keys:
+                loot_bag.append((res, amt))
+
+        return loot_bag
 
     @staticmethod
     def calculate_cumulative_xp(level: int, current_exp: int) -> int:

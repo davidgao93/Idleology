@@ -2,15 +2,17 @@
 
 import asyncio
 from datetime import datetime
+
 import discord
 from discord import ButtonStyle, Interaction, SelectOption, ui
 
 from core.base_view import BaseView
 from core.companions.engram_view import BalancedEngramView
-from core.hall_of_firsts import triggers as hof_triggers
-from core.images import COMPANIONS_FUSION, YUNA_PORTRAIT, YUNA_THUMBNAIL
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
+from core.emojis import RUNE_PARTNERSHIP
+from core.hall_of_firsts import triggers as hof_triggers
+from core.images import COMPANIONS_FUSION, YUNA_PORTRAIT, YUNA_THUMBNAIL
 from core.models import Companion
 from core.npc_voices import get_quip
 
@@ -100,6 +102,7 @@ class CompanionListView(BaseView):
         server_id: str = "",
         pending_cookies: int = 0,
         last_collect_time: str | None = None,
+        mastery_nodes: dict | None = None,
     ):
         super().__init__(bot, user_id, server_id)
         self.bot = bot
@@ -107,7 +110,20 @@ class CompanionListView(BaseView):
         self.companions = companions
         self._pending_cookies = pending_cookies
         self._last_collect_time = last_collect_time
+        self._mastery_nodes = mastery_nodes or {}
+        self._max_cycles = self._compute_max_cycles(self._mastery_nodes)
         self.update_buttons()
+
+    @staticmethod
+    def _compute_max_cycles(nodes_owned: dict) -> int:
+        from core.companions.mastery import get_max_cycles
+
+        return get_max_cycles(nodes_owned)
+
+    def set_mastery_nodes(self, nodes_owned: dict):
+        """Refreshes cached mastery-derived values (e.g. after a Forged Bonds purchase)."""
+        self._mastery_nodes = nodes_owned or {}
+        self._max_cycles = self._compute_max_cycles(self._mastery_nodes)
 
     async def close_view(self, interaction: Interaction):
         await interaction.response.defer()
@@ -155,7 +171,7 @@ class CompanionListView(BaseView):
                 ).total_seconds()
                 ready_cycles = min(
                     int(diff // CompanionMechanics.COLLECTION_INTERVAL_SECONDS),
-                    CompanionMechanics.MAX_COLLECTION_CYCLES,
+                    self._max_cycles,
                 )
             except ValueError:
                 pass
@@ -325,8 +341,8 @@ class CompanionListView(BaseView):
 
 
 class XPDistributeView(BaseView):
-    XP_PER_KP = 1_000
-    XP_PER_RUNE = 25_000
+    XP_PER_KP = 10_000
+    XP_PER_RUNE = 100_000
 
     def __init__(
         self, bot, user_id, server_id, pending_xp, companions, is_maxed, parent
@@ -401,7 +417,7 @@ class XPDistributeView(BaseView):
             )
         if self.is_maxed and self.pending_xp >= self.XP_PER_RUNE:
             lines.append(
-                f"🔮 **Rune of Partnership** — {self.XP_PER_RUNE:,} XP = 1 Rune ({self.pending_xp // self.XP_PER_RUNE} available)"
+                f"{RUNE_PARTNERSHIP} **Rune of Partnership** — {self.XP_PER_RUNE:,} XP = 1 Rune ({self.pending_xp // self.XP_PER_RUNE} available)"
             )
         if not lines:
             lines.append("*Earn more XP to unlock options.*")

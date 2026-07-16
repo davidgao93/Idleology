@@ -7,6 +7,7 @@ from core.base_view import BaseView
 from core.companions.mastery import (
     MASTERY_BRANCHES,
     can_purchase,
+    get_all_nodes,
     get_node_by_id,
 )
 
@@ -81,6 +82,18 @@ class CompanionMasteryView(BaseView):
         select.callback = self._on_select
         self.add_item(select)
 
+        # Once every node is unlocked, further KP have nothing left to buy —
+        # offer to convert them into rolls of the companion loot table.
+        if len(nodes_owned) >= len(get_all_nodes()):
+            loot_btn = ui.Button(
+                label=f"Loot Roll (KP: {kp:,})",
+                style=ButtonStyle.success,
+                emoji="🎁",
+                row=2,
+            )
+            loot_btn.callback = self._open_loot_roll
+            self.add_item(loot_btn)
+
         back_btn = ui.Button(label="Back", style=ButtonStyle.secondary, row=2)
         back_btn.callback = self._go_back
         self.add_item(back_btn)
@@ -123,6 +136,22 @@ class CompanionMasteryView(BaseView):
         kp = self.mastery.get("kinship_points", 0)
 
         if node["id"] in nodes_owned:
+            if "choice" in node:
+                view = _ChoiceSelectView(
+                    self.bot, self, node, parent=self, is_change=True
+                )
+                embed = discord.Embed(
+                    title=f"🎯 Change Focus — {node['name']}",
+                    description=(
+                        f"{node['desc']}\n\n"
+                        f"**Current Focus:** {nodes_owned[node['id']]}\n\n"
+                        "Choose a new loot focus below (free):"
+                    ),
+                    color=discord.Color.blurple(),
+                )
+                return await interaction.response.edit_message(
+                    embed=embed, view=view
+                )
             return await interaction.response.send_message(
                 f"**{node['name']}** is already unlocked.", ephemeral=True
             )
@@ -153,7 +182,27 @@ class CompanionMasteryView(BaseView):
             )
             await interaction.response.edit_message(embed=embed, view=view)
 
+    async def _open_loot_roll(self, interaction: Interaction):
+        kp = self.mastery.get("kinship_points", 0)
+        if kp <= 0:
+            return await interaction.response.send_message(
+                "You have no Kinship Points to spend.", ephemeral=True
+            )
+        view = _LootRollConfirmView(self.bot, self, kp, parent=self)
+        embed = discord.Embed(
+            title="🎁 Loot Roll",
+            description=(
+                f"Spend all **{kp:,}** Kinship Points for **{kp:,}** roll(s) of the "
+                "companion loot table (Gold, Runes, Boss Keys — respecting your "
+                "Loot Affinity focus)."
+            ),
+            color=discord.Color.gold(),
+        )
+        await interaction.response.edit_message(embed=embed, view=view)
+
     async def _go_back(self, interaction: Interaction):
+        if hasattr(self.parent_view, "set_mastery_nodes"):
+            self.parent_view.set_mastery_nodes(self.mastery.get("nodes_owned", {}))
         embed = self.parent_view.get_embed()
         await interaction.response.edit_message(embed=embed, view=self.parent_view)
 
@@ -168,25 +217,37 @@ class CompanionMasteryView(BaseView):
 
 
 class _ChoiceSelectView(BaseView):
-    """Secondary view for nodes that require a choice (prey_instinct / fine_palate)."""
+    """Secondary view for nodes that require a choice (prey_instinct / fine_palate).
+    Also reused to let a player change their focus on an already-owned node —
+    pass is_change=True in that case (skips the KP cost on confirm)."""
 
     def __init__(
-        self, bot, mastery_view: CompanionMasteryView, node: dict, *, parent: BaseView
+        self,
+        bot,
+        mastery_view: CompanionMasteryView,
+        node: dict,
+        *,
+        parent: BaseView,
+        is_change: bool = False,
     ):
         super().__init__(bot, parent=parent)
         self.mastery_view = mastery_view
         self.node = node
+        self.is_change = is_change
         self._build(node)
 
     def _build(self, node: dict):
         self.clear_items()
         nodes_owned = self.mastery_view.mastery.get("nodes_owned", {})
         prey_pick = nodes_owned.get("prey_instinct")
+        fine_pick = nodes_owned.get("fine_palate")
 
         all_choices = node.get("choice", [])
-        # fine_palate can't pick the same category as prey_instinct
+        # prey_instinct and fine_palate can never share the same category
         if node["id"] == "fine_palate" and prey_pick:
             all_choices = [c for c in all_choices if c != prey_pick]
+        elif node["id"] == "prey_instinct" and fine_pick:
+            all_choices = [c for c in all_choices if c != fine_pick]
 
         options = [SelectOption(label=c, value=c) for c in all_choices]
         select = ui.Select(
@@ -202,17 +263,29 @@ class _ChoiceSelectView(BaseView):
     async def _on_choice(self, interaction: Interaction):
         choice = interaction.data["values"][0]
         view = _ConfirmPurchaseView(
-            self.bot, self.mastery_view, self.node, choice=choice, parent=self
+            self.bot,
+            self.mastery_view,
+            self.node,
+            choice=choice,
+            parent=self,
+            is_change=self.is_change,
         )
-        embed = discord.Embed(
-            title=f"Unlock **{self.node['name']}**?",
-            description=(
-                f"{self.node['desc']}\n\n"
-                f"**Focus:** {choice}\n"
-                f"**Cost:** {self.node['cost']} KP"
-            ),
-            color=discord.Color.blurple(),
-        )
+        if self.is_change:
+            embed = discord.Embed(
+                title=f"Change Focus — **{self.node['name']}**?",
+                description=f"{self.node['desc']}\n\n**New Focus:** {choice}\n**Cost:** Free",
+                color=discord.Color.blurple(),
+            )
+        else:
+            embed = discord.Embed(
+                title=f"Unlock **{self.node['name']}**?",
+                description=(
+                    f"{self.node['desc']}\n\n"
+                    f"**Focus:** {choice}\n"
+                    f"**Cost:** {self.node['cost']} KP"
+                ),
+                color=discord.Color.blurple(),
+            )
         await interaction.response.edit_message(embed=embed, view=view)
 
     async def _cancel(self, interaction: Interaction):
@@ -230,11 +303,13 @@ class _ConfirmPurchaseView(BaseView):
         choice: str | None,
         *,
         parent: BaseView,
+        is_change: bool = False,
     ):
         super().__init__(bot, parent=parent)
         self.mastery_view = mastery_view
         self.node = node
         self.choice = choice
+        self.is_change = is_change
         self._processing = False
         self._add_buttons()
 
@@ -256,6 +331,18 @@ class _ConfirmPurchaseView(BaseView):
 
         uid = self.mastery_view.user_id
         sid = self.mastery_view.server_id
+
+        if self.is_change:
+            success = await self.bot.database.companions.update_mastery_node_choice(
+                uid, sid, self.node["id"], self.choice
+            )
+            if not success:
+                self._processing = False
+                return await interaction.followup.send(
+                    "Failed to change focus — try again.", ephemeral=True
+                )
+            return await self.mastery_view._refresh(interaction)
+
         nodes_owned = self.mastery_view.mastery.get("nodes_owned", {})
         kp = self.mastery_view.mastery.get("kinship_points", 0)
 
@@ -274,6 +361,56 @@ class _ConfirmPurchaseView(BaseView):
             )
 
         await self.mastery_view._refresh(interaction)
+
+    async def _cancel(self, interaction: Interaction):
+        self.mastery_view._build_select()
+        embed = self.mastery_view.get_embed()
+        await interaction.response.edit_message(embed=embed, view=self.mastery_view)
+
+
+class _LootRollConfirmView(BaseView):
+    """Confirms spending all current Kinship Points on loot-table rolls."""
+
+    def __init__(
+        self,
+        bot,
+        mastery_view: CompanionMasteryView,
+        kp: int,
+        *,
+        parent: BaseView,
+    ):
+        super().__init__(bot, parent=parent)
+        self.mastery_view = mastery_view
+        self.kp = kp
+        self._processing = False
+        self._add_buttons()
+
+    def _add_buttons(self):
+        confirm = ui.Button(
+            label=f"Roll {self.kp}x", style=ButtonStyle.success, emoji="🎁", row=0
+        )
+        confirm.callback = self._confirm
+        self.add_item(confirm)
+
+        cancel = ui.Button(label="Cancel", style=ButtonStyle.secondary, row=0)
+        cancel.callback = self._cancel
+        self.add_item(cancel)
+
+    async def _confirm(self, interaction: Interaction):
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+        await interaction.response.defer()
+
+        from core.companions.logic import CompanionLogic
+
+        uid = self.mastery_view.user_id
+        sid = self.mastery_view.server_id
+        result_msg = await CompanionLogic.spend_kp_for_loot(self.bot, uid, sid)
+
+        await self.mastery_view._refresh(interaction)
+        await interaction.followup.send(result_msg, ephemeral=True)
 
     async def _cancel(self, interaction: Interaction):
         self.mastery_view._build_select()

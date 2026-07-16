@@ -1,6 +1,6 @@
 # core/companions/mastery.py
 
-KP_PER_OVERFLOW_XP = 50  # 50 overflow XP → 1 Kinship Point
+KP_PER_OVERFLOW_XP = 10000  # 10000 overflow XP → 1 Kinship Point
 
 MASTERY_BRANCHES: dict = {
     "forager": {

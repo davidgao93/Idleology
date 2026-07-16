@@ -258,3 +258,45 @@ class CompanionRepository:
         )
         await self.connection.commit()
         return True
+
+    async def update_mastery_node_choice(
+        self, user_id: str, server_id: str, node_id: str, choice: str
+    ) -> bool:
+        """Changes the stored focus for an already-owned choice node (e.g. Prey
+        Instinct / Fine Palate). Free — does not touch Kinship Points."""
+        async with self.connection.execute(
+            "SELECT nodes_owned FROM companion_mastery WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if not row:
+            return False
+        nodes = json.loads(row["nodes_owned"]) if row["nodes_owned"] else {}
+        if node_id not in nodes:
+            return False
+        nodes[node_id] = choice
+        await self.connection.execute(
+            "UPDATE companion_mastery SET nodes_owned=? WHERE user_id=? AND server_id=?",
+            (json.dumps(nodes), user_id, server_id),
+        )
+        await self.connection.commit()
+        return True
+
+    async def spend_kinship_points(
+        self, user_id: str, server_id: str, amount: int
+    ) -> bool:
+        """Atomically deducts Kinship Points. Returns True on success."""
+        await self.ensure_mastery(user_id, server_id)
+        async with self.connection.execute(
+            "SELECT kinship_points FROM companion_mastery WHERE user_id=? AND server_id=?",
+            (user_id, server_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if not row or amount <= 0 or row["kinship_points"] < amount:
+            return False
+        await self.connection.execute(
+            "UPDATE companion_mastery SET kinship_points = kinship_points - ? WHERE user_id=? AND server_id=?",
+            (amount, user_id, server_id),
+        )
+        await self.connection.commit()
+        return True

@@ -494,17 +494,23 @@ class CardProfileBuilder:
                         user_id
                     )
                     if c_time_str:
+                        from core.companions.mastery import get_max_cycles
+
+                        mastery = await bot.database.companions.get_mastery(
+                            user_id, server_id
+                        )
+                        cap = get_max_cycles(mastery.get("nodes_owned", {}))
                         c_diff = (
                             datetime.now() - datetime.fromisoformat(c_time_str)
                         ).total_seconds()
-                        cycles = min(48, int(c_diff // 3600))
-                        if cycles >= 48:
+                        cycles = min(cap, int(c_diff // 3600))
+                        if cycles >= cap:
                             pc_lines.append(
-                                "🐾 **Companions** — 48/48 adventures (ready to collect!)"
+                                f"🐾 **Companions** — {cap}/{cap} adventures (ready to collect!)"
                             )
                         else:
                             pc_lines.append(
-                                f"🐾 **Companions** — {cycles}/48 adventures completed"
+                                f"🐾 **Companions** — {cycles}/{cap} adventures completed"
                             )
                     else:
                         pc_lines.append("🐾 **Companions** — Ready to deploy")

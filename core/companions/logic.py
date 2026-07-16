@@ -11,40 +11,12 @@ from core.items.factory import create_companion
 
 class CompanionLogic:
     @staticmethod
-    async def collect_passive_rewards(bot, user_id: str, guild_id: str) -> str:
-        """
-        Handles the calculation and DB updates for passive companion loot.
-        """
-        # 1. Fetch Data
-        last_collect = await bot.database.users.get_companion_collect_time(user_id)
-
-        active_rows = await bot.database.companions.get_active(user_id)
-        if not active_rows:
-            return "You have no active companions to gather loot."
-
-        active_comps = [create_companion(row) for row in active_rows]
-
-        # 2. Load mastery nodes for loot modifiers
-        try:
-            mastery = await bot.database.companions.get_mastery(user_id, guild_id)
-            mastery_nodes = mastery.get("nodes_owned", {})
-        except Exception:
-            mastery_nodes = {}
-
-        # 3. Calculate
-        results = CompanionMechanics.calculate_collection_rewards(
-            active_comps, last_collect, mastery_nodes=mastery_nodes
-        )
-
-        if not results["can_collect"]:
-            return "Your companions are still gathering supplies. Check back later (1h interval)."
-
-        # 4. Process Loot
-        # results['items'] is a list of ("Type", Amount)
-
+    async def apply_loot_bag(bot, user_id: str, items: list) -> dict:
+        """Credits a list of ("Type", Amount) loot tuples to the player. Shared
+        by passive collection and the Kinship Point loot roll (mastery tree)."""
         summary = defaultdict(int)
 
-        for loot_type, amount in results["items"]:
+        for loot_type, amount in items:
             # --- GOLD ---
             if loot_type == "Gold":
                 await bot.database.users.modify_gold(user_id, amount)
@@ -83,6 +55,40 @@ class CompanionLogic:
                     )  # [NEW]
                     summary["Fragment of Balance"] += 1
 
+        return summary
+
+    @staticmethod
+    async def collect_passive_rewards(bot, user_id: str, guild_id: str) -> str:
+        """
+        Handles the calculation and DB updates for passive companion loot.
+        """
+        # 1. Fetch Data
+        last_collect = await bot.database.users.get_companion_collect_time(user_id)
+
+        active_rows = await bot.database.companions.get_active(user_id)
+        if not active_rows:
+            return "You have no active companions to gather loot."
+
+        active_comps = [create_companion(row) for row in active_rows]
+
+        # 2. Load mastery nodes for loot modifiers
+        try:
+            mastery = await bot.database.companions.get_mastery(user_id, guild_id)
+            mastery_nodes = mastery.get("nodes_owned", {})
+        except Exception:
+            mastery_nodes = {}
+
+        # 3. Calculate
+        results = CompanionMechanics.calculate_collection_rewards(
+            active_comps, last_collect, mastery_nodes=mastery_nodes
+        )
+
+        if not results["can_collect"]:
+            return "Your companions are still gathering supplies. Check back later (1h interval)."
+
+        # 4. Process Loot
+        summary = await CompanionLogic.apply_loot_bag(bot, user_id, results["items"])
+
         # 5. Update Timer
         await bot.database.users.update_companion_collect_time(
             user_id, datetime.now().isoformat()
@@ -102,6 +108,38 @@ class CompanionLogic:
         # Items
         items_list = [f"{k} x{v}" for k, v in summary.items()]
 
+        if items_list:
+            msg += "📦 " + ", ".join(items_list)
+
+        return msg
+
+    @staticmethod
+    async def spend_kp_for_loot(bot, user_id: str, server_id: str) -> str:
+        """Spends all available Kinship Points 1-for-1 on rolls of the companion
+        loot table. Intended for once the Forged Bonds tree is fully unlocked
+        and KP has no further node to buy."""
+        mastery = await bot.database.companions.get_mastery(user_id, server_id)
+        kp = mastery.get("kinship_points", 0)
+        if kp <= 0:
+            return "You have no Kinship Points to spend."
+
+        ok = await bot.database.companions.spend_kinship_points(user_id, server_id, kp)
+        if not ok:
+            return "Failed to spend Kinship Points — try again."
+
+        nodes_owned = mastery.get("nodes_owned", {})
+        items = CompanionMechanics.roll_kp_loot(nodes_owned, kp)
+        summary = await CompanionLogic.apply_loot_bag(bot, user_id, items)
+
+        if not summary:
+            return f"Spent **{kp:,}** Kinship Points but found nothing of value."
+
+        msg = f"**Spent {kp:,} Kinship Points for {kp:,} loot roll(s)!**\n"
+        if summary.get("Gold"):
+            msg += f"{GOLD_COIN} **{summary['Gold']:,}** Gold\n"
+            del summary["Gold"]
+
+        items_list = [f"{k} x{v}" for k, v in summary.items()]
         if items_list:
             msg += "📦 " + ", ".join(items_list)
 
