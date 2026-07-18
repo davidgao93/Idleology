@@ -1699,6 +1699,7 @@ class SettlementDashboardView(SettlementBaseView):
                 self._cached_active_events = (
                     await self.bot.database.settlement.get_active_events(uid, sid)
                 )
+                zeal_data = await self.bot.database.settlement.get_zeal_data(uid, sid)
                 self._rebuild_ui()
                 self._processing = False
                 crisis_result: dict = {
@@ -1717,7 +1718,9 @@ class SettlementDashboardView(SettlementBaseView):
                 # which also lifts the "confrontation ongoing" lock.
                 if self.message:
                     await self.message.edit(
-                        embed=self.build_embed(turn_summary=crisis_summary),
+                        embed=self.build_embed(
+                            turn_summary=crisis_summary, zeal_data=zeal_data
+                        ),
                         view=self,
                     )
                 # The battle message has served its purpose — clean it up

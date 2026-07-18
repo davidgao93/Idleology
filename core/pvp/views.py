@@ -23,14 +23,8 @@ class ChallengeView(BaseView):
         self.accepted = False
 
     async def interaction_check(self, interaction: Interaction) -> bool:
-        if str(interaction.user.id) == self.target_id:
+        if str(interaction.user.id) in (self.target_id, self.challenger_id):
             return True
-        if str(interaction.user.id) == self.challenger_id:
-            await interaction.response.send_message(
-                "You cannot accept your own challenge. Cancel it if you changed your mind.",
-                ephemeral=True,
-            )
-            return False
         return False
 
     async def on_timeout(self):
@@ -43,6 +37,11 @@ class ChallengeView(BaseView):
 
     @discord.ui.button(label="Accept", style=ButtonStyle.success)
     async def accept(self, interaction: Interaction, button: Button):
+        if str(interaction.user.id) != self.target_id:
+            return await interaction.response.send_message(
+                "You cannot accept your own challenge. Use Cancel if you changed your mind.",
+                ephemeral=True,
+            )
         if not await self.bot.check_is_active(interaction, self.target_id):
             return
 
@@ -55,9 +54,26 @@ class ChallengeView(BaseView):
 
     @discord.ui.button(label="Decline", style=ButtonStyle.danger)
     async def decline(self, interaction: Interaction, button: Button):
+        if str(interaction.user.id) != self.target_id:
+            return await interaction.response.send_message(
+                "Only the challenged player can decline. Use Cancel if you changed your mind.",
+                ephemeral=True,
+            )
         self.bot.state_manager.clear_active(self.challenger_id)
         await interaction.response.edit_message(
             content="Challenge declined.", embed=None, view=None
+        )
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=ButtonStyle.secondary)
+    async def cancel(self, interaction: Interaction, button: Button):
+        if str(interaction.user.id) != self.challenger_id:
+            return await interaction.response.send_message(
+                "Only the challenger can cancel this duel.", ephemeral=True
+            )
+        self.bot.state_manager.clear_active(self.challenger_id)
+        await interaction.response.edit_message(
+            content="Challenge cancelled.", embed=None, view=None
         )
         self.stop()
 

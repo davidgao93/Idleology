@@ -10,7 +10,6 @@ import discord
 from discord import ButtonStyle, Interaction, ui
 
 from core.base_view import BaseView
-from core.emojis import QUEST_TOKEN
 from core.images import AMARA_AUTHOR, QUEST_BOARD
 from core.npc_voices import get_quip
 from core.quests.data import DAILY_QUESTS, HORIZON_PATHS
@@ -336,7 +335,7 @@ class QuestBoardView(BaseView):
                 style = ButtonStyle.success
                 disabled = False
             else:
-                label = f"Reroll Slot {slot} (1{QUEST_TOKEN})"
+                label = f"Reroll Slot {slot} (1 Token)"
                 style = ButtonStyle.secondary
                 disabled = tokens < 1
 

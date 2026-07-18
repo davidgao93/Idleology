@@ -342,7 +342,7 @@ class FishingView(BaseView):
             self.state = "bite"
             self.setup_ui()
             ok = await self._safe_message_edit(
-                content=self.user_mention,
+                content=None,
                 embed=self.get_embed(),
                 view=self,
             )
@@ -360,6 +360,19 @@ class FishingView(BaseView):
             if not self._active:
                 return
             self._escape_task = asyncio.create_task(self._fish_escape())
+
+            # Discord does not push a notification for mentions added via
+            # Message.edit() — only mentions present on a freshly-sent
+            # message trigger one. content=user_mention on the edit above
+            # was silently never notifying anyone; send a standalone message
+            # instead, which actually pings.
+            try:
+                await self.message.channel.send(
+                    f"🐟 {self.user_mention} something's biting your line!",
+                    delete_after=BITE_WINDOW,
+                )
+            except Exception:
+                pass
         except asyncio.CancelledError:
             pass
 
