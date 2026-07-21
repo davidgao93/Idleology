@@ -17,7 +17,7 @@ def build_building_list_embed() -> discord.Embed:
     _GENERATORS = [
         ("🪵 Logging Camp", "Hybrid · Timber · Produces passively and each turn"),
         ("🪨 Quarry", "Hybrid · Stone · Produces passively and each turn"),
-        (f"{GOLD_COIN} Market", "Hybrid · Gold · Produces passively and each turn"),
+        (f"{GOLD_COIN} Market", "Passive · Gold · Produces passively over time only"),
         (
             "🐾 Companion Ranch",
             "Hybrid · Companion cookies (XP) · Produces passively and each turn",

@@ -370,7 +370,16 @@ async def _calculate_dt_production(
         raw_inv = {}
 
     _DT_HOURS = 5.0  # 1 DT = 5× hourly rate
-    _SKIP = {"nursery", "idlem_foundry", "black_market", "hatchery", "war_camp"}
+    # Market is a pure passive generator (real-time hourly accrual only via Collect) —
+    # it does not additionally receive the per-DT burst other hybrid buildings get.
+    _SKIP = {
+        "nursery",
+        "idlem_foundry",
+        "black_market",
+        "hatchery",
+        "war_camp",
+        "market",
+    }
 
     # Adjacency bonuses from meta buildings (Servant's Quarters, Supply Depot, etc.)
     from core.settlement.models import Plot as PlotModel
