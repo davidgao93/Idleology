@@ -120,7 +120,7 @@ MINING_TREE: Dict[str, Dict[str, Any]] = {
     "tool_resonance": {
         "branch": "synergy",
         "cost": 1,
-        "desc": "All tool upgrade costs reduced by 12%.",
+        "desc": "All tool upgrade costs (Mining, Fishing, and Woodcutting) reduced by 12%.",
     },
     "vein_intuition": {
         "branch": "synergy",
@@ -195,10 +195,10 @@ FISHING_TREE: Dict[str, Dict[str, Any]] = {
         "requires": ["tide_relics"],
     },
     # Synergy (Tidebound Mastery)
-    "lighter_bait": {
+    "accelerated_mastery": {
         "branch": "synergy",
         "cost": 1,
-        "desc": "Bait cost reduced by 12%.",
+        "desc": "Familiarization times are reduced by 10%.",
     },
     "angling_mastery": {
         "branch": "synergy",
@@ -273,10 +273,10 @@ WOODCUTTING_TREE: Dict[str, Dict[str, Any]] = {
         "requires": ["heartwood_shards"],
     },
     # Synergy (Rootbound Mastery)
-    "foresters_eye": {
+    "open_season": {
         "branch": "synergy",
         "cost": 1,
-        "desc": "Forestry pass cost reduced by 12%.",
+        "desc": "All entry passes (Delve, Forestry, and Fishing) are reduced by 18%.",
     },
     "skilled_forester": {
         "branch": "synergy",
@@ -404,7 +404,7 @@ BRANCH_NODE_ORDERS = {
             "deep_current_resonance",
         ],
         "synergy": [
-            "lighter_bait",
+            "accelerated_mastery",
             "angling_mastery",
             "master_baiter",
             "old_ones_favor",
@@ -420,7 +420,7 @@ BRANCH_NODE_ORDERS = {
             "elder_resonance",
         ],
         "synergy": [
-            "foresters_eye",
+            "open_season",
             "skilled_forester",
             "seasoned_timber",
             "forest_remembers",
@@ -454,7 +454,7 @@ NODE_LABELS = {
     "abyssal_memory": "Abyssal Memory",
     "tide_relics": "Tide Relics",
     "deep_current_resonance": "Deep Current Resonance",
-    "lighter_bait": "Lighter Bait",
+    "accelerated_mastery": "Accelerated Mastery",
     "angling_mastery": "Angling Mastery",
     "master_baiter": "Master Baiter",
     "old_ones_favor": "The Old One's Favor",
@@ -468,8 +468,8 @@ NODE_LABELS = {
     "living_heartwood": "Living Heartwood",
     "heartwood_shards": "Heartwood Shards",
     "elder_resonance": "Elder Resonance",
-    "foresters_eye": "Forester's Eye",
-    "skilled_forester": "Skilled Forester",
+    "open_season": "Open Season",
+    "skilled_forester": "Green Toes",
     "seasoned_timber": "Seasoned Timber",
     "forest_remembers": "The Forest Remembers",
     "elderheart": "Elderheart",
@@ -773,16 +773,34 @@ def get_angling_mastery_momentum_bonus(mastery_row: dict) -> int:
     return 5 if has_angling_mastery(mastery_row) else 0
 
 
-def get_tool_cost_reduction(mastery_row: dict, skill: SkillType) -> float:
-    """12% reduction if the 1pt synergy node owned."""
-    alloc = json.loads(mastery_row.get(f"{skill}_alloc", "{}") or "{}")
+def get_tool_cost_reduction(mastery_row: dict) -> float:
+    """12% reduction to ALL tool upgrade costs (mining, fishing, woodcutting) from Mining's Tool Resonance node."""
+    alloc = json.loads(mastery_row.get("mining_alloc", "{}") or "{}")
     synergy = alloc.get("synergy", {}).get("unlocked", [])
-    if skill == "mining" and "tool_resonance" in synergy:
+    if "tool_resonance" in synergy:
         return 0.12
-    if skill == "fishing" and "lighter_bait" in synergy:
-        return 0.12
-    if skill == "woodcutting" and "foresters_eye" in synergy:
-        return 0.12
+    return 0.0
+
+
+def get_entry_pass_reduction(mastery_row: dict | None) -> float:
+    """18% reduction to Delve/Forestry/Fishing entry pass costs from Woodcutting's Open Season node."""
+    if not mastery_row:
+        return 0.0
+    alloc = json.loads(mastery_row.get("woodcutting_alloc", "{}") or "{}")
+    synergy = alloc.get("synergy", {}).get("unlocked", [])
+    if "open_season" in synergy:
+        return 0.18
+    return 0.0
+
+
+def get_familiarization_reduction(mastery_row: dict | None) -> float:
+    """10% reduction to familiarization gate times from Fishing's Accelerated Mastery node."""
+    if not mastery_row:
+        return 0.0
+    alloc = json.loads(mastery_row.get("fishing_alloc", "{}") or "{}")
+    synergy = alloc.get("synergy", {}).get("unlocked", [])
+    if "accelerated_mastery" in synergy:
+        return 0.10
     return 0.0
 
 

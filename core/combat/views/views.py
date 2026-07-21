@@ -212,7 +212,7 @@ class StatPackagePicker(BaseLayoutView):
 
 
 class CombatActionRow(discord.ui.ActionRow["CombatView"]):
-    """Row 0: primary combat actions. Thin dispatchers — logic lives on
+    """Row 0: Attack / Heal / Flee. Thin dispatchers — logic lives on
     CombatView so it stays easy to follow and share with the auto-battle
     loop, which drives the same methods directly."""
 
@@ -224,25 +224,29 @@ class CombatActionRow(discord.ui.ActionRow["CombatView"]):
     async def heal_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_heal(interaction)
 
-    @discord.ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
-    async def auto_btn(self, interaction: Interaction, button: ui.Button):
-        await self.view._on_auto(interaction)
-
     @discord.ui.button(label="Flee", style=ButtonStyle.secondary, emoji="🏃")
     async def flee_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_flee(interaction)
 
 
 class CombatActionRow2(discord.ui.ActionRow["CombatView"]):
-    """Row 1: Free Yourself (Verdant Colossus only) + 10 Turns."""
+    """Row 1: Auto / 10 Turns / Full Send (+ Free Yourself, Verdant Colossus only)."""
 
-    @discord.ui.button(label="Free Yourself", style=ButtonStyle.secondary, emoji="🌿")
-    async def free_yourself_btn(self, interaction: Interaction, button: ui.Button):
-        await self.view._on_free_yourself(interaction)
+    @discord.ui.button(label="Auto", style=ButtonStyle.primary, emoji="⏩")
+    async def auto_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_auto(interaction)
 
     @discord.ui.button(label="10 Turns", style=ButtonStyle.secondary, emoji="⚡")
     async def fast_auto_btn(self, interaction: Interaction, button: ui.Button):
         await self.view._on_fast_auto(interaction)
+
+    @discord.ui.button(label="Full Send", style=ButtonStyle.danger, emoji="💀")
+    async def full_send_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_full_send(interaction)
+
+    @discord.ui.button(label="Free Yourself", style=ButtonStyle.secondary, emoji="🌿")
+    async def free_yourself_btn(self, interaction: Interaction, button: ui.Button):
+        await self.view._on_free_yourself(interaction)
 
 
 class CombatView(BaseLayoutView):
@@ -401,13 +405,14 @@ class CombatView(BaseLayoutView):
                 self._auto_running and child is not row1.flee_btn
             )
 
-        # always disable fast_auto_btn if player level < 2:
+        # always disable auto if player level < 2:
         if self.player.level < 2:
-            row1.auto_btn.disabled = True
+            row2.auto_btn.disabled = True
 
-        # always disable 10 turns if player level < 20:
+        # always disable 10 turns / full send if player level < 20:
         if self.player.level < 20:
             row2.fast_auto_btn.disabled = True
+            row2.full_send_btn.disabled = True
 
         # always disable heal if potions is 0 or hp is >= max
         if (
@@ -426,8 +431,9 @@ class CombatView(BaseLayoutView):
                 row1.attack_btn.disabled = True
                 row1.heal_btn.disabled = True
                 row1.flee_btn.disabled = True
-                row1.auto_btn.disabled = True
+                row2.auto_btn.disabled = True
                 row2.fast_auto_btn.disabled = True
+                row2.full_send_btn.disabled = True
                 row2.free_yourself_btn.disabled = False
                 snare_locks_combat = True
             else:
@@ -807,6 +813,115 @@ class CombatView(BaseLayoutView):
             if self.player.current_hp > 0 and self.monster.hp > 0:
                 self._processing = False
             await self.check_combat_state(interaction)
+
+    async def _on_full_send(self, interaction: Interaction):
+        # Same loop as Auto, but ignores the 20%-HP protection threshold
+        # entirely — fights straight through to victory or defeat.
+        if self.player.level < 20:
+            return await interaction.response.send_message(
+                "This unlocks at Level 20!", ephemeral=True
+            )
+
+        if self._processing:
+            await interaction.response.defer()
+            return
+        self._processing = True
+
+        await interaction.response.defer()
+
+        self._auto_running = True
+        message = interaction.message
+
+        self.update_buttons()
+        await message.edit(view=self)
+
+        while True:
+            # Inner loop: fight the current phase to completion, 10 turns per
+            # batch — one UI refresh per batch instead of every single turn.
+            while (
+                self.player.current_hp > 0
+                and self.monster.hp > 0
+                and self._turn_count < 600
+                and not self._stop_auto
+            ):
+                for _ in range(10):
+                    if (
+                        self.player.current_hp <= 0
+                        or self.monster.hp <= 0
+                        or self._turn_count >= 600
+                        or self._stop_auto
+                    ):
+                        break
+                    p_log = engine.process_player_turn(self.player, self.monster)
+                    self.combat_logger.log_player_turn(p_log, self.monster)
+                    m_log = ""
+                    if self.monster.hp > 0:
+                        m_log = self._do_monster_turn()
+
+                    self.logs = {self.player.name: p_log, self.monster.name: m_log}
+                    self._turn_count += 1
+
+                self._apply_phase_image_transition()
+                self._sync_items(self._build_layout(compact=True))
+                await message.edit(view=self)
+
+                if (
+                    self.player.current_hp > 0
+                    and self.monster.hp > 0
+                    and self._turn_count < 600
+                    and not self._stop_auto
+                ):
+                    await asyncio.sleep(1.0)
+
+            was_auto = self._auto_running
+            self._auto_running = False
+
+            # Fled during Full Send — perform the save and exit cleanly.
+            if self._stop_auto:
+                self._stop_auto = False
+                self.player.cs.is_snared = False
+                self.logs["Flee"] = "You managed to escape safely!"
+                self._sync_items(interactive=False)
+                await message.edit(view=self)
+                self.bot.state_manager.clear_active(self.user_id)
+                await self.bot.database.users.update_from_player_object(self.player)
+                await _je.save_jewel_state(self.bot, self.user_id, self.player)
+                if self.crisis_callback:
+                    try:
+                        await self.crisis_callback(False)
+                    except Exception:
+                        pass
+
+                # The Rite of Convergence: fleeing returns to the wing lobby
+                # with -1 attempt rather than silently ending the view.
+                if self.rite_callback:
+                    self.fled = True
+                    await self.rite_callback(self, message, interaction)
+                    return
+
+                self.stop()
+                return
+
+            # Exhaustion cap — 600 turns elapsed with both sides still alive.
+            if (
+                self._turn_count >= 600
+                and self.player.current_hp > 0
+                and self.monster.hp > 0
+            ):
+                await self._handle_exhaustion(message)
+                return
+
+            # No low-HP pause here — that's the entire point of Full Send.
+            self._was_auto = was_auto
+            player_was_alive = self.player.current_hp > 0
+            await self.handle_end_state(message, interaction)
+
+            # Phase transition: handle_end_state replaces self.monster with the next
+            # phase boss (hp > 0) and returns without stopping the view.
+            if was_auto and self.monster.hp > 0 and player_was_alive:
+                self._auto_running = True  # Resume Full Send for the new phase
+                continue
+            break
 
     async def _handle_exhaustion(self, message, interaction: Interaction | None = None):
         """600-turn cap: end the fight as a draw with no rewards or penalties."""

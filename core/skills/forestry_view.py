@@ -9,6 +9,7 @@ from discord.ui import Button
 from core.base_view import BaseView
 from core.emojis import GATHERING_TOOL_TIER_EMOJI, GOLD_COIN
 from core.images import MASTERY_WOODCUTTING
+from core.skills import mastery as Mastery
 from core.skills.mechanics import SkillMechanics
 
 # Probability that any knot blocks the next swing.
@@ -25,6 +26,7 @@ class ForestryView(BaseView):
         self.state = "idle"  # idle | chopping | cooldown | ready
         self.skill_data = None
         self.user_data = None
+        self.mastery_row = None
 
         self.swings_remaining = 0
         # Knot state: None | "knot" (1-click clear) | "tight_knot_pry" (needs Pry first) | "tight_knot_clear" (needs final Clear)
@@ -69,6 +71,16 @@ class ForestryView(BaseView):
             self.user_id, self.server_id, "woodcutting"
         )
         self.user_data = await self.bot.database.users.get(self.user_id, self.server_id)
+        self.mastery_row = await self.bot.database.skills.get_mastery(
+            self.user_id, self.server_id
+        )
+
+    def _entry_cost(self) -> int:
+        cost = SkillMechanics.get_entry_cost("forestry", self.axe_tier)
+        reduction = Mastery.get_entry_pass_reduction(self.mastery_row)
+        if reduction:
+            cost = int(cost * (1 - reduction))
+        return cost
 
     @property
     def axe_tier(self) -> str:
@@ -113,7 +125,7 @@ class ForestryView(BaseView):
 
     def get_embed(self) -> discord.Embed:
         tier = self.axe_tier
-        cost = SkillMechanics.get_entry_cost("forestry", tier)
+        cost = self._entry_cost()
 
         if self.state == "idle":
             desc = (
@@ -178,7 +190,7 @@ class ForestryView(BaseView):
     def setup_ui(self):
         self.clear_items()
         tier = self.axe_tier
-        cost = SkillMechanics.get_entry_cost("forestry", tier)
+        cost = self._entry_cost()
         back_label = "← Gathering" if self.parent_gather_view else "Pack Up"
 
         if self.state == "idle":
@@ -275,7 +287,7 @@ class ForestryView(BaseView):
         await interaction.response.defer()
         await self.refresh_data()
 
-        cost = SkillMechanics.get_entry_cost("forestry", self.axe_tier)
+        cost = self._entry_cost()
         if self.gold < cost:
             self._processing = False
             await interaction.followup.send(

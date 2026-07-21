@@ -82,7 +82,7 @@ class GatherView(BaseView):
     def _get_tool_cost_reduction(self) -> float:
         if not self.mastery_row:
             return 0.0
-        return get_tool_cost_reduction(self.mastery_row, self.current_skill)
+        return get_tool_cost_reduction(self.mastery_row)
 
     def _gate_remaining(self) -> int:
         """Seconds remaining on the familiarization gate (0 = no gate / lifted)."""
@@ -417,6 +417,13 @@ class GatherView(BaseView):
         fam_hours = SkillMechanics.get_familiarization_hours(
             self.current_skill, next_tier
         )
+        fam_reduction = (
+            Mastery.get_familiarization_reduction(self.mastery_row)
+            if self.mastery_row
+            else 0.0
+        )
+        if fam_reduction:
+            fam_hours *= 1 - fam_reduction
         if fam_hours > 0:
             end = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
                 hours=fam_hours
@@ -493,6 +500,9 @@ class GatherView(BaseView):
             self.user_id, self.server_id
         )
         entry_cost = DelveMechanics.get_entry_cost(delve_stats["fuel_lvl"])
+        entry_reduction = Mastery.get_entry_pass_reduction(self.mastery_row)
+        if entry_reduction:
+            entry_cost = int(entry_cost * (1 - entry_reduction))
 
         if self.user_data["gold"] < entry_cost:
             self._processing = False

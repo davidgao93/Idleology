@@ -4,6 +4,7 @@ from discord.ext import commands
 from core.delve.delve_views import DelveEntryView, DelveView
 from core.delve.mechanics import DelveMechanics, DelveState
 from core.first_use import TutorialGateView
+from core.skills import mastery as Mastery
 
 
 class Delve(commands.Cog):
@@ -30,9 +31,13 @@ class Delve(commands.Cog):
         )
         pickaxe = mining_data["pickaxe_tier"] if mining_data else "iron"
         delve_stats = await self.bot.database.delve.get_profile(user_id, server_id)
+        mastery_row = await self.bot.database.skills.get_mastery(user_id, server_id)
 
         # 3. Calculate Entry Cost
         entry_cost = DelveMechanics.get_entry_cost(delve_stats["fuel_lvl"])
+        entry_reduction = Mastery.get_entry_pass_reduction(mastery_row)
+        if entry_reduction:
+            entry_cost = int(entry_cost * (1 - entry_reduction))
 
         # Pre-check gold
         if existing_user["gold"] < entry_cost:
@@ -56,7 +61,14 @@ class Delve(commands.Cog):
                         ),
                         pickaxe_tier=pickaxe,
                     )
-                    view = DelveView(self.bot, user_id, server_id, state, delve_stats)
+                    view = DelveView(
+                        self.bot,
+                        user_id,
+                        server_id,
+                        state,
+                        delve_stats,
+                        mastery_row=mastery_row,
+                    )
                     embed = view.build_embed("Systems online. Permit verified.")
                     await inter.edit_original_response(embed=embed, view=view)
                     view.message = await inter.original_response()
@@ -81,7 +93,14 @@ class Delve(commands.Cog):
                 pickaxe_tier=pickaxe,
             )
 
-            view = DelveView(self.bot, user_id, server_id, state, delve_stats)
+            view = DelveView(
+                self.bot,
+                user_id,
+                server_id,
+                state,
+                delve_stats,
+                mastery_row=mastery_row,
+            )
             embed = view.build_embed("Systems online. Permit verified.")
 
             await inter.response.edit_message(embed=embed, view=view)

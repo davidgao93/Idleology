@@ -142,6 +142,13 @@ class DelveView(BaseView):
         self._expand_map()
         self.update_buttons()
 
+    def _entry_cost(self) -> int:
+        cost = DelveMechanics.get_entry_cost(self.stats["fuel_lvl"])
+        reduction = Mastery.get_entry_pass_reduction(self.mastery_row)
+        if reduction:
+            cost = int(cost * (1 - reduction))
+        return cost
+
     def _expand_map(self):
         while len(self.state.hazards) < self.state.depth + 10:
             self.state.hazards.append(
@@ -492,7 +499,7 @@ class DelveView(BaseView):
         # 2. Add Restart Options
         self.clear_items()
 
-        cost = DelveMechanics.get_entry_cost(self.stats["fuel_lvl"])
+        cost = self._entry_cost()
 
         restart_btn = ui.Button(
             label=f"Restart ({cost:,} G)", style=ButtonStyle.success, emoji="🔄"
@@ -520,7 +527,7 @@ class DelveView(BaseView):
         self.processing = True
 
         # 1. Validate Funds
-        cost = DelveMechanics.get_entry_cost(self.stats["fuel_lvl"])
+        cost = self._entry_cost()
         gold = await self.bot.database.users.get_gold(self.user_id)
 
         if gold < cost:
@@ -552,6 +559,7 @@ class DelveView(BaseView):
             new_state,
             stats,
             parent_gather_view=self.parent_gather_view,
+            mastery_row=self.mastery_row,
         )
         embed = new_view.build_embed("Systems re-initialized. Permit renewed.")
 

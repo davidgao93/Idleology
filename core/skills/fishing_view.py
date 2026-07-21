@@ -38,6 +38,7 @@ class FishingView(BaseView):
         self.state = "idle"  # idle | casting | bite | escaped | result
         self.skill_data = None
         self.user_data = None
+        self.mastery_row = None
 
         # Yield from last successful reel, mapped to display names.
         self.last_yield: dict[str, int] = {}
@@ -87,6 +88,16 @@ class FishingView(BaseView):
             self.user_id, self.server_id, "fishing"
         )
         self.user_data = await self.bot.database.users.get(self.user_id, self.server_id)
+        self.mastery_row = await self.bot.database.skills.get_mastery(
+            self.user_id, self.server_id
+        )
+
+    def _entry_cost(self) -> int:
+        cost = SkillMechanics.get_entry_cost("fishing", self.rod_tier)
+        reduction = Mastery.get_entry_pass_reduction(self.mastery_row)
+        if reduction:
+            cost = int(cost * (1 - reduction))
+        return cost
 
     @property
     def rod_tier(self) -> str:
@@ -124,7 +135,7 @@ class FishingView(BaseView):
 
     def get_embed(self) -> discord.Embed:
         tier = self.rod_tier
-        cost = SkillMechanics.get_entry_cost("fishing", tier)
+        cost = self._entry_cost()
 
         if self.state == "idle":
             desc = (
@@ -207,7 +218,7 @@ class FishingView(BaseView):
     def setup_ui(self):
         self.clear_items()
         tier = self.rod_tier
-        cost = SkillMechanics.get_entry_cost("fishing", tier)
+        cost = self._entry_cost()
         back_label = "← Gathering" if self.parent_gather_view else "Pack Up"
 
         if self.state == "idle":
@@ -304,7 +315,7 @@ class FishingView(BaseView):
         await interaction.response.defer()
         await self.refresh_data()
 
-        cost = SkillMechanics.get_entry_cost("fishing", self.rod_tier)
+        cost = self._entry_cost()
         if self.gold < cost:
             self._processing = False
             await interaction.followup.send(

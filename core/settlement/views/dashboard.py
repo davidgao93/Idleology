@@ -1370,10 +1370,12 @@ class SettlementDashboardView(SettlementBaseView):
                 "idlem_from_foundry": 0,
                 "dt_resources": {},
             }
+            turns_done = 0
             for _ in range(3):
                 _turn = await process_next_turn(
                     self.bot, uid, sid, self.settlement.town_hall_tier
                 )
+                turns_done += 1
                 summary["turns_gained"] += _turn.get("turns_gained", 1)
                 summary["projects_completed"].extend(
                     _turn.get("projects_completed", [])
@@ -1394,6 +1396,33 @@ class SettlementDashboardView(SettlementBaseView):
                     summary["dt_resources"][_k] = (
                         summary["dt_resources"].get(_k, 0) + _v
                     )
+
+                # Stop fast-forwarding the moment a combat crisis becomes
+                # pending. Otherwise its whole advance-warning window can
+                # elapse — firing as an unconfronted failure and vanishing —
+                # inside this same batch, before the player ever sees it in
+                # Active Events or gets a Confront button.
+                _mid_events = await self.bot.database.settlement.get_active_events(
+                    uid, sid
+                )
+                if any(
+                    ev["event_type"] == "upcoming"
+                    and SETTLEMENT_EVENTS.get(ev["event_key"], {})
+                    .get("effects", {})
+                    .get("spawn_combat")
+                    for ev in _mid_events
+                ):
+                    break
+
+            # Refund Zeal for any turns we stopped short of, so pausing for a
+            # crisis doesn't cost the player Zeal they never spent turns on.
+            # add_passive_zeal credits settlement_zeal without inflating
+            # zeal_earned_today, matching a refund rather than new income.
+            unused_turns = 3 - turns_done
+            if unused_turns > 0:
+                await self.bot.database.settlement.add_passive_zeal(
+                    uid, sid, ZEAL_TO_DT * unused_turns
+                )
 
             # Reload fresh data
             self.settlement = await self.bot.database.settlement.get_settlement(
