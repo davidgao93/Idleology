@@ -7,11 +7,11 @@ from core.hematurgy.mechanics import tier_val as _htv
 
 _WEAPON_PASSIVE_DESC: dict[str, str] = {
     # Burning family — on-hit increased damage (×8% per tier)
-    "burning_1": "On hit: Deal 8% increased damage. (Accumulates with other sources of increased damage like Piety.)",
-    "burning_2": "On hit: Deal 16% increased damage. (Accumulates with other sources of increased damage like Piety.)",
-    "burning_3": "On hit: Deal 24% increased damage. (Accumulates with other sources of increased damage like Piety.)",
-    "burning_4": "On hit: Deal 32% increased damage. (Accumulates with other sources of increased damage like Piety.)",
-    "burning_5": "On hit: Deal 40% increased damage. (Accumulates with other sources of increased damage like Piety.)",
+    "burning_1": "On hit: Deal 8% increased damage.",
+    "burning_2": "On hit: Deal 16% increased damage.",
+    "burning_3": "On hit: Deal 24% increased damage.",
+    "burning_4": "On hit: Deal 32% increased damage.",
+    "burning_5": "On hit: Deal 40% increased damage.",
     # Poison family — Miss damage (×8% per tier)
     "poison_1": "On miss: Deal up to 8% of ATK as damage",
     "poison_2": "On miss: Deal up to 16% of ATK as damage",

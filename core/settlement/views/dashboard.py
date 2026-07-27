@@ -36,7 +36,12 @@ from core.settlement.mechanics import (
     collect_war_camp_stamina,
 )
 from core.settlement.models import Plot
-from core.settlement.plots import META_BUILDINGS, get_meta_slots, render_grid
+from core.settlement.plots import (
+    META_BUILDINGS,
+    count_used_meta_slots,
+    get_meta_slots,
+    render_grid,
+)
 from core.settlement.turn_engine import passive_zeal_for_period, process_next_turn
 from core.settlement.ui import (
     build_building_list_embed,
@@ -281,7 +286,9 @@ class SettlementDashboardView(SettlementBaseView):
 
         workers_used = sum(b.workers_assigned for b in self.settlement.buildings)
         meta_cap = get_meta_slots(self.settlement.town_hall_tier)
-        meta_used = sum(1 for b in self.settlement.buildings if b.is_meta)
+        meta_used = count_used_meta_slots(
+            self.settlement.buildings, getattr(self, "projects", []) or []
+        )
 
         total_turns = (turns_data or {}).get("total_development_turns", 0)
         zeal = (zeal_data or {}).get("settlement_zeal", 0)

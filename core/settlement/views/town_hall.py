@@ -6,7 +6,7 @@ from discord import ButtonStyle, Interaction, ui
 from core.emojis import DEVELOPMENT_CONTRACT, GOLD_COIN, RESOURCE_EMOJI
 from core.images import SETTLEMENT_BUILDINGS
 from core.settlement.mechanics import SettlementMechanics
-from core.settlement.plots import get_meta_slots
+from core.settlement.plots import count_used_meta_slots, get_meta_slots
 
 from .base import SettlementBaseView
 
@@ -139,7 +139,7 @@ class TownHallView(SettlementBaseView):
     def build_embed(self):
         tier = self.settlement.town_hall_tier
         meta_cap = get_meta_slots(tier)
-        meta_used = sum(1 for b in self.settlement.buildings if b.is_meta)
+        meta_used = count_used_meta_slots(self.settlement.buildings, self.projects)
 
         passive_zeal_rate = 5 + (tier - 1) * 9
         desc = (

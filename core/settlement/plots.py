@@ -367,6 +367,19 @@ def get_meta_slots(th_tier: int) -> int:
     return th_tier
 
 
+def count_used_meta_slots(buildings: list, projects: list) -> int:
+    """Meta slots already spoken for: completed meta buildings plus meta
+    construction projects still queued (which don't appear in `buildings`
+    until they complete)."""
+    completed = sum(1 for b in buildings if b.is_meta)
+    pending = sum(
+        1
+        for p in projects
+        if p.get("project_type") == "construction" and p.get("data", {}).get("is_meta")
+    )
+    return completed + pending
+
+
 def get_effective_max_workers(
     building_type: str,
     tier: int,

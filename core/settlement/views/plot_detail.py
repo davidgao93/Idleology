@@ -33,7 +33,9 @@ from core.settlement.plots import (
     PLOT_BONUS_AFFECTED,
     PLOT_BONUS_TABLE,
     SHRINE_BUILDING_TYPES,
+    count_used_meta_slots,
     get_effective_max_workers,
+    get_meta_slots,
     render_mini_grid,
     roll_plot_bonus,
 )
@@ -733,12 +735,12 @@ class PlotDetailView(SettlementBaseView):
         btn_build.callback = self._open_construction
         self.add_item(btn_build)
 
-        # Meta building button — only if slots available
+        # Meta building button — only if slots available (completed + pending)
         th_tier = self.parent.settlement.town_hall_tier
-        from core.settlement.plots import get_meta_slots
-
         meta_cap = get_meta_slots(th_tier)
-        meta_used = sum(1 for b in self.parent.settlement.buildings if b.is_meta)
+        meta_used = count_used_meta_slots(
+            self.parent.settlement.buildings, getattr(self.parent, "projects", []) or []
+        )
         meta_available = meta_used < meta_cap
 
         btn_meta = ui.Button(
@@ -1663,6 +1665,18 @@ class MetaBuildingConstructionView(SettlementBaseView):
             self.user_id, self.parent.server_id
         )
         self.parent.settlement = stl
+        self.parent.projects = await self.bot.database.settlement.get_projects(
+            self.user_id, self.parent.server_id
+        )
+        meta_cap = get_meta_slots(stl.town_hall_tier)
+        meta_used = count_used_meta_slots(stl.buildings, self.parent.projects)
+        if meta_used >= meta_cap:
+            self._processing = False
+            return await interaction.response.send_message(
+                f"All {meta_cap} Meta Building slot{'s' if meta_cap != 1 else ''} are "
+                "already built or under construction!",
+                ephemeral=True,
+            )
         if (
             gold < cost.get("gold", 0)
             or stl.timber < cost.get("timber", 0)

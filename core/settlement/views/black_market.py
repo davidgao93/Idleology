@@ -196,7 +196,7 @@ _BM_CATEGORIES: list[tuple[str, str, list[str]]] = [
     ),
     (
         "runes",
-        f"{RUNE_GENERIC} Runes",
+        "Runes",
         [
             "refinement_runes",
             "potential_runes",
@@ -673,6 +673,7 @@ class OfferBuilderView(SettlementBaseView):
         for i, (cat_id, cat_label, _) in enumerate(_BM_CATEGORIES):
             btn = ui.Button(
                 label=cat_label,
+                emoji=RUNE_GENERIC if cat_id == "runes" else None,
                 style=(
                     ButtonStyle.blurple
                     if cat_id == self._current_category
@@ -751,10 +752,17 @@ class OfferBuilderView(SettlementBaseView):
         _, cat_label, _ = next(
             c for c in _BM_CATEGORIES if c[0] == self._current_category
         )
+        # Custom emoji tags render fine in embed text (unlike button labels),
+        # so re-attach the rune icon here even though the button omits it.
+        cat_display = (
+            f"{RUNE_GENERIC} {cat_label}"
+            if self._current_category == "runes"
+            else cat_label
+        )
         embed = discord.Embed(
             title="📦 Build Your Offer",
             description=(
-                f"Browsing: **{cat_label}**\n"
+                f"Browsing: **{cat_display}**\n"
                 "Select a resource to set the quantity. "
                 "Resources already in your offer are hidden until you Clear."
             ),

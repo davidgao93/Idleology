@@ -43,6 +43,23 @@ RITE_KEY_CURRENCY_COLUMNS: tuple = (
     "rite_key_zenith_of_nightmares",
 )
 
+# Treasure monster names (level 999 rows in assets/monsters.csv) — must be
+# kept in sync whenever a treasure monster is added to that CSV.
+TREASURE_MONSTER_NAMES: frozenset = frozenset(
+    {
+        "Capybara Sauna",
+        "Gilded Dryad",
+        "Golden Mimic",
+        "Hoard Sprite",
+        "KPOP STAR",
+        "Loot Goblin",
+        "Lootslime",
+        "Random Korean Lady",
+        "Treasure Chest",
+        "Yggdrasil",
+    }
+)
+
 
 def calculate_rewards(
     player: Player, monster: Monster, *, apply_modifier_xp_bonus: bool = False
@@ -173,16 +190,7 @@ def calculate_rewards(
         player.equilibrium_bonus_xp_pending = 0
 
     # ── Gold ─────────────────────────────────────────────────────────────────
-    rare_monsters = [
-        "Treasure Chest",
-        "Random Korean Lady",
-        "KPOP STAR",
-        "Loot Goblin",
-        "Yggdrasil",
-        "Capybara Sauna",
-    ]
-
-    if monster.name in rare_monsters:
+    if monster.name in TREASURE_MONSTER_NAMES:
         reward_scale = int(player.level / 10)
     else:
         reward_scale = max(0, (monster.level - player.level) / 10)
@@ -387,15 +395,7 @@ def check_special_drops(player: Player, monster: Monster) -> Dict[str, bool]:
     special_drop_chance = mod_difficulty_bonus + special_rarity
 
     # Rare monsters always receive the full difficulty cap bonus + a free curio.
-    rare_monsters = [
-        "Treasure Chest",
-        "Random Korean Lady",
-        "KPOP STAR",
-        "Loot Goblin",
-        "Yggdrasil",
-        "Capybara Sauna",
-    ]
-    if monster.name in rare_monsters:
+    if monster.name in TREASURE_MONSTER_NAMES:
         special_drop_chance = MODIFIER_DIFFICULTY_CAP + special_rarity
         drops["curio"] = True
 
