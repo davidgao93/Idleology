@@ -179,6 +179,51 @@ class CardProfileBuilder:
             if stamina == 0:
                 combat_lines.append(f"  ↳ Cooldown: {cd_str}")
 
+        # War Camp Stamina — separate accrual pool with its own dedicated
+        # collection timer (stacks past the 10-stamina cap when collected).
+        if player_level >= 10:
+            try:
+                from core.settlement.mechanics import SettlementMechanics
+                from core.settlement.models import Plot
+
+                settlement = await bot.database.settlement.get_settlement(
+                    user_id, server_id
+                )
+                ws_ts = settlement.last_war_camp_stamina_time if settlement else None
+                if ws_ts:
+                    ws_hours = max(
+                        0.0,
+                        (datetime.now() - datetime.fromisoformat(ws_ts)).total_seconds()
+                        / 3600,
+                    )
+                    plot_rows = await bot.database.plots.get_plots(user_id, server_id)
+                    plots = [
+                        Plot(
+                            plot_index=r["plot_index"],
+                            is_developed=bool(r["is_developed"]),
+                            bonus_type=r["bonus_type"],
+                        )
+                        for r in plot_rows
+                    ]
+                    ws_stamina = min(
+                        10,
+                        int(
+                            SettlementMechanics.calculate_war_camp_stamina(
+                                settlement.buildings, plots, ws_hours
+                            )
+                        ),
+                    )
+                    if ws_stamina > 0:
+                        combat_lines.append(
+                            f"⚔️ **War Camp Stamina** — {ws_stamina}/10 ready to collect!"
+                        )
+                    else:
+                        combat_lines.append(
+                            "⚔️ **War Camp Stamina** — 0/10 accumulating"
+                        )
+            except Exception:
+                pass
+
         # Rest
         combat_lines.append(
             f"🛏️ **Rest** — {_fmt_hms(user['last_rest_time'], timedelta(hours=2))}"
