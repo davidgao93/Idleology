@@ -35,7 +35,6 @@ class CombatState:
 
     ward: int = 0
     is_invulnerable: bool = False
-    cooldown_reduction_seconds: int = 0
     # Guards apply_combat_start_passives() so multi-phase boss fights only
     # fire Start-of-Combat passives (Infernal/Void/partner/Hematurgy/Soul
     # Stone) once, at true Phase 1 start — never on later phase transitions.
@@ -686,14 +685,6 @@ class Player:
     @is_invulnerable_this_combat.setter
     def is_invulnerable_this_combat(self, v: bool) -> None:
         self.cs.is_invulnerable = v
-
-    @property
-    def combat_cooldown_reduction_seconds(self) -> int:
-        return self.cs.cooldown_reduction_seconds
-
-    @combat_cooldown_reduction_seconds.setter
-    def combat_cooldown_reduction_seconds(self, v: int) -> None:
-        self.cs.cooldown_reduction_seconds = v
 
     @property
     def celestial_vow_used(self) -> bool:

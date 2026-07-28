@@ -550,7 +550,7 @@ SOUL_STONE_TIER_VALUES: dict[str, list] = {
     "unlimited wealth": [40, 80, 120, 160, 200],  # % rarity bonus on 20% proc
     "alchemist": [6, 12, 18, 24, 30],  # % not-consume chance on potion use
     # --- Boot passives (6 gear tiers → 5 soul stone tiers, max_value / 5) ---
-    "speedster": [72, 144, 216, 288, 360],  # seconds of combat cooldown reduction
+    "speedster": [3.6, 7.2, 10.8, 14.4, 18.0],  # % proc chance on victory for +1 Combat Stamina
     "skiller": [6, 12, 18, 24, 30],  # % proc chance for skill-mat drop
     # Accessories use a 2:1 tier mapping (soul stone T × 2 = effective passive_lvl)
     # and are handled inline in the engine — no explicit table entry needed.

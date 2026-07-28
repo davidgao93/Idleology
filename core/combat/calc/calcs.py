@@ -151,7 +151,7 @@ GLOVE_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
 }
 
 BOOT_PASSIVE_DESCS: dict[str, Callable[[int], str]] = {
-    "speedster": lambda lvl: f"Cooldown reduced by {lvl}m",
+    "speedster": lambda lvl: f"{lvl * 3}% chance on victory for +1 Combat Stamina",
     "skiller": lambda lvl: f"{lvl * 5}% chance for extra skill mats",
     "treasure-tracker": lambda lvl: f"Treasure Mob chance +{lvl * 0.5:.1f}%",
     "hearty": lambda lvl: f"Max HP +{lvl * 5}%",

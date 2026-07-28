@@ -154,6 +154,35 @@ class DropManager:
         )
 
     @staticmethod
+    async def proc_speedster(
+        bot, user_id: str, server_id: str, player: Player
+    ) -> str | None:
+        """
+        Rolls the Speedster boot passive or its soul stone equivalent on victory
+        for a chance to gain 1 Combat Stamina (capped at 10).
+        Boot passive takes priority (conflict guard); soul stone fires only when
+        no speedster boot is equipped.
+        Returns a log message string if it procs, else None.
+        Only wired into standard combat (via process_drops) — deliberately not
+        called from Ascent, Uber, or Codex.
+        """
+        if player.equipped_boot and player.equipped_boot.passive == "speedster":
+            proc_chance = player.equipped_boot.passive_lvl * 0.03
+        else:
+            _ss_tier = player.get_soul_stone_passive("speedster")
+            if not _ss_tier:
+                return None
+            from core.apex.data import SOUL_STONE_TIER_VALUES
+
+            proc_chance = SOUL_STONE_TIER_VALUES["speedster"][_ss_tier - 1] / 100
+
+        if random.random() >= proc_chance:
+            return None
+
+        await bot.database.users.add_stamina_capped(user_id, 1)
+        return f"{BOOT_SLOT} **Speedster** grants +1 Combat Stamina!"
+
+    @staticmethod
     async def process_drops(
         bot,
         user_id: str,
@@ -190,6 +219,11 @@ class DropManager:
         skiller_msg = await DropManager.proc_skiller(bot, user_id, server_id, player)
         if skiller_msg:
             reward_data["msgs"].append(skiller_msg)
+
+        # 1a. Speedster Boot Passive (Combat Stamina)
+        speedster_msg = await DropManager.proc_speedster(bot, user_id, server_id, player)
+        if speedster_msg:
+            reward_data["msgs"].append(speedster_msg)
 
         # 1b. Essence Monster Drop
         if monster is not None and getattr(monster, "is_essence", False):

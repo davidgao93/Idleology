@@ -452,17 +452,6 @@ async def load_player(user_id: str, user_data: tuple, database) -> Player:
     # This pre-calculates the ward pool based on equipped gear percentages
     player.combat_ward = player.get_combat_ward_value()
 
-    # 4. Boot passives that affect session-start state
-    if player.equipped_boot:
-        # Speedster: pre-compute combat cooldown reduction for the cog to read
-        if (
-            player.equipped_boot.passive == "speedster"
-            and player.equipped_boot.passive_lvl > 0
-        ):
-            player.combat_cooldown_reduction_seconds = (
-                player.equipped_boot.passive_lvl * 60
-            )
-
     # HP ceiling enforcement — single enforcement point at load time.
     #
     # Only pulls current_hp DOWN if it exceeds the current effective cap — it

@@ -92,9 +92,7 @@ class CombatTutorialView(BaseView):
         existing_user = await self.bot.database.users.get(user_id, server_id)
         is_tree = await self.bot.database.inner_sanctum.get(user_id, server_id)
         is_bonuses = get_tree_bonuses(is_tree["nodes_owned"])
-        if not await self._cog._check_stamina(
-            interaction, user_id, existing_user, is_bonuses
-        ):
+        if not await self._cog._check_stamina(interaction, existing_user, is_bonuses):
             self.bot.state_manager.clear_active(user_id)
             self._processing = False
             return
@@ -166,58 +164,24 @@ class Combat(commands.Cog, name="combat"):
     def __init__(self, bot):
         self.bot = bot
 
-    def _get_speedster_reduction(
-        self, equipped_boot, ss_speedster_tier: int = 0
-    ) -> int:
-        """Returns the Speedster passive cooldown reduction in seconds.
-
-        Priority: equipped boot passive > soul stone passive (conflict guard).
-        """
-        if equipped_boot and equipped_boot["passive"] == "speedster":
-            return equipped_boot["passive_lvl"] * 60
-        if ss_speedster_tier > 0:
-            from core.apex.data import SOUL_STONE_TIER_VALUES
-
-            return SOUL_STONE_TIER_VALUES["speedster"][ss_speedster_tier - 1]
-        return 0
-
-    def _effective_cooldown(
-        self, speedster_reduction_sec: int, cooldown_penalty_sec: int = 0
-    ) -> timedelta:
+    def _effective_cooldown(self, cooldown_penalty_sec: int = 0) -> timedelta:
         return max(
             timedelta(seconds=10),
-            COMBAT_COOLDOWN
-            + timedelta(seconds=cooldown_penalty_sec)
-            - timedelta(seconds=speedster_reduction_sec),
+            COMBAT_COOLDOWN + timedelta(seconds=cooldown_penalty_sec),
         )
 
     async def _check_stamina(
-        self, interaction: Interaction, user_id: str, existing_user, is_bonuses: dict
+        self, interaction: Interaction, existing_user, is_bonuses: dict
     ) -> bool:
         """If the player has stamina, pass immediately.
         If empty, fall back to the regular 10-minute cooldown check."""
         if existing_user["combat_stamina"] > 0:
             return True
 
-        # No stamina — enforce the regular combat cooldown
-        equipped_boot = await self.bot.database.equipment.get_equipped(user_id, "boot")
-        # Soul stone speedster: only checked when no speedster boot is equipped
-        ss_speedster_tier = 0
-        if not (equipped_boot and equipped_boot["passive"] == "speedster"):
-            server_id = str(interaction.guild.id)
-            from core.apex.models import soul_stone_from_db
-
-            ss_row = await self.bot.database.apex.get_or_create_soul_stone(
-                user_id, server_id
-            )
-            ss = soul_stone_from_db(ss_row)
-            ss_speedster_tier = ss.get_passive_tier("speedster") or 0
-        reduction = self._get_speedster_reduction(equipped_boot, ss_speedster_tier)
+        # No stamina — enforce the regular combat cooldown.
         # Inner Sanctum Recovery — Frugal Spirit / Deep Reserves: flat seconds
         # added to the no-stamina cooldown as the trade-off for their chances.
-        cooldown = self._effective_cooldown(
-            reduction, is_bonuses["recovery_cooldown_penalty_sec"]
-        )
+        cooldown = self._effective_cooldown(is_bonuses["recovery_cooldown_penalty_sec"])
 
         last_combat_str = existing_user["last_combat"]
         if last_combat_str:
@@ -250,7 +214,7 @@ class Combat(commands.Cog, name="combat"):
 
         is_tree = await self.bot.database.inner_sanctum.get(user_id, server_id)
         is_bonuses = get_tree_bonuses(is_tree["nodes_owned"])
-        if not await self._check_stamina(interaction, user_id, existing_user, is_bonuses):
+        if not await self._check_stamina(interaction, existing_user, is_bonuses):
             return
 
         # First-time combat tutorial — show once before entering the fight

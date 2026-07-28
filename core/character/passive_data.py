@@ -141,7 +141,9 @@ _GLOVE_PASSIVE_FUNCS: dict = {
 }
 
 _BOOT_PASSIVE_FUNCS: dict = {
-    "speedster": lambda lvl: f"On equip: Combat cooldown reduced by {lvl}m",
+    "speedster": lambda lvl: (
+        f"On victory: {lvl * 3}% chance to gain 1 Combat Stamina (capped at 10)"
+    ),
     "skiller": lambda lvl: (
         f"On victory: {lvl * 5}% chance to find extra gathering materials"
     ),

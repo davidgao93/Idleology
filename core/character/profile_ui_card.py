@@ -169,10 +169,7 @@ class CardProfileBuilder:
                         regen_suffix = f" · next in {rem_secs // 60}m"
                 except Exception:
                     pass
-            combat_cd_mins = 10
-            if p.equipped_boot and p.equipped_boot.passive == "speedster":
-                combat_cd_mins -= p.equipped_boot.passive_lvl
-            cd_str = _fmt_ms(user["last_combat"], timedelta(minutes=combat_cd_mins))
+            cd_str = _fmt_ms(user["last_combat"], timedelta(minutes=10))
             combat_lines.append(
                 f"⚡ **Stamina** — {stamina}/{MAX_STAMINA}{regen_suffix}"
             )

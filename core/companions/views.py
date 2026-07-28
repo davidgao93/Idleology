@@ -10,7 +10,7 @@ from core.base_view import BaseView
 from core.companions.engram_view import BalancedEngramView
 from core.companions.logic import CompanionLogic
 from core.companions.mechanics import CompanionMechanics
-from core.emojis import RUNE_PARTNERSHIP
+from core.emojis import COMPANION_COLLECT, RUNE_PARTNERSHIP
 from core.hall_of_firsts import triggers as hof_triggers
 from core.images import COMPANIONS_FUSION, COMPANIONS_HUB, YUNA_PORTRAIT, YUNA_THUMBNAIL
 from core.models import Companion
@@ -180,7 +180,10 @@ class CompanionListView(BaseView):
             f"Collect ({ready_cycles} ready)" if ready_cycles > 0 else "Collect"
         )
         collect_btn = ui.Button(
-            label=collect_label, style=ButtonStyle.success, emoji="💰", row=1
+            label=collect_label,
+            style=ButtonStyle.success,
+            emoji=COMPANION_COLLECT,
+            row=1,
         )
         collect_btn.callback = self.collect_loot
         self.add_item(collect_btn)
@@ -823,59 +826,16 @@ class CompanionDetailView(BaseView):
             item.disabled = True
         await interaction.edit_original_response(view=self)
 
-        # Distribute flat 2000 XP to each remaining active companion
+        # Pool flat XP for manual distribution via the Companions XP pool —
+        # same as Ranch output and items fed to companions — instead of
+        # auto-splitting it across whichever companions happen to be active.
         RELEASE_XP = 2000
         xp_note = ""
         try:
-            active_rows = await self.bot.database.companions.get_active(self.user_id)
-            recipients = [r for r in active_rows if r["id"] != self.comp.id]
-            if recipients:
-                leveled_names = []
-                overflow_xp = 0
-                for row in recipients:
-                    comp_id, name, cur_lvl, cur_exp = (
-                        row["id"],
-                        row["name"],
-                        row["level"],
-                        row["exp"],
-                    )
-                    cur_exp += RELEASE_XP
-                    did_level = False
-                    while cur_lvl < 100:
-                        req = CompanionMechanics.calculate_next_level_xp(cur_lvl)
-                        if cur_exp >= req:
-                            cur_exp -= req
-                            cur_lvl += 1
-                            did_level = True
-                        else:
-                            break
-                    if cur_lvl >= 100:
-                        overflow_xp += cur_exp
-                        cur_exp = 0
-                    await self.bot.database.companions.update_stats(
-                        comp_id, cur_lvl, cur_exp
-                    )
-                    await hof_triggers.check_monster_tamer(
-                        self.bot, self.user_id, cur_lvl
-                    )
-                    if did_level:
-                        leveled_names.append(f"{name} (Lv.{cur_lvl})")
-
-                xp_note = (
-                    f"\n🐾 Remaining companions each gained **{RELEASE_XP:,} XP**."
-                )
-                if leveled_names:
-                    xp_note += f"\n🎉 **Level Up:** {', '.join(leveled_names)}"
-
-                if overflow_xp > 0:
-                    from core.companions.mastery import kp_from_overflow_xp
-
-                    kp_earned = kp_from_overflow_xp(overflow_xp)
-                    if kp_earned > 0:
-                        await self.bot.database.companions.add_kinship_points(
-                            self.user_id, str(interaction.guild_id), kp_earned
-                        )
-                        xp_note += f"\nGained **{kp_earned} Kinship Point(s)** from overflow XP."
+            await self.bot.database.users.modify_currency(
+                self.user_id, "companion_pet_xp", RELEASE_XP
+            )
+            xp_note = f"\n🐾 **+{RELEASE_XP:,} XP** added to your Companion XP pool."
         except Exception:
             pass
 

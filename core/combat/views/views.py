@@ -1265,16 +1265,7 @@ class CombatView(BaseLayoutView):
         stamina = stamina_data["combat_stamina"]
 
         if stamina == 0:
-            equipped_boot = await self.bot.database.equipment.get_equipped(
-                self.user_id, "boot"
-            )
-            speedster_reduction = 0
-            if equipped_boot and equipped_boot["passive"] == "speedster":
-                speedster_reduction = equipped_boot["passive_lvl"] * 60
-            cooldown = max(
-                timedelta(seconds=10),
-                _COMBAT_COOLDOWN - timedelta(seconds=speedster_reduction),
-            )
+            cooldown = _COMBAT_COOLDOWN
             last_combat_str = await self.bot.database.users.get_timer(
                 self.user_id, "last_combat"
             )
