@@ -147,7 +147,9 @@ class SlayerDashboardView(BaseView):
             return
 
         await interaction.response.defer()
-        species, amount = SlayerMechanics.generate_task(self.player_level)
+        species, amount = SlayerMechanics.generate_task(
+            self.player_level, self.profile["level"]
+        )
         # tm_1: task sizes +20% (rounded up, capped at 50)
         if self.tree_nodes.get("tm_1"):
             amount = min(50, math.ceil(amount * 1.2))

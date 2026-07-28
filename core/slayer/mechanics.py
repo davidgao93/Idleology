@@ -204,8 +204,13 @@ class SlayerMechanics:
         return [b for b in BOSS_TASK_CATALOG if player_level >= b["min_level"]]
 
     @staticmethod
-    def generate_task(player_level: int) -> Tuple[str, int]:
-        """Reads monsters.csv, weights species by frequency in bracket, returns (Species, Amount)"""
+    def generate_task(player_level: int, slayer_level: int) -> Tuple[str, int]:
+        """Reads monsters.csv, weights species by frequency in bracket, returns
+        (Species, Amount). Species selection is scoped to `player_level` (character
+        level) so the assigned species matches what you're actually fighting;
+        task *size* is banded off `slayer_level` instead, so difficulty tracks
+        actual Slayer progress rather than combat level — mirrors the slot-unlock
+        breakpoints (20/50) in get_unlocked_slots."""
         csv_path = os.path.join(os.path.dirname(__file__), "../../assets/monsters.csv")
         bracket_min = max(1, player_level - 50)
         bracket_max = min(110, player_level + 10)
@@ -231,10 +236,10 @@ class SlayerMechanics:
             list(counts.keys()), weights=list(counts.values()), k=1
         )[0]
 
-        # Level-banded task sizes with variance
-        if player_level < 20:
+        # Slayer-level-banded task sizes with variance
+        if slayer_level < 20:
             base, variance = 5, 0.20
-        elif player_level < 40:
+        elif slayer_level < 50:
             base, variance = 10, 0.30
         else:
             base, variance = 15, 0.50
@@ -243,11 +248,27 @@ class SlayerMechanics:
 
         return chosen_species, amount
 
+    # Completion burst grows faster than linear with task size — +1% per kill
+    # in the task, capped at +50% (hit at the tm_1-boosted size cap of 50).
+    # This is what makes investing points into Oversized Contract (bigger
+    # tasks) actually pay off, instead of just being a longer grind at the
+    # same rate.
+    TASK_SIZE_BONUS_PER_KILL = 0.01
+    TASK_SIZE_BONUS_CAP = 0.50
+
     @staticmethod
     def calculate_task_rewards(amount: int) -> Tuple[int, int]:
-        """Returns (XP, Points). Linear scaling."""
-        # Completion burst: 800 XP per monster in the task, +1 Point per monster.
-        return (amount * 800), amount
+        """Returns (XP, Points). Base rate is 800 XP + 1 Point per monster in
+        the task, scaled up by a size bonus (see TASK_SIZE_BONUS_PER_KILL) so
+        larger tasks are more reward-efficient per kill, not just bigger."""
+        size_bonus = min(
+            SlayerMechanics.TASK_SIZE_BONUS_CAP,
+            amount * SlayerMechanics.TASK_SIZE_BONUS_PER_KILL,
+        )
+        multiplier = 1 + size_bonus
+        xp = round(amount * 800 * multiplier)
+        points = round(amount * multiplier)
+        return xp, points
 
     @staticmethod
     def roll_drops(monster_level: int) -> Tuple[int, int]:
