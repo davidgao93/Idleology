@@ -216,6 +216,7 @@ class SettlementDashboardView(SettlementBaseView):
         self._cached_zeal_data: dict = {}
         self._cached_active_events: list = []
         self._cached_pending_deal: dict | None = None
+        self._cached_rare_materials: tuple = (0, 0, 0)
         self._processing = False
         self._rebuild_ui()
 
@@ -249,6 +250,7 @@ class SettlementDashboardView(SettlementBaseView):
         active_events: list | None = None,
         projects: list | None = None,
         pending_deal: dict | None = None,
+        rare_materials: tuple | None = None,
     ) -> discord.Embed:
         developed_set = {p.plot_index for p in self.plots if p.is_developed}
         building_by_plot: dict[int, str] = {
@@ -266,6 +268,8 @@ class SettlementDashboardView(SettlementBaseView):
             self._cached_active_events = active_events
         if pending_deal is not None:
             self._cached_pending_deal = pending_deal
+        if rare_materials is not None:
+            self._cached_rare_materials = rare_materials
 
         # Use supplied values, falling back to cached ones
         turns_data = turns_data if turns_data is not None else self._cached_turns_data
@@ -275,6 +279,11 @@ class SettlementDashboardView(SettlementBaseView):
         )
         pending_deal = (
             pending_deal if pending_deal is not None else self._cached_pending_deal
+        )
+        rare_materials = (
+            rare_materials
+            if rare_materials is not None
+            else self._cached_rare_materials
         )
 
         # Merge caller-supplied projects into self.projects if provided, then
@@ -305,50 +314,42 @@ class SettlementDashboardView(SettlementBaseView):
         )
         embed.set_author(name="Head Maid Spritz", icon_url=MAID_SPRITZ_PORTRAIT)
 
-        # Core stats row
-        embed.add_field(
-            name="🏛️ Town Hall",
-            value=f"Tier {self.settlement.town_hall_tier}",
-            inline=True,
-        )
-        embed.add_field(
-            name="👥 Workforce",
-            value=f"{workers_used:,}/{self.follower_count:,}",
-            inline=True,
-        )
-        embed.add_field(
-            name="⚙️ Meta Slots",
-            value=f"{meta_used}/{meta_cap}",
-            inline=True,
-        )
-        embed.add_field(
-            name="🪵 Timber",
-            value=f"{self.settlement.timber:,}",
-            inline=True,
-        )
-        embed.add_field(
-            name="🪨 Stone",
-            value=f"{self.settlement.stone:,}",
-            inline=True,
-        )
-        embed.add_field(
-            name="📍 Plots",
-            value=f"{len(developed_set)}/20",
-            inline=True,
-        )
+        # Core stats — condensed into three grouped fields + a dedicated Zeal field.
+        magma, life, spirit = rare_materials or (0, 0, 0)
 
-        # Zeal / DT economy
+        embed.add_field(
+            name="Settlement",
+            value=(
+                f"🏛️ Town Hall: Tier {self.settlement.town_hall_tier}\n"
+                f"👥 Population: {workers_used:,}/{self.follower_count:,}\n"
+                f"⚙️ Meta: {meta_used}/{meta_cap}\n"
+                f"📍 Plots: {len(developed_set)}/20"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name="Resources",
+            value=(
+                f"🪵 Timber: {self.settlement.timber:,}\n"
+                f"🪨 Stone: {self.settlement.stone:,}\n"
+                f"⚗️ Idlem: {idlem:,}"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name="Rare Materials",
+            value=(
+                f"{MAGMA_CORE} Magma Core: {magma:,}\n"
+                f"{LIFE_ROOT} Life Root: {life:,}\n"
+                f"{SPIRIT_SHARD} Spirit Shard: {spirit:,}"
+            ),
+            inline=True,
+        )
         embed.add_field(
             name=f"{ZEAL} Zeal",
-            value=f"{zeal:,}",
-            inline=True,
+            value=f"{zeal:,} — Next Turn costs {ZEAL_TO_DT}",
+            inline=False,
         )
-        embed.add_field(
-            name="⚗️ Idlem",
-            value=f"{idlem:,}",
-            inline=True,
-        )
-        embed.add_field(name="​", value="​", inline=True)  # spacer
 
         # Active projects — always use self.projects (live cache) so returning from
         # child views doesn't blank this section.
@@ -1294,6 +1295,9 @@ class SettlementDashboardView(SettlementBaseView):
             )
             projects = await self.bot.database.settlement.get_projects(uid, sid)
             pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
+            rare_materials = (
+                await self.bot.database.settlement_materials.get_rare_materials(uid)
+            )
 
             self._cached_pending_deal = pending_deal
             self._rebuild_ui()
@@ -1304,6 +1308,7 @@ class SettlementDashboardView(SettlementBaseView):
                 active_events=active_events,
                 projects=projects,
                 pending_deal=pending_deal,
+                rare_materials=rare_materials,
             )
             try:
                 await interaction.edit_original_response(embed=embed, view=self)
@@ -1456,6 +1461,9 @@ class SettlementDashboardView(SettlementBaseView):
             )
             projects = await self.bot.database.settlement.get_projects(uid, sid)
             pending_deal = await self.bot.database.settlement.get_pending_deal(uid, sid)
+            rare_materials = (
+                await self.bot.database.settlement_materials.get_rare_materials(uid)
+            )
 
             self._cached_pending_deal = pending_deal
             self._rebuild_ui()
@@ -1466,6 +1474,7 @@ class SettlementDashboardView(SettlementBaseView):
                 active_events=active_events,
                 projects=projects,
                 pending_deal=pending_deal,
+                rare_materials=rare_materials,
             )
             try:
                 await interaction.edit_original_response(embed=embed, view=self)

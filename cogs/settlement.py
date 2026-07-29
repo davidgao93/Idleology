@@ -113,12 +113,16 @@ class SettlementCog(commands.Cog, name="settlement"):
             pending_deal = await self.bot.database.settlement.get_pending_deal(
                 user_id, server_id
             )
+            rare_materials = await self.bot.database.settlement_materials.get_rare_materials(
+                user_id
+            )
             embed = view.build_embed(
                 turns_data=turns_data,
                 zeal_data=zeal_data,
                 active_events=active_events,
                 projects=projects,
                 pending_deal=pending_deal,
+                rare_materials=rare_materials,
             )
             return embed, view
 
