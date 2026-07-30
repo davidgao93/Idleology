@@ -67,10 +67,11 @@ class PuzzleBoxView(BaseView):
             self._remaining_seconds = max(0, 60 - (i + 1) * 10)
             if self.claimed or not self.message:
                 return
-            try:
-                await self.message.edit(embed=self.build_embed())
-            except Exception:
-                return
+            # A single failed edit (rate limit, transient API hiccup) must not
+            # permanently freeze the displayed countdown for the rest of the
+            # window — _safe_message_edit retries once and logs instead of
+            # aborting the loop outright.
+            await self._safe_message_edit(embed=self.build_embed())
 
     def _restart_countdown(self):
         """Keeps the displayed countdown in sync with discord.py's real timeout,
@@ -166,8 +167,19 @@ class PuzzleBoxView(BaseView):
             claimed_view = _ClaimedPuzzleBoxView(self.bot, self.user_id, self.server_id)
             await self.message.edit(embed=self.build_claimed_embed(), view=claimed_view)
             claimed_view.message = self.message
-        except (discord.NotFound, discord.HTTPException):
+        except (discord.NotFound, discord.HTTPException, AttributeError):
             pass
+        except Exception:
+            # An unexpected failure here (e.g. a DB error inside claim_rewards)
+            # must not strand the player on a frozen message with dead
+            # buttons — log it and fall through to self.stop() below.
+            try:
+                self.bot.logger.error(
+                    f"PuzzleBoxView on_timeout unexpected error for user {self.user_id}",
+                    exc_info=True,
+                )
+            except Exception:
+                pass
         self.stop()
 
 
