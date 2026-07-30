@@ -204,8 +204,7 @@ class AlchemyHubView(BaseView):
                 f"Upgrade from **Level {self.alchemy_level}** → **Level {new_level}**\n\n"
                 f"Cost: {SPIRIT_STONE} **{cost}** Spirit Stones\n"
                 f"New slot count: **{AlchemyMechanics.get_slot_count(new_level)}**\n"
-                f"New transmutation ratio: **{up_r}:1** upgrade / **1:{dn_r}** downgrade\n\n"
-                f"The new slot will be ready for a free Distillation in the Potion Lab."
+                f"New transmutation ratio: **{up_r}:1** upgrade / **1:{dn_r}** downgrade."
             ),
             color=discord.Color.gold(),
         )

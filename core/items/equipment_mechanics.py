@@ -329,11 +329,35 @@ class EquipmentMechanics:
     # hyperbolic curve: expected = cap * (level / (level + 100)), ±20% variance.
     _REFINE_CAPS = {"attack": 15, "defence": 10, "rarity": 50}
 
+    # High-refinement acceleration: every 100 refinement levels is one "bracket",
+    # capped at bracket 5 (ref_lvl 500+) so the multipliers plateau instead of
+    # growing without bound. The average multiplier grows with bracket**1.5 and
+    # the ceiling multiplier with bracket**1.6 so the roll's upper end pulls away
+    # from its average the deeper a weapon is refined — big jackpot rolls become
+    # both more common and larger at high ref_lvl, not just a flat average bump.
+    _REFINE_TIER_CAP = 5
+
     @staticmethod
-    def _refine_roll(level: int, cap: float) -> int:
-        """Hyperbolic soft-cap roll for a single refine stat gain."""
-        expected = cap * (level / (level + 100))
-        return max(1, int(random.uniform(expected * 0.8, expected * 1.2)))
+    def _refine_tier(ref_lvl: int) -> int:
+        return min(ref_lvl // 100, EquipmentMechanics._REFINE_TIER_CAP)
+
+    @staticmethod
+    def _refine_avg_mult(bracket: int) -> float:
+        return 1 + 0.16 * bracket**1.5
+
+    @staticmethod
+    def _refine_upper_mult(bracket: int) -> float:
+        return 1.2 + 0.20 * bracket**1.6
+
+    @staticmethod
+    def _refine_roll(level: int, cap: float, ref_lvl: int = 0) -> int:
+        """Hyperbolic soft-cap roll for a single refine stat gain, accelerated by ref_lvl."""
+        bracket = EquipmentMechanics._refine_tier(ref_lvl)
+        expected = (
+            cap * (level / (level + 100)) * EquipmentMechanics._refine_avg_mult(bracket)
+        )
+        upper = EquipmentMechanics._refine_upper_mult(bracket)
+        return max(1, int(random.uniform(expected * 0.8, expected * upper)))
 
     @staticmethod
     def roll_refine_outcome(weapon: Weapon) -> Dict[str, int]:
@@ -342,20 +366,21 @@ class EquipmentMechanics:
         Returns dict: {'attack': val, 'defence': val, 'rarity': val}
         """
         stats = {"attack": 0, "defence": 0, "rarity": 0}
+        ref_lvl = weapon.refinement_lvl
 
         if random.randint(0, 100) < 80:  # 80% attack
             stats["attack"] = EquipmentMechanics._refine_roll(
-                weapon.level, EquipmentMechanics._REFINE_CAPS["attack"]
+                weapon.level, EquipmentMechanics._REFINE_CAPS["attack"], ref_lvl
             )
 
         if random.randint(0, 100) < 50:  # 50% defence
             stats["defence"] = EquipmentMechanics._refine_roll(
-                weapon.level, EquipmentMechanics._REFINE_CAPS["defence"]
+                weapon.level, EquipmentMechanics._REFINE_CAPS["defence"], ref_lvl
             )
 
         if random.randint(0, 100) < 20:  # 20% rarity
             stats["rarity"] = EquipmentMechanics._refine_roll(
-                weapon.level, EquipmentMechanics._REFINE_CAPS["rarity"]
+                weapon.level, EquipmentMechanics._REFINE_CAPS["rarity"], ref_lvl
             )
 
         return stats
