@@ -845,7 +845,7 @@ class SettlementDashboardView(SettlementBaseView):
         except Exception:
             pass
         war_camp_btn = ui.Button(
-            label=f"Gather Stamina ({_ws}/10)",
+            label=f"Recover Stamina ({_ws}/10)",
             style=ButtonStyle.blurple,
             emoji="⚔️",
             row=2,
