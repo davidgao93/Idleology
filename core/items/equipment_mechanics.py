@@ -136,12 +136,10 @@ class EquipmentMechanics:
         }
 
     @staticmethod
-    def roll_forge_outcome(weapon: Weapon) -> Tuple[bool, str]:
+    def calculate_forge_success_rate(weapon: Weapon) -> float:
         """
-        Determines if a forge succeeds and selects a passive.
-        Returns (Success: bool, PassiveName: str)
+        Returns the success rate (0.0-1.0) for the weapon's next forge attempt.
         """
-        # Calculate Success Rate
         base_rate = 0.8
 
         # Determine max forges for this tier to calculate decay
@@ -153,7 +151,15 @@ class EquipmentMechanics:
 
         # Current forge step (e.g., if max is 3 and remaining is 3, step is 0)
         current_step = max_forges - weapon.forges_remaining
-        success_rate = base_rate - (current_step * 0.05)
+        return base_rate - (current_step * 0.05)
+
+    @staticmethod
+    def roll_forge_outcome(weapon: Weapon) -> Tuple[bool, str]:
+        """
+        Determines if a forge succeeds and selects a passive.
+        Returns (Success: bool, PassiveName: str)
+        """
+        success_rate = EquipmentMechanics.calculate_forge_success_rate(weapon)
 
         if random.random() > success_rate:
             return False, weapon.passive  # Fail, keep existing

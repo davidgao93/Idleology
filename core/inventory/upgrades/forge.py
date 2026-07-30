@@ -40,6 +40,7 @@ class ForgeView(BaseUpgradeView):
             if self.item.passive and self.item.passive != "none"
             else "None"
         )
+        success_rate = EquipmentMechanics.calculate_forge_success_rate(self.item)
 
         self.embed = discord.Embed(
             title=f"{WEAPON_FORGE} Forge {self.item.name}",
@@ -50,6 +51,9 @@ class ForgeView(BaseUpgradeView):
         self.embed.set_thumbnail(url=UPGRADE_FORGE)
         self.embed.add_field(
             name="Current Passive", value=current_passive, inline=False
+        )
+        self.embed.add_field(
+            name="Success Rate", value=f"**{success_rate:.0%}**", inline=False
         )
         self.embed.add_field(
             name=f"Cost (Forges Remaining: {self.item.forges_remaining})",
@@ -282,6 +286,7 @@ class ForgeView(BaseUpgradeView):
         cost_totals: dict[str, int] = {}
         total_gold = 0
         stop_reason = "All forge slots exhausted."
+        success_rates: list[float] = []
 
         while sim_item.forges_remaining > 0:
             c = EquipmentMechanics.calculate_forge_cost(sim_item)
@@ -315,6 +320,9 @@ class ForgeView(BaseUpgradeView):
             cost_totals[log_col] = cost_totals.get(log_col, 0) + c["log_qty"]
             cost_totals[bone_col] = cost_totals.get(bone_col, 0) + c["bone_qty"]
             total_gold += c["gold"]
+            success_rates.append(
+                EquipmentMechanics.calculate_forge_success_rate(sim_item)
+            )
 
             # Worst-case: treat every attempt as a success so forge_tier escalates
             sim_item.forge_tier += 1
@@ -335,11 +343,17 @@ class ForgeView(BaseUpgradeView):
             if qty > 0
         )
 
+        rate_lines = "\n".join(
+            f"**#{i}:** {rate:.0%}" for i, rate in enumerate(success_rates, start=1)
+        )
+
         embed = discord.Embed(title="⚠️ Confirmation", color=discord.Color.orange())
         embed.set_author(name="Master Smith Harlan", icon_url=HARLAN_AUTHOR)
         embed.set_thumbnail(url=UPGRADE_FORGE)
         embed.description = (
             f"This will attempt **{forges_possible}** forge(s).\n\n"
+            f"**Estimated Success Rates:**\n"
+            f"{rate_lines}\n\n"
             f"**Estimated Resources Consumed:**\n"
             f"{mat_lines}\n"
             f"{GOLD_COIN} Gold: {total_gold:,}\n\n"
